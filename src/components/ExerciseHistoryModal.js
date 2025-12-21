@@ -1,0 +1,236 @@
+import React, { useRef } from 'react';
+import { View, Text, Modal, TouchableOpacity, ScrollView, StyleSheet, PanResponder, Animated } from 'react-native';
+import { X, Calendar, Trophy } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { COLORS } from '../constants/colors';
+
+const ExerciseHistoryModal = ({ visible, onClose, exercise, stats }) => {
+  const insets = useSafeAreaInsets();
+  const pan = useRef(new Animated.ValueXY()).current;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return gestureState.dy > 5; // Only capture downward movement
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dy > 0) {
+          pan.setValue({ x: 0, y: gestureState.dy });
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > 100) {
+          onClose();
+        } else {
+          Animated.spring(pan, {
+            toValue: { x: 0, y: 0 },
+            useNativeDriver: false,
+          }).start();
+        }
+      },
+    })
+  ).current;
+
+  // Reset pan position when modal becomes visible
+  React.useEffect(() => {
+    if (visible) {
+      pan.setValue({ x: 0, y: 0 });
+    }
+  }, [visible]);
+
+  if (!exercise) return null;
+
+  const history = stats?.history || [];
+  const pr = stats?.pr || 0;
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={styles.overlay}>
+        <Animated.View 
+          style={[
+            styles.container, 
+            { marginTop: insets.top + 16, transform: [{ translateY: pan.y }] }
+          ]}
+          {...panResponder.panHandlers}
+        >
+          <View style={styles.dragHandleContainer}>
+            <View style={styles.dragHandle} />
+          </View>
+          
+          <View style={styles.header}>
+            <View>
+              <Text style={styles.title}>{exercise.name}</Text>
+              <Text style={styles.subtitle}>{exercise.category}</Text>
+            </View>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <X size={24} color={COLORS.slate[400]} />
+            </TouchableOpacity>
+          </View>
+
+          {pr > 0 && (
+            <View style={styles.prContainer}>
+              <Trophy size={20} color={COLORS.amber[500]} />
+              <Text style={styles.prText}>Personal Record: {pr} {exercise.category === 'Lifts' ? 'lbs' : ''}</Text>
+            </View>
+          )}
+
+          <ScrollView contentContainerStyle={styles.content}>
+            {history.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyText}>No history recorded yet.</Text>
+              </View>
+            ) : (
+              history.map((session, index) => (
+                <View key={index} style={styles.sessionCard}>
+                  <View style={styles.sessionHeader}>
+                    <Calendar size={16} color={COLORS.slate[500]} />
+                    <Text style={styles.sessionDate}>{session.date}</Text>
+                  </View>
+                  <View style={styles.setsContainer}>
+                    <View style={styles.setRowHeader}>
+                      <Text style={styles.colSet}>Set</Text>
+                      <Text style={styles.colMetric}>{exercise.category === 'Lifts' ? 'Weight' : 'Time'}</Text>
+                      <Text style={styles.colMetric}>{exercise.category === 'Lifts' ? 'Reps' : 'Distance'}</Text>
+                    </View>
+                    {session.sets.map((set, setIndex) => (
+                      <View key={setIndex} style={styles.setRow}>
+                        <Text style={styles.colSet}>{setIndex + 1}</Text>
+                        <Text style={styles.colMetric}>
+                          {set.weight || set.duration || '-'}
+                        </Text>
+                        <Text style={styles.colMetric}>
+                          {set.reps || set.distance || '-'}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              ))
+            )}
+          </ScrollView>
+        </Animated.View>
+      </View>
+    </Modal>
+  );
+};
+
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-start', // Changed from flex-end to allow top alignment
+  },
+  container: {
+    flex: 1, // Fill the rest of the screen
+    backgroundColor: COLORS.slate[50],
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingTop: 8, // Reduced padding top since we have drag handle
+  },
+  dragHandleContainer: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    marginBottom: 8,
+  },
+  dragHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: COLORS.slate[300],
+    borderRadius: 2,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 24,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: COLORS.slate[900],
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: COLORS.slate[500],
+  },
+  closeButton: {
+    padding: 4,
+  },
+  prContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: COLORS.amber[50],
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: COLORS.amber[200],
+  },
+  prText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.amber[700],
+  },
+  content: {
+    paddingBottom: 40,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyText: {
+    color: COLORS.slate[400],
+    fontSize: 16,
+  },
+  sessionCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: COLORS.slate[200],
+  },
+  sessionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.slate[100],
+  },
+  sessionDate: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.slate[700],
+  },
+  setsContainer: {
+    gap: 8,
+  },
+  setRowHeader: {
+    flexDirection: 'row',
+    marginBottom: 4,
+  },
+  setRow: {
+    flexDirection: 'row',
+    paddingVertical: 4,
+  },
+  colSet: {
+    width: 40,
+    fontSize: 14,
+    color: COLORS.slate[400],
+    fontWeight: 'bold',
+  },
+  colMetric: {
+    flex: 1,
+    fontSize: 14,
+    color: COLORS.slate[600],
+    textAlign: 'center',
+  },
+});
+
+export default ExerciseHistoryModal;
