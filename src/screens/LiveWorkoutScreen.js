@@ -3656,6 +3656,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   addExerciseButton: {
+    marginTop: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
