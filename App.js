@@ -4,6 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Play, Calendar, Book, User, CircleDashed } from 'lucide-react-native';
 import { COLORS } from './src/constants/colors';
 import { WorkoutProvider } from './src/context/WorkoutContext';
@@ -13,6 +14,7 @@ import LogScreen from './src/screens/LogScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
 import LibraryScreen from './src/screens/LibraryScreen';
 import LiveWorkoutScreen from './src/screens/LiveWorkoutScreen';
+import EditWorkoutScreen from './src/screens/EditWorkoutScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -99,22 +101,32 @@ const MainTabs = () => {
 
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <WorkoutProvider>
-        <NavigationContainer>
-          <Stack.Navigator screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="Main" component={MainTabs} />
-            <Stack.Screen 
-              name="LiveWorkout" 
-              component={LiveWorkoutScreen} 
-              options={{ 
-                presentation: 'fullScreenModal',
-                gestureEnabled: false,
-              }} 
-            />
-          </Stack.Navigator>
-        </NavigationContainer>
-      </WorkoutProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <WorkoutProvider>
+          <NavigationContainer>
+            <Stack.Navigator screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="Main" component={MainTabs} />
+              <Stack.Screen 
+                name="LiveWorkout" 
+                component={LiveWorkoutScreen} 
+                options={{ 
+                  presentation: 'fullScreenModal',
+                  gestureEnabled: false,
+                }} 
+              />
+              <Stack.Screen 
+                name="EditWorkout" 
+                component={EditWorkoutScreen} 
+                options={{ 
+                  presentation: 'fullScreenModal',
+                  gestureEnabled: false,
+                }} 
+              />
+            </Stack.Navigator>
+          </NavigationContainer>
+        </WorkoutProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

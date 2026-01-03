@@ -123,7 +123,10 @@ export const WorkoutProvider = ({ children }) => {
         weight: s.weight, 
         reps: s.reps, 
         duration: s.duration, 
-        distance: s.distance 
+        distance: s.distance,
+        isWarmup: s.isWarmup || false,
+        isFailure: s.isFailure || false,
+        dropSetId: s.dropSetId || null
       }))
     });
     
@@ -164,6 +167,12 @@ export const WorkoutProvider = ({ children }) => {
     setExercisesLibrary([exerciseToAdd, ...exercisesLibrary]);
   };
 
+  const updateExerciseInLibrary = (exerciseId, updates) => {
+    setExercisesLibrary(exercisesLibrary.map(ex => 
+      ex.id === exerciseId ? { ...ex, ...updates } : ex
+    ));
+  };
+
   return (
     <WorkoutContext.Provider value={{
       activeWorkout,
@@ -176,6 +185,7 @@ export const WorkoutProvider = ({ children }) => {
       finishWorkout,
       cancelWorkout,
       addExerciseToLibrary,
+      updateExerciseInLibrary,
       isLoading
     }}>
       {children}

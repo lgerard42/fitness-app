@@ -89,35 +89,96 @@ const WorkoutDetailModal = ({ visible, onClose, workout, onSave }) => {
     setIsEditing(false);
   };
 
-  const renderExercise = (ex) => (
-    <View key={ex.instanceId} style={styles.exerciseCard}>
-      <View style={styles.exerciseHeader}>
-        <Text style={styles.exerciseName}>{ex.name}</Text>
-      </View>
-      <View style={styles.exerciseContent}>
-        <View style={styles.columnHeaders}>
-          <View style={styles.colIndex}><Text style={styles.colHeaderText}>Set</Text></View>
-          <View style={styles.colInputs}>
-            <Text style={styles.colHeaderText}>{ex.category === "Lifts" ? "Weight" : "Time"}</Text>
-            <Text style={styles.colHeaderText}>{ex.category === "Lifts" ? "Reps" : "Dist/Reps"}</Text>
+  const renderExercise = (ex) => {
+    // Calculate proper set numbers and group info
+    let overallSetNumber = 0;
+    const setsWithNumbers = ex.sets.map((set, idx) => {
+      const dropSetId = set.dropSetId;
+      let indexInGroup = null;
+      let groupSetNumber = null;
+      let isDropSetStart = false;
+      let isDropSetEnd = false;
+      
+      if (dropSetId) {
+        // Find all sets in this group
+        const groupSets = ex.sets.filter(s => s.dropSetId === dropSetId);
+        indexInGroup = groupSets.findIndex(s => s.id === set.id);
+        
+        // Check if this is the first or last set in the group
+        isDropSetStart = indexInGroup === 0;
+        isDropSetEnd = indexInGroup === groupSets.length - 1;
+        
+        // Only increment overall number for the first set in a group
+        if (indexInGroup === 0) {
+          overallSetNumber++;
+        }
+        groupSetNumber = overallSetNumber;
+      } else {
+        overallSetNumber++;
+      }
+      
+      return {
+        ...set,
+        overallSetNumber,
+        groupSetNumber,
+        indexInGroup: indexInGroup !== null ? indexInGroup + 1 : null,
+        totalInGroup: dropSetId ? ex.sets.filter(s => s.dropSetId === dropSetId).length : null,
+        isDropSetStart,
+        isDropSetEnd
+      };
+    });
+    
+    // Determine group set type for the visual indicator
+    const getGroupSetType = (set) => {
+      if (!set.dropSetId) return null;
+      
+      const groupSets = ex.sets.filter(s => s.dropSetId === set.dropSetId);
+      const allWarmup = groupSets.length > 0 && groupSets.every(s => s.isWarmup);
+      const allFailure = groupSets.length > 0 && groupSets.every(s => s.isFailure);
+      
+      if (allWarmup) return 'warmup';
+      if (allFailure) return 'failure';
+      return null;
+    };
+    
+    return (
+      <View key={ex.instanceId} style={styles.exerciseCard}>
+        <View style={styles.exerciseHeader}>
+          <Text style={styles.exerciseName}>{ex.name}</Text>
+        </View>
+        <View style={styles.exerciseContent}>
+          <View style={styles.columnHeaders}>
+            <View style={styles.colIndex}><Text style={styles.colHeaderText}>Set</Text></View>
+            <View style={styles.colInputs}>
+              <Text style={styles.colHeaderText}>{ex.category === "Lifts" ? "Weight" : "Time"}</Text>
+              <Text style={styles.colHeaderText}>{ex.category === "Lifts" ? "Reps" : "Dist/Reps"}</Text>
+            </View>
+            <View style={styles.colCheck}><Text style={styles.colHeaderText}>✓</Text></View>
           </View>
-          <View style={styles.colCheck}><Text style={styles.colHeaderText}>✓</Text></View>
-        </View>
-        <View style={styles.setsContainer}>
-          {ex.sets.map((set, idx) => (
-            <WorkoutSetRow 
-              key={set.id} 
-              index={idx} 
-              set={set} 
-              category={ex.category}
-              onUpdate={(s) => handleUpdateSet(ex.instanceId, s)}
-              readOnly={!isEditing}
-            />
-          ))}
+          <View style={styles.setsContainer}>
+            {setsWithNumbers.map((set, idx) => (
+              <WorkoutSetRow 
+                key={set.id} 
+                index={idx} 
+                set={set} 
+                category={ex.category}
+                onUpdate={(s) => handleUpdateSet(ex.instanceId, s)}
+                readOnly={!isEditing}
+                dropSetId={set.dropSetId}
+                indexInGroup={set.indexInGroup}
+                totalInGroup={set.totalInGroup}
+                groupSetNumber={set.groupSetNumber}
+                overallSetNumber={set.overallSetNumber}
+                isDropSetStart={set.isDropSetStart}
+                isDropSetEnd={set.isDropSetEnd}
+                groupSetType={getGroupSetType(set)}
+              />
+            ))}
+          </View>
         </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -352,7 +413,7 @@ const styles = StyleSheet.create({
   setsContainer: {
     gap: 8,
   },
-  groupContainer: {
+  groupContainer:{
     marginBottom: 16,
     padding: 8,
     backgroundColor: COLORS.indigo[50],

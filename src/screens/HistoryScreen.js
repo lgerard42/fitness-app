@@ -6,7 +6,7 @@ import { HISTORY_DATA } from '../constants/data';
 import { useWorkout } from '../context/WorkoutContext';
 import WorkoutDetailModal from '../components/WorkoutDetailModal';
 
-const HistoryScreen = () => {
+const HistoryScreen = ({ navigation }) => {
   const [view, setView] = useState('workouts');
   const [selectedWorkout, setSelectedWorkout] = useState(null);
   const { workoutHistory, updateHistory } = useWorkout();
@@ -15,6 +15,15 @@ const HistoryScreen = () => {
   const handleSaveWorkout = (updatedWorkout) => {
     updateHistory(updatedWorkout);
     setSelectedWorkout(null);
+  };
+
+  const handleEditWorkout = (workout) => {
+    if (navigation) {
+      navigation.navigate('EditWorkout', { workout });
+    } else {
+      // Fallback to modal if navigation is not available
+      setSelectedWorkout(workout);
+    }
   };
 
   return (
@@ -45,7 +54,7 @@ const HistoryScreen = () => {
               <TouchableOpacity 
                 key={workout.id || idx} 
                 style={styles.card}
-                onPress={() => setSelectedWorkout(workout)}
+                onPress={() => handleEditWorkout(workout)}
               >
                 <View style={styles.cardHeader}>
                   <View>
