@@ -223,6 +223,7 @@ const WorkoutTemplate = ({
   const [elapsed, setElapsed] = useState(0);
   const [showPicker, setShowPicker] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [newlyCreatedExerciseId, setNewlyCreatedExerciseId] = useState(null);
   const [finishModalOpen, setFinishModalOpen] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [popupKey, setPopupKey] = useState(0); // Force popup re-mount
@@ -438,11 +439,19 @@ const WorkoutTemplate = ({
   };
 
   const handleCreateExerciseSave = (newExData) => {
-    const tempEx = { ...newExData, id: `new-${Date.now()}` };
-    // Also add to library globally
-    addExerciseToLibrary(tempEx);
-    handleAddExercisesFromPicker([tempEx], null);
+    // Add to library globally - it will create an ID if needed
+    const newExerciseId = addExerciseToLibrary(newExData);
+    // Set the newly created exercise ID to auto-select it in ExercisePicker
+    setNewlyCreatedExerciseId(newExerciseId);
+    // Close the NewExercise modal
     setIsCreateModalOpen(false);
+    // Reopen the ExercisePicker so user can see the newly created exercise selected
+    // Use requestAnimationFrame for fastest possible transition
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setShowPicker(true);
+      });
+    });
   };
 
   const handleUpdateSet = (exInstanceId, updatedSet) => {
@@ -2855,15 +2864,37 @@ const WorkoutTemplate = ({
 
       <ExercisePicker 
         isOpen={showPicker} 
-        onClose={() => setShowPicker(false)} 
+        onClose={() => {
+          setShowPicker(false);
+          setNewlyCreatedExerciseId(null); // Clear the newly created ID when picker closes
+        }}
         onAdd={handleAddExercisesFromPicker}
-        onCreate={() => setIsCreateModalOpen(true)}
+        onCreate={() => {
+          // Close ExercisePicker before opening NewExercise (React Native doesn't support nested modals)
+          // Use requestAnimationFrame for fastest possible transition
+          setShowPicker(false);
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              setIsCreateModalOpen(true);
+            });
+          });
+        }}
         exercises={exercisesLibrary}
+        newlyCreatedId={newlyCreatedExerciseId}
       />
 
       <NewExercise 
         isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
+        onClose={() => {
+          setIsCreateModalOpen(false);
+          // Reopen ExercisePicker if it was open before (user cancelled creating new exercise)
+          // Use requestAnimationFrame for fastest possible transition
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              setShowPicker(true);
+            });
+          });
+        }}
         onSave={handleCreateExerciseSave}
         categories={CATEGORIES}
       />

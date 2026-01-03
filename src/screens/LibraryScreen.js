@@ -4,7 +4,7 @@ import { Plus, Search } from 'lucide-react-native';
 import { COLORS } from '../constants/colors';
 import { CATEGORIES } from '../constants/data';
 import { useWorkout } from '../context/WorkoutContext';
-import NewExerciseModal from '../components/NewExerciseModal';
+import NewExercise from '../components/WorkoutTemplate/modals/NewExercise';
 import ExerciseHistoryModal from '../components/ExerciseHistoryModal';
 
 const LibraryScreen = () => {
@@ -61,7 +61,7 @@ const LibraryScreen = () => {
         )}
       />
 
-      <NewExerciseModal 
+      <NewExercise 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
         onSave={handleSaveExercise} 

@@ -162,9 +162,11 @@ export const WorkoutProvider = ({ children }) => {
   };
 
   const addExerciseToLibrary = (newExercise) => {
-    const newId = `e${Date.now()}`;
+    // Use existing ID if provided, otherwise create new one
+    const newId = newExercise.id || `e${Date.now()}`;
     const exerciseToAdd = { ...newExercise, id: newId };
     setExercisesLibrary([exerciseToAdd, ...exercisesLibrary]);
+    return newId; // Return the ID for use in components
   };
 
   const updateExerciseInLibrary = (exerciseId, updates) => {

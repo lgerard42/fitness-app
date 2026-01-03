@@ -4,7 +4,7 @@ import { X, Plus, Search, ChevronDown, Check } from 'lucide-react-native';
 import { COLORS } from '../../../constants/colors';
 import { CATEGORIES, PRIMARY_MUSCLES, WEIGHT_EQUIP_TAGS } from '../../../constants/data';
 
-const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises }) => {
+const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCreatedId = null }) => {
   const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState([]);
   const [groupType, setGroupType] = useState(""); // "" | "Superset" | "HIIT"
@@ -17,6 +17,22 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises }) => {
 
   // Filter Dropdown UI States
   const [openFilter, setOpenFilter] = useState(null); // 'category' | 'muscle' | 'equip' | null
+
+  // Auto-select newly created exercise
+  useEffect(() => {
+    if (newlyCreatedId && !selectedIds.includes(newlyCreatedId)) {
+      // Check if the exercise exists in the exercises list before selecting
+      const exerciseExists = exercises.some(ex => ex.id === newlyCreatedId);
+      if (exerciseExists) {
+        setSelectedIds(prev => [...prev, newlyCreatedId]);
+        // Clear search and filters so the newly created exercise is visible
+        setSearch("");
+        setFilterCategory("All");
+        setFilterMuscle("All");
+        setFilterEquip("All");
+      }
+    }
+  }, [newlyCreatedId, selectedIds, exercises]);
 
   useEffect(() => {
     if (selectedIds.length < 2 && groupType !== "") {
