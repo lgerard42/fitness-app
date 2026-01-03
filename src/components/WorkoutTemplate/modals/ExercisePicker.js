@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Modal, FlatList, ScrollView, StyleSheet, SafeAreaView } from 'react-native';
-import { X, Plus, Search, ChevronDown, Check, Layers, Dumbbell } from 'lucide-react-native';
+import { X, Plus, Search, ChevronDown, Check, Layers, Dumbbell, Activity } from 'lucide-react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS } from '../../../constants/colors';
 import { CATEGORIES, PRIMARY_MUSCLES, WEIGHT_EQUIP_TAGS, PRIMARY_TO_SECONDARY_MAP } from '../../../constants/data';
 
@@ -183,7 +184,11 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
             styles.muscleFilterMerged
           ]}
         >
-          <Layers size={16} color={isActive ? COLORS.blue[700] : COLORS.slate[600]} />
+          <MaterialCommunityIcons 
+            name="arm-flex" 
+            size={16} 
+            color={isActive ? COLORS.blue[700] : COLORS.slate[600]} 
+          />
         </TouchableOpacity>
         
         {openFilter === 'secondary' && (
