@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Modal, FlatList, StyleSheet, SafeAreaView } from 'react-native';
-import { X, Plus, Search, ChevronDown, Check } from 'lucide-react-native';
+import { X, Plus, Search, ChevronDown, Check, Layers } from 'lucide-react-native';
 import { COLORS } from '../../../constants/colors';
-import { CATEGORIES, PRIMARY_MUSCLES, WEIGHT_EQUIP_TAGS } from '../../../constants/data';
+import { CATEGORIES, PRIMARY_MUSCLES, WEIGHT_EQUIP_TAGS, PRIMARY_TO_SECONDARY_MAP } from '../../../constants/data';
 
 const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCreatedId = null }) => {
   const [search, setSearch] = useState("");
@@ -10,13 +10,14 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
   const [groupType, setGroupType] = useState(""); // "" | "Superset" | "HIIT"
   const [isGroupDropdownOpen, setIsGroupDropdownOpen] = useState(false);
 
-  // Filter States
-  const [filterCategory, setFilterCategory] = useState("All");
-  const [filterMuscle, setFilterMuscle] = useState("All");
-  const [filterEquip, setFilterEquip] = useState("All");
+  // Filter States (now arrays for multi-select)
+  const [filterCategory, setFilterCategory] = useState([]);
+  const [filterMuscle, setFilterMuscle] = useState([]);
+  const [filterEquip, setFilterEquip] = useState([]);
+  const [filterSecondaryMuscle, setFilterSecondaryMuscle] = useState([]);
 
   // Filter Dropdown UI States
-  const [openFilter, setOpenFilter] = useState(null); // 'category' | 'muscle' | 'equip' | null
+  const [openFilter, setOpenFilter] = useState(null); // 'category' | 'muscle' | 'equip' | 'secondary' | null
 
   // Auto-select newly created exercise
   useEffect(() => {
@@ -27,9 +28,10 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
         setSelectedIds(prev => [...prev, newlyCreatedId]);
         // Clear search and filters so the newly created exercise is visible
         setSearch("");
-        setFilterCategory("All");
-        setFilterMuscle("All");
-        setFilterEquip("All");
+        setFilterCategory([]);
+        setFilterMuscle([]);
+        setFilterEquip([]);
+        setFilterSecondaryMuscle([]);
       }
     }
   }, [newlyCreatedId, selectedIds, exercises]);
@@ -40,13 +42,36 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
     }
   }, [selectedIds, groupType]);
 
+  // Get available secondary muscles based on selected primary muscles
+  const getAvailableSecondaryMuscles = () => {
+    if (filterMuscle.length === 0) return [];
+    const secondarySet = new Set();
+    filterMuscle.forEach(primary => {
+      const secondaries = PRIMARY_TO_SECONDARY_MAP[primary] || [];
+      secondaries.forEach(sec => secondarySet.add(sec));
+    });
+    return Array.from(secondarySet).sort();
+  };
+
   const filtered = exercises.filter(ex => {
     const matchesSearch = ex.name.toLowerCase().includes(search.toLowerCase());
-    const matchesCategory = filterCategory === "All" || ex.category === filterCategory;
-    const matchesMuscle = filterMuscle === "All" || ex.primaryMuscles.includes(filterMuscle) || (ex.secondaryMuscles && ex.secondaryMuscles.includes(filterMuscle));
-    const matchesEquip = filterEquip === "All" || (ex.weightEquipTags && ex.weightEquipTags.includes(filterEquip));
+    
+    // Multi-select category filter
+    const matchesCategory = filterCategory.length === 0 || filterCategory.includes(ex.category);
+    
+    // Multi-select primary muscle filter
+    const matchesPrimaryMuscle = filterMuscle.length === 0 || 
+      filterMuscle.some(muscle => ex.primaryMuscles.includes(muscle));
+    
+    // Multi-select secondary muscle filter
+    const matchesSecondaryMuscle = filterSecondaryMuscle.length === 0 || 
+      (ex.secondaryMuscles && filterSecondaryMuscle.some(muscle => ex.secondaryMuscles.includes(muscle)));
+    
+    // Multi-select equipment filter
+    const matchesEquip = filterEquip.length === 0 || 
+      (ex.weightEquipTags && filterEquip.some(equip => ex.weightEquipTags.includes(equip)));
 
-    return matchesSearch && matchesCategory && matchesMuscle && matchesEquip;
+    return matchesSearch && matchesCategory && matchesPrimaryMuscle && matchesSecondaryMuscle && matchesEquip;
   });
 
   const handleToggleSelect = (id) => {
@@ -69,49 +94,131 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
 
   const isDisabled = selectedIds.length < 2;
 
-  const FilterDropdown = ({ label, value, options, type }) => (
-    <View style={styles.filterDropdownContainer}>
-      <TouchableOpacity 
-        onPress={() => setOpenFilter(openFilter === type ? null : type)}
-        style={[
-          styles.filterButton,
-          value !== "All" ? styles.filterButtonActive : styles.filterButtonInactive
-        ]}
-      >
-        <Text style={[styles.filterButtonText, value !== "All" && styles.filterButtonTextActive]} numberOfLines={1}>
-          {value === "All" ? label : value}
-        </Text>
-        <ChevronDown size={12} color={value !== "All" ? COLORS.blue[700] : COLORS.slate[600]} style={{ transform: [{ rotate: openFilter === type ? '180deg' : '0deg' }] }} />
-      </TouchableOpacity>
-      
-      {openFilter === type && (
-        <View style={styles.filterMenu}>
-          <FlatList
-            data={["All", ...options]}
-            keyExtractor={item => item}
-            style={{ maxHeight: 200 }}
-            nestedScrollEnabled={true}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                onPress={() => {
-                  if(type === 'category') setFilterCategory(item);
-                  if(type === 'muscle') setFilterMuscle(item);
-                  if(type === 'equip') setFilterEquip(item);
-                  setOpenFilter(null);
-                }}
-                style={[styles.filterOption, value === item && styles.filterOptionSelected]}
-              >
-                <Text style={[styles.filterOptionText, value === item && styles.filterOptionTextSelected]}>
-                  {item}
-                </Text>
-                {value === item && <Check size={12} color={COLORS.blue[600]} />}
-              </TouchableOpacity>
-            )}
-          />
-        </View>
-      )}
-    </View>
-  );
+  const FilterDropdown = ({ label, value, options, type, leftAligned = false }) => {
+    const isActive = Array.isArray(value) ? value.length > 0 : value !== "All";
+    const displayText = Array.isArray(value) 
+      ? (value.length === 0 ? label : value.length === 1 ? value[0] : `${value.length} selected`)
+      : (value === "All" ? label : value);
+    
+    const toggleOption = (item) => {
+      if (Array.isArray(value)) {
+        // Multi-select logic
+        const newValue = value.includes(item) 
+          ? value.filter(v => v !== item)
+          : [...value, item];
+        
+        if (type === 'category') setFilterCategory(newValue);
+        if (type === 'muscle') {
+          setFilterMuscle(newValue);
+          // Clear secondary muscles if no primary muscles selected
+          if (newValue.length === 0) setFilterSecondaryMuscle([]);
+        }
+        if (type === 'equip') setFilterEquip(newValue);
+        if (type === 'secondary') setFilterSecondaryMuscle(newValue);
+      } else {
+        // Old single-select logic (backward compatibility)
+        if(type === 'category') setFilterCategory(item);
+        if(type === 'muscle') setFilterMuscle(item);
+        if(type === 'equip') setFilterEquip(item);
+        setOpenFilter(null);
+      }
+    };
+    
+    return (
+      <View style={styles.filterDropdownContainer}>
+        <TouchableOpacity 
+          onPress={() => setOpenFilter(openFilter === type ? null : type)}
+          style={[
+            styles.filterButton,
+            isActive ? styles.filterButtonActive : styles.filterButtonInactive
+          ]}
+        >
+          <Text style={[styles.filterButtonText, isActive && styles.filterButtonTextActive]} numberOfLines={1}>
+            {displayText}
+          </Text>
+          <ChevronDown size={12} color={isActive ? COLORS.blue[700] : COLORS.slate[600]} style={{ transform: [{ rotate: openFilter === type ? '180deg' : '0deg' }] }} />
+        </TouchableOpacity>
+        
+        {openFilter === type && (
+          <View style={[styles.filterMenu, leftAligned && styles.filterMenuLeftAligned]}>
+            <FlatList
+              data={options}
+              keyExtractor={item => item}
+              style={{ maxHeight: 200 }}
+              nestedScrollEnabled={true}
+              renderItem={({ item }) => {
+                const isSelected = Array.isArray(value) ? value.includes(item) : value === item;
+                return (
+                  <TouchableOpacity
+                    onPress={() => toggleOption(item)}
+                    style={[styles.filterOption, isSelected && styles.filterOptionSelected]}
+                  >
+                    <Text style={[styles.filterOptionText, isSelected && styles.filterOptionTextSelected]}>
+                      {item}
+                    </Text>
+                    {isSelected && <Check size={12} color={COLORS.blue[600]} />}
+                  </TouchableOpacity>
+                );
+              }}
+            />
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  // Secondary Muscle Filter Component (icon button)
+  const SecondaryMuscleFilter = () => {
+    const availableSecondaries = getAvailableSecondaryMuscles();
+    const isEnabled = filterMuscle.length > 0;
+    const isActive = filterSecondaryMuscle.length > 0;
+    
+    return (
+      <View style={styles.secondaryFilterContainer}>
+        <TouchableOpacity 
+          onPress={() => isEnabled && setOpenFilter(openFilter === 'secondary' ? null : 'secondary')}
+          disabled={!isEnabled}
+          style={[
+            styles.secondaryFilterButton,
+            isEnabled ? (isActive ? styles.secondaryFilterButtonActive : styles.secondaryFilterButtonInactive) : styles.secondaryFilterButtonDisabled
+          ]}
+        >
+          <Layers size={16} color={isEnabled ? (isActive ? COLORS.blue[700] : COLORS.slate[600]) : COLORS.slate[300]} />
+        </TouchableOpacity>
+        
+        {openFilter === 'secondary' && isEnabled && (
+          <View style={[styles.filterMenu, styles.filterMenuLeftAligned, styles.secondaryFilterMenu]}>
+            <FlatList
+              data={availableSecondaries}
+              keyExtractor={item => item}
+              style={{ maxHeight: 200 }}
+              nestedScrollEnabled={true}
+              renderItem={({ item }) => {
+                const isSelected = filterSecondaryMuscle.includes(item);
+                return (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setFilterSecondaryMuscle(
+                        isSelected 
+                          ? filterSecondaryMuscle.filter(v => v !== item)
+                          : [...filterSecondaryMuscle, item]
+                      );
+                    }}
+                    style={[styles.filterOption, isSelected && styles.filterOptionSelected]}
+                  >
+                    <Text style={[styles.filterOptionText, isSelected && styles.filterOptionTextSelected]}>
+                      {item}
+                    </Text>
+                    {isSelected && <Check size={12} color={COLORS.blue[600]} />}
+                  </TouchableOpacity>
+                );
+              }}
+            />
+          </View>
+        )}
+      </View>
+    );
+  };
 
   return (
     <Modal visible={isOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
@@ -189,6 +296,7 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
              <FilterDropdown label="Category" value={filterCategory} options={CATEGORIES} type="category" />
              <FilterDropdown label="Muscle" value={filterMuscle} options={PRIMARY_MUSCLES} type="muscle" />
              <FilterDropdown label="Equipment" value={filterEquip} options={WEIGHT_EQUIP_TAGS} type="equip" />
+             <SecondaryMuscleFilter />
           </View>
         </View>
         
@@ -375,10 +483,35 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     zIndex: 90,
+    alignItems: 'center',
   },
   filterDropdownContainer: {
     flex: 1,
     position: 'relative',
+  },
+  secondaryFilterContainer: {
+    position: 'relative',
+  },
+  secondaryFilterButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  secondaryFilterButtonInactive: {
+    backgroundColor: COLORS.slate[100],
+    borderColor: 'transparent',
+  },
+  secondaryFilterButtonActive: {
+    backgroundColor: COLORS.blue[100],
+    borderColor: COLORS.blue[200],
+  },
+  secondaryFilterButtonDisabled: {
+    backgroundColor: COLORS.slate[50],
+    borderColor: COLORS.slate[100],
+    opacity: 0.5,
   },
   filterButton: {
     flexDirection: 'row',
@@ -422,6 +555,13 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
     zIndex: 100,
+  },
+  filterMenuLeftAligned: {
+    right: 'auto',
+    minWidth: 180,
+  },
+  secondaryFilterMenu: {
+    minWidth: 200,
   },
   filterOption: {
     flexDirection: 'row',
