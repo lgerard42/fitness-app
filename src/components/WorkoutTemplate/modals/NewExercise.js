@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Modal, ScrollView, StyleSheet, SafeAreaView } from 'react-native';
 import { ChevronDown, ToggleLeft, ToggleRight } from 'lucide-react-native';
-import { COLORS } from '../constants/colors';
-import { PRIMARY_MUSCLES, CARDIO_TYPES, TRAINING_FOCUS, WEIGHT_EQUIP_TAGS, PRIMARY_TO_SECONDARY_MAP } from '../constants/data';
-import Chip from './Chip';
-import CustomDropdown from './CustomDropdown';
+import { COLORS } from '../../../constants/colors';
+import { PRIMARY_MUSCLES, CARDIO_TYPES, TRAINING_FOCUS, WEIGHT_EQUIP_TAGS, PRIMARY_TO_SECONDARY_MAP } from '../../../constants/data';
+import Chip from '../../Chip';
+import CustomDropdown from '../../CustomDropdown';
 
-const NewExerciseModal = ({ isOpen, onClose, onSave, categories }) => {
+const NewExercise = ({ isOpen, onClose, onSave, categories }) => {
   const [newExercise, setNewExercise] = useState({ 
     name: "", category: "", primaryMuscles: [], secondaryMuscles: [], 
     cardioType: "", trainingFocus: "", weightEquipTags: [], description: "", trackDuration: false 
@@ -575,4 +575,5 @@ const styles = StyleSheet.create({
   },
 });
 
-export default NewExerciseModal;
+export default NewExercise;
+

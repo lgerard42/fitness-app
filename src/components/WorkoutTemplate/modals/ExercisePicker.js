@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Modal, FlatList, StyleSheet, SafeAreaView } from 'react-native';
 import { X, Plus, Search, ChevronDown, Check } from 'lucide-react-native';
-import { COLORS } from '../constants/colors';
-import { CATEGORIES, PRIMARY_MUSCLES, WEIGHT_EQUIP_TAGS } from '../constants/data';
+import { COLORS } from '../../../constants/colors';
+import { CATEGORIES, PRIMARY_MUSCLES, WEIGHT_EQUIP_TAGS } from '../../../constants/data';
 
-const ExercisePickerModal = ({ isOpen, onClose, onAdd, onCreate, exercises }) => {
+const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises }) => {
   const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState([]);
   const [groupType, setGroupType] = useState(""); // "" | "Superset" | "HIIT"
@@ -495,4 +495,5 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ExercisePickerModal;
+export default ExercisePicker;
+

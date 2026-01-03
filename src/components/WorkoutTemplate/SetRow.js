@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { Check, Trash2, Plus } from 'lucide-react-native';
 import { Swipeable } from 'react-native-gesture-handler';
-import { COLORS } from '../constants/colors';
+import { COLORS } from '../../constants/colors';
 
 const DeleteAction = ({ progress, dragX, onDelete, buttonStyle }) => {
   const hasDeleted = React.useRef(false);
@@ -49,7 +49,7 @@ const DeleteAction = ({ progress, dragX, onDelete, buttonStyle }) => {
   );
 };
 
-const WorkoutSetRow = ({
+const SetRow = ({
   set,
   index,
   category,
@@ -756,4 +756,5 @@ const styles = StyleSheet.create({
   },
 });
 
-export default WorkoutSetRow;
+export default SetRow;
+

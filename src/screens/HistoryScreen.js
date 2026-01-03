@@ -4,26 +4,14 @@ import { Trophy, Clock, Dumbbell } from 'lucide-react-native';
 import { COLORS } from '../constants/colors';
 import { HISTORY_DATA } from '../constants/data';
 import { useWorkout } from '../context/WorkoutContext';
-import WorkoutDetailModal from '../components/WorkoutDetailModal';
 
 const HistoryScreen = ({ navigation }) => {
   const [view, setView] = useState('workouts');
-  const [selectedWorkout, setSelectedWorkout] = useState(null);
-  const { workoutHistory, updateHistory } = useWorkout();
+  const { workoutHistory } = useWorkout();
   const displayHistory = [...(workoutHistory || []), ...HISTORY_DATA];
 
-  const handleSaveWorkout = (updatedWorkout) => {
-    updateHistory(updatedWorkout);
-    setSelectedWorkout(null);
-  };
-
   const handleEditWorkout = (workout) => {
-    if (navigation) {
-      navigation.navigate('EditWorkout', { workout });
-    } else {
-      // Fallback to modal if navigation is not available
-      setSelectedWorkout(workout);
-    }
+    navigation.navigate('EditWorkout', { workout });
   };
 
   return (
@@ -89,13 +77,6 @@ const HistoryScreen = ({ navigation }) => {
           </View>
         )}
       </View>
-
-      <WorkoutDetailModal
-        visible={!!selectedWorkout}
-        onClose={() => setSelectedWorkout(null)}
-        workout={selectedWorkout}
-        onSave={handleSaveWorkout}
-      />
     </SafeAreaView>
   );
 };
