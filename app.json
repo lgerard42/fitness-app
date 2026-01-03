@@ -15,7 +15,12 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.lgerard42.fitnessapp",
+      "newArchEnabled": false,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -29,7 +34,13 @@
     "plugins": [
       "expo-asset",
       "expo-font",
-      "@react-native-community/datetimepicker"
-    ]
+      "@react-native-community/datetimepicker",
+      "expo-dev-client"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "e0fd140f-4b65-4aa9-9a5b-1902259e110c"
+      }
+    }
   }
 }
