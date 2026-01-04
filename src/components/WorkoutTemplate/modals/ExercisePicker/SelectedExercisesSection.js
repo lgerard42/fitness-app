@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { ChevronDown, ChevronUp, ChevronLeft } from 'lucide-react-native';
 import { COLORS } from '../../../../constants/colors';
 import { defaultSupersetColorScheme, defaultHiitColorScheme } from '../../../../constants/defaultStyles';
@@ -309,6 +309,7 @@ const SelectedExercisesSection = ({
     <View style={{
       borderBottomWidth: (isCollapsed && hasExercises) ? 0 : 2,
       borderBottomColor: COLORS.slate[200],
+      flex: !isCollapsed ? 1 : 0,
     }}>
       <TouchableOpacity 
         activeOpacity={canToggle ? 0.7 : 1}
@@ -611,17 +612,19 @@ const SelectedExercisesSection = ({
       )}
 
       {hasExercises && !isCollapsed && (
-        <View style={[
-          {
-            
-          },
-          listContainer_expanded && {
-            
-          },
-          listContainer_collapsed && {
-            
-          }
-        ]}>
+        <ScrollView 
+          style={[
+            {
+              flex: 1,
+            },
+            listContainer_expanded && {
+              
+            },
+            listContainer_collapsed && {
+              
+            }
+          ]}
+        >
           {isGroupMode && filtered ? (() => {
             // In group mode, show group containers with dynamic indexing
             const renderItems = [];
@@ -708,6 +711,12 @@ const SelectedExercisesSection = ({
                   });
                   
                   const tempGroupColorScheme = tempGroupInfo.type === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme;
+                  // Create a temp group object to pass to ExerciseListItem
+                  const tempGroupObject = {
+                    id: tempGroupInfo.id,
+                    type: tempGroupInfo.type,
+                    number: tempGroupInfo.number,
+                  };
                   renderItems.push(
                     <View 
                       key={`temp-group-${tempGroupInfo.id}-${macroPosition}`}
@@ -741,7 +750,7 @@ const SelectedExercisesSection = ({
                             renderingSection="selectedSection"
                             isGroupMode={true}
                             isSelectedInGroup={isSelectedInGroup}
-                            exerciseGroup={null}
+                            exerciseGroup={tempGroupObject}
                           />
                         );
                       })}
@@ -767,16 +776,17 @@ const SelectedExercisesSection = ({
                   });
                   
                   const isBeingEdited = editingGroupId === existingGroup.id;
+                  const groupColorScheme = existingGroup.type === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme;
                   renderItems.push(
                     <View 
                       key={`group-${existingGroup.id}-${macroPosition}`}
                       style={{
                         marginBottom: 8,
                         borderWidth: 2,
-                        borderColor: COLORS.slate[200],
+                        borderColor: isBeingEdited ? groupColorScheme[300] : groupColorScheme[200],
                         borderStyle: isBeingEdited ? 'dashed' : 'solid',
                         borderRadius: 8,
-                        backgroundColor: COLORS.slate[50],
+                        backgroundColor: isBeingEdited ? groupColorScheme[100] : groupColorScheme[50],
                         padding: 8,
                       }}
                     >
@@ -801,7 +811,7 @@ const SelectedExercisesSection = ({
                             renderingSection="selectedSection"
                             isGroupMode={true}
                             isSelectedInGroup={isSelectedInGroup}
-                            exerciseGroup={null}
+                            exerciseGroup={existingGroup}
                           />
                         );
                       })}
@@ -987,7 +997,7 @@ const SelectedExercisesSection = ({
                             onRemoveSet={onRemoveSet && !isReordering ? () => onRemoveSet(originalId, exerciseIndex) : null}
                             selectedCount={selectedCount}
                             renderingSection="selectedSection"
-                            exerciseGroup={null} // Don't show badge inside wrapper (it's in header)
+                            exerciseGroup={exerciseGroup} // Pass exerciseGroup for styling (background color)
                           />
                         );
                       })}
@@ -1030,7 +1040,7 @@ const SelectedExercisesSection = ({
             
             return renderItems;
           })()}
-        </View>
+        </ScrollView>
       )}
     </View>
   );

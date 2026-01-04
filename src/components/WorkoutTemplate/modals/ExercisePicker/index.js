@@ -56,6 +56,13 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
     }
   }, [selectedIds, groupType]);
 
+  // Reset selected section to collapsed when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setIsSelectedSectionCollapsed(true);
+    }
+  }, [isOpen]);
+
   // Get available secondary muscles based on selected primary muscles
   const getAvailableSecondaryMuscles = () => {
     if (filterMuscle.length === 0) return [];
@@ -778,17 +785,19 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
               filtered={filtered}
             />
             
-            {/* All Exercises with integrated A-Z scrollbar */}
-            <UnselectedExercisesList
-              exercises={allFilteredExercises}
-              onToggleSelect={handleToggleSelect}
-              highlightedLetter={highlightedLetter}
-              setHighlightedLetter={setHighlightedLetter}
-              selectedIds={selectedIds}
-              selectedOrder={selectedOrder}
-              onAddSet={handleAddSet}
-              onRemoveSet={handleRemoveSet}
-            />
+            {/* All Exercises with integrated A-Z scrollbar - only show when selected section is collapsed */}
+            {isSelectedSectionCollapsed && (
+              <UnselectedExercisesList
+                exercises={allFilteredExercises}
+                onToggleSelect={handleToggleSelect}
+                highlightedLetter={highlightedLetter}
+                setHighlightedLetter={setHighlightedLetter}
+                selectedIds={selectedIds}
+                selectedOrder={selectedOrder}
+                onAddSet={handleAddSet}
+                onRemoveSet={handleRemoveSet}
+              />
+            )}
           </View>
         </GestureDetector>
       </SafeAreaView>
