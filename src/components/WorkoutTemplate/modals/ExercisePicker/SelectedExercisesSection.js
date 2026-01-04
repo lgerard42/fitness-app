@@ -282,6 +282,7 @@ const SelectedExercisesSection = ({
                 onAddMore={onAddSet ? () => onAddSet(originalId) : null}
                 onRemoveSet={onRemoveSet ? () => onRemoveSet(originalId) : null}
                 selectedCount={selectedCount}
+                renderingSection="selectedSection"
               />
             );
           })}

@@ -88,6 +88,7 @@ const UnselectedExercisesList = ({
         selectedInListNameStyle={text_selectedInList ? {
           
         } : null}
+        renderingSection="unselectedList"
       />
     );
   }, [onToggleSelect, selectedIds, selectedOrder, onAddSet, onRemoveSet]);

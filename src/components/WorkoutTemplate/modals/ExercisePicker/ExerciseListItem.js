@@ -17,6 +17,7 @@ const ExerciseListItem = ({
   selectedCount = 0,
   selectedInListStyle = null,
   selectedInListNameStyle = null,
+  renderingSection = null, // 'selectedSection' | 'unselectedList' | null
 }) => {
   const handlePress = () => {
     if (showAddMore && onAddMore) {
@@ -79,6 +80,14 @@ const ExerciseListItem = ({
   const addButton_selected = isSelected && !isReordering;
   const addButton_unselected = !isSelected && !isReordering;
   const removeButton_selected = isSelected && !isReordering;
+  
+  // Section-based button style condition variables
+  const addButton_selectedSection = addButton_selected && renderingSection === 'selectedSection';
+  const addButton_unselectedList = addButton_selected && renderingSection === 'unselectedList';
+  const addButton_unselectedSection = addButton_unselected && renderingSection === 'selectedSection';
+  const addButton_unselectedListUnselected = addButton_unselected && renderingSection === 'unselectedList';
+  const removeButton_selectedSection = removeButton_selected && renderingSection === 'selectedSection';
+  const removeButton_unselectedList = removeButton_selected && renderingSection === 'unselectedList';
 
   return (
     <TouchableOpacity 
@@ -237,7 +246,10 @@ const ExerciseListItem = ({
                 alignItems: 'center',
                 justifyContent: 'center',
               },
-              removeButton_selected && {
+              removeButton_selectedSection && {
+                
+              },
+              removeButton_unselectedList && {
                 
               }
             ]}
@@ -256,17 +268,24 @@ const ExerciseListItem = ({
                 width: 24,
                 height: 24,
                 borderRadius: 12,
-                backgroundColor: COLORS.blue[600],
+                backgroundColor: COLORS.slate[50],
+                borderWidth: 1,
+                borderColor: COLORS.blue[400],
                 alignItems: 'center',
                 justifyContent: 'center',
               },
-              addButton_selected && {
+              addButton_selectedSection && {
+                backgroundColor: COLORS.blue[600],
+                borderWidth: 1,
+                borderColor: COLORS.blue[400], 
+              },
+              addButton_unselectedList && {
                 
               }
             ]}
           >
             <Text style={{
-              color: COLORS.white,
+              color: COLORS.blue[500],
               fontSize: 14,
               fontWeight: 'bold',
               lineHeight: 16,
@@ -281,17 +300,22 @@ const ExerciseListItem = ({
               width: 24,
               height: 24,
               borderRadius: 12,
-              backgroundColor: COLORS.blue[600],
+              backgroundColor: COLORS.slate[50],
+              borderWidth: 1,
+              borderColor: COLORS.slate[300],
               alignItems: 'center',
               justifyContent: 'center',
             },
-            addButton_unselected && {
+            addButton_unselectedSection && {
+              
+            },
+            addButton_unselectedListUnselected && {
               
             }
           ]}
         >
           <Text style={{
-            color: COLORS.white,
+            color: COLORS.slate[300],
             fontSize: 14,
             fontWeight: 'bold',
             lineHeight: 16,
