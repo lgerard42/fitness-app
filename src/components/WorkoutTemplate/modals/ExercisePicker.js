@@ -95,7 +95,7 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
 
   const isDisabled = selectedIds.length < 2;
 
-  const FilterDropdown = ({ label, value, options, type, leftAligned = false }) => {
+  const FilterDropdown = ({ label, value, options, type, leftAligned = false, fullWidthContainer = false }) => {
     const isActive = Array.isArray(value) ? value.length > 0 : value !== "All";
     const displayText = Array.isArray(value) 
       ? (value.length === 0 ? label : value.length === 1 ? value[0] : `${value.length} selected`)
@@ -126,7 +126,7 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
     };
     
     return (
-      <View style={styles.filterDropdownContainer}>
+      <View style={[styles.filterDropdownContainer, fullWidthContainer && styles.filterDropdownContainerFullWidth]}>
         <TouchableOpacity 
           onPress={() => setOpenFilter(openFilter === type ? null : type)}
           style={[
@@ -140,8 +140,14 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
           </Text>
         </TouchableOpacity>
         
-        {openFilter === type && (
-          <View style={[styles.filterMenu, leftAligned && styles.filterMenuLeftAligned]}>
+        {openFilter === type && !fullWidthContainer && (
+          <View 
+            style={[
+              styles.filterMenu, 
+              leftAligned && styles.filterMenuLeftAligned
+            ]}
+            pointerEvents="box-none"
+          >
             {options.map((item) => {
               const isSelected = Array.isArray(value) ? value.includes(item) : value === item;
               return (
@@ -180,42 +186,19 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
           style={[
             styles.filterButton,
             styles.secondaryFilterButton,
-            (isOpen || isPrimaryActive) ? styles.filterButtonActive : styles.filterButtonInactive,
+            (isOpen || isPrimaryActive) ? styles.secondaryFilterBorderActive : { borderColor: 'transparent' },
+            isPrimaryActive ? styles.secondaryFilterLeftBorder : {},
+            isActive ? { backgroundColor: COLORS.blue[100] } : { backgroundColor: COLORS.slate[100] },
             styles.muscleFilterMerged
           ]}
         >
           <MaterialCommunityIcons 
-            name="arm-flex" 
+            name={isActive ? "arm-flex" : "arm-flex-outline"} 
             size={16} 
-            color={isActive ? COLORS.blue[700] : COLORS.slate[600]} 
+            color={isActive ? COLORS.blue[700] : COLORS.blue[400]} 
           />
         </TouchableOpacity>
         
-        {openFilter === 'secondary' && (
-          <View style={[styles.filterMenu, styles.filterMenuLeftAligned, styles.secondaryFilterMenu]}>
-            {availableSecondaries.map((item) => {
-              const isSelected = filterSecondaryMuscle.includes(item);
-              return (
-                <TouchableOpacity
-                  key={item}
-                  onPress={() => {
-                    setFilterSecondaryMuscle(
-                      isSelected 
-                        ? filterSecondaryMuscle.filter(v => v !== item)
-                        : [...filterSecondaryMuscle, item]
-                    );
-                  }}
-                  style={[styles.filterOption, isSelected && styles.filterOptionSelected]}
-                >
-                  <Text style={[styles.filterOptionText, isSelected && styles.filterOptionTextSelected]}>
-                    {item}
-                  </Text>
-                  {isSelected && <Check size={12} color={COLORS.blue[600]} />}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
       </View>
     );
   };
@@ -302,10 +285,61 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
 
           <View style={styles.filtersRow}>
              <FilterDropdown label="Category" value={filterCategory} options={CATEGORIES} type="category" />
-             <View style={styles.muscleFiltersContainer}>
-               <FilterDropdown label="Muscle" value={filterMuscle} options={PRIMARY_MUSCLES} type="muscle" />
-               <SecondaryMuscleFilter />
-             </View>
+              <View style={styles.muscleFiltersContainer}>
+                <FilterDropdown label="Muscle" value={filterMuscle} options={PRIMARY_MUSCLES} type="muscle" fullWidthContainer={true} />
+                <SecondaryMuscleFilter />
+                {/* Render dropdown menus at container level for proper positioning */}
+                {openFilter === 'muscle' && (
+                  <View style={styles.muscleFilterMenu}>
+                    {PRIMARY_MUSCLES.map((item) => {
+                      const isSelected = filterMuscle.includes(item);
+                      return (
+                        <TouchableOpacity
+                          key={item}
+                          onPress={() => {
+                            const newValue = isSelected 
+                              ? filterMuscle.filter(v => v !== item)
+                              : [...filterMuscle, item];
+                            setFilterMuscle(newValue);
+                            if (newValue.length === 0) setFilterSecondaryMuscle([]);
+                          }}
+                          style={[styles.filterOption, isSelected && styles.filterOptionSelected]}
+                        >
+                          <Text style={[styles.filterOptionText, isSelected && styles.filterOptionTextSelected]}>
+                            {item}
+                          </Text>
+                          {isSelected && <Check size={12} color={COLORS.blue[600]} />}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
+                {openFilter === 'secondary' && filterMuscle.length > 0 && (
+                  <View style={styles.muscleFilterMenu}>
+                    {getAvailableSecondaryMuscles().map((item) => {
+                      const isSelected = filterSecondaryMuscle.includes(item);
+                      return (
+                        <TouchableOpacity
+                          key={item}
+                          onPress={() => {
+                            setFilterSecondaryMuscle(
+                              isSelected 
+                                ? filterSecondaryMuscle.filter(v => v !== item)
+                                : [...filterSecondaryMuscle, item]
+                            );
+                          }}
+                          style={[styles.filterOption, isSelected && styles.filterOptionSelected]}
+                        >
+                          <Text style={[styles.filterOptionText, isSelected && styles.filterOptionTextSelected]}>
+                            {item}
+                          </Text>
+                          {isSelected && <Check size={12} color={COLORS.blue[600]} />}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
+              </View>
              <FilterDropdown label="Equipment" value={filterEquip} options={WEIGHT_EQUIP_TAGS} type="equip" />
           </View>
         </View>
@@ -507,16 +541,42 @@ const styles = StyleSheet.create({
   filterDropdownContainer: {
     flex: 1,
     position: 'relative',
+    minWidth: 0,
+  },
+  filterDropdownContainerFullWidth: {
+    position: 'relative',
+    zIndex: 1,
+    flexShrink: 1,
   },
   muscleFiltersContainer: {
     flex: 1,
     flexDirection: 'row',
     gap: 0,
     alignSelf: 'stretch',
+    position: 'relative',
+  },
+  muscleFilterMenu: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    marginTop: 4,
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.slate[100],
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
+    zIndex: 100,
+    overflow: 'hidden',
   },
   secondaryFilterContainer: {
     position: 'relative',
     width: 40,
+    zIndex: 1,
   },
   secondaryFilterButton: {
     borderLeftWidth: 0,
@@ -526,6 +586,10 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 8,
     paddingHorizontal: 8,
     minHeight: 36,
+  },
+  secondaryFilterLeftBorder: {
+    borderLeftWidth: 1,
+    borderLeftColor: COLORS.blue[200],
   },
   filterButton: {
     flexDirection: 'row',
@@ -548,6 +612,9 @@ const styles = StyleSheet.create({
   },
   filterButtonActive: {
     backgroundColor: COLORS.blue[100],
+    borderColor: COLORS.blue[200],
+  },
+  secondaryFilterBorderActive: {
     borderColor: COLORS.blue[200],
   },
   filterButtonText: {
@@ -580,6 +647,10 @@ const styles = StyleSheet.create({
   filterMenuLeftAligned: {
     right: 'auto',
     minWidth: 180,
+  },
+  filterMenuFullWidth: {
+    left: 0,
+    right: 0,
   },
   secondaryFilterMenu: {
     minWidth: 200,
