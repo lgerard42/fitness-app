@@ -15,13 +15,26 @@ const SelectedExercisesSection = ({
     return null;
   }
 
+  // Get the appropriate styles based on collapsed state
+  const headerStyle = isCollapsed 
+    ? [styles.header, styles.headerCollapsed] 
+    : [styles.header, styles.headerExpanded];
+  
+  const headerTextStyle = isCollapsed 
+    ? [styles.headerText, styles.headerTextCollapsed] 
+    : [styles.headerText, styles.headerTextExpanded];
+  
+  const listStyle = isCollapsed 
+    ? [styles.list, styles.listCollapsed] 
+    : [styles.list, styles.listExpanded];
+
   return (
     <View style={styles.container}>
       <TouchableOpacity 
         onPress={() => setIsCollapsed(!isCollapsed)}
-        style={styles.header}
+        style={headerStyle}
       >
-        <Text style={styles.headerText}>Selected ({selectedExercises.length})</Text>
+        <Text style={headerTextStyle}>Selected ({selectedExercises.length})</Text>
         {isCollapsed ? (
           <ChevronDown size={16} color={COLORS.slate[600]} />
         ) : (
@@ -30,7 +43,7 @@ const SelectedExercisesSection = ({
       </TouchableOpacity>
       
       {!isCollapsed && (
-        <View style={styles.list}>
+        <View style={listStyle}>
           {selectedExercises.map((item, index) => {
             const selectionOrder = selectedOrder.indexOf(item.id) + 1;
             const isLastSelected = index === selectedExercises.length - 1;
@@ -57,6 +70,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.slate[200],
   },
+  // Base header styles (shared)
   header: {
     backgroundColor: COLORS.slate[50],
     paddingHorizontal: 16,
@@ -67,13 +81,39 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  // Header styles when expanded (override base)
+  headerExpanded: {
+    // Add expanded-specific styles here
+  },
+  // Header styles when collapsed (override base)
+  headerCollapsed: {
+    // Add collapsed-specific styles here
+  },
+  // Base headerText styles (shared)
   headerText: {
     fontSize: 12,
     fontWeight: 'bold',
     color: COLORS.slate[600],
     textTransform: 'uppercase',
   },
+  // HeaderText styles when expanded (override base)
+  headerTextExpanded: {
+    // Add expanded-specific styles here
+  },
+  // HeaderText styles when collapsed (override base)
+  headerTextCollapsed: {
+    // Add collapsed-specific styles here
+  },
+  // Base list styles (shared)
   list: {},
+  // List styles when expanded (override base)
+  listExpanded: {
+    // Add expanded-specific styles here
+  },
+  // List styles when collapsed (override base)
+  listCollapsed: {
+    // Add collapsed-specific styles here
+  },
 });
 
 export default SelectedExercisesSection;
