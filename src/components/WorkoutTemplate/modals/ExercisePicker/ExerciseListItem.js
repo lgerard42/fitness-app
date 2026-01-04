@@ -2,18 +2,35 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { COLORS } from '../../../../constants/colors';
 
-const ExerciseListItem = ({ item, isSelected, isLastSelected, selectionOrder, onToggle }) => {
+const ExerciseListItem = ({ 
+  item, 
+  isSelected, 
+  isLastSelected, 
+  selectionOrder, 
+  onToggle,
+  hideNumber = false,
+  isReordering = false,
+  isReordered = false
+}) => {
   return (
     <TouchableOpacity 
       onPress={() => onToggle(item.id)}
       style={[
         styles.exerciseItem, 
         isSelected && styles.exerciseItemSelected,
-        isLastSelected && styles.exerciseItemLastSelected
+        isLastSelected && styles.exerciseItemLastSelected,
+        isReordering && styles.exerciseItemReordering,
+        isReordering && isReordered && styles.exerciseItemReordered
       ]}
     >
       <View style={{ flex: 1 }}>
-        <Text style={[styles.exerciseName, isSelected && styles.exerciseNameSelected]}>{item.name}</Text>
+        <Text style={[
+          styles.exerciseName, 
+          isSelected && styles.exerciseNameSelected,
+          isReordering && !isReordered && styles.exerciseNameReordering
+        ]}>
+          {item.name}
+        </Text>
         <View style={styles.tagsRow}>
           <View style={styles.tagContainer}>
             <Text style={styles.tagText}>{item.category}</Text>
@@ -25,8 +42,13 @@ const ExerciseListItem = ({ item, isSelected, isLastSelected, selectionOrder, on
           ))}
         </View>
       </View>
-      <View style={[styles.checkbox, isSelected ? styles.checkboxSelected : styles.checkboxUnselected]}>
-        {isSelected ? (
+      <View style={[
+        styles.checkbox, 
+        isSelected ? styles.checkboxSelected : styles.checkboxUnselected,
+        isReordering && !isReordered && styles.checkboxReordering,
+        isReordering && isReordered && styles.checkboxReordered
+      ]}>
+        {isSelected && !hideNumber ? (
           <Text style={styles.checkboxNumber}>{selectionOrder}</Text>
         ) : null}
       </View>
@@ -105,6 +127,27 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontSize: 12,
     fontWeight: 'bold',
+  },
+  // Reordering mode styles
+  exerciseItemReordering: {
+    backgroundColor: COLORS.amber[50],
+    borderBottomColor: COLORS.amber[100],
+  },
+  exerciseItemReordered: {
+    backgroundColor: COLORS.green[50],
+    borderBottomColor: COLORS.green[100],
+  },
+  exerciseNameReordering: {
+    color: COLORS.amber[700],
+  },
+  checkboxReordering: {
+    backgroundColor: 'transparent',
+    borderColor: COLORS.amber[400],
+    borderStyle: 'dashed',
+  },
+  checkboxReordered: {
+    backgroundColor: COLORS.green[500],
+    borderColor: COLORS.green[500],
   },
 });
 
