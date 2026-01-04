@@ -12,6 +12,7 @@ const UnselectedExercisesList = ({
   selectedIds = [],
   selectedOrder = [],
   onAddSet = null,
+  onRemoveSet = null,
 }) => {
   const sectionListRef = useRef(null);
 
@@ -79,6 +80,7 @@ const UnselectedExercisesList = ({
         onToggle={onToggleSelect}
         showAddMore={isAlreadySelected}
         onAddMore={onAddSet}
+        onRemoveSet={onRemoveSet}
         selectedCount={selectedCount}
         selectedInListStyle={container_selectedInList ? {
           
@@ -88,7 +90,7 @@ const UnselectedExercisesList = ({
         } : null}
       />
     );
-  }, [onToggleSelect, selectedIds, selectedOrder, onAddSet]);
+  }, [onToggleSelect, selectedIds, selectedOrder, onAddSet, onRemoveSet]);
 
   const keyExtractor = useCallback((item) => item.id, []);
 

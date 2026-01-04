@@ -105,6 +105,24 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
     setSelectedOrder(prevOrder => [...prevOrder, id]);
   };
 
+  const handleRemoveSet = (id) => {
+    // Remove the last occurrence of this exercise from the selection order
+    setSelectedOrder(prevOrder => {
+      const lastIndex = prevOrder.lastIndexOf(id);
+      if (lastIndex !== -1) {
+        const newOrder = [...prevOrder];
+        newOrder.splice(lastIndex, 1);
+        // If this was the last occurrence, also remove from selectedIds
+        const remainingCount = newOrder.filter(i => i === id).length;
+        if (remainingCount === 0) {
+          setSelectedIds(prevIds => prevIds.filter(i => i !== id));
+        }
+        return newOrder;
+      }
+      return prevOrder;
+    });
+  };
+
   const handleAddAction = () => {
     const selectedExercisesList = exercises.filter(ex => selectedIds.includes(ex.id));
     onAdd(selectedExercisesList, groupType || null);
@@ -179,6 +197,8 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
               setIsCollapsed={setIsSelectedSectionCollapsed}
               onToggleSelect={handleToggleSelect}
               onReorder={handleReorder}
+              onAddSet={handleAddSet}
+              onRemoveSet={handleRemoveSet}
             />
             
             {/* All Exercises with integrated A-Z scrollbar */}
@@ -190,6 +210,7 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
               selectedIds={selectedIds}
               selectedOrder={selectedOrder}
               onAddSet={handleAddSet}
+              onRemoveSet={handleRemoveSet}
             />
           </View>
         </GestureDetector>

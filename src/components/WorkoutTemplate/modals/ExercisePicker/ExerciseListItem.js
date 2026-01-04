@@ -13,6 +13,7 @@ const ExerciseListItem = ({
   isReordered = false,
   showAddMore = false,
   onAddMore = null,
+  onRemoveSet = null,
   selectedCount = 0,
   selectedInListStyle = null,
   selectedInListNameStyle = null,
@@ -21,6 +22,24 @@ const ExerciseListItem = ({
     if (showAddMore && onAddMore) {
       onAddMore(item.id);
     } else {
+      onToggle(item.id);
+    }
+  };
+
+  const handleRemove = (e) => {
+    e.stopPropagation();
+    if (onRemoveSet) {
+      onRemoveSet(item.id);
+    }
+  };
+
+  const handleAdd = (e) => {
+    e.stopPropagation();
+    if (showAddMore && onAddMore) {
+      // For selected exercises, add another set
+      onAddMore(item.id);
+    } else if (onToggle) {
+      // For unselected exercises, use onToggle to add
       onToggle(item.id);
     }
   };
@@ -44,10 +63,22 @@ const ExerciseListItem = ({
   const muscleTagContainer_addMoreMode = showAddMore;
   const muscleTagText_addMoreMode = showAddMore;
 
-  const checkbox_selected = isSelected;
-  const checkbox_unselected = !isSelected;
   const checkbox_reorderingUnmoved = isReordering && !isReordered;
   const checkbox_reorderingMoved = isReordering && isReordered;
+
+  // Determine if we should show the count badge next to name (selected, non-reorder)
+  const showCountBadge = isSelected && !isReordering && selectedCount > 0;
+
+  // Determine if we should show +/- buttons (selected, non-reorder)
+  const showAddRemoveButtons = isSelected && !isReordering && showAddMore;
+  
+  // Determine if we should show just the + button (unselected, non-reorder)
+  const showAddButtonOnly = !isSelected && !isReordering;
+
+  // Button style condition variables
+  const addButton_selected = isSelected && !isReordering;
+  const addButton_unselected = !isSelected && !isReordering;
+  const removeButton_selected = isSelected && !isReordering;
 
   return (
     <TouchableOpacity 
@@ -92,28 +123,50 @@ const ExerciseListItem = ({
       ]}
     >
       <View style={{ flex: 1 }}>
-        <Text style={[
-          {
-            fontSize: 16,
-            fontWeight: 'bold',
-            color: COLORS.slate[900],
-          }, 
-          text_selectedInSection && {
-            color: COLORS.blue[600],
-          },
-          text_selectedInList && {
-            color: COLORS.slate[900],
-          },
-          text_reorderingMode && {
-            color: COLORS.blue[700],
-          },
-          text_addMoreMode && {
-            
-          },
-          selectedInListNameStyle,
-        ]}>
-          {item.name}
-        </Text>
+        <View style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 8,
+        }}>
+          <Text style={[
+            {
+              fontSize: 16,
+              fontWeight: 'bold',
+              color: COLORS.slate[900],
+            }, 
+            text_selectedInSection && {
+              color: COLORS.blue[600],
+            },
+            text_selectedInList && {
+              color: COLORS.slate[900],
+            },
+            text_reorderingMode && {
+              color: COLORS.blue[700],
+            },
+            text_addMoreMode && {
+              
+            },
+            selectedInListNameStyle,
+          ]}>
+            {item.name}
+          </Text>
+          {showCountBadge && (
+            <View style={{
+              width: 24,
+              height: 24,
+              borderRadius: 12,
+              backgroundColor: COLORS.white,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <Text style={{
+                color: COLORS.blue[600],
+                fontSize: 12,
+                fontWeight: 'bold',
+              }}>{selectedCount}</Text>
+            </View>
+          )}
+        </View>
         <View style={{
           flexDirection: 'row',
           gap: 8,
@@ -165,21 +218,85 @@ const ExerciseListItem = ({
           ))}
         </View>
       </View>
-      {showAddMore ? (
+      {showAddRemoveButtons ? (
         <View style={{
-          width: 24,
-          height: 24,
-          borderRadius: 14,
-          backgroundColor: COLORS.white,
+          flexDirection: 'row',
           alignItems: 'center',
-          justifyContent: 'center',
+          gap: 8,
         }}>
-          <Text style={{
-            color: COLORS.blue[600],
-            fontSize: 16,
-            fontWeight: 'bold',
-          }}>{selectedCount}</Text>
+          <TouchableOpacity
+            onPress={handleRemove}
+            style={[
+              {
+                width: 24,
+                height: 24,
+                borderRadius: 12,
+                backgroundColor: COLORS.white,
+                borderWidth: 1,
+                borderColor: COLORS.slate[300],
+                alignItems: 'center',
+                justifyContent: 'center',
+              },
+              removeButton_selected && {
+                
+              }
+            ]}
+          >
+            <Text style={{
+              color: COLORS.slate[700],
+              fontSize: 14,
+              fontWeight: 'bold',
+              lineHeight: 16,
+            }}>-</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleAdd}
+            style={[
+              {
+                width: 24,
+                height: 24,
+                borderRadius: 12,
+                backgroundColor: COLORS.blue[600],
+                alignItems: 'center',
+                justifyContent: 'center',
+              },
+              addButton_selected && {
+                
+              }
+            ]}
+          >
+            <Text style={{
+              color: COLORS.white,
+              fontSize: 14,
+              fontWeight: 'bold',
+              lineHeight: 16,
+            }}>+</Text>
+          </TouchableOpacity>
         </View>
+      ) : showAddButtonOnly ? (
+        <TouchableOpacity
+          onPress={handleAdd}
+          style={[
+            {
+              width: 24,
+              height: 24,
+              borderRadius: 12,
+              backgroundColor: COLORS.blue[600],
+              alignItems: 'center',
+              justifyContent: 'center',
+            },
+            addButton_unselected && {
+              
+            }
+          ]}
+        >
+          <Text style={{
+            color: COLORS.white,
+            fontSize: 14,
+            fontWeight: 'bold',
+            lineHeight: 16,
+          }}>+</Text>
+        </TouchableOpacity>
       ) : (
         <View style={[
           {
@@ -189,12 +306,6 @@ const ExerciseListItem = ({
             borderWidth: 2,
             alignItems: 'center',
             justifyContent: 'center',
-          }, 
-          checkbox_selected ? {
-            backgroundColor: COLORS.blue[600],
-            borderColor: COLORS.blue[600],
-          } : {
-            borderColor: COLORS.slate[300],
           },
           checkbox_reorderingUnmoved && {
             backgroundColor: 'transparent',

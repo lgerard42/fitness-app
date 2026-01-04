@@ -10,7 +10,9 @@ const SelectedExercisesSection = ({
   isCollapsed,
   setIsCollapsed,
   onToggleSelect,
-  onReorder
+  onReorder,
+  onAddSet = null,
+  onRemoveSet = null,
 }) => {
   const [isReordering, setIsReordering] = useState(false);
   const [reorderAssignments, setReorderAssignments] = useState({});
@@ -262,6 +264,8 @@ const SelectedExercisesSection = ({
             const reorderPosition = reorderAssignments[uniqueKey] || 0;
             const originalOrder = index + 1;
             const isLastSelected = index === selectedExercises.length - 1;
+            const selectedCount = selectedOrder.filter(id => id === item.id).length;
+            const originalId = item.id;
             
             return (
               <ExerciseListItem
@@ -274,6 +278,10 @@ const SelectedExercisesSection = ({
                 hideNumber={isReordering && !isReordered}
                 isReordering={isReordering}
                 isReordered={isReordered}
+                showAddMore={!isReordering}
+                onAddMore={onAddSet ? () => onAddSet(originalId) : null}
+                onRemoveSet={onRemoveSet ? () => onRemoveSet(originalId) : null}
+                selectedCount={selectedCount}
               />
             );
           })}
