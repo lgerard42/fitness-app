@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { ChevronDown, ChevronUp, ChevronLeft } from 'lucide-react-native';
 import { COLORS } from '../../../../constants/colors';
@@ -38,7 +38,6 @@ const SelectedExercisesSection = ({
   const [groupReorderAssignments, setGroupReorderAssignments] = useState({}); // Macro-level reorder assignments for groups
   const [groupItemReorderAssignments, setGroupItemReorderAssignments] = useState({}); // Micro-level reorder assignments within a group
   const [editingGroupIdInReorder, setEditingGroupIdInReorder] = useState(null); // Which group is being edited at micro-level
-  const hasAutoExpandedRef = useRef(false);
 
   const assignedCount = Object.keys(reorderAssignments).length + Object.keys(groupReorderAssignments).length;
 
@@ -288,16 +287,6 @@ const SelectedExercisesSection = ({
 
   const totalMacroItemsCount = getTotalMacroItems();
   const allAssigned = assignedCount === totalMacroItemsCount;
-
-  // Auto-expand when first exercise is added (only once)
-  useEffect(() => {
-    if (selectedExercises.length > 0 && !hasAutoExpandedRef.current) {
-      setIsCollapsed(false);
-      hasAutoExpandedRef.current = true;
-    } else if (selectedExercises.length === 0) {
-      hasAutoExpandedRef.current = false;
-    }
-  }, [selectedExercises.length, setIsCollapsed]);
 
   const hasExercises = selectedExercises.length > 0;
   const canToggle = hasExercises && !isReordering && !isGroupMode;
