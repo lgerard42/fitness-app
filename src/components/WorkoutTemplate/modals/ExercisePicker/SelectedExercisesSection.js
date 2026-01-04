@@ -405,12 +405,12 @@ const SelectedExercisesSection = ({
                 {handleSaveGroup && (
                   <TouchableOpacity
                     onPress={handleSaveGroup}
-                    disabled={groupSelectionIndices.length < 2}
+                    disabled={groupSelectionMode === 'create' && groupSelectionIndices.length < 2}
                     style={{
                       paddingHorizontal: 12,
                       paddingVertical: 4,
                       borderRadius: 4,
-                      backgroundColor: groupSelectionIndices.length >= 2 ? COLORS.green[500] : COLORS.slate[300],
+                      backgroundColor: (groupSelectionMode === 'create' && groupSelectionIndices.length < 2) ? COLORS.slate[300] : COLORS.green[500],
                     }}
                   >
                     <Text style={{
@@ -621,65 +621,306 @@ const SelectedExercisesSection = ({
             
           }
         ]}>
-          {isGroupMode && filtered ? (
-            // In group mode, show individual items from selectedOrder
-            selectedOrder.map((exerciseId, orderIndex) => {
-              const exercise = filtered.find(ex => ex.id === exerciseId);
-              if (!exercise) return null;
-              
-              const uniqueKey = `${exerciseId}-${orderIndex}`;
-              const isSelectedInGroup = groupSelectionIndices.includes(orderIndex);
-              const groupSelectionIndex = isSelectedInGroup 
-                ? groupSelectionIndices.indexOf(orderIndex) + 1 
-                : null;
-              const existingGroup = getExerciseGroup ? getExerciseGroup(orderIndex) : null;
-              
-              // If exercise is selected for grouping, show a temporary group badge
-              // Otherwise, show existing group if it exists
-              let exerciseGroup = existingGroup;
-              if (isSelectedInGroup && selectedGroupType && !existingGroup) {
-                // Create temporary group object for display during group creation/editing
-                if (editingGroupId) {
-                  // Editing existing group - use its number
-                  const editingGroup = exerciseGroups.find(g => g.id === editingGroupId);
-                  exerciseGroup = editingGroup ? {
+          {isGroupMode && filtered ? (() => {
+            // In group mode, show group containers with dynamic indexing
+            const renderItems = [];
+            let macroPosition = 0; // Track macro-level position for groups and ungrouped items
+            
+            // Build a map of indices to groups (excluding the group being edited)
+            const indexToGroupMap = new Map();
+            exerciseGroups.forEach(group => {
+              if (group.id !== editingGroupId) {
+                group.exerciseIndices.forEach(idx => {
+                  indexToGroupMap.set(idx, group);
+                });
+              }
+            });
+            
+            // Build a map of indices to groupedExercises entries for count information
+            const indexToGroupedExerciseMap = new Map();
+            groupedExercises.forEach(group => {
+              group.orderIndices.forEach(idx => {
+                indexToGroupedExerciseMap.set(idx, group);
+              });
+            });
+            
+            // Calculate temporary group info for the group being created/edited
+            let tempGroupInfo = null;
+            if (groupSelectionIndices.length > 0) {
+              const sortedIndices = [...groupSelectionIndices].sort((a, b) => a - b);
+              if (editingGroupId) {
+                const editingGroup = exerciseGroups.find(g => g.id === editingGroupId);
+                if (editingGroup) {
+                  tempGroupInfo = {
+                    id: editingGroupId,
                     type: selectedGroupType,
-                    number: editingGroup.number
-                  } : null;
-                } else {
-                  // Creating new group - calculate next number
-                  const groupsOfType = exerciseGroups.filter(g => g.type === selectedGroupType);
-                  const nextNumber = groupsOfType.length === 0 
-                    ? 1 
-                    : Math.max(...groupsOfType.map(g => g.number)) + 1;
-                  exerciseGroup = {
-                    type: selectedGroupType,
-                    number: nextNumber
+                    number: editingGroup.number,
+                    indices: sortedIndices
                   };
                 }
+              } else {
+                // Creating new group - calculate next number
+                const groupsOfType = exerciseGroups.filter(g => g.type === selectedGroupType);
+                const nextNumber = groupsOfType.length === 0 
+                  ? 1 
+                  : Math.max(...groupsOfType.map(g => g.number), 0) + 1;
+                tempGroupInfo = {
+                  id: 'temp-new-group',
+                  type: selectedGroupType,
+                  number: nextNumber,
+                  indices: sortedIndices
+                };
               }
+            }
+            
+            // Process selectedOrder to build render structure
+            const processedIndices = new Set();
+            selectedOrder.forEach((exerciseId, orderIndex) => {
+              if (processedIndices.has(orderIndex)) return;
               
-              return (
-                <ExerciseListItem
-                  key={uniqueKey}
-                  item={{ ...exercise, id: uniqueKey }}
-                  isSelected={true}
-                  isLastSelected={orderIndex === selectedOrder.length - 1}
-                  selectionOrder={groupSelectionIndex || (orderIndex + 1)}
-                  onToggle={handleReorderItemPress}
-                  hideNumber={false}
-                  isReordering={false}
-                  isReordered={isSelectedInGroup}
-                  showAddMore={false}
-                  selectedCount={1}
-                  renderingSection="selectedSection"
-                  isGroupMode={true}
-                  isSelectedInGroup={isSelectedInGroup}
-                  exerciseGroup={exerciseGroup}
-                />
-              );
-            })
-          ) : (() => {
+              const exercise = filtered.find(ex => ex.id === exerciseId);
+              if (!exercise) return;
+              
+              // Check if this index is part of the temporary group being created/edited
+              const isInTempGroup = tempGroupInfo && tempGroupInfo.indices.includes(orderIndex);
+              
+              // Check if this index is part of an existing group
+              const existingGroup = indexToGroupMap.get(orderIndex);
+              
+              if (isInTempGroup) {
+                // Render temporary group container
+                const firstIndex = tempGroupInfo.indices[0];
+                if (orderIndex === firstIndex) {
+                  macroPosition++;
+                  const groupExercises = [];
+                  tempGroupInfo.indices.forEach(idx => {
+                    processedIndices.add(idx);
+                    const exId = selectedOrder[idx];
+                    const ex = filtered.find(e => e.id === exId);
+                    if (ex) {
+                      groupExercises.push({
+                        item: ex,
+                        index: idx,
+                        isSelectedInGroup: true
+                      });
+                    }
+                  });
+                  
+                  renderItems.push(
+                    <View 
+                      key={`temp-group-${tempGroupInfo.id}-${macroPosition}`}
+                      style={{
+                        marginBottom: 8,
+                        borderWidth: 2,
+                        borderColor: COLORS.blue[300],
+                        borderStyle: 'dashed',
+                        borderRadius: 8,
+                        backgroundColor: COLORS.blue[50],
+                        padding: 8,
+                      }}
+                    >
+                      <View style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: 4,
+                        paddingBottom: 4,
+                        borderBottomWidth: 1,
+                        borderBottomColor: COLORS.blue[200],
+                        paddingVertical: 12,
+                        paddingLeft: 0,
+                        paddingRight: 16,
+                      }}>
+                        <View style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          flex: 1,
+                        }}>
+                          <Text style={{
+                            fontSize: 14,
+                            fontWeight: '600',
+                            color: COLORS.blue[700],
+                            marginRight: 8,
+                          }}>{tempGroupInfo.type}</Text>
+                          <View style={{
+                            paddingHorizontal: 8,
+                            paddingVertical: 2,
+                            borderRadius: 12,
+                            backgroundColor: COLORS.blue[100],
+                          }}>
+                            <Text style={{
+                              color: COLORS.blue[600],
+                              fontSize: 12,
+                              fontWeight: 'bold',
+                            }}>{tempGroupInfo.type === 'HIIT' ? 'H' : 'S'}{tempGroupInfo.number}</Text>
+                          </View>
+                          <Text style={{
+                            fontSize: 12,
+                            fontWeight: '500',
+                            color: COLORS.blue[600],
+                            marginLeft: 8,
+                          }}>({macroPosition})</Text>
+                        </View>
+                      </View>
+                      {groupExercises.map(({ item: exerciseItem, index: exerciseIndex, isSelectedInGroup }) => {
+                        const uniqueKey = `${exerciseItem.id}-${exerciseIndex}`;
+                        const groupedExercise = indexToGroupedExerciseMap.get(exerciseIndex);
+                        const selectedCount = groupedExercise ? groupedExercise.count : 1;
+                        return (
+                          <ExerciseListItem
+                            key={uniqueKey}
+                            item={{ ...exerciseItem, id: uniqueKey }}
+                            isSelected={true}
+                            isLastSelected={false}
+                            selectionOrder={null}
+                            onToggle={handleReorderItemPress}
+                            hideNumber={true}
+                            isReordering={false}
+                            isReordered={isSelectedInGroup}
+                            showAddMore={false}
+                            selectedCount={selectedCount}
+                            renderingSection="selectedSection"
+                            isGroupMode={true}
+                            isSelectedInGroup={isSelectedInGroup}
+                            exerciseGroup={null}
+                          />
+                        );
+                      })}
+                    </View>
+                  );
+                }
+              } else if (existingGroup) {
+                // Render existing group container
+                const firstIndexInGroup = existingGroup.exerciseIndices[0];
+                if (orderIndex === firstIndexInGroup) {
+                  macroPosition++;
+                  const groupExercises = [];
+                  existingGroup.exerciseIndices.forEach(idx => {
+                    processedIndices.add(idx);
+                    const exId = selectedOrder[idx];
+                    const ex = filtered.find(e => e.id === exId);
+                    if (ex) {
+                      groupExercises.push({
+                        item: ex,
+                        index: idx
+                      });
+                    }
+                  });
+                  
+                  renderItems.push(
+                    <View 
+                      key={`group-${existingGroup.id}-${macroPosition}`}
+                      style={{
+                        marginBottom: 8,
+                        borderWidth: 1,
+                        borderColor: COLORS.slate[200],
+                        borderRadius: 8,
+                        backgroundColor: COLORS.slate[50],
+                        padding: 8,
+                      }}
+                    >
+                      <View style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: 4,
+                        paddingBottom: 4,
+                        borderBottomWidth: 1,
+                        borderBottomColor: COLORS.slate[200],
+                        paddingVertical: 12,
+                        paddingLeft: 0,
+                        paddingRight: 16,
+                      }}>
+                        <View style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          flex: 1,
+                        }}>
+                          <Text style={{
+                            fontSize: 14,
+                            fontWeight: '600',
+                            color: COLORS.slate[700],
+                            marginRight: 8,
+                          }}>{existingGroup.type}</Text>
+                          <View style={{
+                            paddingHorizontal: 8,
+                            paddingVertical: 2,
+                            borderRadius: 12,
+                            backgroundColor: COLORS.indigo[50],
+                          }}>
+                            <Text style={{
+                              color: COLORS.indigo[600],
+                              fontSize: 12,
+                              fontWeight: 'bold',
+                            }}>{existingGroup.type === 'HIIT' ? 'H' : 'S'}{existingGroup.number}</Text>
+                          </View>
+                          <Text style={{
+                            fontSize: 12,
+                            fontWeight: '500',
+                            color: COLORS.slate[600],
+                            marginLeft: 8,
+                          }}>({macroPosition})</Text>
+                        </View>
+                      </View>
+                      {groupExercises.map(({ item: exerciseItem, index: exerciseIndex }) => {
+                        const uniqueKey = `${exerciseItem.id}-${exerciseIndex}`;
+                        const isSelectedInGroup = editingGroupId === existingGroup.id && groupSelectionIndices.includes(exerciseIndex);
+                        const groupedExercise = indexToGroupedExerciseMap.get(exerciseIndex);
+                        const selectedCount = groupedExercise ? groupedExercise.count : 1;
+                        return (
+                          <ExerciseListItem
+                            key={uniqueKey}
+                            item={{ ...exerciseItem, id: uniqueKey }}
+                            isSelected={true}
+                            isLastSelected={false}
+                            selectionOrder={null}
+                            onToggle={handleReorderItemPress}
+                            hideNumber={true}
+                            isReordering={false}
+                            isReordered={isSelectedInGroup}
+                            showAddMore={false}
+                            selectedCount={selectedCount}
+                            renderingSection="selectedSection"
+                            isGroupMode={true}
+                            isSelectedInGroup={isSelectedInGroup}
+                            exerciseGroup={null}
+                          />
+                        );
+                      })}
+                    </View>
+                  );
+                }
+              } else {
+                // Ungrouped item
+                processedIndices.add(orderIndex);
+                macroPosition++;
+                const uniqueKey = `${exerciseId}-${orderIndex}`;
+                const isSelectedInGroup = groupSelectionIndices.includes(orderIndex);
+                
+                renderItems.push(
+                  <ExerciseListItem
+                    key={uniqueKey}
+                    item={{ ...exercise, id: uniqueKey }}
+                    isSelected={true}
+                    isLastSelected={orderIndex === selectedOrder.length - 1}
+                    selectionOrder={macroPosition}
+                    onToggle={handleReorderItemPress}
+                    hideNumber={false}
+                    isReordering={false}
+                    isReordered={isSelectedInGroup}
+                    showAddMore={false}
+                    selectedCount={1}
+                    renderingSection="selectedSection"
+                    isGroupMode={true}
+                    isSelectedInGroup={isSelectedInGroup}
+                    exerciseGroup={null}
+                  />
+                );
+              }
+            });
+            
+            return renderItems;
+          })() : (() => {
             // Organize exercises by groups for visual wrapping
             const renderItems = [];
             let groupPosition = 0; // Track position for groups and ungrouped items

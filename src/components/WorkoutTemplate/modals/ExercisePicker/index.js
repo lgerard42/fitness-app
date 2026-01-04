@@ -415,14 +415,63 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
 
   // Group management functions
   const handleCreateGroup = useCallback((type, selectedIndices) => {
+    const sortedIndices = [...selectedIndices].sort((a, b) => a - b);
+    const firstIndex = sortedIndices[0];
     const nextNumber = getNextGroupNumber(type);
-    const newGroup = {
-      id: `group-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      type,
-      number: nextNumber,
-      exerciseIndices: selectedIndices.sort((a, b) => a - b)
-    };
-    setExerciseGroups(prev => [...prev, newGroup]);
+    
+    setSelectedOrder(prevOrder => {
+      const newOrder = [...prevOrder];
+      const groupExerciseIds = sortedIndices.map(idx => newOrder[idx]);
+      
+      // Remove grouped items from their current positions (remove from highest to lowest to avoid index shifting)
+      const indicesToRemove = [...sortedIndices].sort((a, b) => b - a);
+      indicesToRemove.forEach(idx => {
+        newOrder.splice(idx, 1);
+      });
+      
+      // Insert grouped items at the first index position
+      const insertPosition = firstIndex;
+      newOrder.splice(insertPosition, 0, ...groupExerciseIds);
+      
+      // Calculate new consecutive indices for the new group
+      const newGroupIndices = groupExerciseIds.map((_, idx) => insertPosition + idx);
+      
+      // Update all existing group indices to account for the reordering
+      setExerciseGroups(prevGroups => {
+        const updatedGroups = prevGroups.map(group => ({
+          ...group,
+          exerciseIndices: group.exerciseIndices.map(oldIdx => {
+            // Count how many grouped items were removed before this index
+            const removedBefore = sortedIndices.filter(idx => idx < oldIdx).length;
+            
+            if (sortedIndices.includes(oldIdx)) {
+              // This index was part of the new group - it's now at insertPosition + offset
+              const offset = sortedIndices.indexOf(oldIdx);
+              return insertPosition + offset;
+            } else if (oldIdx < firstIndex) {
+              // Item was before the group - index unchanged
+              return oldIdx;
+            } else {
+              // Item was after the group - adjust by number removed, then add group length
+              return oldIdx - removedBefore + sortedIndices.length;
+            }
+          }).sort((a, b) => a - b)
+        }));
+        
+        // Add the new group
+        const newGroup = {
+          id: `group-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          type,
+          number: nextNumber,
+          exerciseIndices: newGroupIndices
+        };
+        
+        return [...updatedGroups, newGroup];
+      });
+      
+      return newOrder;
+    });
+    
     setIsGroupMode(false);
     setGroupSelectionMode(null);
     setGroupSelectionIndices([]);
@@ -442,50 +491,124 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
   }, [exerciseGroups]);
 
   const handleSaveGroup = useCallback(() => {
-    if (groupSelectionIndices.length < 2) return; // Need at least 2 exercises
-    
     if (groupSelectionMode === 'create') {
+      // Creating a new group still requires at least 2 exercises
+      if (groupSelectionIndices.length < 2) return;
       handleCreateGroup(selectedGroupType, groupSelectionIndices);
     } else if (groupSelectionMode === 'edit' && editingGroupId) {
-      // Update existing group (including type change)
-      setExerciseGroups(prev => {
-        const groupToEdit = prev.find(g => g.id === editingGroupId);
-        if (!groupToEdit) return prev;
+      // When editing, allow saving with 0 or 1 item
+      if (groupSelectionIndices.length === 0) {
+        // Delete the group if 0 items remain
+        const groupToDelete = exerciseGroups.find(g => g.id === editingGroupId);
+        if (groupToDelete) {
+          // Remove the group and adjust indices for other groups
+          setExerciseGroups(prev => {
+            const filtered = prev.filter(g => g.id !== editingGroupId);
+            
+            // Renumber groups of the deleted group's type
+            const deletedType = groupToDelete.type;
+            const groupsOfType = filtered.filter(g => g.type === deletedType)
+              .sort((a, b) => a.number - b.number);
+            const renumbered = groupsOfType.map((group, index) => ({
+              ...group,
+              number: index + 1
+            }));
+            
+            const otherGroups = filtered.filter(g => g.type !== deletedType);
+            return [...otherGroups, ...renumbered];
+          });
+        }
         
-        const oldType = groupToEdit.type;
-        const newType = selectedGroupType;
+        setIsGroupMode(false);
+        setGroupSelectionMode(null);
+        setEditingGroupId(null);
+        setGroupSelectionIndices([]);
+        setSelectedGroupType('Superset');
+        return;
+      }
+      
+      // Handle 1 or more items
+      const sortedIndices = [...groupSelectionIndices].sort((a, b) => a - b);
+      const firstIndex = sortedIndices[0];
+      
+      setSelectedOrder(prevOrder => {
+        const newOrder = [...prevOrder];
+        const groupExerciseIds = sortedIndices.map(idx => newOrder[idx]);
         
-        // If type changed, assign new number and renumber old type groups
-        let updatedGroup = {
-          ...groupToEdit,
-          type: newType,
-          exerciseIndices: groupSelectionIndices.sort((a, b) => a - b)
-        };
+        // Remove grouped items from their current positions (remove from highest to lowest to avoid index shifting)
+        const indicesToRemove = [...sortedIndices].sort((a, b) => b - a);
+        indicesToRemove.forEach(idx => {
+          newOrder.splice(idx, 1);
+        });
         
-        if (oldType !== newType) {
-          // Get next available number for new type
-          const groupsOfNewType = prev.filter(g => g.type === newType && g.id !== editingGroupId);
-          const nextNumber = groupsOfNewType.length === 0 
-            ? 1 
-            : Math.max(...groupsOfNewType.map(g => g.number)) + 1;
-          updatedGroup.number = nextNumber;
+        // Insert grouped items at the first index position
+        const insertPosition = firstIndex;
+        newOrder.splice(insertPosition, 0, ...groupExerciseIds);
+        
+        // Calculate new consecutive indices for the updated group
+        const newGroupIndices = groupExerciseIds.map((_, idx) => insertPosition + idx);
+        
+        // Update exercise groups
+        setExerciseGroups(prev => {
+          const groupToEdit = prev.find(g => g.id === editingGroupId);
+          if (!groupToEdit) return prev;
           
-          // Renumber old type groups
-          const groupsOfOldType = prev.filter(g => g.type === oldType && g.id !== editingGroupId)
-            .sort((a, b) => a.number - b.number);
-          const renumberedOldType = groupsOfOldType.map((group, index) => ({
+          const oldType = groupToEdit.type;
+          const newType = selectedGroupType;
+          
+          // Update all existing group indices (except the one being edited) to account for the reordering
+          const updatedGroups = prev.filter(g => g.id !== editingGroupId).map(group => ({
             ...group,
-            number: index + 1
+            exerciseIndices: group.exerciseIndices.map(oldIdx => {
+              // Count how many grouped items were removed before this index
+              const removedBefore = sortedIndices.filter(idx => idx < oldIdx).length;
+              
+              if (sortedIndices.includes(oldIdx)) {
+                // This index was part of the edited group - it's now at insertPosition + offset
+                const offset = sortedIndices.indexOf(oldIdx);
+                return insertPosition + offset;
+              } else if (oldIdx < firstIndex) {
+                // Item was before the group - index unchanged
+                return oldIdx;
+              } else {
+                // Item was after the group - adjust by number removed, then add group length
+                return oldIdx - removedBefore + sortedIndices.length;
+              }
+            }).sort((a, b) => a - b)
           }));
           
-          const otherGroups = prev.filter(g => g.id !== editingGroupId && g.type !== oldType && g.type !== newType);
-          return [...otherGroups, ...renumberedOldType, ...groupsOfNewType, updatedGroup];
-        } else {
-          // Type unchanged, just update the group
-          return prev.map(group => 
-            group.id === editingGroupId ? updatedGroup : group
-          );
-        }
+          // Create updated group
+          let updatedGroup = {
+            ...groupToEdit,
+            type: newType,
+            exerciseIndices: newGroupIndices
+          };
+          
+          if (oldType !== newType) {
+            // Get next available number for new type
+            const groupsOfNewType = updatedGroups.filter(g => g.type === newType);
+            const nextNumber = groupsOfNewType.length === 0 
+              ? 1 
+              : Math.max(...groupsOfNewType.map(g => g.number)) + 1;
+            updatedGroup.number = nextNumber;
+            
+            // Renumber old type groups
+            const groupsOfOldType = updatedGroups.filter(g => g.type === oldType)
+              .sort((a, b) => a.number - b.number);
+            const renumberedOldType = groupsOfOldType.map((group, index) => ({
+              ...group,
+              number: index + 1
+            }));
+            
+            const otherGroups = updatedGroups.filter(g => g.type !== oldType && g.type !== newType);
+            return [...otherGroups, ...renumberedOldType, ...groupsOfNewType, updatedGroup];
+          } else {
+            // Type unchanged, just update the group
+            return [...updatedGroups, updatedGroup];
+          }
+        });
+        
+        return newOrder;
       });
       
       setIsGroupMode(false);
@@ -494,7 +617,7 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
       setGroupSelectionIndices([]);
       setSelectedGroupType('Superset'); // Reset to default
     }
-  }, [groupSelectionMode, groupSelectionIndices, selectedGroupType, editingGroupId, handleCreateGroup]);
+  }, [groupSelectionMode, groupSelectionIndices, selectedGroupType, editingGroupId, handleCreateGroup, exerciseGroups]);
 
   const handleDeleteGroup = useCallback((groupId) => {
     const group = exerciseGroups.find(g => g.id === groupId);
