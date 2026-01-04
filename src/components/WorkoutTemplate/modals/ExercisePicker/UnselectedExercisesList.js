@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useMemo, useState } from 'react';
+import React, { useRef, useCallback, useMemo } from 'react';
 import { View, Text, SectionList, StyleSheet } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { COLORS } from '../../../../constants/colors';
@@ -13,7 +13,7 @@ const UnselectedExercisesList = ({
   setHighlightedLetter,
 }) => {
   const sectionListRef = useRef(null);
-  const [letterIndexHeight, setLetterIndexHeight] = useState(0);
+  const letterIndexHeightRef = useRef(0);
   const lastActivatedLetter = useRef(null);
 
   // Group exercises by first letter into sections
@@ -28,7 +28,6 @@ const UnselectedExercisesList = ({
       grouped[letter].push(ex);
     });
 
-    // Convert to SectionList format, only include letters that have exercises
     return Object.keys(grouped)
       .sort()
       .map(letter => ({
@@ -45,72 +44,62 @@ const UnselectedExercisesList = ({
   const scrollToLetter = useCallback((letter) => {
     const sectionIndex = sections.findIndex(s => s.title === letter);
     
+    console.log('[scrollToLetter] letter:', letter, 'sectionIndex:', sectionIndex, 'ref exists:', !!sectionListRef.current);
+    
     if (sectionIndex !== -1 && sectionListRef.current) {
-      sectionListRef.current.scrollToLocation({
-        sectionIndex,
-        itemIndex: 0,
-        viewOffset: 0,
-        viewPosition: 0,
-        animated: false, // Instant scroll for scrubber
-      });
+      try {
+        // Use itemIndex: 1 instead of 0 - workaround for SectionList bug
+        // itemIndex 0 can sometimes fail, 1 scrolls to first actual item
+        sectionListRef.current.scrollToLocation({
+          sectionIndex,
+          itemIndex: 1,
+          animated: true,
+          viewPosition: 0,
+        });
+        console.log('[scrollToLetter] scrollToLocation called for section', sectionIndex);
+      } catch (error) {
+        console.log('[scrollToLetter] ERROR:', error);
+      }
     }
     
     setHighlightedLetter(letter);
   }, [sections, setHighlightedLetter]);
 
-  // Get letter from Y position within the letter index
-  const getLetterFromY = useCallback((y) => {
-    console.log('[getLetterFromY] y:', y, 'letterIndexHeight:', letterIndexHeight);
-    if (letterIndexHeight <= 0) {
-      console.log('[getLetterFromY] letterIndexHeight is 0 or less, returning null');
-      return null;
-    }
-    const letterHeight = letterIndexHeight / LETTERS.length;
-    const index = Math.floor(y / letterHeight);
-    const clampedIndex = Math.max(0, Math.min(index, LETTERS.length - 1));
-    const letter = LETTERS[clampedIndex];
-    console.log('[getLetterFromY] letterHeight:', letterHeight, 'index:', index, 'letter:', letter);
-    return letter;
-  }, [letterIndexHeight]);
-
-  // Handle letter activation (only if it has exercises)
-  const activateLetter = useCallback((letter) => {
-    console.log('[activateLetter] letter:', letter, 'availableLetters:', availableLetters, 'lastActivated:', lastActivatedLetter.current);
-    if (letter && availableLetters.includes(letter) && letter !== lastActivatedLetter.current) {
-      console.log('[activateLetter] Activating letter:', letter);
-      lastActivatedLetter.current = letter;
-      scrollToLetter(letter);
-    } else {
-      console.log('[activateLetter] Skipped - letter:', letter, 'hasExercises:', availableLetters.includes(letter), 'sameAsLast:', letter === lastActivatedLetter.current);
-    }
-  }, [availableLetters, scrollToLetter]);
-
   // Pan gesture for the letter index scrubber
-  const letterIndexGesture = useMemo(() => 
-    Gesture.Pan()
-      .onBegin((event) => {
-        console.log('[Pan.onBegin] event.y:', event.y, 'event.x:', event.x);
-        const letter = getLetterFromY(event.y);
-        activateLetter(letter);
-      })
-      .onUpdate((event) => {
-        console.log('[Pan.onUpdate] event.y:', event.y);
-        const letter = getLetterFromY(event.y);
-        activateLetter(letter);
-      })
-      .onEnd(() => {
-        console.log('[Pan.onEnd]');
-        lastActivatedLetter.current = null;
-        setTimeout(() => setHighlightedLetter(null), 300);
-      })
-      .onFinalize(() => {
-        console.log('[Pan.onFinalize]');
-        lastActivatedLetter.current = null;
-      })
-      .minDistance(0) // Activate immediately without requiring movement
-      .hitSlop({ left: 10, right: 10 }), // Easier to hit
-    [getLetterFromY, activateLetter, setHighlightedLetter]
-  );
+  const letterIndexGesture = Gesture.Pan()
+    .onBegin((event) => {
+      const height = letterIndexHeightRef.current;
+      console.log('[onBegin] height:', height, 'event.y:', event.y);
+      if (height <= 0) return;
+      const letterHeight = height / LETTERS.length;
+      const index = Math.floor(event.y / letterHeight);
+      const clampedIndex = Math.max(0, Math.min(index, LETTERS.length - 1));
+      const letter = LETTERS[clampedIndex];
+      console.log('[onBegin] calculated letter:', letter, 'availableLetters:', availableLetters);
+      if (letter && availableLetters.includes(letter)) {
+        lastActivatedLetter.current = letter;
+        scrollToLetter(letter);
+      }
+    })
+    .onUpdate((event) => {
+      const height = letterIndexHeightRef.current;
+      if (height <= 0) return;
+      const letterHeight = height / LETTERS.length;
+      const index = Math.floor(event.y / letterHeight);
+      const clampedIndex = Math.max(0, Math.min(index, LETTERS.length - 1));
+      const letter = LETTERS[clampedIndex];
+      if (letter && availableLetters.includes(letter) && letter !== lastActivatedLetter.current) {
+        console.log('[onUpdate] switching to letter:', letter);
+        lastActivatedLetter.current = letter;
+        scrollToLetter(letter);
+      }
+    })
+    .onEnd(() => {
+      lastActivatedLetter.current = null;
+      setTimeout(() => setHighlightedLetter(null), 300);
+    })
+    .minDistance(0)
+    .hitSlop({ left: 10, right: 10 });
 
   const renderSectionHeader = useCallback(({ section }) => (
     <View style={styles.sectionHeader}>
@@ -150,7 +139,9 @@ const UnselectedExercisesList = ({
         showsVerticalScrollIndicator={false}
         style={styles.list}
         contentContainerStyle={styles.listContent}
-        onScrollToIndexFailed={() => {}}
+        onScrollToIndexFailed={(info) => {
+          console.log('[SectionList] onScrollToIndexFailed:', info);
+        }}
       />
       
       {/* Letter Index - gesture-based scrubber for quick navigation */}
@@ -158,8 +149,7 @@ const UnselectedExercisesList = ({
         <View 
           style={styles.letterIndex}
           onLayout={(event) => {
-            console.log('[letterIndex onLayout] height:', event.nativeEvent.layout.height);
-            setLetterIndexHeight(event.nativeEvent.layout.height);
+            letterIndexHeightRef.current = event.nativeEvent.layout.height;
           }}
         >
           {LETTERS.map(letter => {
@@ -196,16 +186,16 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   sectionHeader: {
-    backgroundColor: COLORS.slate[100],
+    backgroundColor: COLORS.slate[50],
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.slate[200],
+    borderBottomColor: COLORS.slate[100],
   },
   sectionHeaderText: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: 'bold',
-    color: COLORS.slate[600],
+    color: COLORS.slate[500],
   },
   emptyContainer: {
     flex: 1,
@@ -218,7 +208,7 @@ const styles = StyleSheet.create({
   },
   letterIndex: {
     width: 24,
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.slate[50],
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 2,
@@ -232,7 +222,7 @@ const styles = StyleSheet.create({
   letterText: {
     fontSize: 10,
     fontWeight: '600',
-    color: COLORS.blue[500],
+    color: COLORS.slate[500],
   },
   letterTextDisabled: {
     color: COLORS.slate[300],
