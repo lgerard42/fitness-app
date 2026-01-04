@@ -532,39 +532,163 @@ const SelectedExercisesSection = ({
                 />
               );
             })
-          ) : (
-            selectedExercises.map((item, index) => {
-              const uniqueKey = `${item.id}-${index}`;
-              const isReordered = reorderAssignments[uniqueKey] !== undefined;
-              const reorderPosition = reorderAssignments[uniqueKey] || 0;
-              const originalOrder = index + 1;
-              const isLastSelected = index === selectedExercises.length - 1;
+          ) : (() => {
+            // Organize exercises by groups for visual wrapping
+            const renderItems = [];
+            let groupPosition = 0; // Track position for groups and ungrouped items
+            
+            selectedExercises.forEach((item, index) => {
               const group = groupedExercises[index];
-              const selectedCount = group ? group.count : 0;
-              const originalId = item.id;
               const exerciseGroup = getExerciseGroup ? getExerciseGroup(group.startIndex) : null;
               
-              return (
-                <ExerciseListItem
-                  key={uniqueKey}
-                  item={{ ...item, id: uniqueKey }}
-                  isSelected={true}
-                  isLastSelected={isLastSelected}
-                  selectionOrder={isReordering ? reorderPosition : originalOrder}
-                  onToggle={handleReorderItemPress}
-                  hideNumber={isReordering && !isReordered}
-                  isReordering={isReordering}
-                  isReordered={isReordered}
-                  showAddMore={!isReordering}
-                  onAddMore={onAddSet ? () => onAddSet(originalId, index) : null}
-                  onRemoveSet={onRemoveSet ? () => onRemoveSet(originalId, index) : null}
-                  selectedCount={selectedCount}
-                  renderingSection="selectedSection"
-                  exerciseGroup={exerciseGroup}
-                />
-              );
-            })
-          )}
+              if (exerciseGroup) {
+                // Check if this is the first exercise in this group
+                const isFirstInGroup = index === 0 || 
+                  !getExerciseGroup || 
+                  getExerciseGroup(groupedExercises[index - 1]?.startIndex)?.id !== exerciseGroup.id;
+                
+                if (isFirstInGroup) {
+                  groupPosition++;
+                  // Find all exercises in this group (consecutive)
+                  const groupExercises = [];
+                  let currentIndex = index;
+                  while (currentIndex < selectedExercises.length) {
+                    const currentGroup = groupedExercises[currentIndex];
+                    if (!currentGroup) break;
+                    const currentExerciseGroup = getExerciseGroup ? getExerciseGroup(currentGroup.startIndex) : null;
+                    if (currentExerciseGroup?.id === exerciseGroup.id) {
+                      groupExercises.push({
+                        item: selectedExercises[currentIndex],
+                        index: currentIndex,
+                        group: currentGroup,
+                        exerciseGroup: currentExerciseGroup
+                      });
+                      currentIndex++;
+                    } else {
+                      break;
+                    }
+                  }
+                  
+                  // Render group wrapper
+                  renderItems.push(
+                    <View 
+                      key={`group-${exerciseGroup.id}-${groupPosition}`}
+                      style={{
+                        marginBottom: 8,
+                        borderWidth: 1,
+                        borderColor: COLORS.slate[200],
+                        borderRadius: 8,
+                        backgroundColor: COLORS.slate[50],
+                        padding: 8,
+                      }}
+                    >
+                      {/* Group header with index number */}
+                      <View style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        marginBottom: 4,
+                        paddingBottom: 4,
+                        borderBottomWidth: 1,
+                        borderBottomColor: COLORS.slate[200],
+                      }}>
+                        <View style={{
+                          width: 24,
+                          height: 24,
+                          borderRadius: 12,
+                          backgroundColor: COLORS.indigo[600],
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          marginRight: 8,
+                        }}>
+                          <Text style={{
+                            color: COLORS.white,
+                            fontSize: 12,
+                            fontWeight: 'bold',
+                          }}>{groupPosition}</Text>
+                        </View>
+                        <View style={{
+                          paddingHorizontal: 8,
+                          paddingVertical: 2,
+                          borderRadius: 12,
+                          backgroundColor: COLORS.indigo[50],
+                        }}>
+                          <Text style={{
+                            color: COLORS.indigo[600],
+                            fontSize: 12,
+                            fontWeight: 'bold',
+                          }}>{exerciseGroup.type === 'HIIT' ? 'H' : 'S'}{exerciseGroup.number}</Text>
+                        </View>
+                      </View>
+                      
+                      {/* Group exercises */}
+                      {groupExercises.map(({ item: exerciseItem, index: exerciseIndex, group: exerciseGroupData }) => {
+                        const uniqueKey = `${exerciseItem.id}-${exerciseIndex}`;
+                        const isReordered = reorderAssignments[uniqueKey] !== undefined;
+                        const reorderPosition = reorderAssignments[uniqueKey] || 0;
+                        const originalOrder = exerciseIndex + 1;
+                        const isLastInGroup = exerciseIndex === groupExercises[groupExercises.length - 1].index;
+                        const selectedCount = exerciseGroupData ? exerciseGroupData.count : 0;
+                        const originalId = exerciseItem.id;
+                        
+                        return (
+                          <ExerciseListItem
+                            key={uniqueKey}
+                            item={{ ...exerciseItem, id: uniqueKey }}
+                            isSelected={true}
+                            isLastSelected={false}
+                            selectionOrder={isReordering ? reorderPosition : originalOrder}
+                            onToggle={handleReorderItemPress}
+                            hideNumber={true} // Hide individual numbers in groups
+                            isReordering={isReordering}
+                            isReordered={isReordered}
+                            showAddMore={!isReordering}
+                            onAddMore={onAddSet ? () => onAddSet(originalId, exerciseIndex) : null}
+                            onRemoveSet={onRemoveSet ? () => onRemoveSet(originalId, exerciseIndex) : null}
+                            selectedCount={selectedCount}
+                            renderingSection="selectedSection"
+                            exerciseGroup={null} // Don't show badge inside wrapper (it's in header)
+                          />
+                        );
+                      })}
+                    </View>
+                  );
+                }
+                // Skip rendering if not first in group (already rendered in wrapper)
+              } else {
+                // Ungrouped exercise - render normally
+                groupPosition++;
+                const uniqueKey = `${item.id}-${index}`;
+                const isReordered = reorderAssignments[uniqueKey] !== undefined;
+                const reorderPosition = reorderAssignments[uniqueKey] || 0;
+                const originalOrder = index + 1;
+                const isLastSelected = index === selectedExercises.length - 1;
+                const selectedCount = group ? group.count : 0;
+                const originalId = item.id;
+                
+                renderItems.push(
+                  <ExerciseListItem
+                    key={uniqueKey}
+                    item={{ ...item, id: uniqueKey }}
+                    isSelected={true}
+                    isLastSelected={isLastSelected}
+                    selectionOrder={isReordering ? reorderPosition : groupPosition}
+                    onToggle={handleReorderItemPress}
+                    hideNumber={isReordering && !isReordered}
+                    isReordering={isReordering}
+                    isReordered={isReordered}
+                    showAddMore={!isReordering}
+                    onAddMore={onAddSet ? () => onAddSet(originalId, index) : null}
+                    onRemoveSet={onRemoveSet ? () => onRemoveSet(originalId, index) : null}
+                    selectedCount={selectedCount}
+                    renderingSection="selectedSection"
+                    exerciseGroup={null}
+                  />
+                );
+              }
+            });
+            
+            return renderItems;
+          })()}
         </View>
       )}
     </View>
