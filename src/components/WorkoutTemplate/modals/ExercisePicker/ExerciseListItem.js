@@ -21,10 +21,19 @@ const ExerciseListItem = ({
   exerciseGroup = null, // Group object if exercise belongs to a group
   isGroupMode = false, // Whether in group creation/edit mode
   isSelectedInGroup = false, // Whether this exercise is selected in group mode
+  isCollapsedGroup = false, // Whether this is a collapsed group view
+  groupExercises = [], // Array of {name, count} for collapsed group summary
+  isGroupItemReorder = false, // Whether this is a group item being reordered (use indigo colors)
 }) => {
   const handlePress = () => {
     // In group mode, container click toggles selection
     if (isGroupMode && onToggle) {
+      onToggle(item.id);
+      return;
+    }
+    
+    // In reordering mode, container click should trigger reorder assignment
+    if (isReordering && onToggle) {
       onToggle(item.id);
       return;
     }
@@ -180,8 +189,11 @@ const ExerciseListItem = ({
             },
             text_selectedInList && renderingSection === 'unselectedList' && {
             },
-            text_reorderingMode && {
+            text_reorderingMode && !isGroupItemReorder && {
               color: COLORS.amber[600],
+            },
+            text_reorderingMode && isGroupItemReorder && {
+              color: COLORS.indigo[600],
             },
             text_addMoreMode && {
             },
@@ -236,55 +248,76 @@ const ExerciseListItem = ({
           flexDirection: 'row',
           gap: 8,
           marginTop: 4,
+          flexWrap: 'wrap',
         }}>
-          <View style={[
-            {
-              backgroundColor: COLORS.slate[100],
-              paddingHorizontal: 6,
-              paddingVertical: 2,
-              borderRadius: 4,
-            },
-            tagContainer_addMoreMode && {
-            },
-            tagContainer_addMoreMode && renderingSection === 'unselectedList' && {
-            }
-          ]}>
-            <Text style={[
-              {
-                fontSize: 10,
-                color: COLORS.slate[500],
-              },
-              tagText_addMoreMode && {
-              },
-              tagText_addMoreMode && renderingSection === 'unselectedList' && {
-              }
-            ]}>{item.category}</Text>
-          </View>
-          {item.primaryMuscles.slice(0, 2).map(m => (
-            <View key={m} style={[
-              {
-                backgroundColor: COLORS.indigo[50],
+          {isCollapsedGroup && groupExercises ? (
+            // Show summary of exercises and sets in the group
+            groupExercises.map((groupExercise, idx) => (
+              <View key={idx} style={{
+                backgroundColor: COLORS.slate[100],
                 paddingHorizontal: 6,
                 paddingVertical: 2,
                 borderRadius: 4,
-              },
-              muscleTagContainer_addMoreMode && {
-              },
-              muscleTagContainer_addMoreMode && renderingSection === 'unselectedList' && {
-              }
-            ]}>
-              <Text style={[
-                {
+              }}>
+                <Text style={{
                   fontSize: 10,
-                  color: COLORS.indigo[600],
+                  color: COLORS.slate[600],
+                  fontWeight: '500',
+                }}>{groupExercise.name} ({groupExercise.count})</Text>
+              </View>
+            ))
+          ) : (
+            <>
+              <View style={[
+                {
+                  backgroundColor: COLORS.slate[100],
+                  paddingHorizontal: 6,
+                  paddingVertical: 2,
+                  borderRadius: 4,
                 },
-              muscleTagText_addMoreMode && {
-              },
-              muscleTagText_addMoreMode && renderingSection === 'unselectedList' && {
-              }
-              ]}>{m}</Text>
-            </View>
-          ))}
+                tagContainer_addMoreMode && {
+                },
+                tagContainer_addMoreMode && renderingSection === 'unselectedList' && {
+                }
+              ]}>
+                <Text style={[
+                  {
+                    fontSize: 10,
+                    color: COLORS.slate[500],
+                  },
+                  tagText_addMoreMode && {
+                  },
+                  tagText_addMoreMode && renderingSection === 'unselectedList' && {
+                  }
+                ]}>{item.category}</Text>
+              </View>
+              {item.primaryMuscles && item.primaryMuscles.slice(0, 2).map(m => (
+                <View key={m} style={[
+                  {
+                    backgroundColor: COLORS.indigo[50],
+                    paddingHorizontal: 6,
+                    paddingVertical: 2,
+                    borderRadius: 4,
+                  },
+                  muscleTagContainer_addMoreMode && {
+                  },
+                  muscleTagContainer_addMoreMode && renderingSection === 'unselectedList' && {
+                  }
+                ]}>
+                  <Text style={[
+                    {
+                      fontSize: 10,
+                      color: COLORS.indigo[600],
+                    },
+                  muscleTagText_addMoreMode && {
+                  },
+                  muscleTagText_addMoreMode && renderingSection === 'unselectedList' && {
+                  }
+                  ]}>{m}</Text>
+                </View>
+              ))}
+            </>
+          )}
         </View>
       </View>
       {showAddRemoveButtons ? (
@@ -460,14 +493,23 @@ const ExerciseListItem = ({
             alignItems: 'center',
             justifyContent: 'center',
           },
-          checkbox_reorderingUnmoved && {
+          checkbox_reorderingUnmoved && !isGroupItemReorder && {
             backgroundColor: 'transparent',
             borderColor: COLORS.amber[400],
             borderStyle: 'dashed',
           },
-          checkbox_reorderingMoved && {
-            backgroundColor: COLORS.forestgreen[100],
-            borderColor: COLORS.forestgreen[150],
+          checkbox_reorderingMoved && !isGroupItemReorder && {
+            backgroundColor: COLORS.green[100],
+            borderColor: COLORS.green[200],
+          },
+          checkbox_reorderingUnmoved && isGroupItemReorder && {
+            backgroundColor: 'transparent',
+            borderColor: COLORS.indigo[400],
+            borderStyle: 'dashed',
+          },
+          checkbox_reorderingMoved && isGroupItemReorder && {
+            backgroundColor: COLORS.indigo[100],
+            borderColor: COLORS.indigo[200],
           }
         ]}>
           {isSelected && !hideNumber ? (

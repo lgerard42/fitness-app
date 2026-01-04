@@ -35,30 +35,73 @@ const SelectedExercisesSection = ({
 }) => {
   const [isReordering, setIsReordering] = useState(false);
   const [reorderAssignments, setReorderAssignments] = useState({});
+  const [groupReorderAssignments, setGroupReorderAssignments] = useState({}); // Macro-level reorder assignments for groups
+  const [groupItemReorderAssignments, setGroupItemReorderAssignments] = useState({}); // Micro-level reorder assignments within a group
+  const [editingGroupIdInReorder, setEditingGroupIdInReorder] = useState(null); // Which group is being edited at micro-level
   const hasAutoExpandedRef = useRef(false);
 
-  const assignedCount = Object.keys(reorderAssignments).length;
+  const assignedCount = Object.keys(reorderAssignments).length + Object.keys(groupReorderAssignments).length;
 
   const getLowestAvailableNumber = useCallback(() => {
-    const assignedNumbers = Object.values(reorderAssignments);
-    for (let i = 1; i <= selectedExercises.length; i++) {
+    // For macro-level reordering, consider both group assignments and ungrouped item assignments
+    const assignedGroupNumbers = Object.values(groupReorderAssignments);
+    const assignedItemNumbers = Object.values(reorderAssignments);
+    const allAssignedNumbers = [...assignedGroupNumbers, ...assignedItemNumbers];
+    const totalMacroItems = getTotalMacroItems();
+    for (let i = 1; i <= totalMacroItems; i++) {
+      if (!allAssignedNumbers.includes(i)) {
+        return i;
+      }
+    }
+    return totalMacroItems + 1;
+  }, [reorderAssignments, groupReorderAssignments, getTotalMacroItems]);
+
+  // Helper to calculate total count of groups + ungrouped items for macro-level reordering
+  const getTotalMacroItems = useCallback(() => {
+    let count = 0;
+    let lastGroupId = null;
+    selectedExercises.forEach((item, index) => {
+      const group = groupedExercises[index];
+      const exerciseGroup = getExerciseGroup ? getExerciseGroup(group.startIndex) : null;
+      if (exerciseGroup) {
+        if (exerciseGroup.id !== lastGroupId) {
+          count++; // New group
+          lastGroupId = exerciseGroup.id;
+        }
+      } else {
+        count++; // Ungrouped item
+      }
+    });
+    return count;
+  }, [selectedExercises, groupedExercises, getExerciseGroup]);
+
+
+  const getLowestAvailableGroupItemNumber = useCallback((groupExercises) => {
+    const assignedNumbers = Object.values(groupItemReorderAssignments);
+    for (let i = 1; i <= groupExercises.length; i++) {
       if (!assignedNumbers.includes(i)) {
         return i;
       }
     }
-    return selectedExercises.length + 1;
-  }, [reorderAssignments, selectedExercises.length]);
+    return groupExercises.length + 1;
+  }, [groupItemReorderAssignments]);
 
   const handleReorderPress = useCallback(() => {
     if (isReordering) {
       setIsReordering(false);
       setReorderAssignments({});
+      setGroupReorderAssignments({});
+      setGroupItemReorderAssignments({});
+      setEditingGroupIdInReorder(null);
     } else {
       if (isCollapsed) {
         setIsCollapsed(false);
       }
       setIsReordering(true);
       setReorderAssignments({});
+      setGroupReorderAssignments({});
+      setGroupItemReorderAssignments({});
+      setEditingGroupIdInReorder(null);
     }
   }, [isReordering, isCollapsed, setIsCollapsed]);
 
@@ -76,6 +119,60 @@ const SelectedExercisesSection = ({
       }
     });
   }, [setGroupSelectionIndices]);
+
+  // Handle macro-level group reorder assignment
+  const handleGroupReorderPress = useCallback((groupId) => {
+    if (!isReordering) return;
+    
+    const groupKey = `group-${groupId}`;
+    if (groupReorderAssignments[groupKey] !== undefined) {
+      const newAssignments = { ...groupReorderAssignments };
+      delete newAssignments[groupKey];
+      setGroupReorderAssignments(newAssignments);
+      return;
+    }
+
+    const nextNumber = getLowestAvailableNumber();
+    const newAssignments = { ...groupReorderAssignments, [groupKey]: nextNumber };
+    setGroupReorderAssignments(newAssignments);
+  }, [isReordering, groupReorderAssignments, getLowestAvailableNumber]);
+
+  // Handle micro-level item reorder within a group
+  const handleGroupItemReorderPress = useCallback((uniqueKey, groupId, groupExercisesCount) => {
+    if (!isReordering) return;
+    
+    // If clicking on a grouped item's reorder option, enter micro-level editing for that group
+    if (editingGroupIdInReorder === null) {
+      setEditingGroupIdInReorder(groupId);
+      setGroupItemReorderAssignments({});
+      return;
+    }
+
+    // Only allow reordering items within the currently editing group
+    if (editingGroupIdInReorder !== groupId) return;
+
+    if (groupItemReorderAssignments[uniqueKey] !== undefined) {
+      const newAssignments = { ...groupItemReorderAssignments };
+      delete newAssignments[uniqueKey];
+      setGroupItemReorderAssignments(newAssignments);
+      return;
+    }
+
+    const nextNumber = getLowestAvailableGroupItemNumber([]);
+    const newAssignments = { ...groupItemReorderAssignments, [uniqueKey]: nextNumber };
+    setGroupItemReorderAssignments(newAssignments);
+  }, [isReordering, editingGroupIdInReorder, groupItemReorderAssignments, getLowestAvailableGroupItemNumber]);
+
+  const handleSaveGroupItemReorder = useCallback(() => {
+    // TODO: Implement saving group item reorder - this will require updating the group's internal order
+    setEditingGroupIdInReorder(null);
+    setGroupItemReorderAssignments({});
+  }, []);
+
+  const handleCancelGroupItemReorder = useCallback(() => {
+    setEditingGroupIdInReorder(null);
+    setGroupItemReorderAssignments({});
+  }, []);
 
   const handleReorderItemPress = useCallback((uniqueKey) => {
     if (isGroupMode && setGroupSelectionIndices && isExerciseInGroup && handleEditGroup) {
@@ -103,6 +200,22 @@ const SelectedExercisesSection = ({
       return;
     }
 
+    // Extract index from uniqueKey format: "exerciseId-index"
+    const parts = uniqueKey.split('-');
+    const indexStr = parts[parts.length - 1];
+    const index = parseInt(indexStr);
+    
+    // Check if this item belongs to a user-defined group (not just visual grouping)
+    if (!isNaN(index)) {
+      const exerciseGroup = getExerciseGroup ? getExerciseGroup(index) : null;
+      // If this item is in a user-defined group, it should use group reordering, not individual reordering
+      if (exerciseGroup) {
+        return; // Grouped items use group reordering, not individual reordering
+      }
+    }
+    
+    // For ungrouped items, allow macro-level reordering
+
     if (reorderAssignments[uniqueKey] !== undefined) {
       const newAssignments = { ...reorderAssignments };
       delete newAssignments[uniqueKey];
@@ -113,23 +226,68 @@ const SelectedExercisesSection = ({
     const nextNumber = getLowestAvailableNumber();
     const newAssignments = { ...reorderAssignments, [uniqueKey]: nextNumber };
     setReorderAssignments(newAssignments);
-  }, [isReordering, reorderAssignments, onToggleSelect, getLowestAvailableNumber, isGroupMode, setGroupSelectionIndices, handleGroupItemToggle, isExerciseInGroup, handleEditGroup, getExerciseGroup, editingGroupId]);
+  }, [isReordering, reorderAssignments, onToggleSelect, getLowestAvailableNumber, isGroupMode, setGroupSelectionIndices, handleGroupItemToggle, isExerciseInGroup, handleEditGroup, getExerciseGroup, editingGroupId, editingGroupIdInReorder]);
 
   const handleSaveReorder = useCallback(() => {
-    if (onReorder && Object.keys(reorderAssignments).length === selectedExercises.length) {
-      const orderedIds = Object.entries(reorderAssignments)
-        .sort((a, b) => a[1] - b[1])
-        .map(entry => {
-          const uniqueKey = entry[0];
-          return uniqueKey.split('-').slice(0, -1).join('-');
+    const totalMacroItemsCount = getTotalMacroItems();
+    if (onReorder && assignedCount === totalMacroItemsCount) {
+      // Combine all assignments (ungrouped items and groups) into one sorted list
+      const allAssignments = [];
+      
+      // Add ungrouped item assignments
+      Object.entries(reorderAssignments).forEach(([uniqueKey, position]) => {
+        const exerciseId = uniqueKey.split('-').slice(0, -1).join('-');
+        allAssignments.push({
+          type: 'ungrouped',
+          position,
+          exerciseId,
+          uniqueKey
         });
+      });
+      
+      // Add group assignments
+      Object.entries(groupReorderAssignments).forEach(([groupKey, position]) => {
+        const groupId = groupKey.replace('group-', '');
+        allAssignments.push({
+          type: 'group',
+          position,
+          groupId
+        });
+      });
+      
+      // Sort by assigned position
+      allAssignments.sort((a, b) => a.position - b.position);
+      
+      // Build the new order array
+      const orderedIds = [];
+      allAssignments.forEach(assignment => {
+        if (assignment.type === 'ungrouped') {
+          // Add single exercise ID
+          orderedIds.push(assignment.exerciseId);
+        } else {
+          // Add all exercise IDs from the group in their current order
+          const group = exerciseGroups.find(g => g.id === assignment.groupId);
+          if (group) {
+            // Sort indices to maintain order, then get exercise IDs from selectedOrder
+            const sortedIndices = [...group.exerciseIndices].sort((a, b) => a - b);
+            sortedIndices.forEach(index => {
+              if (selectedOrder[index]) {
+                orderedIds.push(selectedOrder[index]);
+              }
+            });
+          }
+        }
+      });
+      
       onReorder(orderedIds);
     }
     setIsReordering(false);
     setReorderAssignments({});
-  }, [reorderAssignments, selectedExercises.length, onReorder]);
+    setGroupReorderAssignments({});
+  }, [reorderAssignments, groupReorderAssignments, assignedCount, getTotalMacroItems, onReorder, exerciseGroups, selectedOrder]);
 
-  const allAssigned = assignedCount === selectedExercises.length;
+  const totalMacroItemsCount = getTotalMacroItems();
+  const allAssigned = assignedCount === totalMacroItemsCount;
 
   // Auto-expand when first exercise is added (only once)
   useEffect(() => {
@@ -387,7 +545,7 @@ const SelectedExercisesSection = ({
             textAlign: 'center',
             fontWeight: '500',
           }}>
-            Assigning {assignedCount}/{selectedExercises.length} — tap to reassign
+            Assigning {assignedCount}/{totalMacroItemsCount} — tap to reassign
           </Text>
         </View>
       )}
@@ -569,6 +727,11 @@ const SelectedExercisesSection = ({
                     }
                   }
                   
+                  const groupName = `${exerciseGroup.type} ${exerciseGroup.number}`;
+                  const groupKey = `group-${exerciseGroup.id}`;
+                  const groupIsReordered = groupReorderAssignments[groupKey] !== undefined;
+                  const groupReorderPosition = groupReorderAssignments[groupKey] || 0;
+                  
                   // Render group wrapper
                   renderItems.push(
                     <View 
@@ -582,51 +745,80 @@ const SelectedExercisesSection = ({
                         padding: 8,
                       }}
                     >
-                      {/* Group header with index number */}
+                      {/* Group header with "Superset"/"HIIT" text + badge and reorder/Save-Cancel */}
                       <View style={{
                         flexDirection: 'row',
                         alignItems: 'center',
+                        justifyContent: 'space-between',
                         marginBottom: 4,
                         paddingBottom: 4,
                         borderBottomWidth: 1,
                         borderBottomColor: COLORS.slate[200],
+                        paddingVertical: 12,
+                        paddingLeft: 0,
+                        paddingRight: 16,
                       }}>
                         <View style={{
-                          width: 24,
-                          height: 24,
-                          borderRadius: 12,
-                          backgroundColor: COLORS.indigo[600],
-                          justifyContent: 'center',
+                          flexDirection: 'row',
                           alignItems: 'center',
-                          marginRight: 8,
+                          flex: 1,
                         }}>
                           <Text style={{
-                            color: COLORS.white,
-                            fontSize: 12,
-                            fontWeight: 'bold',
-                          }}>{groupPosition}</Text>
+                            fontSize: 14,
+                            fontWeight: '600',
+                            color: COLORS.slate[700],
+                            marginRight: 8,
+                          }}>{exerciseGroup.type}</Text>
+                          <View style={{
+                            paddingHorizontal: 8,
+                            paddingVertical: 2,
+                            borderRadius: 12,
+                            backgroundColor: COLORS.indigo[50],
+                          }}>
+                            <Text style={{
+                              color: COLORS.indigo[600],
+                              fontSize: 12,
+                              fontWeight: 'bold',
+                            }}>{exerciseGroup.type === 'HIIT' ? 'H' : 'S'}{exerciseGroup.number}</Text>
+                          </View>
                         </View>
-                        <View style={{
-                          paddingHorizontal: 8,
-                          paddingVertical: 2,
-                          borderRadius: 12,
-                          backgroundColor: COLORS.indigo[50],
-                        }}>
-                          <Text style={{
-                            color: COLORS.indigo[600],
-                            fontSize: 12,
-                            fontWeight: 'bold',
-                          }}>{exerciseGroup.type === 'HIIT' ? 'H' : 'S'}{exerciseGroup.number}</Text>
-                        </View>
+                        {isReordering && (
+                          // Show reorder checkbox for group (macro-level)
+                          <TouchableOpacity
+                            onPress={() => handleGroupReorderPress(exerciseGroup.id)}
+                            style={[
+                              {
+                                width: 24,
+                                height: 24,
+                                borderRadius: 12,
+                                borderWidth: 2,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              },
+                              groupIsReordered ? {
+                                backgroundColor: COLORS.green[100],
+                                borderColor: COLORS.green[200],
+                              } : {
+                                backgroundColor: 'transparent',
+                                borderColor: COLORS.amber[400],
+                                borderStyle: 'dashed',
+                              }
+                            ]}
+                          >
+                            {groupIsReordered && (
+                              <Text style={{
+                                color: COLORS.green[500],
+                                fontSize: 12,
+                                fontWeight: 'bold',
+                              }}>{groupReorderPosition}</Text>
+                            )}
+                          </TouchableOpacity>
+                        )}
                       </View>
                       
-                      {/* Group exercises */}
+                      {/* Expanded view: show all exercises */}
                       {groupExercises.map(({ item: exerciseItem, index: exerciseIndex, group: exerciseGroupData }) => {
                         const uniqueKey = `${exerciseItem.id}-${exerciseIndex}`;
-                        const isReordered = reorderAssignments[uniqueKey] !== undefined;
-                        const reorderPosition = reorderAssignments[uniqueKey] || 0;
-                        const originalOrder = exerciseIndex + 1;
-                        const isLastInGroup = exerciseIndex === groupExercises[groupExercises.length - 1].index;
                         const selectedCount = exerciseGroupData ? exerciseGroupData.count : 0;
                         const originalId = exerciseItem.id;
                         
@@ -636,14 +828,14 @@ const SelectedExercisesSection = ({
                             item={{ ...exerciseItem, id: uniqueKey }}
                             isSelected={true}
                             isLastSelected={false}
-                            selectionOrder={isReordering ? reorderPosition : originalOrder}
+                            selectionOrder={exerciseIndex + 1}
                             onToggle={handleReorderItemPress}
                             hideNumber={true} // Hide individual numbers in groups
-                            isReordering={isReordering}
-                            isReordered={isReordered}
+                            isReordering={false} // Disable reordering for grouped items - they move with their group
+                            isReordered={false}
                             showAddMore={!isReordering}
-                            onAddMore={onAddSet ? () => onAddSet(originalId, exerciseIndex) : null}
-                            onRemoveSet={onRemoveSet ? () => onRemoveSet(originalId, exerciseIndex) : null}
+                            onAddMore={onAddSet && !isReordering ? () => onAddSet(originalId, exerciseIndex) : null}
+                            onRemoveSet={onRemoveSet && !isReordering ? () => onRemoveSet(originalId, exerciseIndex) : null}
                             selectedCount={selectedCount}
                             renderingSection="selectedSection"
                             exerciseGroup={null} // Don't show badge inside wrapper (it's in header)
