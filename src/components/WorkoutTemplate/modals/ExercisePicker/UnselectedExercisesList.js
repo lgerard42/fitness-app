@@ -53,7 +53,7 @@ const UnselectedExercisesList = ({
       paddingHorizontal: 16,
       paddingVertical: 6,
       borderBottomWidth: 1,
-      borderBottomColor: COLORS.slate[100],
+      borderBottomColor: COLORS.slate[50],
     }}>
       <Text style={{
         fontSize: 10,
