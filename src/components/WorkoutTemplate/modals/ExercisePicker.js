@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Modal, FlatList, ScrollView, StyleSheet, SafeAreaView } from 'react-native';
-import { X, Plus, Search, ChevronDown, Check, Layers, Dumbbell, Activity } from 'lucide-react-native';
+import { View, Text, TextInput, TouchableOpacity, Modal, FlatList, SectionList, ScrollView, StyleSheet, SafeAreaView, PanResponder } from 'react-native';
+import { X, Plus, Search, ChevronDown, ChevronUp, Check, Layers, Dumbbell, Activity } from 'lucide-react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS } from '../../../constants/colors';
 import { CATEGORIES, PRIMARY_MUSCLES, WEIGHT_EQUIP_TAGS, PRIMARY_TO_SECONDARY_MAP } from '../../../constants/data';
@@ -19,6 +19,14 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
 
   // Filter Dropdown UI States
   const [openFilter, setOpenFilter] = useState(null); // 'category' | 'muscle' | 'equip' | 'secondary' | null
+  const [selectedOrder, setSelectedOrder] = useState([]); // Track order of selection
+  const [isSelectedSectionCollapsed, setIsSelectedSectionCollapsed] = useState(false);
+  const sectionListRef = useRef(null);
+  const azScrollBarRef = useRef(null);
+  const [azScrollBarHeight, setAzScrollBarHeight] = useState(0);
+  const [highlightedLetter, setHighlightedLetter] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const lastScrolledLetterRef = useRef(null);
 
   // Auto-select newly created exercise
   useEffect(() => {
@@ -75,8 +83,187 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
     return matchesSearch && matchesCategory && matchesPrimaryMuscle && matchesSecondaryMuscle && matchesEquip;
   });
 
+  // Separate selected and unselected exercises for SectionList
+  // Sort selected by selection order
+  const selectedExercises = selectedOrder
+    .map(id => filtered.find(ex => ex.id === id))
+    .filter(Boolean); // Remove any undefined (filtered out exercises)
+  
+  // Sort unselected alphabetically
+  const unselectedExercises = filtered
+    .filter(ex => !selectedIds.includes(ex.id))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  
+  // Create sections for SectionList
+  const sections = [];
+  if (selectedExercises.length > 0) {
+    sections.push({ title: 'Selected', data: selectedExercises });
+  }
+  if (unselectedExercises.length > 0) {
+    sections.push({ title: 'Available', data: unselectedExercises });
+  }
+  
+  // Get unique first letters for A-Z scroll bar
+  const firstLetters = [...new Set(unselectedExercises.map(ex => ex.name.charAt(0).toUpperCase()))].sort();
+  
+  // Function to scroll to a specific letter
+  const scrollToLetter = (letter) => {
+    const availableSectionIndex = sections.findIndex(s => s.title === 'Available');
+    if (availableSectionIndex !== -1) {
+      const availableSection = sections[availableSectionIndex];
+      const itemIndex = availableSection.data.findIndex(ex => 
+        ex.name.charAt(0).toUpperCase() === letter
+      );
+      if (itemIndex !== -1 && sectionListRef.current) {
+        try {
+          sectionListRef.current.scrollToLocation({
+            sectionIndex: availableSectionIndex,
+            itemIndex: itemIndex,
+            viewOffset: 0,
+            viewPosition: 0,
+          });
+        } catch (e) {
+          // Ignore scroll errors if list isn't ready
+        }
+      }
+    }
+  };
+
+  // Store refs for values needed in PanResponder (to avoid stale closures)
+  const azScrollBarPositionRef = useRef({ py: 0 });
+  const firstLettersRef = useRef(firstLetters);
+  const sectionsRef = useRef(sections);
+  const azScrollBarHeightRef = useRef(azScrollBarHeight);
+  
+  // Keep refs updated
+  useEffect(() => {
+    firstLettersRef.current = firstLetters;
+    sectionsRef.current = sections;
+    azScrollBarHeightRef.current = azScrollBarHeight;
+  }, [firstLetters, sections, azScrollBarHeight]);
+
+  // Internal function that uses refs (for PanResponder to avoid stale closures)
+  const handleAzTouchInternal = useRef((pageY) => {
+    if (pageY == null) return;
+    
+    const letters = firstLettersRef.current;
+    const currentSections = sectionsRef.current;
+    const scrollBarHeight = azScrollBarHeightRef.current;
+    
+    if (!letters || letters.length === 0 || scrollBarHeight === 0) return;
+    
+    const scrollBarTop = azScrollBarPositionRef.current.py;
+    const locationY = pageY - scrollBarTop;
+    
+    const paddingTop = 8;
+    const paddingBottom = 8;
+    const availableHeight = scrollBarHeight - paddingTop - paddingBottom;
+    const adjustedY = locationY - paddingTop;
+    
+    // Clamp to valid range
+    const clampedY = Math.max(0, Math.min(adjustedY, availableHeight));
+    
+    // Calculate which letter based on position
+    const ratio = availableHeight > 0 ? clampedY / availableHeight : 0;
+    const letterIndex = Math.min(
+      Math.max(0, Math.round(ratio * (letters.length - 1))),
+      letters.length - 1
+    );
+    const letter = letters[letterIndex];
+    
+    // Update highlighted letter for visual feedback
+    setHighlightedLetter(letter);
+    
+    // Only scroll if letter changed
+    if (lastScrolledLetterRef.current !== letter) {
+      lastScrolledLetterRef.current = letter;
+      
+      // Scroll to letter in the Available section
+      const availableSectionIndex = currentSections.findIndex(s => s.title === 'Available');
+      if (availableSectionIndex !== -1) {
+        const availableSection = currentSections[availableSectionIndex];
+        const itemIndex = availableSection.data.findIndex(ex => 
+          ex.name.charAt(0).toUpperCase() === letter
+        );
+        if (itemIndex !== -1 && sectionListRef.current) {
+          try {
+            sectionListRef.current.scrollToLocation({
+              sectionIndex: availableSectionIndex,
+              itemIndex: itemIndex,
+              viewOffset: 0,
+              viewPosition: 0,
+            });
+          } catch (e) {
+            // Ignore scroll errors
+          }
+        }
+      }
+    }
+  }).current;
+
+  // Create PanResponder for the A-Z scroll bar
+  const azPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponderCapture: () => true,
+      onMoveShouldSetPanResponderCapture: () => true,
+      onPanResponderGrant: (evt) => {
+        // Extract pageY IMMEDIATELY before React Native nullifies the event
+        // evt.persist() doesn't work in React Native - must extract synchronously
+        const touchPageY = evt?.nativeEvent?.pageY;
+        
+        // ALWAYS remeasure position on each touch (modal position can change)
+        if (azScrollBarRef.current && touchPageY != null) {
+          azScrollBarRef.current.measure((fx, fy, width, height, px, py) => {
+            azScrollBarPositionRef.current.py = py;
+            azScrollBarHeightRef.current = height;
+            setIsDragging(true);
+            lastScrolledLetterRef.current = null;
+            // Use the extracted value (not evt.nativeEvent which is now null)
+            handleAzTouchInternal(touchPageY);
+          });
+        }
+      },
+      onPanResponderMove: (evt) => {
+        // Extract pageY IMMEDIATELY before React Native nullifies the event
+        const touchPageY = evt?.nativeEvent?.pageY;
+        
+        // Remeasure on every move to handle any position changes
+        if (azScrollBarRef.current && touchPageY != null) {
+          azScrollBarRef.current.measure((fx, fy, width, height, px, py) => {
+            azScrollBarPositionRef.current.py = py;
+            azScrollBarHeightRef.current = height;
+            handleAzTouchInternal(touchPageY);
+          });
+        }
+      },
+      onPanResponderRelease: () => {
+        setIsDragging(false);
+        lastScrolledLetterRef.current = null;
+        setTimeout(() => setHighlightedLetter(null), 300);
+      },
+      onPanResponderTerminate: () => {
+        setIsDragging(false);
+        lastScrolledLetterRef.current = null;
+        setTimeout(() => setHighlightedLetter(null), 300);
+      },
+      onPanResponderTerminationRequest: () => false, // Don't let anyone steal the gesture
+    })
+  ).current;
+
   const handleToggleSelect = (id) => {
-    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+    setSelectedIds(prev => {
+      if (prev.includes(id)) {
+        // Remove from selection
+        setSelectedOrder(prevOrder => prevOrder.filter(i => i !== id));
+        return prev.filter(i => i !== id);
+      } else {
+        // Add to selection (track order)
+        setSelectedOrder(prevOrder => [...prevOrder, id]);
+        return [...prev, id];
+      }
+    });
   };
 
   const handleAddAction = () => {
@@ -344,21 +531,56 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
           </View>
         </View>
         
-        <FlatList
-          data={filtered}
-          keyExtractor={item => item.id}
-          contentContainerStyle={styles.listContent}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No exercises found.</Text>
-            </View>
-          }
-          renderItem={({ item }) => {
+        <View style={styles.listContainer}>
+          <SectionList
+            ref={sectionListRef}
+            sections={sections}
+            keyExtractor={item => item.id}
+            contentContainerStyle={styles.listContent}
+            stickySectionHeadersEnabled={true}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>No exercises found.</Text>
+              </View>
+            }
+            renderSectionHeader={({ section }) => {
+              if (section.title === 'Selected' && section.data.length > 0) {
+                return (
+                  <TouchableOpacity 
+                    onPress={() => setIsSelectedSectionCollapsed(!isSelectedSectionCollapsed)}
+                    style={styles.selectedSectionHeader}
+                  >
+                    <Text style={styles.selectedSectionHeaderText}>Selected ({section.data.length})</Text>
+                    {isSelectedSectionCollapsed ? (
+                      <ChevronDown size={16} color={COLORS.slate[600]} />
+                    ) : (
+                      <ChevronUp size={16} color={COLORS.slate[600]} />
+                    )}
+                  </TouchableOpacity>
+                );
+              }
+              return null;
+            }}
+          renderItem={({ item, section, index }) => {
             const isSelected = selectedIds.includes(item.id);
+            // Check if this is the last selected exercise in the visible list
+            const isLastSelected = isSelected && section.title === 'Selected' && index === section.data.length - 1;
+            // Get selection order number (1-based)
+            const selectionOrder = isSelected ? selectedOrder.indexOf(item.id) + 1 : null;
+            
+            // Hide selected exercises if section is collapsed
+            if (section.title === 'Selected' && isSelectedSectionCollapsed) {
+              return null;
+            }
+            
             return (
               <TouchableOpacity 
                 onPress={() => handleToggleSelect(item.id)}
-                style={[styles.exerciseItem, isSelected && styles.exerciseItemSelected]}
+                style={[
+                  styles.exerciseItem, 
+                  isSelected && styles.exerciseItemSelected,
+                  isLastSelected && styles.exerciseItemLastSelected
+                ]}
               >
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.exerciseName, isSelected && styles.exerciseNameSelected]}>{item.name}</Text>
@@ -374,12 +596,50 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
                   </View>
                 </View>
                 <View style={[styles.checkbox, isSelected ? styles.checkboxSelected : styles.checkboxUnselected]}>
-                  {isSelected && <Check size={14} color={COLORS.white} strokeWidth={3} />}
+                  {isSelected ? (
+                    <Text style={styles.checkboxNumber}>{selectionOrder}</Text>
+                  ) : null}
                 </View>
               </TouchableOpacity>
             );
           }}
-        />
+          />
+          {/* A-Z Scroll Bar */}
+          {unselectedExercises.length > 0 && firstLetters.length > 0 && (
+            <View 
+              ref={azScrollBarRef}
+              onLayout={(e) => {
+                const { height } = e.nativeEvent.layout;
+                setAzScrollBarHeight(height);
+                // Also measure position
+                if (azScrollBarRef.current) {
+                  azScrollBarRef.current.measure((fx, fy, w, h, px, py) => {
+                    azScrollBarPositionRef.current.py = py;
+                  });
+                }
+              }}
+              style={[
+                styles.azScrollBar,
+                selectedExercises.length > 0 && !isSelectedSectionCollapsed && { top: 41 }
+              ]}
+              {...azPanResponder.panHandlers}
+            >
+              <View style={styles.azScrollBarInner} pointerEvents="none">
+                {firstLetters.map(letter => (
+                  <View
+                    key={letter}
+                    style={styles.azScrollItem}
+                  >
+                    <Text style={[
+                      styles.azScrollText,
+                      highlightedLetter === letter && styles.azScrollTextHighlighted
+                    ]}>{letter}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+        </View>
       </SafeAreaView>
     </Modal>
   );
@@ -687,7 +947,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   exerciseItem: {
-    paddingHorizontal: 16,
+    paddingLeft: 16,
+    paddingRight: 30,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -697,6 +958,24 @@ const styles = StyleSheet.create({
   },
   exerciseItemSelected: {
     backgroundColor: COLORS.blue[50],
+    borderBottomColor: COLORS.blue[100],
+    paddingVertical: 10,
+  },
+  exerciseItemLastSelected: {
+    borderBottomColor: COLORS.slate[100],// Add styles for the last selected exercise here
+  },
+  selectedSectionHeader: {
+    backgroundColor: COLORS.slate[50],
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.slate[200],
+  },
+  selectedSectionHeaderText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: COLORS.slate[600],
+    textTransform: 'uppercase',
   },
   exerciseName: {
     fontSize: 16,
@@ -745,6 +1024,47 @@ const styles = StyleSheet.create({
   checkboxSelected: {
     backgroundColor: COLORS.blue[600],
     borderColor: COLORS.blue[600],
+  },
+  checkboxNumber: {
+    color: COLORS.white,
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  listContainer: {
+    flex: 1,
+    position: 'relative',
+  },
+  azScrollBar: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 30,
+    backgroundColor: COLORS.white,
+    zIndex: 10, // Above list items to capture touches
+    minHeight: 200, // Ensure it has a minimum height even if list is short
+  },
+  azScrollBarInner: {
+    flex: 1,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  azScrollItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 16,
+  },
+  azScrollText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: COLORS.blue[300],
+  },
+  azScrollTextHighlighted: {
+    color: COLORS.blue[600],
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 });
 
