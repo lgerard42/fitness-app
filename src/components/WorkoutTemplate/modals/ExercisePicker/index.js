@@ -100,9 +100,19 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
     setSelectedOrder(newOrder);
   };
 
-  const handleAddSet = (id) => {
+  const handleAddSet = (id, insertAfterIndex = null) => {
     // Add another instance of this exercise to the selection order
-    setSelectedOrder(prevOrder => [...prevOrder, id]);
+    if (insertAfterIndex !== null) {
+      // Insert immediately after the exercise at the specified index
+      setSelectedOrder(prevOrder => {
+        const newOrder = [...prevOrder];
+        newOrder.splice(insertAfterIndex + 1, 0, id);
+        return newOrder;
+      });
+    } else {
+      // Default behavior: append to end (for backwards compatibility)
+      setSelectedOrder(prevOrder => [...prevOrder, id]);
+    }
   };
 
   const handleRemoveSet = (id) => {
@@ -127,7 +137,15 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
     const selectedExercisesList = exercises.filter(ex => selectedIds.includes(ex.id));
     onAdd(selectedExercisesList, groupType || null);
     setSelectedIds([]);
+    setSelectedOrder([]);
     setGroupType("");
+  };
+
+  const handleClose = () => {
+    setSelectedIds([]);
+    setSelectedOrder([]);
+    setGroupType("");
+    onClose();
   };
 
   const groupOptions = [
@@ -149,7 +167,7 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
   );
 
   return (
-    <Modal visible={isOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+    <Modal visible={isOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={handleClose}>
       <SafeAreaView style={styles.container}>
         {/* Backdrop to close dropdown when clicking outside */}
         {openFilter && (
@@ -161,7 +179,7 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
         )}
         <View style={styles.header}>
           <HeaderTopRow
-            onClose={onClose}
+            onClose={handleClose}
             onCreate={onCreate}
             groupType={groupType}
             setGroupType={setGroupType}
