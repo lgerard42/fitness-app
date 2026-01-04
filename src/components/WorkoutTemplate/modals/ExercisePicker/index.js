@@ -97,6 +97,10 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
     });
   };
 
+  const handleReorder = (newOrder) => {
+    setSelectedOrder(newOrder);
+  };
+
   const handleAddAction = () => {
     const selectedExercisesList = exercises.filter(ex => selectedIds.includes(ex.id));
     onAdd(selectedExercisesList, groupType || null);
@@ -170,6 +174,7 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
               isCollapsed={isSelectedSectionCollapsed}
               setIsCollapsed={setIsSelectedSectionCollapsed}
               onToggleSelect={handleToggleSelect}
+              onReorder={handleReorder}
             />
             
             {/* Unselected Exercises with integrated A-Z scrollbar */}

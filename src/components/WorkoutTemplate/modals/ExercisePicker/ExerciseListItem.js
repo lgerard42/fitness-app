@@ -130,15 +130,15 @@ const styles = StyleSheet.create({
   },
   // Reordering mode styles
   exerciseItemReordering: {
-    backgroundColor: COLORS.amber[50],
-    borderBottomColor: COLORS.amber[100],
+    backgroundColor: COLORS.white,
+    borderBottomColor: COLORS.blue[100],
   },
   exerciseItemReordered: {
-    backgroundColor: COLORS.green[50],
-    borderBottomColor: COLORS.green[100],
+    backgroundColor: COLORS.blue[50],
+    borderBottomColor: COLORS.blue[100],
   },
   exerciseNameReordering: {
-    color: COLORS.amber[700],
+    color: COLORS.blue[700],
   },
   checkboxReordering: {
     backgroundColor: 'transparent',
@@ -146,8 +146,8 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
   },
   checkboxReordered: {
-    backgroundColor: COLORS.green[500],
-    borderColor: COLORS.green[500],
+    backgroundColor: COLORS.blue[500],
+    borderColor: COLORS.blue[500],
   },
 });
 
