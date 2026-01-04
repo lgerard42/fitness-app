@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Modal, SafeAreaView, TouchableOpacity, StyleSheet } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { COLORS } from '../../../../constants/colors';
 import { PRIMARY_TO_SECONDARY_MAP } from '../../../../constants/data';
 import HeaderTopRow from './HeaderTopRow';
@@ -109,6 +110,18 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
     { value: "HIIT", label: "HIIT" }
   ];
 
+  // Gesture to block modal swipe-to-dismiss on the list area
+  // This captures vertical pan gestures to prevent them from triggering modal dismiss
+  // while still allowing ScrollView/SectionList to handle scrolling via native gesture
+  const blockDismissGesture = useMemo(() => 
+    Gesture.Pan()
+      .activeOffsetY([-10, 10]) // Activate after 10px vertical movement
+      .onStart(() => {})
+      .onUpdate(() => {})
+      .onEnd(() => {}),
+    []
+  );
+
   return (
     <Modal visible={isOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <SafeAreaView style={styles.container}>
@@ -148,24 +161,26 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
           />
         </View>
         
-        <View style={styles.listContainer}>
-          {/* Selected Exercises - separate section at top */}
-          <SelectedExercisesSection
-            selectedExercises={selectedExercises}
-            selectedOrder={selectedOrder}
-            isCollapsed={isSelectedSectionCollapsed}
-            setIsCollapsed={setIsSelectedSectionCollapsed}
-            onToggleSelect={handleToggleSelect}
-          />
-          
-          {/* Unselected Exercises with integrated A-Z scrollbar */}
-          <UnselectedExercisesList
-            exercises={unselectedExercises}
-            onToggleSelect={handleToggleSelect}
-            highlightedLetter={highlightedLetter}
-            setHighlightedLetter={setHighlightedLetter}
-          />
-        </View>
+        <GestureDetector gesture={blockDismissGesture}>
+          <View style={styles.listContainer}>
+            {/* Selected Exercises - separate section at top */}
+            <SelectedExercisesSection
+              selectedExercises={selectedExercises}
+              selectedOrder={selectedOrder}
+              isCollapsed={isSelectedSectionCollapsed}
+              setIsCollapsed={setIsSelectedSectionCollapsed}
+              onToggleSelect={handleToggleSelect}
+            />
+            
+            {/* Unselected Exercises with integrated A-Z scrollbar */}
+            <UnselectedExercisesList
+              exercises={unselectedExercises}
+              onToggleSelect={handleToggleSelect}
+              highlightedLetter={highlightedLetter}
+              setHighlightedLetter={setHighlightedLetter}
+            />
+          </View>
+        </GestureDetector>
       </SafeAreaView>
     </Modal>
   );

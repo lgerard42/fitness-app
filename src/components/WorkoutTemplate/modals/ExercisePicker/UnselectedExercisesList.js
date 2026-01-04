@@ -1,5 +1,6 @@
-import React, { useRef, useCallback, useMemo } from 'react';
-import { View, Text, SectionList, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useRef, useCallback, useMemo, useState } from 'react';
+import { View, Text, SectionList, StyleSheet } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { COLORS } from '../../../../constants/colors';
 import ExerciseListItem from './ExerciseListItem';
 
@@ -12,6 +13,8 @@ const UnselectedExercisesList = ({
   setHighlightedLetter,
 }) => {
   const sectionListRef = useRef(null);
+  const [letterIndexHeight, setLetterIndexHeight] = useState(0);
+  const lastActivatedLetter = useRef(null);
 
   // Group exercises by first letter into sections
   const sections = useMemo(() => {
@@ -48,13 +51,66 @@ const UnselectedExercisesList = ({
         itemIndex: 0,
         viewOffset: 0,
         viewPosition: 0,
-        animated: true,
+        animated: false, // Instant scroll for scrubber
       });
     }
     
     setHighlightedLetter(letter);
-    setTimeout(() => setHighlightedLetter(null), 500);
   }, [sections, setHighlightedLetter]);
+
+  // Get letter from Y position within the letter index
+  const getLetterFromY = useCallback((y) => {
+    console.log('[getLetterFromY] y:', y, 'letterIndexHeight:', letterIndexHeight);
+    if (letterIndexHeight <= 0) {
+      console.log('[getLetterFromY] letterIndexHeight is 0 or less, returning null');
+      return null;
+    }
+    const letterHeight = letterIndexHeight / LETTERS.length;
+    const index = Math.floor(y / letterHeight);
+    const clampedIndex = Math.max(0, Math.min(index, LETTERS.length - 1));
+    const letter = LETTERS[clampedIndex];
+    console.log('[getLetterFromY] letterHeight:', letterHeight, 'index:', index, 'letter:', letter);
+    return letter;
+  }, [letterIndexHeight]);
+
+  // Handle letter activation (only if it has exercises)
+  const activateLetter = useCallback((letter) => {
+    console.log('[activateLetter] letter:', letter, 'availableLetters:', availableLetters, 'lastActivated:', lastActivatedLetter.current);
+    if (letter && availableLetters.includes(letter) && letter !== lastActivatedLetter.current) {
+      console.log('[activateLetter] Activating letter:', letter);
+      lastActivatedLetter.current = letter;
+      scrollToLetter(letter);
+    } else {
+      console.log('[activateLetter] Skipped - letter:', letter, 'hasExercises:', availableLetters.includes(letter), 'sameAsLast:', letter === lastActivatedLetter.current);
+    }
+  }, [availableLetters, scrollToLetter]);
+
+  // Pan gesture for the letter index scrubber
+  const letterIndexGesture = useMemo(() => 
+    Gesture.Pan()
+      .onBegin((event) => {
+        console.log('[Pan.onBegin] event.y:', event.y, 'event.x:', event.x);
+        const letter = getLetterFromY(event.y);
+        activateLetter(letter);
+      })
+      .onUpdate((event) => {
+        console.log('[Pan.onUpdate] event.y:', event.y);
+        const letter = getLetterFromY(event.y);
+        activateLetter(letter);
+      })
+      .onEnd(() => {
+        console.log('[Pan.onEnd]');
+        lastActivatedLetter.current = null;
+        setTimeout(() => setHighlightedLetter(null), 300);
+      })
+      .onFinalize(() => {
+        console.log('[Pan.onFinalize]');
+        lastActivatedLetter.current = null;
+      })
+      .minDistance(0) // Activate immediately without requiring movement
+      .hitSlop({ left: 10, right: 10 }), // Easier to hit
+    [getLetterFromY, activateLetter, setHighlightedLetter]
+  );
 
   const renderSectionHeader = useCallback(({ section }) => (
     <View style={styles.sectionHeader}>
@@ -97,30 +153,33 @@ const UnselectedExercisesList = ({
         onScrollToIndexFailed={() => {}}
       />
       
-      {/* Letter Index - each letter is a TouchableOpacity */}
-      <View style={styles.letterIndex}>
-        {LETTERS.map(letter => {
-          const hasExercises = availableLetters.includes(letter);
-          return (
-            <TouchableOpacity
-              key={letter}
-              onPress={() => hasExercises && scrollToLetter(letter)}
-              style={styles.letterButton}
-              activeOpacity={hasExercises ? 0.5 : 1}
-            >
-              <Text
-                style={[
-                  styles.letterText,
-                  !hasExercises && styles.letterTextDisabled,
-                  highlightedLetter === letter && styles.letterTextHighlighted,
-                ]}
-              >
-                {letter}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+      {/* Letter Index - gesture-based scrubber for quick navigation */}
+      <GestureDetector gesture={letterIndexGesture}>
+        <View 
+          style={styles.letterIndex}
+          onLayout={(event) => {
+            console.log('[letterIndex onLayout] height:', event.nativeEvent.layout.height);
+            setLetterIndexHeight(event.nativeEvent.layout.height);
+          }}
+        >
+          {LETTERS.map(letter => {
+            const hasExercises = availableLetters.includes(letter);
+            return (
+              <View key={letter} style={styles.letterButton}>
+                <Text
+                  style={[
+                    styles.letterText,
+                    !hasExercises && styles.letterTextDisabled,
+                    highlightedLetter === letter && styles.letterTextHighlighted,
+                  ]}
+                >
+                  {letter}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+      </GestureDetector>
     </View>
   );
 };
