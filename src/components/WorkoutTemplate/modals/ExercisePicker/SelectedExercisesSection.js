@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { ChevronDown, ChevronUp } from 'lucide-react-native';
 import { COLORS } from '../../../../constants/colors';
 import ExerciseListItem from './ExerciseListItem';
@@ -13,13 +13,10 @@ const SelectedExercisesSection = ({
   onReorder
 }) => {
   const [isReordering, setIsReordering] = useState(false);
-  // Map of uniqueKey (id-index) -> assigned number (numbers are fixed once assigned)
   const [reorderAssignments, setReorderAssignments] = useState({});
 
-  // Get the count of assigned exercises
   const assignedCount = Object.keys(reorderAssignments).length;
 
-  // Find the lowest available number (1 to N)
   const getLowestAvailableNumber = useCallback(() => {
     const assignedNumbers = Object.values(reorderAssignments);
     for (let i = 1; i <= selectedExercises.length; i++) {
@@ -32,11 +29,9 @@ const SelectedExercisesSection = ({
 
   const handleReorderPress = useCallback(() => {
     if (isReordering) {
-      // Cancel reordering
       setIsReordering(false);
       setReorderAssignments({});
     } else {
-      // Start reordering - expand if collapsed
       if (isCollapsed) {
         setIsCollapsed(false);
       }
@@ -47,13 +42,11 @@ const SelectedExercisesSection = ({
 
   const handleReorderItemPress = useCallback((uniqueKey) => {
     if (!isReordering) {
-      // Extract the original ID from the unique key (format: "id-index")
       const originalId = uniqueKey.split('-').slice(0, -1).join('-');
       onToggleSelect(originalId);
       return;
     }
 
-    // If already assigned, remove assignment (allow undo)
     if (reorderAssignments[uniqueKey] !== undefined) {
       const newAssignments = { ...reorderAssignments };
       delete newAssignments[uniqueKey];
@@ -61,7 +54,6 @@ const SelectedExercisesSection = ({
       return;
     }
 
-    // Assign the lowest available number
     const nextNumber = getLowestAvailableNumber();
     const newAssignments = { ...reorderAssignments, [uniqueKey]: nextNumber };
     setReorderAssignments(newAssignments);
@@ -69,12 +61,10 @@ const SelectedExercisesSection = ({
 
   const handleSaveReorder = useCallback(() => {
     if (onReorder && Object.keys(reorderAssignments).length === selectedExercises.length) {
-      // Convert assignments to ordered array of IDs (extract original ID from unique key)
       const orderedIds = Object.entries(reorderAssignments)
         .sort((a, b) => a[1] - b[1])
         .map(entry => {
           const uniqueKey = entry[0];
-          // Extract original ID (everything except the last "-index" part)
           return uniqueKey.split('-').slice(0, -1).join('-');
         });
       onReorder(orderedIds);
@@ -83,36 +73,75 @@ const SelectedExercisesSection = ({
     setReorderAssignments({});
   }, [reorderAssignments, selectedExercises.length, onReorder]);
 
-  // Check if all items have been assigned
   const allAssigned = assignedCount === selectedExercises.length;
+
+  // Define styling condition variables
+  const header_expanded = !isCollapsed;
+  const header_collapsed = isCollapsed;
+  
+  const headerText_expanded = !isCollapsed;
+  const headerText_collapsed = isCollapsed;
+  
+  const saveButton_disabled = !allAssigned;
+  const saveButtonText_disabled = !allAssigned;
+  
+  const listContainer_expanded = !isCollapsed;
+  const listContainer_collapsed = isCollapsed;
 
   if (selectedExercises.length === 0) {
     return null;
   }
 
-  // Get the appropriate styles based on collapsed state
-  const headerStyle = isCollapsed 
-    ? [styles.header, styles.headerCollapsed] 
-    : [styles.header, styles.headerExpanded];
-  
-  const headerTextStyle = isCollapsed 
-    ? [styles.headerText, styles.headerTextCollapsed] 
-    : [styles.headerText, styles.headerTextExpanded];
-  
-  const listStyle = isCollapsed 
-    ? [styles.list, styles.listCollapsed] 
-    : [styles.list, styles.listExpanded];
-
   return (
-    <View style={styles.container}>
+    <View style={{
+      borderBottomWidth: 1,
+      borderBottomColor: COLORS.slate[200],
+    }}>
       <TouchableOpacity 
         activeOpacity={0.7}
         onPress={() => setIsCollapsed(!isCollapsed)}
-        style={headerStyle}
+        style={[
+          {
+            backgroundColor: COLORS.blue[400],
+            paddingHorizontal: 16,
+            paddingVertical: 8,
+            borderBottomWidth: 1,
+            borderBottomColor: COLORS.slate[200],
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          },
+          header_expanded && {
+            
+          },
+          header_collapsed && {
+            marginBottom: -1,
+            
+          }
+        ]}
       >
-        <View style={styles.headerLeft}>
-          <Text style={headerTextStyle}>Selected ({selectedExercises.length})</Text>
-          <View style={styles.collapseIcon}>
+        <View style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 6,
+        }}>
+          <Text style={[
+            {
+              fontSize: 12,
+              fontWeight: 'bold',
+              color: COLORS.white,
+              textTransform: 'uppercase',
+            },
+            headerText_expanded && {
+              
+            },
+            headerText_collapsed && {
+              
+            }
+          ]}>Selected ({selectedExercises.length})</Text>
+          <View style={{
+            
+          }}>
             {isCollapsed ? (
               <ChevronDown size={16} color={COLORS.white} />
             ) : (
@@ -121,21 +150,55 @@ const SelectedExercisesSection = ({
           </View>
         </View>
         {selectedExercises.length > 1 && (
-          <View style={styles.headerButtons}>
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 8,
+          }}>
             {isReordering ? (
               <>
                 <TouchableOpacity 
                   onPress={handleReorderPress}
-                  style={styles.cancelButton}
+                  style={{
+                    paddingHorizontal: 10,
+                    paddingVertical: 4,
+                    borderRadius: 4,
+                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                  }}
                 >
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                  <Text style={{
+                    fontSize: 11,
+                    fontWeight: '600',
+                    color: COLORS.white,
+                    textTransform: 'uppercase',
+                  }}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
                   onPress={handleSaveReorder}
-                  style={[styles.saveButton, !allAssigned && styles.saveButtonDisabled]}
+                  style={[
+                    {
+                      paddingHorizontal: 12,
+                      paddingVertical: 4,
+                      borderRadius: 4,
+                      backgroundColor: COLORS.green[500],
+                    },
+                    saveButton_disabled && {
+                      backgroundColor: 'rgba(255, 255, 255, 0.3)',
+                    }
+                  ]}
                   disabled={!allAssigned}
                 >
-                  <Text style={[styles.saveButtonText, !allAssigned && styles.saveButtonTextDisabled]}>
+                  <Text style={[
+                    {
+                      fontSize: 11,
+                      fontWeight: '600',
+                      color: COLORS.white,
+                      textTransform: 'uppercase',
+                    },
+                    saveButtonText_disabled && {
+                      opacity: 0.5,
+                    }
+                  ]}>
                     Save
                   </Text>
                 </TouchableOpacity>
@@ -143,9 +206,19 @@ const SelectedExercisesSection = ({
             ) : (
               <TouchableOpacity 
                 onPress={handleReorderPress}
-                style={styles.reorderButton}
+                style={{
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                  borderRadius: 4,
+                  backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                }}
               >
-                <Text style={styles.reorderButtonText}>Reorder</Text>
+                <Text style={{
+                  fontSize: 11,
+                  fontWeight: '600',
+                  color: COLORS.white,
+                  textTransform: 'uppercase',
+                }}>Reorder</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -153,17 +226,37 @@ const SelectedExercisesSection = ({
       </TouchableOpacity>
 
       {isReordering && (
-        <View style={styles.reorderInstructions}>
-          <Text style={styles.reorderInstructionsText}>
+        <View style={{
+          backgroundColor: COLORS.amber[100],
+          paddingHorizontal: 16,
+          paddingVertical: 8,
+          borderBottomWidth: 1,
+          borderBottomColor: COLORS.amber[200],
+        }}>
+          <Text style={{
+            fontSize: 12,
+            color: COLORS.amber[800],
+            textAlign: 'center',
+            fontWeight: '500',
+          }}>
             Assigning {assignedCount}/{selectedExercises.length} — tap to reassign
           </Text>
         </View>
       )}
       
       {!isCollapsed && (
-        <View style={listStyle}>
+        <View style={[
+          {
+            
+          },
+          listContainer_expanded && {
+            
+          },
+          listContainer_collapsed && {
+            
+          }
+        ]}>
           {selectedExercises.map((item, index) => {
-            // Create a unique key for this specific instance (handles duplicates)
             const uniqueKey = `${item.id}-${index}`;
             const isReordered = reorderAssignments[uniqueKey] !== undefined;
             const reorderPosition = reorderAssignments[uniqueKey] || 0;
@@ -190,133 +283,4 @@ const SelectedExercisesSection = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.slate[200],
-  },
-  // Base header styles (shared)
-  header: {
-    backgroundColor: COLORS.blue[400],
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.slate[200],
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  // Header styles when expanded (override base)
-  headerExpanded: {
-    // Add expanded-specific styles here
-  },
-  // Header styles when collapsed (override base)
-  headerCollapsed: {
-    marginBottom: -1,
-    // Add collapsed-specific styles here
-  },
-  // Base headerText styles (shared)
-  headerText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: COLORS.white,
-    textTransform: 'uppercase',
-  },
-  // HeaderText styles when expanded (override base)
-  headerTextExpanded: {
-    // Add expanded-specific styles here
-  },
-  // HeaderText styles when collapsed (override base)
-  headerTextCollapsed: {
-    // Add collapsed-specific styles here
-  },
-  // Header left side container (text + chevron)
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  // Collapse/expand icon
-  collapseIcon: {
-    // Icon styling if needed
-  },
-  // Header buttons container (for reorder/cancel/save)
-  headerButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  // Reorder button base styles
-  reorderButton: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  // Reorder button text base styles
-  reorderButtonText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: COLORS.white,
-    textTransform: 'uppercase',
-  },
-  // Cancel button styles
-  cancelButton: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  cancelButtonText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: COLORS.white,
-    textTransform: 'uppercase',
-  },
-  // Save button styles
-  saveButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 4,
-    backgroundColor: COLORS.green[500],
-  },
-  saveButtonDisabled: {
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  saveButtonText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: COLORS.white,
-    textTransform: 'uppercase',
-  },
-  saveButtonTextDisabled: {
-    opacity: 0.5,
-  },
-  // Reorder instructions bar
-  reorderInstructions: {
-    backgroundColor: COLORS.amber[100],
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.amber[200],
-  },
-  reorderInstructionsText: {
-    fontSize: 12,
-    color: COLORS.amber[800],
-    textAlign: 'center',
-    fontWeight: '500',
-  },
-  // Base list styles (shared)
-  list: {},
-  // List styles when expanded (override base)
-  listExpanded: {
-    // Add expanded-specific styles here
-  },
-  // List styles when collapsed (override base)
-  listCollapsed: {
-    // Add collapsed-specific styles here
-  },
-});
-
 export default SelectedExercisesSection;
-
