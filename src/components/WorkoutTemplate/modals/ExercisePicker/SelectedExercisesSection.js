@@ -13,7 +13,7 @@ const SelectedExercisesSection = ({
   onReorder
 }) => {
   const [isReordering, setIsReordering] = useState(false);
-  // Map of exerciseId -> assigned number (numbers are fixed once assigned)
+  // Map of uniqueKey (id-index) -> assigned number (numbers are fixed once assigned)
   const [reorderAssignments, setReorderAssignments] = useState({});
 
   // Get the count of assigned exercises
@@ -45,38 +45,46 @@ const SelectedExercisesSection = ({
     }
   }, [isReordering, isCollapsed, setIsCollapsed]);
 
-  const handleReorderItemPress = useCallback((itemId) => {
+  const handleReorderItemPress = useCallback((uniqueKey) => {
     if (!isReordering) {
-      onToggleSelect(itemId);
+      // Extract the original ID from the unique key (format: "id-index")
+      const originalId = uniqueKey.split('-').slice(0, -1).join('-');
+      onToggleSelect(originalId);
       return;
     }
 
     // If already assigned, remove assignment (allow undo)
-    if (reorderAssignments[itemId] !== undefined) {
+    if (reorderAssignments[uniqueKey] !== undefined) {
       const newAssignments = { ...reorderAssignments };
-      delete newAssignments[itemId];
+      delete newAssignments[uniqueKey];
       setReorderAssignments(newAssignments);
       return;
     }
 
     // Assign the lowest available number
     const nextNumber = getLowestAvailableNumber();
-    const newAssignments = { ...reorderAssignments, [itemId]: nextNumber };
+    const newAssignments = { ...reorderAssignments, [uniqueKey]: nextNumber };
     setReorderAssignments(newAssignments);
+  }, [isReordering, reorderAssignments, onToggleSelect, getLowestAvailableNumber]);
 
-    // If all items have been reordered, apply the new order
-    if (Object.keys(newAssignments).length === selectedExercises.length) {
-      if (onReorder) {
-        // Convert assignments to ordered array of IDs
-        const orderedIds = Object.entries(newAssignments)
-          .sort((a, b) => a[1] - b[1])
-          .map(entry => entry[0]);
-        onReorder(orderedIds);
-      }
-      setIsReordering(false);
-      setReorderAssignments({});
+  const handleSaveReorder = useCallback(() => {
+    if (onReorder && Object.keys(reorderAssignments).length === selectedExercises.length) {
+      // Convert assignments to ordered array of IDs (extract original ID from unique key)
+      const orderedIds = Object.entries(reorderAssignments)
+        .sort((a, b) => a[1] - b[1])
+        .map(entry => {
+          const uniqueKey = entry[0];
+          // Extract original ID (everything except the last "-index" part)
+          return uniqueKey.split('-').slice(0, -1).join('-');
+        });
+      onReorder(orderedIds);
     }
-  }, [isReordering, reorderAssignments, selectedExercises.length, onReorder, onToggleSelect, getLowestAvailableNumber]);
+    setIsReordering(false);
+    setReorderAssignments({});
+  }, [reorderAssignments, selectedExercises.length, onReorder]);
+
+  // Check if all items have been assigned
+  const allAssigned = assignedCount === selectedExercises.length;
 
   if (selectedExercises.length === 0) {
     return null;
@@ -97,31 +105,52 @@ const SelectedExercisesSection = ({
 
   return (
     <View style={styles.container}>
-      <View style={headerStyle}>
-        <Text style={headerTextStyle}>Selected ({selectedExercises.length})</Text>
-        <View style={styles.headerButtons}>
-          {selectedExercises.length > 1 && (
-            <TouchableOpacity 
-              onPress={handleReorderPress}
-              style={[styles.reorderButton, isReordering && styles.reorderButtonActive]}
-            >
-              <Text style={[styles.reorderButtonText, isReordering && styles.reorderButtonTextActive]}>
-                {isReordering ? 'Cancel' : 'Reorder'}
-              </Text>
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity 
-            onPress={() => setIsCollapsed(!isCollapsed)}
-            style={styles.collapseButton}
-          >
+      <TouchableOpacity 
+        activeOpacity={0.7}
+        onPress={() => setIsCollapsed(!isCollapsed)}
+        style={headerStyle}
+      >
+        <View style={styles.headerLeft}>
+          <Text style={headerTextStyle}>Selected ({selectedExercises.length})</Text>
+          <View style={styles.collapseIcon}>
             {isCollapsed ? (
               <ChevronDown size={16} color={COLORS.white} />
             ) : (
               <ChevronUp size={16} color={COLORS.white} />
             )}
-          </TouchableOpacity>
+          </View>
         </View>
-      </View>
+        {selectedExercises.length > 1 && (
+          <View style={styles.headerButtons}>
+            {isReordering ? (
+              <>
+                <TouchableOpacity 
+                  onPress={handleReorderPress}
+                  style={styles.cancelButton}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  onPress={handleSaveReorder}
+                  style={[styles.saveButton, !allAssigned && styles.saveButtonDisabled]}
+                  disabled={!allAssigned}
+                >
+                  <Text style={[styles.saveButtonText, !allAssigned && styles.saveButtonTextDisabled]}>
+                    Save
+                  </Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <TouchableOpacity 
+                onPress={handleReorderPress}
+                style={styles.reorderButton}
+              >
+                <Text style={styles.reorderButtonText}>Reorder</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+      </TouchableOpacity>
 
       {isReordering && (
         <View style={styles.reorderInstructions}>
@@ -134,15 +163,17 @@ const SelectedExercisesSection = ({
       {!isCollapsed && (
         <View style={listStyle}>
           {selectedExercises.map((item, index) => {
-            const isReordered = reorderAssignments[item.id] !== undefined;
-            const reorderPosition = reorderAssignments[item.id] || 0;
-            const originalOrder = selectedOrder.indexOf(item.id) + 1;
+            // Create a unique key for this specific instance (handles duplicates)
+            const uniqueKey = `${item.id}-${index}`;
+            const isReordered = reorderAssignments[uniqueKey] !== undefined;
+            const reorderPosition = reorderAssignments[uniqueKey] || 0;
+            const originalOrder = index + 1;
             const isLastSelected = index === selectedExercises.length - 1;
             
             return (
               <ExerciseListItem
-                key={item.id}
-                item={item}
+                key={uniqueKey}
+                item={{ ...item, id: uniqueKey }}
                 isSelected={true}
                 isLastSelected={isLastSelected}
                 selectionOrder={isReordering ? reorderPosition : originalOrder}
@@ -199,15 +230,21 @@ const styles = StyleSheet.create({
   headerTextCollapsed: {
     // Add collapsed-specific styles here
   },
-  // Header buttons container
+  // Header left side container (text + chevron)
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  // Collapse/expand icon
+  collapseIcon: {
+    // Icon styling if needed
+  },
+  // Header buttons container (for reorder/cancel/save)
   headerButtons: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-  },
-  // Collapse/expand button
-  collapseButton: {
-    padding: 4,
+    gap: 8,
   },
   // Reorder button base styles
   reorderButton: {
@@ -216,10 +253,6 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
-  // Reorder button when active
-  reorderButtonActive: {
-    backgroundColor: COLORS.amber[500],
-  },
   // Reorder button text base styles
   reorderButtonText: {
     fontSize: 11,
@@ -227,9 +260,37 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     textTransform: 'uppercase',
   },
-  // Reorder button text when active
-  reorderButtonTextActive: {
+  // Cancel button styles
+  cancelButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  cancelButtonText: {
+    fontSize: 11,
+    fontWeight: '600',
     color: COLORS.white,
+    textTransform: 'uppercase',
+  },
+  // Save button styles
+  saveButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 4,
+    backgroundColor: COLORS.green[500],
+  },
+  saveButtonDisabled: {
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  saveButtonText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: COLORS.white,
+    textTransform: 'uppercase',
+  },
+  saveButtonTextDisabled: {
+    opacity: 0.5,
   },
   // Reorder instructions bar
   reorderInstructions: {

@@ -11,6 +11,10 @@ const UnselectedExercisesList = ({
   onToggleSelect,
   highlightedLetter,
   setHighlightedLetter,
+  // New props for handling selected exercises in the list
+  selectedIds = [],
+  selectedOrder = [],
+  onAddSet = null,
 }) => {
   const sectionListRef = useRef(null);
   const letterIndexHeightRef = useRef(0);
@@ -107,15 +111,26 @@ const UnselectedExercisesList = ({
     </View>
   ), []);
 
-  const renderItem = useCallback(({ item }) => (
-    <ExerciseListItem
-      item={item}
-      isSelected={false}
-      isLastSelected={false}
-      selectionOrder={null}
-      onToggle={onToggleSelect}
-    />
-  ), [onToggleSelect]);
+  const renderItem = useCallback(({ item }) => {
+    const isAlreadySelected = selectedIds.includes(item.id);
+    // Count how many times this exercise appears in selectedOrder
+    const selectedCount = selectedOrder.filter(id => id === item.id).length;
+    
+    return (
+      <ExerciseListItem
+        item={item}
+        isSelected={isAlreadySelected}
+        isLastSelected={false}
+        selectionOrder={null}
+        onToggle={onToggleSelect}
+        showAddMore={isAlreadySelected}
+        onAddMore={onAddSet}
+        selectedCount={selectedCount}
+        selectedInListStyle={isAlreadySelected ? styles.selectedInList : null}
+        selectedInListNameStyle={isAlreadySelected ? styles.selectedInListName : null}
+      />
+    );
+  }, [onToggleSelect, selectedIds, selectedOrder, onAddSet]);
 
   const keyExtractor = useCallback((item) => item.id, []);
 
@@ -231,6 +246,14 @@ const styles = StyleSheet.create({
     color: COLORS.blue[700],
     fontSize: 12,
     fontWeight: 'bold',
+  },
+  // Styles for selected exercises shown in this list (easy to customize)
+  // Note: backgroundColor is handled by exerciseItemSelectedInList in ExerciseListItem
+  selectedInList: {
+    // Additional overrides for selected items in the main list
+  },
+  selectedInListName: {
+    // Name text style for already-selected exercises in the main list
   },
 });
 

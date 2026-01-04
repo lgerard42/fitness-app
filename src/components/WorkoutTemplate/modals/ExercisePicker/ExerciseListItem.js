@@ -10,48 +10,79 @@ const ExerciseListItem = ({
   onToggle,
   hideNumber = false,
   isReordering = false,
-  isReordered = false
+  isReordered = false,
+  // New props for "add more" mode in unselected list
+  showAddMore = false,
+  onAddMore = null,
+  selectedCount = 0,
+  // Style override props for selected items in unselected list
+  selectedInListStyle = null,
+  selectedInListNameStyle = null,
 }) => {
+  const handlePress = () => {
+    if (showAddMore && onAddMore) {
+      onAddMore(item.id);
+    } else {
+      onToggle(item.id);
+    }
+  };
+
+  // Determine if this is a selected item in the SelectedExercisesSection vs in the main list
+  const isSelectedInMainList = isSelected && showAddMore;
+  const isSelectedInSelectedSection = isSelected && !showAddMore;
+
   return (
     <TouchableOpacity 
-      onPress={() => onToggle(item.id)}
+      onPress={handlePress}
       style={[
         styles.exerciseItem, 
-        isSelected && styles.exerciseItemSelected,
+        isSelectedInSelectedSection && styles.exerciseItemSelected,
+        isSelectedInMainList && styles.exerciseItemSelectedInList,
         isLastSelected && styles.exerciseItemLastSelected,
         isReordering && styles.exerciseItemReordering,
-        isReordering && isReordered && styles.exerciseItemReordered
+        isReordering && isReordered && styles.exerciseItemReordered,
+        showAddMore && styles.exerciseItemAddMore,
+        selectedInListStyle,
       ]}
     >
       <View style={{ flex: 1 }}>
         <Text style={[
           styles.exerciseName, 
-          isSelected && styles.exerciseNameSelected,
-          isReordering && !isReordered && styles.exerciseNameReordering
+          isSelectedInSelectedSection && styles.exerciseNameSelected,
+          isSelectedInMainList && styles.exerciseNameSelectedInList,
+          isReordering && !isReordered && styles.exerciseNameReordering,
+          showAddMore && styles.exerciseNameAddMore,
+          selectedInListNameStyle,
         ]}>
           {item.name}
         </Text>
         <View style={styles.tagsRow}>
-          <View style={styles.tagContainer}>
-            <Text style={styles.tagText}>{item.category}</Text>
+          <View style={[styles.tagContainer, showAddMore && styles.tagContainerAddMore]}>
+            <Text style={[styles.tagText, showAddMore && styles.tagTextAddMore]}>{item.category}</Text>
           </View>
           {item.primaryMuscles.slice(0, 2).map(m => (
-            <View key={m} style={styles.muscleTagContainer}>
-              <Text style={styles.muscleTagText}>{m}</Text>
+            <View key={m} style={[styles.muscleTagContainer, showAddMore && styles.muscleTagContainerAddMore]}>
+              <Text style={[styles.muscleTagText, showAddMore && styles.muscleTagTextAddMore]}>{m}</Text>
             </View>
           ))}
         </View>
       </View>
-      <View style={[
-        styles.checkbox, 
-        isSelected ? styles.checkboxSelected : styles.checkboxUnselected,
-        isReordering && !isReordered && styles.checkboxReordering,
-        isReordering && isReordered && styles.checkboxReordered
-      ]}>
-        {isSelected && !hideNumber ? (
-          <Text style={styles.checkboxNumber}>{selectionOrder}</Text>
-        ) : null}
-      </View>
+      {showAddMore ? (
+        <View style={styles.addMoreButton}>
+          <Text style={styles.addMoreText}>{selectedCount}</Text>
+        </View>
+      ) : (
+        <View style={[
+          styles.checkbox, 
+          isSelected ? styles.checkboxSelected : styles.checkboxUnselected,
+          isReordering && !isReordered && styles.checkboxReordering,
+          isReordering && isReordered && styles.checkboxReordered
+        ]}>
+          {isSelected && !hideNumber ? (
+            <Text style={styles.checkboxNumber}>{selectionOrder}</Text>
+          ) : null}
+        </View>
+      )}
     </TouchableOpacity>
   );
 };
@@ -59,7 +90,7 @@ const ExerciseListItem = ({
 const styles = StyleSheet.create({
   exerciseItem: {
     paddingLeft: 16,
-    paddingRight: 30,
+    paddingRight: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -67,9 +98,17 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.slate[100],
   },
+  // Style for selected items in SelectedExercisesSection
   exerciseItemSelected: {
     backgroundColor: COLORS.blue[50],
-    borderBottomColor: COLORS.blue[100],
+    borderBottomColor: COLORS.white,
+    paddingVertical: 10,
+    paddingRight: 32,
+  },
+  // Style for selected items in the main list (UnselectedExercisesList)
+  exerciseItemSelectedInList: {
+    backgroundColor: COLORS.blue[50],
+    borderBottomColor: COLORS.slate[100],
     paddingVertical: 10,
   },
   exerciseItemLastSelected: {
@@ -80,8 +119,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.slate[900],
   },
+  // Style for exercise name in SelectedExercisesSection
   exerciseNameSelected: {
     color: COLORS.blue[600],
+  },
+  // Style for exercise name in the main list (UnselectedExercisesList)
+  exerciseNameSelectedInList: {
+    color: COLORS.slate[900],
   },
   tagsRow: {
     flexDirection: 'row',
@@ -148,6 +192,38 @@ const styles = StyleSheet.create({
   checkboxReordered: {
     backgroundColor: COLORS.blue[500],
     borderColor: COLORS.blue[500],
+  },
+  // "Add More" mode styles (for selected items shown in unselected list)
+  exerciseItemAddMore: {
+    // Style for selected exercise row in the main list
+  },
+  exerciseNameAddMore: {
+    // Style for exercise name when in add more mode
+  },
+  tagContainerAddMore: {
+    // Style for category tag when in add more mode
+  },
+  tagTextAddMore: {
+    // Style for category tag text when in add more mode
+  },
+  muscleTagContainerAddMore: {
+    // Style for muscle tag when in add more mode
+  },
+  muscleTagTextAddMore: {
+    // Style for muscle tag text when in add more mode
+  },
+  addMoreButton: {
+    width: 24,
+    height: 24,
+    borderRadius: 14,
+    backgroundColor: COLORS.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addMoreText: {
+    color: COLORS.blue[600],
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

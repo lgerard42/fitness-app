@@ -81,9 +81,8 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
     .map(id => filtered.find(ex => ex.id === id))
     .filter(Boolean);
   
-  const unselectedExercises = filtered
-    .filter(ex => !selectedIds.includes(ex.id))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  // All filtered exercises sorted alphabetically (includes selected ones for +1 feature)
+  const allFilteredExercises = [...filtered].sort((a, b) => a.name.localeCompare(b.name));
 
   const handleToggleSelect = (id) => {
     setSelectedIds(prev => {
@@ -99,6 +98,11 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
 
   const handleReorder = (newOrder) => {
     setSelectedOrder(newOrder);
+  };
+
+  const handleAddSet = (id) => {
+    // Add another instance of this exercise to the selection order
+    setSelectedOrder(prevOrder => [...prevOrder, id]);
   };
 
   const handleAddAction = () => {
@@ -177,12 +181,15 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
               onReorder={handleReorder}
             />
             
-            {/* Unselected Exercises with integrated A-Z scrollbar */}
+            {/* All Exercises with integrated A-Z scrollbar */}
             <UnselectedExercisesList
-              exercises={unselectedExercises}
+              exercises={allFilteredExercises}
               onToggleSelect={handleToggleSelect}
               highlightedLetter={highlightedLetter}
               setHighlightedLetter={setHighlightedLetter}
+              selectedIds={selectedIds}
+              selectedOrder={selectedOrder}
+              onAddSet={handleAddSet}
             />
           </View>
         </GestureDetector>
