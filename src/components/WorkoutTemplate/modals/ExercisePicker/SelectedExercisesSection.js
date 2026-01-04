@@ -7,6 +7,7 @@ import ExerciseListItem from './ExerciseListItem';
 const SelectedExercisesSection = ({
   selectedExercises,
   selectedOrder,
+  groupedExercises = [],
   isCollapsed,
   setIsCollapsed,
   onToggleSelect,
@@ -88,46 +89,6 @@ const SelectedExercisesSection = ({
     }
   }, [selectedExercises.length, setIsCollapsed]);
 
-  // Inline styling options for the selected exercise header
-  const headerStyles = {
-    active: {
-      backgroundColor: COLORS.blue[400],
-      paddingHorizontal: 16,
-      paddingVertical: 8,
-      borderBottomWidth: 1,
-      borderBottomColor: COLORS.slate[200],
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    },
-    disabled: {
-      backgroundColor: COLORS.slate[300],
-      paddingHorizontal: 16,
-      paddingVertical: 8,
-      borderBottomWidth: 1,
-      borderBottomColor: COLORS.slate[200],
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      opacity: 0.6,
-    },
-  };
-
-  const headerTextStyles = {
-    active: {
-      fontSize: 12,
-      fontWeight: 'bold',
-      color: COLORS.white,
-      textTransform: 'uppercase',
-    },
-    disabled: {
-      fontSize: 12,
-      fontWeight: 'bold',
-      color: COLORS.slate[600],
-      textTransform: 'uppercase',
-    },
-  };
-
   const hasExercises = selectedExercises.length > 0;
   const canToggle = hasExercises;
 
@@ -146,7 +107,7 @@ const SelectedExercisesSection = ({
 
   return (
     <View style={{
-      borderBottomWidth: 1,
+      borderBottomWidth: (isCollapsed && hasExercises) ? 0 : 2,
       borderBottomColor: COLORS.slate[200],
     }}>
       <TouchableOpacity 
@@ -154,13 +115,32 @@ const SelectedExercisesSection = ({
         onPress={canToggle ? () => setIsCollapsed(!isCollapsed) : undefined}
         disabled={!canToggle}
         style={[
-          hasExercises ? headerStyles.active : headerStyles.disabled,
+          hasExercises ? {
+            // active: enabled state styling
+            backgroundColor: COLORS.blue[400],
+            paddingHorizontal: 16,
+            paddingVertical: 8,
+            borderBottomWidth: 1,
+            borderBottomColor: COLORS.slate[200],
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          } : {
+            // disabled: no exercises state styling
+            backgroundColor: COLORS.slate[300],
+            paddingHorizontal: 16,
+            paddingVertical: 8,
+            borderBottomWidth: 0,
+            borderBottomColor: COLORS.slate[200],
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            opacity: 0.6,
+          },
           header_expanded && {
             
           },
           header_collapsed && {
-            marginBottom: -1,
-            
           }
         ]}
       >
@@ -169,7 +149,19 @@ const SelectedExercisesSection = ({
           alignItems: 'center',
           gap: 6,
         }}>
-          <Text style={hasExercises ? headerTextStyles.active : headerTextStyles.disabled}>
+          <Text style={hasExercises ? {
+            // active: enabled state text styling
+            fontSize: 12,
+            fontWeight: 'bold',
+            color: COLORS.white,
+            textTransform: 'uppercase',
+          } : {
+            // disabled: no exercises state text styling
+            fontSize: 12,
+            fontWeight: 'bold',
+            color: COLORS.slate[600],
+            textTransform: 'uppercase',
+          }}>
             Selected ({selectedExercises.length})
           </Text>
           {hasExercises && (
@@ -198,13 +190,13 @@ const SelectedExercisesSection = ({
                     paddingHorizontal: 10,
                     paddingVertical: 4,
                     borderRadius: 4,
-                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                    backgroundColor: COLORS.slate[100],
                   }}
                 >
                   <Text style={{
                     fontSize: 11,
                     fontWeight: '600',
-                    color: COLORS.white,
+                    color: COLORS.slate[400],
                     textTransform: 'uppercase',
                   }}>Cancel</Text>
                 </TouchableOpacity>
@@ -233,8 +225,7 @@ const SelectedExercisesSection = ({
                     saveButtonText_disabled && {
                       opacity: 0.5,
                     }
-                  ]}>
-                    Save
+                  ]}>Save
                   </Text>
                 </TouchableOpacity>
               </>
@@ -297,7 +288,8 @@ const SelectedExercisesSection = ({
             const reorderPosition = reorderAssignments[uniqueKey] || 0;
             const originalOrder = index + 1;
             const isLastSelected = index === selectedExercises.length - 1;
-            const selectedCount = selectedOrder.filter(id => id === item.id).length;
+            const group = groupedExercises[index];
+            const selectedCount = group ? group.count : 0;
             const originalId = item.id;
             
             return (
@@ -312,8 +304,8 @@ const SelectedExercisesSection = ({
                 isReordering={isReordering}
                 isReordered={isReordered}
                 showAddMore={!isReordering}
-                onAddMore={onAddSet ? () => onAddSet(originalId) : null}
-                onRemoveSet={onRemoveSet ? () => onRemoveSet(originalId) : null}
+                onAddMore={onAddSet ? () => onAddSet(originalId, index) : null}
+                onRemoveSet={onRemoveSet ? () => onRemoveSet(originalId, index) : null}
                 selectedCount={selectedCount}
                 renderingSection="selectedSection"
               />

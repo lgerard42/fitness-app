@@ -75,7 +75,7 @@ const ExerciseListItem = ({
   const checkbox_reorderingMoved = isReordering && isReordered;
 
   // Determine if we should show the count badge next to name (selected, non-reorder, only in unselectedList)
-  const showCountBadge = isSelected && !isReordering && selectedCount > 0 && renderingSection === 'unselectedList';
+  const showCountBadge = isSelected && selectedCount > 0 ;
 
   // Determine if we should show the + button (selected, non-reorder)
   const showAddRemoveButtons = isSelected && !isReordering && showAddMore;

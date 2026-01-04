@@ -76,10 +76,37 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
     return matchesSearch && matchesCategory && matchesPrimaryMuscle && matchesSecondaryMuscle && matchesEquip;
   });
 
-  // Separate selected and unselected exercises
-  const selectedExercises = selectedOrder
-    .map(id => filtered.find(ex => ex.id === id))
-    .filter(Boolean);
+  // Group consecutive IDs in selectedOrder into groups with counts
+  const getGroupedExercises = useMemo(() => {
+    const groups = [];
+    let currentGroup = null;
+    
+    selectedOrder.forEach((id, index) => {
+      if (currentGroup === null || currentGroup.id !== id) {
+        // Start a new group
+        const exercise = filtered.find(ex => ex.id === id);
+        if (exercise) {
+          currentGroup = {
+            id,
+            exercise,
+            count: 1,
+            startIndex: index,
+            orderIndices: [index]
+          };
+          groups.push(currentGroup);
+        }
+      } else {
+        // Add to current group
+        currentGroup.count++;
+        currentGroup.orderIndices.push(index);
+      }
+    });
+    
+    return groups;
+  }, [selectedOrder, filtered]);
+
+  // Separate selected and unselected exercises (now grouped)
+  const selectedExercises = getGroupedExercises.map(group => group.exercise);
   
   // All filtered exercises sorted alphabetically (includes selected ones for +1 feature)
   const allFilteredExercises = [...filtered].sort((a, b) => a.name.localeCompare(b.name));
@@ -87,9 +114,25 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
   const handleToggleSelect = (id) => {
     setSelectedIds(prev => {
       if (prev.includes(id)) {
-        setSelectedOrder(prevOrder => prevOrder.filter(i => i !== id));
-        return prev.filter(i => i !== id);
+        // Remove: remove the last occurrence
+        setSelectedOrder(prevOrder => {
+          const lastIndex = prevOrder.lastIndexOf(id);
+          if (lastIndex !== -1) {
+            const newOrder = [...prevOrder];
+            newOrder.splice(lastIndex, 1);
+            const remainingCount = newOrder.filter(i => i === id).length;
+            // Update selectedIds if no occurrences remain
+            if (remainingCount === 0) {
+              setSelectedIds(prevIds => prevIds.filter(i => i !== id));
+            }
+            return newOrder;
+          }
+          return prevOrder;
+        });
+        // For now, keep in selectedIds - will be removed in setSelectedOrder callback if count reaches 0
+        return prev;
       } else {
+        // Add: always append to selectedOrder (grouping happens in display)
         setSelectedOrder(prevOrder => [...prevOrder, id]);
         return [...prev, id];
       }
@@ -100,37 +143,66 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
     setSelectedOrder(newOrder);
   };
 
-  const handleAddSet = (id, insertAfterIndex = null) => {
+  const handleAddSet = (id, groupIndex = null) => {
     // Add another instance of this exercise to the selection order
-    if (insertAfterIndex !== null) {
-      // Insert immediately after the exercise at the specified index
-      setSelectedOrder(prevOrder => {
-        const newOrder = [...prevOrder];
-        newOrder.splice(insertAfterIndex + 1, 0, id);
-        return newOrder;
-      });
+    if (groupIndex !== null) {
+      // Add to a specific group: find the last index of that group and insert after it
+      if (groupIndex >= 0 && groupIndex < getGroupedExercises.length) {
+        const targetGroup = getGroupedExercises[groupIndex];
+        const lastGroupIndex = targetGroup.orderIndices[targetGroup.orderIndices.length - 1];
+        setSelectedOrder(prevOrder => {
+          const newOrder = [...prevOrder];
+          newOrder.splice(lastGroupIndex + 1, 0, id);
+          return newOrder;
+        });
+        // Add to selectedIds if not already there
+        setSelectedIds(prevIds => prevIds.includes(id) ? prevIds : [...prevIds, id]);
+      }
     } else {
-      // Default behavior: append to end (for backwards compatibility)
+      // Default behavior: append to end
       setSelectedOrder(prevOrder => [...prevOrder, id]);
+      setSelectedIds(prevIds => prevIds.includes(id) ? prevIds : [...prevIds, id]);
     }
   };
 
-  const handleRemoveSet = (id) => {
-    // Remove the last occurrence of this exercise from the selection order
-    setSelectedOrder(prevOrder => {
-      const lastIndex = prevOrder.lastIndexOf(id);
-      if (lastIndex !== -1) {
-        const newOrder = [...prevOrder];
-        newOrder.splice(lastIndex, 1);
-        // If this was the last occurrence, also remove from selectedIds
-        const remainingCount = newOrder.filter(i => i === id).length;
-        if (remainingCount === 0) {
-          setSelectedIds(prevIds => prevIds.filter(i => i !== id));
+  const handleRemoveSet = (id, groupIndex = null) => {
+    // Remove from a specific group if groupIndex is provided, otherwise remove last occurrence
+    if (groupIndex !== null) {
+      // Remove from a specific group
+      if (groupIndex >= 0 && groupIndex < getGroupedExercises.length) {
+        const targetGroup = getGroupedExercises[groupIndex];
+        if (targetGroup.id === id && targetGroup.orderIndices.length > 0) {
+          // Remove the last index from this group
+          const indexToRemove = targetGroup.orderIndices[targetGroup.orderIndices.length - 1];
+          setSelectedOrder(prevOrder => {
+            const newOrder = [...prevOrder];
+            newOrder.splice(indexToRemove, 1);
+            // If this was the last occurrence, also remove from selectedIds
+            const remainingCount = newOrder.filter(i => i === id).length;
+            if (remainingCount === 0) {
+              setSelectedIds(prevIds => prevIds.filter(i => i !== id));
+            }
+            return newOrder;
+          });
         }
-        return newOrder;
       }
-      return prevOrder;
-    });
+    } else {
+      // Remove the last occurrence
+      setSelectedOrder(prevOrder => {
+        const lastIndex = prevOrder.lastIndexOf(id);
+        if (lastIndex !== -1) {
+          const newOrder = [...prevOrder];
+          newOrder.splice(lastIndex, 1);
+          // If this was the last occurrence, also remove from selectedIds
+          const remainingCount = newOrder.filter(i => i === id).length;
+          if (remainingCount === 0) {
+            setSelectedIds(prevIds => prevIds.filter(i => i !== id));
+          }
+          return newOrder;
+        }
+        return prevOrder;
+      });
+    }
   };
 
   const handleAddAction = () => {
@@ -211,6 +283,7 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
             <SelectedExercisesSection
               selectedExercises={selectedExercises}
               selectedOrder={selectedOrder}
+              groupedExercises={getGroupedExercises}
               isCollapsed={isSelectedSectionCollapsed}
               setIsCollapsed={setIsSelectedSectionCollapsed}
               onToggleSelect={handleToggleSelect}
