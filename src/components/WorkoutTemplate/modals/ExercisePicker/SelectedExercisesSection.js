@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { ChevronDown, ChevronUp } from 'lucide-react-native';
 import { COLORS } from '../../../../constants/colors';
@@ -16,6 +16,7 @@ const SelectedExercisesSection = ({
 }) => {
   const [isReordering, setIsReordering] = useState(false);
   const [reorderAssignments, setReorderAssignments] = useState({});
+  const hasAutoExpandedRef = useRef(false);
 
   const assignedCount = Object.keys(reorderAssignments).length;
 
@@ -77,9 +78,62 @@ const SelectedExercisesSection = ({
 
   const allAssigned = assignedCount === selectedExercises.length;
 
+  // Auto-expand when first exercise is added (only once)
+  useEffect(() => {
+    if (selectedExercises.length > 0 && !hasAutoExpandedRef.current) {
+      setIsCollapsed(false);
+      hasAutoExpandedRef.current = true;
+    } else if (selectedExercises.length === 0) {
+      hasAutoExpandedRef.current = false;
+    }
+  }, [selectedExercises.length, setIsCollapsed]);
+
+  // Inline styling options for the selected exercise header
+  const headerStyles = {
+    active: {
+      backgroundColor: COLORS.blue[400],
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: COLORS.slate[200],
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    disabled: {
+      backgroundColor: COLORS.slate[300],
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: COLORS.slate[200],
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      opacity: 0.6,
+    },
+  };
+
+  const headerTextStyles = {
+    active: {
+      fontSize: 12,
+      fontWeight: 'bold',
+      color: COLORS.white,
+      textTransform: 'uppercase',
+    },
+    disabled: {
+      fontSize: 12,
+      fontWeight: 'bold',
+      color: COLORS.slate[600],
+      textTransform: 'uppercase',
+    },
+  };
+
+  const hasExercises = selectedExercises.length > 0;
+  const canToggle = hasExercises;
+
   // Define styling condition variables
-  const header_expanded = !isCollapsed;
-  const header_collapsed = isCollapsed;
+  const header_expanded = !isCollapsed && hasExercises;
+  const header_collapsed = isCollapsed && hasExercises;
   
   const headerText_expanded = !isCollapsed;
   const headerText_collapsed = isCollapsed;
@@ -90,29 +144,17 @@ const SelectedExercisesSection = ({
   const listContainer_expanded = !isCollapsed;
   const listContainer_collapsed = isCollapsed;
 
-  if (selectedExercises.length === 0) {
-    return null;
-  }
-
   return (
     <View style={{
       borderBottomWidth: 1,
       borderBottomColor: COLORS.slate[200],
     }}>
       <TouchableOpacity 
-        activeOpacity={0.7}
-        onPress={() => setIsCollapsed(!isCollapsed)}
+        activeOpacity={canToggle ? 0.7 : 1}
+        onPress={canToggle ? () => setIsCollapsed(!isCollapsed) : undefined}
+        disabled={!canToggle}
         style={[
-          {
-            backgroundColor: COLORS.blue[400],
-            paddingHorizontal: 16,
-            paddingVertical: 8,
-            borderBottomWidth: 1,
-            borderBottomColor: COLORS.slate[200],
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          },
+          hasExercises ? headerStyles.active : headerStyles.disabled,
           header_expanded && {
             
           },
@@ -127,29 +169,20 @@ const SelectedExercisesSection = ({
           alignItems: 'center',
           gap: 6,
         }}>
-          <Text style={[
-            {
-              fontSize: 12,
-              fontWeight: 'bold',
-              color: COLORS.white,
-              textTransform: 'uppercase',
-            },
-            headerText_expanded && {
+          <Text style={hasExercises ? headerTextStyles.active : headerTextStyles.disabled}>
+            Selected ({selectedExercises.length})
+          </Text>
+          {hasExercises && (
+            <View style={{
               
-            },
-            headerText_collapsed && {
-              
-            }
-          ]}>Selected ({selectedExercises.length})</Text>
-          <View style={{
-            
-          }}>
-            {isCollapsed ? (
-              <ChevronDown size={16} color={COLORS.white} />
-            ) : (
-              <ChevronUp size={16} color={COLORS.white} />
-            )}
-          </View>
+            }}>
+              {isCollapsed ? (
+                <ChevronDown size={16} color={COLORS.white} />
+              ) : (
+                <ChevronUp size={16} color={COLORS.white} />
+              )}
+            </View>
+          )}
         </View>
         {selectedExercises.length > 1 && (
           <View style={{
@@ -227,7 +260,7 @@ const SelectedExercisesSection = ({
         )}
       </TouchableOpacity>
 
-      {isReordering && (
+      {hasExercises && isReordering && (
         <View style={{
           backgroundColor: COLORS.amber[100],
           paddingHorizontal: 16,
@@ -246,7 +279,7 @@ const SelectedExercisesSection = ({
         </View>
       )}
       
-      {!isCollapsed && (
+      {hasExercises && !isCollapsed && (
         <View style={[
           {
             
