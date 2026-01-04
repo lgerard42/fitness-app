@@ -159,7 +159,7 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
                   <Text style={[styles.filterOptionText, isSelected && styles.filterOptionTextSelected]}>
                     {item}
                   </Text>
-                  {isSelected && <Check size={12} color={COLORS.blue[600]} />}
+                  {isSelected && <Check size={12} color={COLORS.white} />}
                 </TouchableOpacity>
               );
             })}
@@ -194,7 +194,7 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
         >
           <MaterialCommunityIcons 
             name={isActive ? "arm-flex" : "arm-flex-outline"} 
-            size={16} 
+            size={14} 
             color={isActive ? COLORS.blue[700] : COLORS.blue[400]} 
           />
         </TouchableOpacity>
@@ -308,7 +308,7 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
                           <Text style={[styles.filterOptionText, isSelected && styles.filterOptionTextSelected]}>
                             {item}
                           </Text>
-                          {isSelected && <Check size={12} color={COLORS.blue[600]} />}
+                          {isSelected && <Check size={12} color={COLORS.white} />}
                         </TouchableOpacity>
                       );
                     })}
@@ -333,7 +333,7 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
                           <Text style={[styles.filterOptionText, isSelected && styles.filterOptionTextSelected]}>
                             {item}
                           </Text>
-                          {isSelected && <Check size={12} color={COLORS.blue[600]} />}
+                          {isSelected && <Check size={12} color={COLORS.white} />}
                         </TouchableOpacity>
                       );
                     })}
@@ -358,7 +358,7 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
             return (
               <TouchableOpacity 
                 onPress={() => handleToggleSelect(item.id)}
-                style={styles.exerciseItem}
+                style={[styles.exerciseItem, isSelected && styles.exerciseItemSelected]}
               >
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.exerciseName, isSelected && styles.exerciseNameSelected]}>{item.name}</Text>
@@ -461,7 +461,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     width: 120,
     backgroundColor: COLORS.white,
-    borderRadius: 12,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: COLORS.slate[100],
     shadowColor: "#000",
@@ -519,7 +519,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingLeft: 40,
     paddingRight: 16,
-    paddingVertical: 8,
+    paddingVertical: 12,
     fontSize: 14,
     color: COLORS.slate[900],
   },
@@ -562,12 +562,12 @@ const styles = StyleSheet.create({
     right: 0,
     marginTop: 4,
     backgroundColor: COLORS.white,
-    borderRadius: 12,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: COLORS.slate[100],
+    borderColor: COLORS.slate[200],
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 5,
     zIndex: 100,
@@ -585,7 +585,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 8,
     borderBottomRightRadius: 8,
     paddingHorizontal: 8,
-    minHeight: 36,
+    minHeight: 0,
   },
   secondaryFilterLeftBorder: {
     borderLeftWidth: 1,
@@ -599,7 +599,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 8,
     borderWidth: 1,
-    minHeight: 36,
+    minHeight: 0,
   },
   muscleFilterPrimary: {
     borderTopRightRadius: 0,
@@ -633,12 +633,12 @@ const styles = StyleSheet.create({
     right: 0,
     marginTop: 4,
     backgroundColor: COLORS.white,
-    borderRadius: 12,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: COLORS.slate[100],
+    borderColor: COLORS.slate[200],
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 5,
     zIndex: 100,
@@ -661,20 +661,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 12,
     paddingVertical: 8,
+    backgroundColor: COLORS.slate[600],
   },
   filterOptionSelected: {
-    backgroundColor: COLORS.blue[50],
+    backgroundColor: COLORS.blue[500],
   },
   filterOptionText: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: 'bold',
-    color: COLORS.slate[700],
+    color: COLORS.white,
   },
   filterOptionTextSelected: {
-    color: COLORS.blue[600],
+    color: COLORS.white,
   },
   listContent: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 0,
     paddingBottom: 20,
   },
   emptyContainer: {
@@ -686,12 +687,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   exerciseItem: {
+    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.slate[100],
+  },
+  exerciseItemSelected: {
+    backgroundColor: COLORS.blue[50],
   },
   exerciseName: {
     fontSize: 16,
