@@ -13,20 +13,35 @@ const SelectedExercisesSection = ({
   onReorder
 }) => {
   const [isReordering, setIsReordering] = useState(false);
-  const [reorderSequence, setReorderSequence] = useState([]);
+  // Map of exerciseId -> assigned number (numbers are fixed once assigned)
+  const [reorderAssignments, setReorderAssignments] = useState({});
+
+  // Get the count of assigned exercises
+  const assignedCount = Object.keys(reorderAssignments).length;
+
+  // Find the lowest available number (1 to N)
+  const getLowestAvailableNumber = useCallback(() => {
+    const assignedNumbers = Object.values(reorderAssignments);
+    for (let i = 1; i <= selectedExercises.length; i++) {
+      if (!assignedNumbers.includes(i)) {
+        return i;
+      }
+    }
+    return selectedExercises.length + 1;
+  }, [reorderAssignments, selectedExercises.length]);
 
   const handleReorderPress = useCallback(() => {
     if (isReordering) {
       // Cancel reordering
       setIsReordering(false);
-      setReorderSequence([]);
+      setReorderAssignments({});
     } else {
       // Start reordering - expand if collapsed
       if (isCollapsed) {
         setIsCollapsed(false);
       }
       setIsReordering(true);
-      setReorderSequence([]);
+      setReorderAssignments({});
     }
   }, [isReordering, isCollapsed, setIsCollapsed]);
 
@@ -36,23 +51,32 @@ const SelectedExercisesSection = ({
       return;
     }
 
-    // If already in sequence, ignore
-    if (reorderSequence.includes(itemId)) {
+    // If already assigned, remove assignment (allow undo)
+    if (reorderAssignments[itemId] !== undefined) {
+      const newAssignments = { ...reorderAssignments };
+      delete newAssignments[itemId];
+      setReorderAssignments(newAssignments);
       return;
     }
 
-    const newSequence = [...reorderSequence, itemId];
-    setReorderSequence(newSequence);
+    // Assign the lowest available number
+    const nextNumber = getLowestAvailableNumber();
+    const newAssignments = { ...reorderAssignments, [itemId]: nextNumber };
+    setReorderAssignments(newAssignments);
 
     // If all items have been reordered, apply the new order
-    if (newSequence.length === selectedExercises.length) {
+    if (Object.keys(newAssignments).length === selectedExercises.length) {
       if (onReorder) {
-        onReorder(newSequence);
+        // Convert assignments to ordered array of IDs
+        const orderedIds = Object.entries(newAssignments)
+          .sort((a, b) => a[1] - b[1])
+          .map(entry => entry[0]);
+        onReorder(orderedIds);
       }
       setIsReordering(false);
-      setReorderSequence([]);
+      setReorderAssignments({});
     }
-  }, [isReordering, reorderSequence, selectedExercises.length, onReorder, onToggleSelect]);
+  }, [isReordering, reorderAssignments, selectedExercises.length, onReorder, onToggleSelect, getLowestAvailableNumber]);
 
   if (selectedExercises.length === 0) {
     return null;
@@ -102,7 +126,7 @@ const SelectedExercisesSection = ({
       {isReordering && (
         <View style={styles.reorderInstructions}>
           <Text style={styles.reorderInstructionsText}>
-            Tap exercises in your desired order ({reorderSequence.length}/{selectedExercises.length})
+            Assigning {assignedCount}/{selectedExercises.length} — tap to reassign
           </Text>
         </View>
       )}
@@ -110,8 +134,8 @@ const SelectedExercisesSection = ({
       {!isCollapsed && (
         <View style={listStyle}>
           {selectedExercises.map((item, index) => {
-            const isReordered = reorderSequence.includes(item.id);
-            const reorderPosition = reorderSequence.indexOf(item.id) + 1;
+            const isReordered = reorderAssignments[item.id] !== undefined;
+            const reorderPosition = reorderAssignments[item.id] || 0;
             const originalOrder = selectedOrder.indexOf(item.id) + 1;
             const isLastSelected = index === selectedExercises.length - 1;
             
