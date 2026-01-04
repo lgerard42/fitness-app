@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import { ChevronDown, ChevronUp } from 'lucide-react-native';
+import { ChevronDown, ChevronUp, ChevronLeft } from 'lucide-react-native';
 import { COLORS } from '../../../../constants/colors';
 import ExerciseListItem from './ExerciseListItem';
 
@@ -8,12 +8,30 @@ const SelectedExercisesSection = ({
   selectedExercises,
   selectedOrder,
   groupedExercises = [],
+  exerciseGroups = [],
   isCollapsed,
   setIsCollapsed,
   onToggleSelect,
   onReorder,
   onAddSet = null,
   onRemoveSet = null,
+  isGroupMode = false,
+  groupSelectionMode = null,
+  selectedGroupType = null,
+  groupSelectionIndices = [],
+  setGroupSelectionIndices = null,
+  setSelectedGroupType = null,
+  setIsGroupMode = null,
+  setGroupSelectionMode = null,
+  handleStartGroupingMode = null,
+  handleToggleGroupType = null,
+  handleEditGroup = null,
+  handleSaveGroup = null,
+  handleCancelGroup = null,
+  getExerciseGroup = null,
+  isExerciseInGroup = null,
+  editingGroupId = null,
+  filtered = [],
 }) => {
   const [isReordering, setIsReordering] = useState(false);
   const [reorderAssignments, setReorderAssignments] = useState({});
@@ -44,7 +62,41 @@ const SelectedExercisesSection = ({
     }
   }, [isReordering, isCollapsed, setIsCollapsed]);
 
+  const handleGroupItemToggle = useCallback((exerciseIndex) => {
+    if (!setGroupSelectionIndices) return;
+    
+    setGroupSelectionIndices(prev => {
+      if (prev.includes(exerciseIndex)) {
+        // Remove from selection
+        return prev.filter(idx => idx !== exerciseIndex);
+      } else {
+        // Add to selection (maintain order by index)
+        const newSelection = [...prev, exerciseIndex].sort((a, b) => a - b);
+        return newSelection;
+      }
+    });
+  }, [setGroupSelectionIndices]);
+
   const handleReorderItemPress = useCallback((uniqueKey) => {
+    if (isGroupMode && setGroupSelectionIndices && isExerciseInGroup && handleEditGroup) {
+      // In group mode, extract index from uniqueKey
+      const index = parseInt(uniqueKey.split('-').pop());
+      if (isNaN(index)) return;
+      
+      // Check if this exercise is already in a group
+      const exerciseGroup = getExerciseGroup ? getExerciseGroup(index) : null;
+      
+      if (exerciseGroup && exerciseGroup.id !== editingGroupId) {
+        // Clicking on a different group - enter edit mode for that group
+        handleEditGroup(exerciseGroup.id);
+        return;
+      }
+      
+      // Otherwise, toggle it in/out of the current group selection
+      handleGroupItemToggle(index);
+      return;
+    }
+
     if (!isReordering) {
       const originalId = uniqueKey.split('-').slice(0, -1).join('-');
       onToggleSelect(originalId);
@@ -61,7 +113,7 @@ const SelectedExercisesSection = ({
     const nextNumber = getLowestAvailableNumber();
     const newAssignments = { ...reorderAssignments, [uniqueKey]: nextNumber };
     setReorderAssignments(newAssignments);
-  }, [isReordering, reorderAssignments, onToggleSelect, getLowestAvailableNumber]);
+  }, [isReordering, reorderAssignments, onToggleSelect, getLowestAvailableNumber, isGroupMode, setGroupSelectionIndices, handleGroupItemToggle, isExerciseInGroup, handleEditGroup, getExerciseGroup, editingGroupId]);
 
   const handleSaveReorder = useCallback(() => {
     if (onReorder && Object.keys(reorderAssignments).length === selectedExercises.length) {
@@ -90,7 +142,7 @@ const SelectedExercisesSection = ({
   }, [selectedExercises.length, setIsCollapsed]);
 
   const hasExercises = selectedExercises.length > 0;
-  const canToggle = hasExercises;
+  const canToggle = hasExercises && !isReordering && !isGroupMode;
 
   // Define styling condition variables
   const header_expanded = !isCollapsed && hasExercises;
@@ -120,6 +172,7 @@ const SelectedExercisesSection = ({
             backgroundColor: COLORS.blue[400],
             paddingHorizontal: 16,
             paddingVertical: 8,
+            minHeight: 40,
             borderBottomWidth: 1,
             borderBottomColor: COLORS.slate[200],
             flexDirection: 'row',
@@ -130,6 +183,7 @@ const SelectedExercisesSection = ({
             backgroundColor: COLORS.slate[300],
             paddingHorizontal: 16,
             paddingVertical: 8,
+            minHeight: 40,
             borderBottomWidth: 0,
             borderBottomColor: COLORS.slate[200],
             flexDirection: 'row',
@@ -176,13 +230,53 @@ const SelectedExercisesSection = ({
             </View>
           )}
         </View>
-        {selectedExercises.length > 1 && (
+        {selectedExercises.length >= 2 && (
           <View style={{
             flexDirection: 'row',
             alignItems: 'center',
             gap: 8,
           }}>
-            {isReordering ? (
+            {isGroupMode ? (
+              // Grouping mode: Show Cancel and Save
+              <>
+                <TouchableOpacity 
+                  onPress={handleCancelGroup}
+                  style={{
+                    paddingHorizontal: 10,
+                    paddingVertical: 4,
+                    borderRadius: 4,
+                    backgroundColor: COLORS.slate[100],
+                  }}
+                >
+                  <Text style={{
+                    fontSize: 11,
+                    fontWeight: '600',
+                    color: COLORS.slate[400],
+                    textTransform: 'uppercase',
+                  }}>Cancel</Text>
+                </TouchableOpacity>
+                {handleSaveGroup && (
+                  <TouchableOpacity
+                    onPress={handleSaveGroup}
+                    disabled={groupSelectionIndices.length < 2}
+                    style={{
+                      paddingHorizontal: 12,
+                      paddingVertical: 4,
+                      borderRadius: 4,
+                      backgroundColor: groupSelectionIndices.length >= 2 ? COLORS.green[500] : COLORS.slate[300],
+                    }}
+                  >
+                    <Text style={{
+                      fontSize: 11,
+                      fontWeight: '600',
+                      color: COLORS.white,
+                      textTransform: 'uppercase',
+                    }}>Save</Text>
+                  </TouchableOpacity>
+                )}
+              </>
+            ) : isReordering ? (
+              // Reordering mode: Show Cancel and Save
               <>
                 <TouchableOpacity 
                   onPress={handleReorderPress}
@@ -230,22 +324,50 @@ const SelectedExercisesSection = ({
                 </TouchableOpacity>
               </>
             ) : (
-              <TouchableOpacity 
-                onPress={handleReorderPress}
-                style={{
-                  paddingHorizontal: 10,
-                  paddingVertical: 4,
-                  borderRadius: 4,
-                  backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                }}
-              >
-                <Text style={{
-                  fontSize: 11,
-                  fontWeight: '600',
-                  color: COLORS.white,
-                  textTransform: 'uppercase',
-                }}>Reorder</Text>
-              </TouchableOpacity>
+              // Normal mode: Show Reorder and Group buttons
+              <>
+                <TouchableOpacity 
+                  onPress={handleReorderPress}
+                  style={{
+                    paddingHorizontal: 10,
+                    paddingVertical: 4,
+                    borderRadius: 4,
+                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                  }}
+                >
+                  <Text style={{
+                    fontSize: 11,
+                    fontWeight: '600',
+                    color: COLORS.white,
+                    textTransform: 'uppercase',
+                  }}>Reorder</Text>
+                </TouchableOpacity>
+                {handleStartGroupingMode && (
+                  <TouchableOpacity 
+                    onPress={() => {
+                      if (isCollapsed) {
+                        setIsCollapsed(false);
+                      }
+                      if (handleStartGroupingMode) {
+                        handleStartGroupingMode();
+                      }
+                    }}
+                    style={{
+                      paddingHorizontal: 10,
+                      paddingVertical: 4,
+                      borderRadius: 4,
+                      backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                    }}
+                  >
+                    <Text style={{
+                      fontSize: 11,
+                      fontWeight: '600',
+                      color: COLORS.white,
+                      textTransform: 'uppercase',
+                    }}>Group</Text>
+                  </TouchableOpacity>
+                )}
+              </>
             )}
           </View>
         )}
@@ -269,7 +391,77 @@ const SelectedExercisesSection = ({
           </Text>
         </View>
       )}
-      
+
+      {hasExercises && isGroupMode && (
+        <View style={{
+          backgroundColor: COLORS.blue[100],
+          paddingHorizontal: 16,
+          paddingVertical: 8,
+          borderBottomWidth: 1,
+          borderBottomColor: COLORS.blue[200],
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}>
+          <Text style={{
+            fontSize: 12,
+            color: COLORS.blue[800],
+            fontWeight: '500',
+          }}>
+            {groupSelectionMode === 'create' ? `Creating ${selectedGroupType}` : `Editing ${selectedGroupType} group`} — ({groupSelectionIndices.length} selected)
+          </Text>
+          {handleToggleGroupType && selectedGroupType && (
+            <View style={{
+              flexDirection: 'row',
+              backgroundColor: 'rgba(255, 255, 255, 0.2)',
+              borderRadius: 4,
+              padding: 2,
+            }}>
+              <TouchableOpacity 
+                onPress={() => {
+                  if (selectedGroupType !== 'Superset' && handleToggleGroupType) {
+                    handleToggleGroupType();
+                  }
+                }}
+                style={{
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                  borderRadius: 3,
+                  backgroundColor: selectedGroupType === 'Superset' ? COLORS.white : 'transparent',
+                }}
+              >
+                <Text style={{
+                  fontSize: 11,
+                  fontWeight: '600',
+                  color: selectedGroupType === 'Superset' ? COLORS.slate[700] : COLORS.white,
+                  textTransform: 'uppercase',
+                }}>Superset</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={() => {
+                  if (selectedGroupType !== 'HIIT' && handleToggleGroupType) {
+                    handleToggleGroupType();
+                  }
+                }}
+                style={{
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                  borderRadius: 3,
+                  backgroundColor: selectedGroupType === 'HIIT' ? COLORS.white : 'transparent',
+                }}
+              >
+                <Text style={{
+                  fontSize: 11,
+                  fontWeight: '600',
+                  color: selectedGroupType === 'HIIT' ? COLORS.slate[700] : COLORS.white,
+                  textTransform: 'uppercase',
+                }}>HIIT</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      )}
+
       {hasExercises && !isCollapsed && (
         <View style={[
           {
@@ -282,35 +474,97 @@ const SelectedExercisesSection = ({
             
           }
         ]}>
-          {selectedExercises.map((item, index) => {
-            const uniqueKey = `${item.id}-${index}`;
-            const isReordered = reorderAssignments[uniqueKey] !== undefined;
-            const reorderPosition = reorderAssignments[uniqueKey] || 0;
-            const originalOrder = index + 1;
-            const isLastSelected = index === selectedExercises.length - 1;
-            const group = groupedExercises[index];
-            const selectedCount = group ? group.count : 0;
-            const originalId = item.id;
-            
-            return (
-              <ExerciseListItem
-                key={uniqueKey}
-                item={{ ...item, id: uniqueKey }}
-                isSelected={true}
-                isLastSelected={isLastSelected}
-                selectionOrder={isReordering ? reorderPosition : originalOrder}
-                onToggle={handleReorderItemPress}
-                hideNumber={isReordering && !isReordered}
-                isReordering={isReordering}
-                isReordered={isReordered}
-                showAddMore={!isReordering}
-                onAddMore={onAddSet ? () => onAddSet(originalId, index) : null}
-                onRemoveSet={onRemoveSet ? () => onRemoveSet(originalId, index) : null}
-                selectedCount={selectedCount}
-                renderingSection="selectedSection"
-              />
-            );
-          })}
+          {isGroupMode && filtered ? (
+            // In group mode, show individual items from selectedOrder
+            selectedOrder.map((exerciseId, orderIndex) => {
+              const exercise = filtered.find(ex => ex.id === exerciseId);
+              if (!exercise) return null;
+              
+              const uniqueKey = `${exerciseId}-${orderIndex}`;
+              const isSelectedInGroup = groupSelectionIndices.includes(orderIndex);
+              const groupSelectionIndex = isSelectedInGroup 
+                ? groupSelectionIndices.indexOf(orderIndex) + 1 
+                : null;
+              const existingGroup = getExerciseGroup ? getExerciseGroup(orderIndex) : null;
+              
+              // If exercise is selected for grouping, show a temporary group badge
+              // Otherwise, show existing group if it exists
+              let exerciseGroup = existingGroup;
+              if (isSelectedInGroup && selectedGroupType && !existingGroup) {
+                // Create temporary group object for display during group creation/editing
+                if (editingGroupId) {
+                  // Editing existing group - use its number
+                  const editingGroup = exerciseGroups.find(g => g.id === editingGroupId);
+                  exerciseGroup = editingGroup ? {
+                    type: selectedGroupType,
+                    number: editingGroup.number
+                  } : null;
+                } else {
+                  // Creating new group - calculate next number
+                  const groupsOfType = exerciseGroups.filter(g => g.type === selectedGroupType);
+                  const nextNumber = groupsOfType.length === 0 
+                    ? 1 
+                    : Math.max(...groupsOfType.map(g => g.number)) + 1;
+                  exerciseGroup = {
+                    type: selectedGroupType,
+                    number: nextNumber
+                  };
+                }
+              }
+              
+              return (
+                <ExerciseListItem
+                  key={uniqueKey}
+                  item={{ ...exercise, id: uniqueKey }}
+                  isSelected={true}
+                  isLastSelected={orderIndex === selectedOrder.length - 1}
+                  selectionOrder={groupSelectionIndex || (orderIndex + 1)}
+                  onToggle={handleReorderItemPress}
+                  hideNumber={false}
+                  isReordering={false}
+                  isReordered={isSelectedInGroup}
+                  showAddMore={false}
+                  selectedCount={1}
+                  renderingSection="selectedSection"
+                  isGroupMode={true}
+                  isSelectedInGroup={isSelectedInGroup}
+                  exerciseGroup={exerciseGroup}
+                />
+              );
+            })
+          ) : (
+            selectedExercises.map((item, index) => {
+              const uniqueKey = `${item.id}-${index}`;
+              const isReordered = reorderAssignments[uniqueKey] !== undefined;
+              const reorderPosition = reorderAssignments[uniqueKey] || 0;
+              const originalOrder = index + 1;
+              const isLastSelected = index === selectedExercises.length - 1;
+              const group = groupedExercises[index];
+              const selectedCount = group ? group.count : 0;
+              const originalId = item.id;
+              const exerciseGroup = getExerciseGroup ? getExerciseGroup(group.startIndex) : null;
+              
+              return (
+                <ExerciseListItem
+                  key={uniqueKey}
+                  item={{ ...item, id: uniqueKey }}
+                  isSelected={true}
+                  isLastSelected={isLastSelected}
+                  selectionOrder={isReordering ? reorderPosition : originalOrder}
+                  onToggle={handleReorderItemPress}
+                  hideNumber={isReordering && !isReordered}
+                  isReordering={isReordering}
+                  isReordered={isReordered}
+                  showAddMore={!isReordering}
+                  onAddMore={onAddSet ? () => onAddSet(originalId, index) : null}
+                  onRemoveSet={onRemoveSet ? () => onRemoveSet(originalId, index) : null}
+                  selectedCount={selectedCount}
+                  renderingSection="selectedSection"
+                  exerciseGroup={exerciseGroup}
+                />
+              );
+            })
+          )}
         </View>
       )}
     </View>

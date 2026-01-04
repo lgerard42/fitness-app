@@ -18,8 +18,17 @@ const ExerciseListItem = ({
   selectedInListStyle = null,
   selectedInListNameStyle = null,
   renderingSection = null, // 'selectedSection' | 'unselectedList' | null
+  exerciseGroup = null, // Group object if exercise belongs to a group
+  isGroupMode = false, // Whether in group creation/edit mode
+  isSelectedInGroup = false, // Whether this exercise is selected in group mode
 }) => {
   const handlePress = () => {
+    // In group mode, container click toggles selection
+    if (isGroupMode && onToggle) {
+      onToggle(item.id);
+      return;
+    }
+    
     // In selectedSection, container click does nothing - user must use +/- buttons
     if (renderingSection === 'selectedSection') {
       return;
@@ -73,9 +82,18 @@ const ExerciseListItem = ({
 
   const checkbox_reorderingUnmoved = isReordering && !isReordered;
   const checkbox_reorderingMoved = isReordering && isReordered;
+  
+  const container_groupModeSelected = isGroupMode && isSelectedInGroup;
+  const container_groupModeUnselected = isGroupMode && !isSelectedInGroup;
 
   // Determine if we should show the count badge next to name (selected, non-reorder, only in unselectedList)
-  const showCountBadge = isSelected && selectedCount > 0 ;
+  const showCountBadge = isSelected && selectedCount > 0;
+  
+  // Determine if we should show the group badge (show in group mode so users can see which items are in groups)
+  const showGroupBadge = exerciseGroup && renderingSection === 'selectedSection';
+  const groupBadgeText = showGroupBadge 
+    ? `${exerciseGroup.type === 'HIIT' ? 'H' : 'S'}${exerciseGroup.number}` 
+    : null;
 
   // Determine if we should show the + button (selected, non-reorder)
   const showAddRemoveButtons = isSelected && !isReordering && showAddMore;
@@ -111,9 +129,10 @@ const ExerciseListItem = ({
         },
         container_selectedInList && {
           backgroundColor: COLORS.blue[50],
-          borderBottomColor: COLORS.slate[100],
+          borderBottomColor: COLORS.blue[100],
         },
         container_selectedInList && renderingSection === 'unselectedList' && {
+          borderBottomColor: COLORS.slate[50],
         },
         container_lastSelected && {
           borderBottomColor: COLORS.slate[100],
@@ -125,6 +144,14 @@ const ExerciseListItem = ({
         container_reorderedItem && {
           backgroundColor: COLORS.blue[50],
           borderBottomColor: COLORS.blue[100],
+        },
+        container_groupModeSelected && {
+          backgroundColor: COLORS.blue[100],
+          borderBottomColor: COLORS.blue[200],
+        },
+        container_groupModeUnselected && {
+          backgroundColor: COLORS.white,
+          borderBottomColor: COLORS.slate[100],
         },
         container_addMoreMode && {
         },
@@ -162,28 +189,48 @@ const ExerciseListItem = ({
           ]}>
             {item.name}
           </Text>
-          {showCountBadge && (
-            <View style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              paddingHorizontal: 4,
-              paddingVertical: 2,
-              borderRadius: 12,
-              backgroundColor: COLORS.blue[50],
-            }}>
-              <Text style={{
-                color: COLORS.slate[600],
-                fontSize: 14,
-                fontWeight: 'normal',
-                marginRight: 1,
-              }}>+</Text>
-              <Text style={{
-                color: COLORS.blue[600],
-                fontSize: 14,
-                fontWeight: 'bold',
-              }}>{selectedCount}</Text>
-            </View>
-          )}
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
+          }}>
+            {showGroupBadge && (
+              <View style={{
+                paddingHorizontal: 6,
+                paddingVertical: 2,
+                borderRadius: 12,
+                backgroundColor: COLORS.indigo[50],
+              }}>
+                <Text style={{
+                  color: COLORS.indigo[600],
+                  fontSize: 14,
+                  fontWeight: 'bold',
+                }}>{groupBadgeText}</Text>
+              </View>
+            )}
+            {showCountBadge && (
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingHorizontal: 4,
+                paddingVertical: 2,
+                borderRadius: 12,
+                backgroundColor: COLORS.blue[50],
+              }}>
+                <Text style={{
+                  color: COLORS.slate[600],
+                  fontSize: 14,
+                  fontWeight: 'normal',
+                  marginRight: 1,
+                }}>+</Text>
+                <Text style={{
+                  color: COLORS.blue[600],
+                  fontSize: 14,
+                  fontWeight: 'bold',
+                }}>{selectedCount}</Text>
+              </View>
+            )}
+          </View>
         </View>
         <View style={{
           flexDirection: 'row',

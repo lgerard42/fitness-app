@@ -372,10 +372,21 @@ const WorkoutTemplate = ({
     }); 
   }, [currentWorkout.sessionNotes]);
 
-  const createExerciseInstance = (ex) => {
+  const createExerciseInstance = (ex, setCount = 1) => {
     // Get pinned notes from the library exercise
     const libraryExercise = exercisesLibrary.find(libEx => libEx.id === ex.id);
     const pinnedNotes = libraryExercise?.pinnedNotes || [];
+    
+    // Create the specified number of sets
+    const sets = Array.from({ length: setCount }, (_, i) => ({
+      id: `s-${Date.now()}-${Math.random()}-${i}`,
+      type: "Working",
+      weight: "",
+      reps: "",
+      duration: "",
+      distance: "",
+      completed: false
+    }));
     
     return {
       instanceId: `inst-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -383,17 +394,18 @@ const WorkoutTemplate = ({
       name: ex.name,
       category: ex.category,
       type: 'exercise',
-      sets: [{ id: `s-${Date.now()}-${Math.random()}`, type: "Working", weight: "", reps: "", duration: "", distance: "", completed: false }],
+      sets: sets,
       notes: [...pinnedNotes], // Include pinned notes from library
       collapsed: false
     };
   };
 
-  const handleAddExercisesFromPicker = (selectedExercises, groupType) => {
+  const handleAddExercisesFromPicker = (selectedExercises, groupType, groupsMetadata = null) => {
     if (replacingExerciseId) {
       // Handle Replacement
       if (selectedExercises.length > 0) {
-        const newEx = createExerciseInstance(selectedExercises[0]);
+        const setCount = selectedExercises[0]._setCount || 1;
+        const newEx = createExerciseInstance(selectedExercises[0], setCount);
         // Preserve sets if possible? For now, let's just replace with new sets.
         // Or maybe try to map old sets to new? The user said "replace", usually implies a swap.
         // Let's keep it simple: swap the exercise, keep the instanceId? No, new instanceId is safer.
@@ -417,7 +429,11 @@ const WorkoutTemplate = ({
       return;
     }
 
-    const newInstances = selectedExercises.map(createExerciseInstance);
+    // Create instances with the specified set count from grouped exercises
+    const newInstances = selectedExercises.map(ex => {
+      const setCount = ex._setCount || 1; // Use _setCount if provided, otherwise default to 1
+      return createExerciseInstance(ex, setCount);
+    });
     
     let itemsToAdd = [];
     if (groupType && newInstances.length > 1) {
