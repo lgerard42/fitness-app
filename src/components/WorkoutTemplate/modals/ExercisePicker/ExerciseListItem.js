@@ -80,14 +80,6 @@ const ExerciseListItem = ({
   const addButton_selected = isSelected && !isReordering;
   const addButton_unselected = !isSelected && !isReordering;
   const removeButton_selected = isSelected && !isReordering;
-  
-  // Section-based button style condition variables
-  const addButton_selectedSection = addButton_selected && renderingSection === 'selectedSection';
-  const addButton_unselectedList = addButton_selected && renderingSection === 'unselectedList';
-  const addButton_unselectedSection = addButton_unselected && renderingSection === 'selectedSection';
-  const addButton_unselectedListUnselected = addButton_unselected && renderingSection === 'unselectedList';
-  const removeButton_selectedSection = removeButton_selected && renderingSection === 'selectedSection';
-  const removeButton_unselectedList = removeButton_selected && renderingSection === 'unselectedList';
 
   return (
     <TouchableOpacity 
@@ -101,7 +93,7 @@ const ExerciseListItem = ({
           justifyContent: 'space-between',
           paddingVertical: 12,
           borderBottomWidth: 1,
-          borderBottomColor: COLORS.slate[100],
+          borderBottomColor: COLORS.slate[50],
         }, 
         container_selectedInSection && {
           backgroundColor: COLORS.blue[50],
@@ -109,10 +101,14 @@ const ExerciseListItem = ({
           paddingVertical: 10,
           paddingRight: 32,
         },
+        container_selectedInSection && renderingSection === 'selectedSection' && {
+        },
         container_selectedInList && {
           backgroundColor: COLORS.blue[50],
           borderBottomColor: COLORS.slate[100],
           paddingVertical: 10,
+        },
+        container_selectedInList && renderingSection === 'unselectedList' && {
         },
         container_lastSelected && {
           borderBottomColor: COLORS.slate[100],
@@ -145,8 +141,12 @@ const ExerciseListItem = ({
             text_selectedInSection && {
               color: COLORS.blue[600],
             },
+            text_selectedInSection && renderingSection === 'selectedSection' && {
+            },
             text_selectedInList && {
               color: COLORS.slate[900],
+            },
+            text_selectedInList && renderingSection === 'unselectedList' && {
             },
             text_reorderingMode && {
               color: COLORS.blue[700],
@@ -187,6 +187,8 @@ const ExerciseListItem = ({
               borderRadius: 4,
             },
             tagContainer_addMoreMode && {
+            },
+            tagContainer_addMoreMode && renderingSection === 'unselectedList' && {
             }
           ]}>
             <Text style={[
@@ -195,6 +197,8 @@ const ExerciseListItem = ({
                 color: COLORS.slate[500],
               },
               tagText_addMoreMode && {
+              },
+              tagText_addMoreMode && renderingSection === 'unselectedList' && {
               }
             ]}>{item.category}</Text>
           </View>
@@ -207,6 +211,8 @@ const ExerciseListItem = ({
                 borderRadius: 4,
               },
               muscleTagContainer_addMoreMode && {
+              },
+              muscleTagContainer_addMoreMode && renderingSection === 'unselectedList' && {
               }
             ]}>
               <Text style={[
@@ -214,8 +220,10 @@ const ExerciseListItem = ({
                   fontSize: 10,
                   color: COLORS.indigo[600],
                 },
-                muscleTagText_addMoreMode && {
-                }
+              muscleTagText_addMoreMode && {
+              },
+              muscleTagText_addMoreMode && renderingSection === 'unselectedList' && {
+              }
               ]}>{m}</Text>
             </View>
           ))}
@@ -240,9 +248,11 @@ const ExerciseListItem = ({
                 alignItems: 'center',
                 justifyContent: 'center',
               },
-              removeButton_selectedSection && {
+              removeButton_selected && {
               },
-              removeButton_unselectedList && {
+              removeButton_selected && renderingSection === 'selectedSection' && {
+              },
+              removeButton_selected && renderingSection === 'unselectedList' && {
               }
             ]}
           >
@@ -253,9 +263,11 @@ const ExerciseListItem = ({
                 fontWeight: 'bold',
                 lineHeight: 16,
               },
-              removeButton_selectedSection && {
+              removeButton_selected && {
               },
-              removeButton_unselectedList && {
+              removeButton_selected && renderingSection === 'selectedSection' && {
+              },
+              removeButton_selected && renderingSection === 'unselectedList' && {
               }
             ]}>-</Text>
           </TouchableOpacity>
@@ -272,12 +284,14 @@ const ExerciseListItem = ({
                 alignItems: 'center',
                 justifyContent: 'center',
               },
-              addButton_selectedSection && {
+              addButton_selected && {
+              },
+              addButton_selected && renderingSection === 'selectedSection' && {
                 backgroundColor: COLORS.blue[600],
                 borderWidth: 1,
                 borderColor: COLORS.blue[600], 
               },
-              addButton_unselectedList && {
+              addButton_selected && renderingSection === 'unselectedList' && {
               }
             ]}
           >
@@ -288,10 +302,12 @@ const ExerciseListItem = ({
                 fontWeight: 'bold',
                 lineHeight: 16,
               },
-              addButton_selectedSection && {
+              addButton_selected && {
+              },
+              addButton_selected && renderingSection === 'selectedSection' && {
                 color: COLORS.white,
               },
-              addButton_unselectedList && {
+              addButton_selected && renderingSection === 'unselectedList' && {
               }
             ]}>+</Text>
           </TouchableOpacity>
@@ -310,9 +326,11 @@ const ExerciseListItem = ({
               alignItems: 'center',
               justifyContent: 'center',
             },
-            addButton_unselectedSection && {
+            addButton_unselected && {
             },
-            addButton_unselectedListUnselected && {
+            addButton_unselected && renderingSection === 'selectedSection' && {
+            },
+            addButton_unselected && renderingSection === 'unselectedList' && {
             }
           ]}
         >
@@ -323,9 +341,11 @@ const ExerciseListItem = ({
               fontWeight: 'bold',
               lineHeight: 16,
             },
-            addButton_unselectedSection && {
+            addButton_unselected && {
             },
-            addButton_unselectedListUnselected && {
+            addButton_unselected && renderingSection === 'selectedSection' && {
+            },
+            addButton_unselected && renderingSection === 'unselectedList' && {
             }
           ]}>+</Text>
         </TouchableOpacity>
