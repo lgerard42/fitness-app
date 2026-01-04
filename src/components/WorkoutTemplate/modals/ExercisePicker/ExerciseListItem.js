@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { COLORS } from '../../../../constants/colors';
+import { defaultSupersetColorScheme, defaultHiitColorScheme } from '../../../../constants/defaultStyles';
 
 const ExerciseListItem = ({ 
   item, 
@@ -206,20 +207,23 @@ const ExerciseListItem = ({
             alignItems: 'center',
             gap: 4,
           }}>
-            {showGroupBadge && (
-              <View style={{
-                paddingHorizontal: 6,
-                paddingVertical: 2,
-                borderRadius: 12,
-                backgroundColor: COLORS.indigo[50],
-              }}>
-                <Text style={{
-                  color: COLORS.indigo[600],
-                  fontSize: 14,
-                  fontWeight: 'bold',
-                }}>{groupBadgeText}</Text>
-              </View>
-            )}
+            {showGroupBadge && (() => {
+              const groupColorScheme = exerciseGroup.type === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme;
+              return (
+                <View style={{
+                  paddingHorizontal: 6,
+                  paddingVertical: 2,
+                  borderRadius: 12,
+                  backgroundColor: groupColorScheme[100],
+                }}>
+                  <Text style={{
+                    color: groupColorScheme[600],
+                    fontSize: 14,
+                    fontWeight: 'bold',
+                  }}>{groupBadgeText}</Text>
+                </View>
+              );
+            })()}
             {showCountBadge && (
               <View style={{
                 flexDirection: 'row',

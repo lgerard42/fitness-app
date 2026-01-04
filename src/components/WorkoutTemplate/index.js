@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, Pressable, ScrollView, StyleSh
 import { Swipeable } from 'react-native-gesture-handler';
 import { ChevronDown, ChevronLeft, ChevronRight, Calendar, Clock, FileText, Plus, Dumbbell, Layers, MoreVertical, CalendarDays, Trash2, RefreshCw, Scale, X, Flame, TrendingDown, Zap, Check, Timer, Pause, Play, Delete } from 'lucide-react-native';
 import { COLORS } from '../../constants/colors';
+import { defaultSupersetColorScheme, defaultHiitColorScheme } from '../../constants/defaultStyles';
 import { formatDuration } from '../../constants/data';
 import SetRow from './SetRow';
 import SavedNoteItem from '../SavedNoteItem';
@@ -1596,8 +1597,11 @@ const WorkoutTemplate = ({
 
   const hasExercises = currentWorkout.exercises.length > 0;
 
-  const renderExerciseCard = (ex, isGroupChild = false, isLastChild = false, isFirstChild = false) => {
+  const renderExerciseCard = (ex, isGroupChild = false, isLastChild = false, parentGroupType = null) => {
     const historyEntries = exerciseStats[ex.exerciseId]?.history || [];
+    const groupColorScheme = isGroupChild && parentGroupType 
+      ? (parentGroupType === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme)
+      : null;
 
     // Helper function to compute indices for historical sets
     const computeHistoricalIndices = (historicalSets) => {
@@ -1743,8 +1747,13 @@ const WorkoutTemplate = ({
           isMoveMode && isNotMoving && styles.exerciseCard__moveMode__notSelected,
           isMoveMode && isMoving && styles.exerciseCard__moveMode__selected,
           isGroupChild && styles.exerciseCard__groupChild,
-          isMoveMode && isGroupChild && isNotMoving && styles.exerciseCard__groupChild__moveMode__notSelected,
-          isMoveMode && isGroupChild && isMoving && styles.exerciseCard__groupChild__moveMode__selected,
+          isMoveMode && isGroupChild && isNotMoving && groupColorScheme && {
+            borderColor: groupColorScheme[200],
+            backgroundColor: groupColorScheme[50],
+          },
+          isMoveMode && isGroupChild && isMoving && groupColorScheme && {
+            backgroundColor: groupColorScheme[100],
+          },
           isLastChild && !isMoveMode && styles.exerciseCard__groupChild__lastChild
         ]}
       >
@@ -1754,8 +1763,12 @@ const WorkoutTemplate = ({
            isMoveMode && !isMoving && styles.exerciseHeader__moveMode__notSelected,
            isMoveMode && isMoving && styles.exerciseHeader__moveMode__selected,
            isGroupChild && styles.exerciseHeader__groupChild,
-           isGroupChild && isMoving && styles.exerciseHeader__groupChild__moving,
-           isGroupChild && !isMoving && styles.exerciseHeader__groupChild__notMoving
+           isGroupChild && isMoving && groupColorScheme && {
+             backgroundColor: groupColorScheme[100],
+           },
+           isGroupChild && !isMoving && groupColorScheme && {
+             backgroundColor: groupColorScheme[50],
+           }
          ]}>
             <View style={styles.exerciseHeaderContent}>
               <View style={styles.exerciseHeaderRow}>
@@ -1806,7 +1819,7 @@ const WorkoutTemplate = ({
                       >
                         <Text style={[
                           styles.addSetHeaderText,
-                          isGroupChild && styles.addSetHeaderText__groupChild
+                          isGroupChild && groupColorScheme && { color: groupColorScheme[600] }
                         ]}>+ Set</Text>
                       </TouchableOpacity>
 
@@ -1857,7 +1870,7 @@ const WorkoutTemplate = ({
                         >
                           <Text style={[
                             styles.addSetHeaderText,
-                            isGroupChild && styles.addSetHeaderText__groupChild
+                            isGroupChild && groupColorScheme && { color: groupColorScheme[600] }
                           ]}>+Set</Text>
                         </TouchableOpacity>
 
@@ -2199,7 +2212,9 @@ const WorkoutTemplate = ({
              style={[
                StyleSheet.absoluteFillObject,
                styles.movingItemOverlay,
-               isGroupChild ? styles.movingItemOverlay__groupChild : styles.movingItemOverlay__regular,
+               isGroupChild && groupColorScheme ? {
+                 borderColor: groupColorScheme[500],
+               } : styles.movingItemOverlay__regular,
                { opacity: fadeAnim }
              ]}
            />
@@ -2213,8 +2228,14 @@ const WorkoutTemplate = ({
           key={ex.instanceId}
           style={[
             styles.groupChildWrapper,
+            groupColorScheme && {
+              borderColor: groupColorScheme[100],
+              backgroundColor: groupColorScheme[100],
+            },
             isLastChild && !isMoveMode && styles.groupChildWrapper__last,
-            isMoveMode && styles.groupChildWrapper__moveMode
+            isMoveMode && groupColorScheme && {
+              backgroundColor: groupColorScheme[50],
+            }
           ]}
         >
            {cardContent}
@@ -2230,6 +2251,7 @@ const WorkoutTemplate = ({
     let groupType = "";
     let dropZoneGroupId = null;
     const flatRows = flattenExercises(currentWorkout.exercises);
+    let groupColorScheme = null;
 
     if (isGroupChild) {
        // We need to find which group we are in.
@@ -2241,6 +2263,7 @@ const WorkoutTemplate = ({
           if (flatRows[i].type === 'group_header') {
              groupType = flatRows[i].data.groupType;
              dropZoneGroupId = flatRows[i].id;
+             groupColorScheme = groupType === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme;
              break;
           }
        }
@@ -2260,20 +2283,31 @@ const WorkoutTemplate = ({
       style={[
         styles.dropZone,
         isLastInGroup && styles.dropZone__lastInGroup,
-        isGroupChild ? styles.dropZone__groupChild : styles.dropZone__regular,
-        isGroupChild && isLastInGroup && styles.dropZone__groupChild__last
+        isGroupChild && groupColorScheme ? {
+          borderColor: groupColorScheme[100],
+          backgroundColor: groupColorScheme[50],
+        } : styles.dropZone__regular,
+        isGroupChild && isLastInGroup && groupColorScheme && {
+          borderColor: groupColorScheme[100],
+          backgroundColor: groupColorScheme[50],
+        }
       ]}
       onPress={() => handleMoveItem(index, isGroupChild)}
     >
       <View style={styles.dropZoneLineContainer}>
         <View style={[
           styles.dropZoneLine,
-          isGroupChild && styles.dropZoneLine__groupChild
+          isGroupChild && groupColorScheme && {
+            backgroundColor: groupColorScheme[300],
+          }
         ]} />
       </View>
       <Text style={[
         styles.dropZoneText,
-        isGroupChild ? styles.dropZoneText__groupChild : styles.dropZoneText__regular
+        isGroupChild && groupColorScheme ? {
+          backgroundColor: groupColorScheme[50],
+          color: groupColorScheme[600],
+        } : styles.dropZoneText__regular
       ]}>
         {isGroupChild && !isAlreadyInGroup ? `Add to ${groupType}` : "Move here"}
       </Text>
@@ -2282,13 +2316,33 @@ const WorkoutTemplate = ({
   };
 
   const renderSpacer = (index, isGroupChild = false, isLastInGroup = false) => {
+    const flatRows = flattenExercises(currentWorkout.exercises);
+    let groupColorScheme = null;
+
+    if (isGroupChild) {
+      // Find the group type
+      for (let i = index - 1; i >= 0; i--) {
+        if (flatRows[i]?.type === 'group_header') {
+          const groupType = flatRows[i].data.groupType;
+          groupColorScheme = groupType === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme;
+          break;
+        }
+      }
+    }
+
     return (
       <View 
         key={`spacer-${index}-${isGroupChild ? 'in' : 'out'}`}
         style={[
           styles.spacer,
-          isGroupChild ? styles.spacer__groupChild : styles.spacer__regular,
-          isGroupChild && isLastInGroup && styles.spacer__groupChild__last
+          isGroupChild && groupColorScheme ? {
+            borderColor: groupColorScheme[100],
+            backgroundColor: groupColorScheme[50],
+          } : styles.spacer__regular,
+          isGroupChild && isLastInGroup && groupColorScheme && {
+            borderColor: groupColorScheme[100],
+            backgroundColor: groupColorScheme[50],
+          }
         ]}
       />
     );
@@ -2426,6 +2480,7 @@ const WorkoutTemplate = ({
       if (row.type === 'group_header') {
         const isMoving = isMoveMode && movingItemId === row.id;
         const isNotMoving = isMoveMode && !isMoving;
+        const groupColorScheme = row.data.groupType === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme;
         
         // If moving, we want to render a collapsed version that looks like a single item
         if (isMoving) {
@@ -2434,12 +2489,16 @@ const WorkoutTemplate = ({
                 <Animated.View 
                   style={[
                     styles.movingGroupContainer,
-                    { opacity: fadeAnim }
+                    {
+                      backgroundColor: groupColorScheme[50],
+                      borderColor: groupColorScheme[400],
+                      opacity: fadeAnim
+                    }
                   ]}
                 >
                   <View style={styles.movingGroupContent}>
-                    <Layers size={16} color={COLORS.indigo[600]} />
-                    <Text style={styles.movingGroupText}>
+                    <Layers size={16} color={groupColorScheme[600]} />
+                    <Text style={[styles.movingGroupText, { color: groupColorScheme[700] }]}>
                       {row.data.groupType} ({row.data.children ? row.data.children.length : 0})
                     </Text>
                   </View>
@@ -2466,15 +2525,19 @@ const WorkoutTemplate = ({
                 }}
                 style={[
                   styles.groupContainer, 
-                  styles.groupContainer__notMoving
+                  styles.groupContainer__notMoving,
+                  {
+                    borderColor: groupColorScheme[100],
+                    backgroundColor: groupColorScheme[100],
+                  }
                 ]}
               >
                 <View style={[
                   styles.groupHeader,
                   isNotMoving && styles.groupHeader__notMoving
                 ]}>
-                  <Layers size={14} color={COLORS.indigo[600]} />
-                  <Text style={styles.groupTitle}>{row.data.groupType}</Text>
+                  <Layers size={14} color={groupColorScheme[600]} />
+                  <Text style={[styles.groupTitle, { color: groupColorScheme[600] }]}>{row.data.groupType}</Text>
                 </View>
               </TouchableOpacity>
             );
@@ -2494,14 +2557,22 @@ const WorkoutTemplate = ({
 
         // Check if it's the last child of the group
         let isLastChild = false;
+        let parentGroupType = null;
         if (isGroupChild) {
            const nextRow = flatRows[index + 1];
            if (!nextRow || nextRow.type === 'group_header' || nextRow.depth === 0) {
              isLastChild = true;
            }
+           // Find parent group to get group type
+           for (let i = index - 1; i >= 0; i--) {
+             if (flatRows[i].type === 'group_header') {
+               parentGroupType = flatRows[i].data.groupType;
+               break;
+             }
+           }
         }
         
-        renderedItems.push(renderExerciseCard(row.data, isGroupChild, isLastChild));
+        renderedItems.push(renderExerciseCard(row.data, isGroupChild, isLastChild, parentGroupType));
       }
     });
 
@@ -3315,35 +3386,46 @@ const WorkoutTemplate = ({
       </Modal>
 
       {/* Superset Selection Mode Overlay */}
-      {supersetSelectionMode && (
-        <Modal visible={true} transparent animationType="fade" onRequestClose={handleCancelSupersetSelection}>
-          <View style={styles.supersetSelectionOverlay}>
-            <View style={styles.supersetSelectionBanner}>
-              <Text style={styles.supersetSelectionTitle}>
-                {supersetSelectionMode.mode === 'create' ? 'Create Superset' : 'Edit Superset'}
-              </Text>
-              <Text style={styles.supersetSelectionSubtitle}>
-                Select exercises to group together ({selectedExerciseIds.size} selected)
-              </Text>
-              <View style={styles.supersetSelectionActions}>
-                <TouchableOpacity onPress={handleCancelSupersetSelection} style={styles.supersetCancelButton}>
-                  <Text style={styles.supersetCancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  onPress={handleConfirmSupersetSelection} 
-                  style={[
-                    styles.supersetConfirmButton,
-                    // Only disable for create mode if less than 2 selected
-                    (supersetSelectionMode.mode === 'create' && selectedExerciseIds.size < 2) && styles.supersetConfirmButtonDisabled
-                  ]}
-                  disabled={supersetSelectionMode.mode === 'create' && selectedExerciseIds.size < 2}
-                >
-                  <Text style={styles.supersetConfirmButtonText}>
-                    {supersetSelectionMode.mode === 'create' ? 'Create' : 'Update'}
-                  </Text>
-                </TouchableOpacity>
+      {supersetSelectionMode && (() => {
+        // Determine group type: if editing, get from the group; if creating, default to Superset
+        let groupType = 'Superset';
+        if (supersetSelectionMode.mode === 'edit' && supersetSelectionMode.supersetId) {
+          const group = currentWorkout.exercises.find(ex => ex.instanceId === supersetSelectionMode.supersetId);
+          if (group && group.groupType) {
+            groupType = group.groupType;
+          }
+        }
+        const bannerColorScheme = groupType === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme;
+        
+        return (
+          <Modal visible={true} transparent animationType="fade" onRequestClose={handleCancelSupersetSelection}>
+            <View style={styles.supersetSelectionOverlay}>
+              <View style={[styles.supersetSelectionBanner, { backgroundColor: bannerColorScheme[600] }]}>
+                <Text style={styles.supersetSelectionTitle}>
+                  {supersetSelectionMode.mode === 'create' ? `Create ${groupType}` : `Edit ${groupType}`}
+                </Text>
+                <Text style={[styles.supersetSelectionSubtitle, { color: bannerColorScheme[100] }]}>
+                  Select exercises to group together ({selectedExerciseIds.size} selected)
+                </Text>
+                <View style={styles.supersetSelectionActions}>
+                  <TouchableOpacity onPress={handleCancelSupersetSelection} style={[styles.supersetCancelButton, { backgroundColor: bannerColorScheme[500] }]}>
+                    <Text style={styles.supersetCancelButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    onPress={handleConfirmSupersetSelection} 
+                    style={[
+                      styles.supersetConfirmButton,
+                      // Only disable for create mode if less than 2 selected
+                      (supersetSelectionMode.mode === 'create' && selectedExerciseIds.size < 2) && styles.supersetConfirmButtonDisabled
+                    ]}
+                    disabled={supersetSelectionMode.mode === 'create' && selectedExerciseIds.size < 2}
+                  >
+                    <Text style={[styles.supersetConfirmButtonText, { color: bannerColorScheme[600] }]}>
+                      {supersetSelectionMode.mode === 'create' ? 'Create' : 'Update'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
             
             <ScrollView style={styles.supersetSelectionList} contentContainerStyle={styles.supersetSelectionListContent}>
               {currentWorkout.exercises.map(exercise => {
@@ -3355,32 +3437,44 @@ const WorkoutTemplate = ({
                   // If NOT in a superset (creating new), allow clicking the group to add to it
                   const canClickGroup = supersetSelectionMode?.mode === 'create';
 
+                  const groupColorScheme = exercise.groupType === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme;
                   return (
                     <View key={exercise.instanceId}>
                       {canClickGroup ? (
                         // Clickable superset group (for adding to existing superset)
                         <TouchableOpacity
-                          style={styles.supersetGroupLabelClickable}
+                          style={[
+                            styles.supersetGroupLabelClickable,
+                            {
+                              backgroundColor: groupColorScheme[100],
+                              borderColor: groupColorScheme[300],
+                            }
+                          ]}
                           onPress={() => handleAddToSpecificSuperset(supersetSelectionMode.exerciseId, exercise.instanceId)}
                         >
                           <View style={styles.supersetGroupLabelContent}>
-                            <Layers size={14} color={COLORS.indigo[600]} />
-                            <Text style={styles.supersetGroupLabelText}>{exercise.groupType}</Text>
-                            <Text style={styles.supersetGroupLabelSubtext}>
+                            <Layers size={14} color={groupColorScheme[600]} />
+                            <Text style={[styles.supersetGroupLabelText, { color: groupColorScheme[600] }]}>{exercise.groupType}</Text>
+                            <Text style={[styles.supersetGroupLabelSubtext, { color: groupColorScheme[500] }]}>
                               ({exercise.children?.length || 0} exercises)
                             </Text>
                           </View>
                           <ChevronLeft 
                             size={16} 
-                            color={COLORS.indigo[600]} 
+                            color={groupColorScheme[600]} 
                             style={{ transform: [{ rotate: '180deg' }] }}
                           />
                         </TouchableOpacity>
                       ) : (
                         // Non-clickable group header (when editing that superset)
-                        <View style={styles.supersetGroupLabel}>
-                          <Layers size={14} color={COLORS.indigo[600]} />
-                          <Text style={styles.supersetGroupLabelText}>{exercise.groupType}</Text>
+                        <View style={[
+                          styles.supersetGroupLabel,
+                          {
+                            backgroundColor: groupColorScheme[50],
+                          }
+                        ]}>
+                          <Layers size={14} color={groupColorScheme[600]} />
+                          <Text style={[styles.supersetGroupLabelText, { color: groupColorScheme[600] }]}>{exercise.groupType}</Text>
                         </View>
                       )}
                       
@@ -3392,15 +3486,24 @@ const WorkoutTemplate = ({
                             key={child.instanceId}
                             style={[
                               styles.supersetExerciseItem,
-                              styles.supersetExerciseItemGrouped,
-                              selectedExerciseIds.has(child.instanceId) && styles.supersetExerciseItemSelected,
+                              {
+                                backgroundColor: groupColorScheme[50],
+                                marginLeft: 16,
+                              },
+                              selectedExerciseIds.has(child.instanceId) && {
+                                backgroundColor: groupColorScheme[100],
+                                borderColor: groupColorScheme[300],
+                              },
                               index === array.length - 1 && { marginBottom: 8 } // Add extra margin to last item
                             ]}
                             onPress={() => handleToggleSupersetSelection(child.instanceId)}
                           >
                             <View style={[
                               styles.supersetCheckbox,
-                              selectedExerciseIds.has(child.instanceId) && styles.supersetCheckboxSelected
+                              selectedExerciseIds.has(child.instanceId) && {
+                                backgroundColor: groupColorScheme[600],
+                                borderColor: groupColorScheme[600],
+                              }
                             ]}>
                               {selectedExerciseIds.has(child.instanceId) && (
                                 <Text style={styles.supersetCheckmark}>✓</Text>
@@ -3416,7 +3519,10 @@ const WorkoutTemplate = ({
                             key={child.instanceId}
                             style={[
                               styles.supersetExerciseItem,
-                              styles.supersetExerciseItemGrouped,
+                              {
+                                backgroundColor: groupColorScheme[50],
+                                marginLeft: 16,
+                              },
                               styles.supersetExerciseItemDisabled,
                               index === array.length - 1 && { marginBottom: 12 } // Add extra margin to last item
                             ]}
@@ -3436,13 +3542,19 @@ const WorkoutTemplate = ({
                       key={exercise.instanceId}
                       style={[
                         styles.supersetExerciseItem,
-                        selectedExerciseIds.has(exercise.instanceId) && styles.supersetExerciseItemSelected
+                        selectedExerciseIds.has(exercise.instanceId) && {
+                          backgroundColor: bannerColorScheme[100],
+                          borderColor: bannerColorScheme[300],
+                        }
                       ]}
                       onPress={() => handleToggleSupersetSelection(exercise.instanceId)}
                     >
                       <View style={[
                         styles.supersetCheckbox,
-                        selectedExerciseIds.has(exercise.instanceId) && styles.supersetCheckboxSelected
+                        selectedExerciseIds.has(exercise.instanceId) && {
+                          backgroundColor: bannerColorScheme[600],
+                          borderColor: bannerColorScheme[600],
+                        }
                       ]}>
                         {selectedExerciseIds.has(exercise.instanceId) && (
                           <Text style={styles.supersetCheckmark}>✓</Text>
@@ -3456,7 +3568,8 @@ const WorkoutTemplate = ({
             </ScrollView>
           </View>
         </Modal>
-      )}
+        );
+      })()}
 
       {/* Custom Number Keyboard */}
       {customKeyboardVisible && (

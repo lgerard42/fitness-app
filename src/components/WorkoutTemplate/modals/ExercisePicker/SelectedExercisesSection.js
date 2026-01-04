@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { ChevronDown, ChevronUp, ChevronLeft } from 'lucide-react-native';
 import { COLORS } from '../../../../constants/colors';
+import { defaultSupersetColorScheme, defaultHiitColorScheme } from '../../../../constants/defaultStyles';
 import ExerciseListItem from './ExerciseListItem';
 
 const SelectedExercisesSection = ({
@@ -574,13 +575,13 @@ const SelectedExercisesSection = ({
                   paddingHorizontal: 10,
                   paddingVertical: 4,
                   borderRadius: 3,
-                  backgroundColor: selectedGroupType === 'Superset' ? COLORS.white : 'transparent',
+                  backgroundColor: selectedGroupType === 'Superset' ? defaultSupersetColorScheme[500] : 'transparent',
                 }}
               >
                 <Text style={{
                   fontSize: 11,
                   fontWeight: '600',
-                  color: selectedGroupType === 'Superset' ? COLORS.slate[700] : COLORS.white,
+                  color: selectedGroupType === 'Superset' ? COLORS.white : COLORS.white,
                   textTransform: 'uppercase',
                 }}>Superset</Text>
               </TouchableOpacity>
@@ -594,13 +595,13 @@ const SelectedExercisesSection = ({
                   paddingHorizontal: 10,
                   paddingVertical: 4,
                   borderRadius: 3,
-                  backgroundColor: selectedGroupType === 'HIIT' ? COLORS.white : 'transparent',
+                  backgroundColor: selectedGroupType === 'HIIT' ? defaultHiitColorScheme[500] : 'transparent',
                 }}
               >
                 <Text style={{
                   fontSize: 11,
                   fontWeight: '600',
-                  color: selectedGroupType === 'HIIT' ? COLORS.slate[700] : COLORS.white,
+                  color: selectedGroupType === 'HIIT' ? COLORS.white : COLORS.white,
                   textTransform: 'uppercase',
                 }}>HIIT</Text>
               </TouchableOpacity>
@@ -706,62 +707,20 @@ const SelectedExercisesSection = ({
                     }
                   });
                   
+                  const tempGroupColorScheme = tempGroupInfo.type === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme;
                   renderItems.push(
                     <View 
                       key={`temp-group-${tempGroupInfo.id}-${macroPosition}`}
                       style={{
                         marginBottom: 8,
                         borderWidth: 2,
-                        borderColor: COLORS.blue[300],
+                        borderColor: tempGroupColorScheme[300],
                         borderStyle: 'dashed',
                         borderRadius: 8,
-                        backgroundColor: COLORS.blue[50],
+                        backgroundColor: tempGroupColorScheme[50],
                         padding: 8,
                       }}
                     >
-                      <View style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        marginBottom: 4,
-                        paddingBottom: 4,
-                        borderBottomWidth: 1,
-                        borderBottomColor: COLORS.blue[200],
-                        paddingVertical: 12,
-                        paddingLeft: 0,
-                        paddingRight: 16,
-                      }}>
-                        <View style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          flex: 1,
-                        }}>
-                          <Text style={{
-                            fontSize: 14,
-                            fontWeight: '600',
-                            color: COLORS.blue[700],
-                            marginRight: 8,
-                          }}>{tempGroupInfo.type}</Text>
-                          <View style={{
-                            paddingHorizontal: 8,
-                            paddingVertical: 2,
-                            borderRadius: 12,
-                            backgroundColor: COLORS.blue[100],
-                          }}>
-                            <Text style={{
-                              color: COLORS.blue[600],
-                              fontSize: 12,
-                              fontWeight: 'bold',
-                            }}>{tempGroupInfo.type === 'HIIT' ? 'H' : 'S'}{tempGroupInfo.number}</Text>
-                          </View>
-                          <Text style={{
-                            fontSize: 12,
-                            fontWeight: '500',
-                            color: COLORS.blue[600],
-                            marginLeft: 8,
-                          }}>({macroPosition})</Text>
-                        </View>
-                      </View>
                       {groupExercises.map(({ item: exerciseItem, index: exerciseIndex, isSelectedInGroup }) => {
                         const uniqueKey = `${exerciseItem.id}-${exerciseIndex}`;
                         const groupedExercise = indexToGroupedExerciseMap.get(exerciseIndex);
@@ -807,61 +766,20 @@ const SelectedExercisesSection = ({
                     }
                   });
                   
+                  const isBeingEdited = editingGroupId === existingGroup.id;
                   renderItems.push(
                     <View 
                       key={`group-${existingGroup.id}-${macroPosition}`}
                       style={{
                         marginBottom: 8,
-                        borderWidth: 1,
+                        borderWidth: 2,
                         borderColor: COLORS.slate[200],
+                        borderStyle: isBeingEdited ? 'dashed' : 'solid',
                         borderRadius: 8,
                         backgroundColor: COLORS.slate[50],
                         padding: 8,
                       }}
                     >
-                      <View style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        marginBottom: 4,
-                        paddingBottom: 4,
-                        borderBottomWidth: 1,
-                        borderBottomColor: COLORS.slate[200],
-                        paddingVertical: 12,
-                        paddingLeft: 0,
-                        paddingRight: 16,
-                      }}>
-                        <View style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          flex: 1,
-                        }}>
-                          <Text style={{
-                            fontSize: 14,
-                            fontWeight: '600',
-                            color: COLORS.slate[700],
-                            marginRight: 8,
-                          }}>{existingGroup.type}</Text>
-                          <View style={{
-                            paddingHorizontal: 8,
-                            paddingVertical: 2,
-                            borderRadius: 12,
-                            backgroundColor: COLORS.indigo[50],
-                          }}>
-                            <Text style={{
-                              color: COLORS.indigo[600],
-                              fontSize: 12,
-                              fontWeight: 'bold',
-                            }}>{existingGroup.type === 'HIIT' ? 'H' : 'S'}{existingGroup.number}</Text>
-                          </View>
-                          <Text style={{
-                            fontSize: 12,
-                            fontWeight: '500',
-                            color: COLORS.slate[600],
-                            marginLeft: 8,
-                          }}>({macroPosition})</Text>
-                        </View>
-                      </View>
                       {groupExercises.map(({ item: exerciseItem, index: exerciseIndex }) => {
                         const uniqueKey = `${exerciseItem.id}-${exerciseIndex}`;
                         const isSelectedInGroup = editingGroupId === existingGroup.id && groupSelectionIndices.includes(exerciseIndex);
@@ -961,6 +879,7 @@ const SelectedExercisesSection = ({
                   const groupKey = `group-${exerciseGroup.id}`;
                   const groupIsReordered = groupReorderAssignments[groupKey] !== undefined;
                   const groupReorderPosition = groupReorderAssignments[groupKey] || 0;
+                  const groupColorScheme = exerciseGroup.type === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme;
                   
                   // Render group wrapper
                   renderItems.push(
@@ -969,9 +888,9 @@ const SelectedExercisesSection = ({
                       style={{
                         marginBottom: 8,
                         borderWidth: 1,
-                        borderColor: COLORS.slate[200],
+                        borderColor: groupColorScheme[200],
                         borderRadius: 8,
-                        backgroundColor: COLORS.slate[50],
+                        backgroundColor: groupColorScheme[50],
                         padding: 8,
                       }}
                     >
@@ -983,7 +902,7 @@ const SelectedExercisesSection = ({
                         marginBottom: 4,
                         paddingBottom: 4,
                         borderBottomWidth: 1,
-                        borderBottomColor: COLORS.slate[200],
+                        borderBottomColor: groupColorScheme[200],
                         paddingVertical: 12,
                         paddingLeft: 0,
                         paddingRight: 16,
@@ -996,17 +915,17 @@ const SelectedExercisesSection = ({
                           <Text style={{
                             fontSize: 14,
                             fontWeight: '600',
-                            color: COLORS.slate[700],
+                            color: groupColorScheme[700],
                             marginRight: 8,
                           }}>{exerciseGroup.type}</Text>
                           <View style={{
                             paddingHorizontal: 8,
                             paddingVertical: 2,
                             borderRadius: 12,
-                            backgroundColor: COLORS.indigo[50],
+                            backgroundColor: groupColorScheme[100],
                           }}>
                             <Text style={{
-                              color: COLORS.indigo[600],
+                              color: groupColorScheme[600],
                               fontSize: 12,
                               fontWeight: 'bold',
                             }}>{exerciseGroup.type === 'HIIT' ? 'H' : 'S'}{exerciseGroup.number}</Text>
