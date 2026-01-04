@@ -95,7 +95,7 @@ const ExerciseListItem = ({
       style={[
         {
           paddingLeft: 16,
-          paddingRight: 10,
+          paddingRight: 16,
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -126,7 +126,6 @@ const ExerciseListItem = ({
           borderBottomColor: COLORS.blue[100],
         },
         container_addMoreMode && {
-          
         },
         selectedInListStyle,
       ]}
@@ -153,7 +152,6 @@ const ExerciseListItem = ({
               color: COLORS.blue[700],
             },
             text_addMoreMode && {
-              
             },
             selectedInListNameStyle,
           ]}>
@@ -189,7 +187,6 @@ const ExerciseListItem = ({
               borderRadius: 4,
             },
             tagContainer_addMoreMode && {
-              
             }
           ]}>
             <Text style={[
@@ -198,7 +195,6 @@ const ExerciseListItem = ({
                 color: COLORS.slate[500],
               },
               tagText_addMoreMode && {
-                
               }
             ]}>{item.category}</Text>
           </View>
@@ -211,7 +207,6 @@ const ExerciseListItem = ({
                 borderRadius: 4,
               },
               muscleTagContainer_addMoreMode && {
-                
               }
             ]}>
               <Text style={[
@@ -220,7 +215,6 @@ const ExerciseListItem = ({
                   color: COLORS.indigo[600],
                 },
                 muscleTagText_addMoreMode && {
-                  
                 }
               ]}>{m}</Text>
             </View>
@@ -247,19 +241,23 @@ const ExerciseListItem = ({
                 justifyContent: 'center',
               },
               removeButton_selectedSection && {
-                
               },
               removeButton_unselectedList && {
-                
               }
             ]}
           >
-            <Text style={{
-              color: COLORS.slate[700],
-              fontSize: 14,
-              fontWeight: 'bold',
-              lineHeight: 16,
-            }}>-</Text>
+            <Text style={[
+              {
+                color: COLORS.slate[700],
+                fontSize: 14,
+                fontWeight: 'bold',
+                lineHeight: 16,
+              },
+              removeButton_selectedSection && {
+              },
+              removeButton_unselectedList && {
+              }
+            ]}>-</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={handleAdd}
@@ -277,19 +275,25 @@ const ExerciseListItem = ({
               addButton_selectedSection && {
                 backgroundColor: COLORS.blue[600],
                 borderWidth: 1,
-                borderColor: COLORS.blue[400], 
+                borderColor: COLORS.blue[600], 
               },
               addButton_unselectedList && {
-                
               }
             ]}
           >
-            <Text style={{
-              color: COLORS.blue[500],
-              fontSize: 14,
-              fontWeight: 'bold',
-              lineHeight: 16,
-            }}>+</Text>
+            <Text style={[
+              {
+                color: COLORS.blue[500],
+                fontSize: 14,
+                fontWeight: 'bold',
+                lineHeight: 16,
+              },
+              addButton_selectedSection && {
+                color: COLORS.white,
+              },
+              addButton_unselectedList && {
+              }
+            ]}>+</Text>
           </TouchableOpacity>
         </View>
       ) : showAddButtonOnly ? (
@@ -307,19 +311,23 @@ const ExerciseListItem = ({
               justifyContent: 'center',
             },
             addButton_unselectedSection && {
-              
             },
             addButton_unselectedListUnselected && {
-              
             }
           ]}
         >
-          <Text style={{
-            color: COLORS.slate[300],
-            fontSize: 14,
-            fontWeight: 'bold',
-            lineHeight: 16,
-          }}>+</Text>
+          <Text style={[
+            {
+              color: COLORS.slate[300],
+              fontSize: 14,
+              fontWeight: 'bold',
+              lineHeight: 16,
+            },
+            addButton_unselectedSection && {
+            },
+            addButton_unselectedListUnselected && {
+            }
+          ]}>+</Text>
         </TouchableOpacity>
       ) : (
         <View style={[
