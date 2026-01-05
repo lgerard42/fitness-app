@@ -84,6 +84,7 @@ const DragAndDropModal = ({
   }, [selectedOrder, exerciseGroups, groupedExercises, filtered, getExerciseGroup]);
 
   const [items, setItems] = useState(dragItems);
+  const [activeItemId, setActiveItemId] = useState(null);
 
   // Update items when props change
   React.useEffect(() => {
@@ -91,6 +92,7 @@ const DragAndDropModal = ({
   }, [dragItems]);
 
   const handleDragEnd = useCallback(({ data }) => {
+    setActiveItemId(null);
     setItems(data);
   }, []);
 
@@ -175,7 +177,7 @@ const DragAndDropModal = ({
 
     // Match getGroupContainerStyle from SelectedReview
     const getGroupContainerStyle = (colorScheme, isEdited = false) => ({
-      marginVertical: 8,
+      marginVertical: 4,
       borderWidth: 2,
       borderRadius: 8,
       padding: 4,
@@ -228,12 +230,25 @@ const DragAndDropModal = ({
             // #region agent log
             fetch('http://127.0.0.1:7243/ingest/751917f3-6b76-4143-ba7e-6983111b1561',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DragAndDropModal.js:179',message:'onLongPress triggered, calling drag',data:{itemType:item?.type},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'D'})}).catch(()=>{});
             // #endregion
-            if (drag) drag();
+            if (item.type === 'group') {
+              // Collapse group first, then delay drag to allow layout to settle
+              setActiveItemId(item.id);
+              requestAnimationFrame(() => {
+                setTimeout(() => {
+                  if (drag) drag();
+                }, 50);
+              });
+            } else {
+              // Individual items drag immediately
+              if (drag) drag();
+            }
           }}
           disabled={isActive}
           delayLongPress={200}
           style={[
             { marginVertical: 4 },
+            isActive && item.type === 'group' && styles.activeGroupContainer,
+            isActive && item.type === 'exercise' && styles.activeItemContainer,
             isActive && {
               opacity: 0.8,
               elevation: 4,
@@ -241,7 +256,6 @@ const DragAndDropModal = ({
               shadowOffset: { width: 0, height: 2 },
               shadowOpacity: 0.25,
               shadowRadius: 3.84,
-
               width: '90%', // Compensate for elevation shadow width
               alignSelf: 'center', // Center the slightly smaller item
             },
@@ -249,24 +263,16 @@ const DragAndDropModal = ({
         >
           {item.type === 'group' ? (
             <View style={[
-              isActive ? {
-                // When dragging, style like individual item
-                paddingLeft: 16,
-                paddingRight: 16,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                paddingVertical: 12,
-                borderBottomWidth: 1,
-                backgroundColor: groupColorScheme[100],
-                borderBottomColor: COLORS.slate[200],
-                marginVertical: 0,
-                width: '98%', // Compensate for elevation shadow (shadowRadius 3.84 * 2 ≈ 8px)
-                alignSelf: 'center', // Center the slightly smaller item
-              } : getGroupContainerStyle(groupColorScheme, false),
+              (isActive || item.id === activeItemId) ? [
+                styles.activeGroupContainerInner,
+                {
+                  backgroundColor: groupColorScheme[100],
+                  borderBottomColor: COLORS.slate[200],
+                }
+              ] : getGroupContainerStyle(groupColorScheme, false),
             ]}>
               <View style={[
-                isActive ? {
+                (isActive || item.id === activeItemId) ? {
                   // When dragging, remove group header styling
                   flexDirection: 'row',
                   alignItems: 'center',
@@ -290,7 +296,7 @@ const DragAndDropModal = ({
                   </View>
                 </View>
               </View>
-              {!isActive && item.exercises.map(({ exercise, index, count }, groupItemIndex) => {
+              {item.id !== activeItemId && item.exercises.map(({ exercise, index, count }, groupItemIndex) => {
                 const uniqueKey = `${exercise.id}-${index}`;
                 const selectedCount = count || 1;
                 const isFirstInGroup = groupItemIndex === 0;
@@ -321,28 +327,30 @@ const DragAndDropModal = ({
               })}
             </View>
           ) : (
-            <ExerciseListItem
-              item={item.exercise}
-              isSelected={true}
-              isLastSelected={false}
-              selectionOrder={null}
-              onToggle={() => {}}
-              hideNumber={false}
-              isReordering={false}
-              isReordered={false}
-              showAddMore={true}
-              onAddMore={null}
-              onRemoveSet={null}
-              selectedCount={item.count || 1}
-              renderingSection="reviewContainer"
-              exerciseGroup={null}
-              disableTouch={true}
-            />
+            <View style={isActive ? styles.activeItemContainerInner : {}}>
+              <ExerciseListItem
+                item={item.exercise}
+                isSelected={true}
+                isLastSelected={false}
+                selectionOrder={null}
+                onToggle={() => {}}
+                hideNumber={false}
+                isReordering={false}
+                isReordered={false}
+                showAddMore={true}
+                onAddMore={null}
+                onRemoveSet={null}
+                selectedCount={item.count || 1}
+                renderingSection="reviewContainer"
+                exerciseGroup={null}
+                disableTouch={true}
+              />
+            </View>
           )}
         </TouchableOpacity>
       </ScaleDecorator>
     );
-  }, [groupedExercises]);
+  }, [groupedExercises, activeItemId]);
 
   return (
     <Modal
@@ -440,8 +448,42 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   listContent: {
-    gap: 4,
+    gap: 0,
     paddingHorizontal: 2,
+  },
+  activeItemContainer: {
+    borderWidth: 1,
+    borderColor: COLORS.slate[200],
+    borderRadius: 8,
+  },
+  activeItemContainerInner: {
+    borderWidth: 1,
+    borderColor: COLORS.slate[200],
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  activeGroupContainer: {
+    borderWidth: 2,
+    borderRadius: 8,
+  },
+  activeGroupContainerInner: {
+    // When dragging, style like individual item
+    paddingLeft: 16,
+    paddingRight: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    marginVertical: 0,
+    width: '98%', // Compensate for elevation shadow (shadowRadius 3.84 * 2 ≈ 8px)
+    alignSelf: 'center', // Center the slightly smaller item
+    borderWidth: 1,
+    borderColor: COLORS.slate[200],
+    borderRadius: 8,
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
   },
   emptyContainer: {
     flex: 1,
