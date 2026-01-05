@@ -1,181 +1,10 @@
-import React, { useState, useCallback, useRef } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Animated } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import React, { useState, useCallback } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { ChevronDown, ChevronUp, ChevronLeft } from 'lucide-react-native';
 import { COLORS } from '../../../../constants/colors';
 import { defaultSupersetColorScheme, defaultHiitColorScheme } from '../../../../constants/defaultStyles';
 import ExerciseListItem from './ExerciseListItem';
-
-const LONG_PRESS_DURATION = 500; // ms to activate drag mode (increased for better detection)
-
-// Wrapper component for draggable items
-const DraggableWrapper = ({
-  children,
-  itemKey,
-  itemType,
-  itemData,
-  isDragMode,
-  draggedItem,
-  dropTargetKey,
-  dropPosition,
-  onDragStart,
-  onDragUpdate,
-  onDragEnd,
-  onLayoutChange,
-  disabled,
-  containerRef,
-}) => {
-  const viewRef = useRef(null);
-  const isActiveDragRef = useRef(false);
-  const startYRef = useRef(0);
-  const layoutRef = useRef(null);
-  
-  const isDragging = isDragMode && draggedItem?.key === itemKey;
-  const isDropTarget = dropTargetKey === itemKey && draggedItem?.key !== itemKey;
-
-  const handleLayout = useCallback((event) => {
-    const { y, height, width } = event.nativeEvent.layout;
-    layoutRef.current = { y, height, width };
-    if (onLayoutChange) {
-      onLayoutChange(itemKey, { y, height, width });
-    }
-  }, [itemKey, onLayoutChange]);
-
-  // Long press gesture - configured to work with TouchableOpacity
-  // Using shouldCancelWhenOutside and proper configuration
-  const gestureEnabled = !disabled && !isDragMode;
-  
-  // #region agent log
-  React.useEffect(() => {
-    fetch('http://127.0.0.1:7243/ingest/751917f3-6b76-4143-ba7e-6983111b1561',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SelectedReview.js:47',message:'LongPress gesture created',data:{itemKey,itemType,gestureEnabled,disabled,isDragMode},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-  }, [itemKey, itemType, gestureEnabled, disabled, isDragMode]);
-  // #endregion
-  
-  const longPressGesture = Gesture.LongPress()
-    .minDuration(LONG_PRESS_DURATION)
-    .maxDistance(20) // Allow more movement during long press
-    .enabled(gestureEnabled)
-    .shouldCancelWhenOutside(true)
-    .onStart((event) => {
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/751917f3-6b76-4143-ba7e-6983111b1561',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SelectedReview.js:52',message:'LongPress onStart triggered',data:{itemKey,itemType,absoluteY:event.absoluteY},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
-      console.log('✅ Long press STARTED for:', itemKey, 'type:', itemType, 'disabled:', disabled); // Debug
-      isActiveDragRef.current = true;
-      startYRef.current = event.absoluteY;
-      if (onDragStart) {
-        onDragStart({
-          key: itemKey,
-          type: itemType,
-          data: itemData,
-          startY: event.absoluteY,
-          layout: layoutRef.current,
-        });
-      }
-    })
-    .onEnd(() => {
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/751917f3-6b76-4143-ba7e-6983111b1561',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SelectedReview.js:65',message:'LongPress onEnd triggered',data:{itemKey},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
-      console.log('Long press ENDED'); // Debug
-    });
-
-  // Pan gesture for dragging - only activates after long press
-  const panGesture = Gesture.Pan()
-    .enabled(!disabled)
-    .minDistance(0)
-    .activeOffsetY([-5, 5]) // Activate on small vertical movement
-    .manualActivation(true)
-    .onTouchesDown((event) => {
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/751917f3-6b76-4143-ba7e-6983111b1561',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SelectedReview.js:75',message:'Pan onTouchesDown - touch detected',data:{itemKey,disabled,isDragMode,touchCount:event.allTouches.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
-    })
-    .onTouchesMove((event, stateManager) => {
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/751917f3-6b76-4143-ba7e-6983111b1561',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SelectedReview.js:83',message:'Pan onTouchesMove',data:{itemKey,isActiveDrag:isActiveDragRef.current,isDragMode,draggedItemKey:draggedItem?.key},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
-      // Activate if long press triggered or already dragging
-      if (isActiveDragRef.current || (isDragMode && draggedItem?.key === itemKey)) {
-        console.log('Pan gesture activated'); // Debug
-        stateManager.activate();
-      } else {
-        stateManager.fail();
-      }
-    })
-    .onUpdate((event) => {
-      if ((isActiveDragRef.current || isDragMode) && draggedItem?.key === itemKey && onDragUpdate) {
-        onDragUpdate(event.absoluteY, event.translationY);
-      }
-    })
-    .onEnd(() => {
-      if (isActiveDragRef.current || (isDragMode && draggedItem?.key === itemKey)) {
-        console.log('Pan gesture ended, calling onDragEnd'); // Debug
-        isActiveDragRef.current = false;
-        if (onDragEnd) {
-          onDragEnd();
-        }
-      }
-    })
-    .onFinalize(() => {
-      isActiveDragRef.current = false;
-    });
-
-  // Use Simultaneous so long press can trigger, then pan takes over
-  const composedGesture = Gesture.Simultaneous(longPressGesture, panGesture);
-
-  // Debug: log when component renders and gesture state
-  React.useEffect(() => {
-    if (!disabled) {
-      console.log(`DraggableWrapper rendered for ${itemKey}, canDrag: ${!disabled}, isDragMode: ${isDragMode}`);
-    }
-  }, [itemKey, disabled, isDragMode]);
-
-  // Create a ref for the gesture handler to allow simultaneous gestures
-  const gestureRef = useRef(null);
-
-  // #region agent log
-  React.useEffect(() => {
-    fetch('http://127.0.0.1:7243/ingest/751917f3-6b76-4143-ba7e-6983111b1561',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SelectedReview.js:115',message:'GestureDetector rendering',data:{itemKey,gestureEnabled,hasChildren:!!children},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-  }, [itemKey, gestureEnabled, children]);
-  // #endregion
-
-  return (
-    <GestureDetector 
-      ref={gestureRef}
-      gesture={composedGesture}
-    >
-      <View
-        ref={viewRef}
-        onLayout={handleLayout}
-        onStartShouldSetResponder={() => {
-          // #region agent log
-          fetch('http://127.0.0.1:7243/ingest/751917f3-6b76-4143-ba7e-6983111b1561',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SelectedReview.js:125',message:'View onStartShouldSetResponder called',data:{itemKey},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-          // #endregion
-          return false; // Let gesture handler manage it
-        }}
-        style={[
-          styles.draggableWrapper,
-          isDragging && styles.draggingItem,
-          isDropTarget && styles.dropTargetItem,
-        ]}
-        collapsable={false}
-        // Important: allow touches to pass through to children for normal interactions
-        // but the gesture handler will still detect long press
-      >
-        {children}
-        {isDropTarget && (
-          <View 
-            style={[
-              styles.dropIndicator,
-              dropPosition === 'before' ? styles.dropIndicatorTop : styles.dropIndicatorBottom,
-            ]} 
-          />
-        )}
-      </View>
-    </GestureDetector>
-  );
-};
+import DragAndDropModal from './DragAndDropModal';
 
 const SelectedReview = ({
   selectedExercises,
@@ -205,237 +34,17 @@ const SelectedReview = ({
   isExerciseInGroup = null,
   editingGroupId = null,
   filtered = [],
+  setExerciseGroups = null,
+  setSelectedOrder = null,
 }) => {
   const [isReordering, setIsReordering] = useState(false);
   const [reorderAssignments, setReorderAssignments] = useState({});
   const [groupReorderAssignments, setGroupReorderAssignments] = useState({});
   const [groupItemReorderAssignments, setGroupItemReorderAssignments] = useState({});
   const [editingGroupIdInReorder, setEditingGroupIdInReorder] = useState(null);
-
-  // Drag and drop state
-  const [isDragMode, setIsDragMode] = useState(false);
-  const [draggedItem, setDraggedItem] = useState(null); // { key, type: 'exercise'|'group', index, data }
-  const [dropTargetKey, setDropTargetKey] = useState(null);
-  const [dropPosition, setDropPosition] = useState(null); // 'before' | 'after' | 'into-group'
-  
-  const itemLayoutsRef = useRef({});
-  const dragYRef = useRef(new Animated.Value(0)).current;
-  const dragStartYRef = useRef(0);
-  const scrollViewRef = useRef(null);
-  const scrollOffsetRef = useRef(0);
-  const containerLayoutRef = useRef({ y: 0, height: 0 });
+  const [isDragDropModalVisible, setIsDragDropModalVisible] = useState(false);
 
   const assignedCount = Object.keys(reorderAssignments).length + Object.keys(groupReorderAssignments).length;
-
-  // Register item layout for drop target detection
-  const registerItemLayout = useCallback((key, layout) => {
-    itemLayoutsRef.current[key] = layout;
-  }, []);
-
-  // Find the closest drop target based on drag Y position
-  const findDropTarget = useCallback((dragY) => {
-    const layouts = itemLayoutsRef.current;
-    const entries = Object.entries(layouts);
-    
-    if (entries.length === 0) return { targetKey: null, position: null };
-    
-    let closestTarget = null;
-    let closestDistance = Infinity;
-    let position = 'after';
-    
-    entries.forEach(([key, layout]) => {
-      if (!layout) return;
-      
-      const itemTop = layout.y - scrollOffsetRef.current;
-      const itemBottom = itemTop + layout.height;
-      const itemMidY = itemTop + layout.height / 2;
-      
-      // Check if dragging over this item
-      if (dragY >= itemTop && dragY <= itemBottom) {
-        const distance = Math.abs(dragY - itemMidY);
-        if (distance < closestDistance) {
-          closestDistance = distance;
-          closestTarget = key;
-          position = dragY < itemMidY ? 'before' : 'after';
-        }
-      }
-    });
-    
-    // If not directly over any item, find the closest one
-    if (!closestTarget) {
-      entries.forEach(([key, layout]) => {
-        if (!layout) return;
-        const itemTop = layout.y - scrollOffsetRef.current;
-        const itemMidY = itemTop + layout.height / 2;
-        const distance = Math.abs(dragY - itemMidY);
-        
-        if (distance < closestDistance) {
-          closestDistance = distance;
-          closestTarget = key;
-          position = dragY < itemMidY ? 'before' : 'after';
-        }
-      });
-    }
-    
-    return { targetKey: closestTarget, position };
-  }, []);
-
-  // Handle drag end - compute new order
-  const handleDragEnd = useCallback(() => {
-    if (!draggedItem || !dropTargetKey || !onReorder) {
-      setIsDragMode(false);
-      setDraggedItem(null);
-      setDropTargetKey(null);
-      setDropPosition(null);
-      return;
-    }
-    
-    // Parse keys to get indices and types
-    const draggedParts = draggedItem.key.split('-');
-    const draggedType = draggedParts[0]; // 'exercise' or 'group'
-    
-    const targetParts = dropTargetKey.split('-');
-    const targetType = targetParts[0];
-    
-    // Build the new order based on drag operation
-    const newOrder = [];
-    const processedIndices = new Set();
-    
-    // Get all items in their current order with their macro position info
-    const macroItems = [];
-    let lastGroupId = null;
-    
-    selectedExercises.forEach((item, index) => {
-      const group = groupedExercises[index];
-      const exerciseGroup = getExerciseGroup ? getExerciseGroup(group.startIndex) : null;
-      
-      if (exerciseGroup) {
-        if (exerciseGroup.id !== lastGroupId) {
-          // Get all exercises in this group
-          const groupExercises = [];
-          let tempIndex = index;
-          while (tempIndex < selectedExercises.length) {
-            const tempGroup = groupedExercises[tempIndex];
-            const tempExGroup = getExerciseGroup ? getExerciseGroup(tempGroup?.startIndex) : null;
-            if (tempExGroup?.id === exerciseGroup.id) {
-              groupExercises.push({
-                exerciseId: selectedExercises[tempIndex].id,
-                index: tempIndex
-              });
-              tempIndex++;
-            } else {
-              break;
-            }
-          }
-          macroItems.push({
-            type: 'group',
-            groupId: exerciseGroup.id,
-            groupData: exerciseGroup,
-            exercises: groupExercises,
-            key: `group-${exerciseGroup.id}`,
-          });
-          lastGroupId = exerciseGroup.id;
-        }
-      } else {
-        macroItems.push({
-          type: 'exercise',
-          exerciseId: item.id,
-          index,
-          key: `exercise-${item.id}-${index}`,
-        });
-      }
-    });
-    
-    // Find the dragged item and target in macro items
-    const draggedMacroIndex = macroItems.findIndex(m => m.key === draggedItem.key);
-    const targetMacroIndex = macroItems.findIndex(m => m.key === dropTargetKey);
-    
-    if (draggedMacroIndex === -1 || targetMacroIndex === -1) {
-      setIsDragMode(false);
-      setDraggedItem(null);
-      setDropTargetKey(null);
-      setDropPosition(null);
-      return;
-    }
-    
-    // Remove dragged item and insert at new position
-    const draggedMacro = macroItems[draggedMacroIndex];
-    const reorderedMacros = [...macroItems];
-    reorderedMacros.splice(draggedMacroIndex, 1);
-    
-    let insertIndex = targetMacroIndex;
-    if (draggedMacroIndex < targetMacroIndex) {
-      insertIndex--;
-    }
-    if (dropPosition === 'after') {
-      insertIndex++;
-    }
-    
-    reorderedMacros.splice(insertIndex, 0, draggedMacro);
-    
-    // Build new selectedOrder from reordered macro items
-    reorderedMacros.forEach(macro => {
-      if (macro.type === 'group') {
-        macro.exercises.forEach(ex => {
-          newOrder.push(ex.exerciseId);
-        });
-      } else {
-        newOrder.push(macro.exerciseId);
-      }
-    });
-    
-    onReorder(newOrder);
-    
-    setIsDragMode(false);
-    setDraggedItem(null);
-    setDropTargetKey(null);
-    setDropPosition(null);
-  }, [draggedItem, dropTargetKey, dropPosition, onReorder, selectedExercises, groupedExercises, getExerciseGroup]);
-
-  // Cancel drag operation
-  const handleDragCancel = useCallback(() => {
-    setIsDragMode(false);
-    setDraggedItem(null);
-    setDropTargetKey(null);
-    setDropPosition(null);
-  }, []);
-
-  // Handle drag start from DraggableWrapper
-  const onItemDragStart = useCallback((dragInfo) => {
-    setIsDragMode(true);
-    setDraggedItem({
-      key: dragInfo.key,
-      type: dragInfo.type,
-      data: dragInfo.data,
-      startY: dragInfo.startY,
-      layout: dragInfo.layout,
-    });
-    dragStartYRef.current = dragInfo.startY;
-    dragYRef.setValue(0);
-  }, [dragYRef]);
-
-  // Handle drag update - find drop target
-  const onItemDragUpdate = useCallback((absoluteY, translationY) => {
-    const relativeY = containerLayoutRef.current.y + translationY + (draggedItem?.layout?.y || 0);
-    dragYRef.setValue(translationY);
-    
-    const { targetKey, position } = findDropTarget(relativeY);
-    if (targetKey !== dropTargetKey || position !== dropPosition) {
-      setDropTargetKey(targetKey);
-      setDropPosition(position);
-    }
-  }, [dragYRef, findDropTarget, dropTargetKey, dropPosition, draggedItem]);
-
-  // Handle scroll for layout offset tracking
-  const onScrollViewScroll = useCallback((event) => {
-    scrollOffsetRef.current = event.nativeEvent.contentOffset.y;
-  }, []);
-
-  // Handle container layout measurement
-  const onContainerLayout = useCallback((event) => {
-    const { y, height } = event.nativeEvent.layout;
-    containerLayoutRef.current = { y, height };
-  }, []);
 
   const getLowestAvailableNumber = useCallback(() => {
     const assignedGroupNumbers = Object.values(groupReorderAssignments);
@@ -559,6 +168,24 @@ const SelectedReview = ({
     setGroupItemReorderAssignments({});
   }, []);
 
+  const handleLongPress = useCallback(() => {
+    if (!isGroupMode && !isReordering && selectedExercises.length > 0 && selectedOrder.length > 0) {
+      setIsDragDropModalVisible(true);
+    }
+  }, [isGroupMode, isReordering, selectedExercises.length, selectedOrder.length]);
+
+  const handleDragDropReorder = useCallback((newOrder, updatedGroups) => {
+    if (setSelectedOrder && setExerciseGroups) {
+      // Update selectedOrder
+      setSelectedOrder(newOrder);
+      
+      // Update exerciseGroups
+      if (updatedGroups) {
+        setExerciseGroups(updatedGroups);
+      }
+    }
+  }, [setSelectedOrder, setExerciseGroups]);
+
   const handleReorderItemPress = useCallback((uniqueKey) => {
     if (isGroupMode && setGroupSelectionIndices && isExerciseInGroup && handleEditGroup) {
       const index = parseInt(uniqueKey.split('-').pop());
@@ -658,21 +285,7 @@ const SelectedReview = ({
   const allAssigned = assignedCount === totalMacroItemsCount;
 
   const hasExercises = selectedExercises.length > 0;
-  const canToggle = hasExercises && !isReordering && !isGroupMode && !isDragMode;
-  const canDrag = hasExercises && !isCollapsed && !isReordering && !isGroupMode;
-  
-  // Debug: log drag state
-  React.useEffect(() => {
-    if (hasExercises) {
-      console.log('SelectedReview drag state:', {
-        hasExercises,
-        isCollapsed,
-        isReordering,
-        isGroupMode,
-        canDrag,
-      });
-    }
-  }, [hasExercises, isCollapsed, isReordering, isGroupMode, canDrag]);
+  const canToggle = hasExercises && !isReordering && !isGroupMode;
 
   const rootContainer_collapsed = isCollapsed && hasExercises;
   const rootContainer_expanded = !isCollapsed && hasExercises;
@@ -860,30 +473,8 @@ const SelectedReview = ({
         </View>
       )}
 
-      {hasExercises && isDragMode && (
-        <View style={styles.dragBanner}>
-          <Text style={styles.dragBannerText}>
-            Dragging — release to drop
-          </Text>
-          <TouchableOpacity 
-            onPress={handleDragCancel}
-            style={styles.dragCancelButton}
-          >
-            <Text style={styles.dragCancelButtonText}>Cancel</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
       {hasExercises && !isCollapsed && (
-        <ScrollView 
-          ref={scrollViewRef}
-          style={styles.scrollView} 
-          contentContainerStyle={styles.scrollViewContent}
-          onScroll={onScrollViewScroll}
-          scrollEventThrottle={16}
-          onLayout={onContainerLayout}
-          scrollEnabled={!isDragMode}
-        >
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollViewContent}>
           {isGroupMode && filtered ? (() => {
             const renderItems = [];
             let macroPosition = 0;
@@ -1125,31 +716,38 @@ const SelectedReview = ({
                   const groupReorderPosition = groupReorderAssignments[groupKey] || 0;
                   const groupColorScheme = exerciseGroup.type === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme;
                   
-                  const groupContent = (
+                  renderItems.push(
                     <View 
+                      key={`group-${exerciseGroup.id}-${groupPosition}`}
                       style={getGroupContainerStyle(groupColorScheme, false)}
                     >
-                      <View style={getGroupHeaderStyle(groupColorScheme)}>
-                        <View style={styles.groupHeaderLeft}>
-                          <Text style={getGroupHeaderTypeTextStyle(groupColorScheme)}>{exerciseGroup.type}</Text>
-                          <View style={getGroupHeaderBadgeStyle(groupColorScheme)}>
-                            <Text style={getGroupHeaderBadgeTextStyle(groupColorScheme)}>{exerciseGroup.type === 'HIIT' ? 'H' : 'S'}{exerciseGroup.number}</Text>
+                      <TouchableOpacity
+                        onLongPress={handleLongPress}
+                        activeOpacity={1}
+                        disabled={isReordering || isGroupMode}
+                      >
+                        <View style={getGroupHeaderStyle(groupColorScheme)}>
+                          <View style={styles.groupHeaderLeft}>
+                            <Text style={getGroupHeaderTypeTextStyle(groupColorScheme)}>{exerciseGroup.type}</Text>
+                            <View style={getGroupHeaderBadgeStyle(groupColorScheme)}>
+                              <Text style={getGroupHeaderBadgeTextStyle(groupColorScheme)}>{exerciseGroup.type === 'HIIT' ? 'H' : 'S'}{exerciseGroup.number}</Text>
+                            </View>
                           </View>
+                          {isReordering && (
+                            <TouchableOpacity
+                              onPress={() => handleGroupReorderPress(exerciseGroup.id)}
+                              style={[
+                                styles.groupReorderCheckbox,
+                                groupIsReordered ? styles.groupReorderCheckboxAssigned : styles.groupReorderCheckboxUnassigned,
+                              ]}
+                            >
+                              {groupIsReordered && (
+                                <Text style={styles.groupReorderCheckboxText}>{groupReorderPosition}</Text>
+                              )}
+                            </TouchableOpacity>
+                          )}
                         </View>
-                        {isReordering && (
-                          <TouchableOpacity
-                            onPress={() => handleGroupReorderPress(exerciseGroup.id)}
-                            style={[
-                              styles.groupReorderCheckbox,
-                              groupIsReordered ? styles.groupReorderCheckboxAssigned : styles.groupReorderCheckboxUnassigned,
-                            ]}
-                          >
-                            {groupIsReordered && (
-                              <Text style={styles.groupReorderCheckboxText}>{groupReorderPosition}</Text>
-                            )}
-                          </TouchableOpacity>
-                        )}
-                      </View>
+                      </TouchableOpacity>
                       
                       {groupExercises.map(({ item: exerciseItem, index: exerciseIndex, group: exerciseGroupData }, groupItemIndex) => {
                         const uniqueKey = `${exerciseItem.id}-${exerciseIndex}`;
@@ -1169,9 +767,9 @@ const SelectedReview = ({
                             hideNumber={true}
                             isReordering={false}
                             isReordered={false}
-                            showAddMore={!isReordering && !isDragMode}
-                            onAddMore={onAddSet && !isReordering && !isDragMode ? () => onAddSet(originalId, exerciseIndex) : null}
-                            onRemoveSet={onRemoveSet && !isReordering && !isDragMode ? () => onRemoveSet(originalId, exerciseIndex) : null}
+                            showAddMore={!isReordering}
+                            onAddMore={onAddSet && !isReordering ? () => onAddSet(originalId, exerciseIndex) : null}
+                            onRemoveSet={onRemoveSet && !isReordering ? () => onRemoveSet(originalId, exerciseIndex) : null}
                             selectedCount={selectedCount}
                             renderingSection="reviewContainer"
                             exerciseGroup={exerciseGroup}
@@ -1182,86 +780,35 @@ const SelectedReview = ({
                       })}
                     </View>
                   );
-                  
-                  // Wrap group in DraggableWrapper for drag-and-drop support
-                  renderItems.push(
-                    <DraggableWrapper
-                      key={`group-${exerciseGroup.id}-${groupPosition}`}
-                      itemKey={groupKey}
-                      itemType="group"
-                      itemData={{
-                        id: exerciseGroup.id,
-                        type: exerciseGroup.type,
-                        number: exerciseGroup.number,
-                        exerciseCount: groupExercises.length,
-                      }}
-                      isDragMode={isDragMode}
-                      draggedItem={draggedItem}
-                      dropTargetKey={dropTargetKey}
-                      dropPosition={dropPosition}
-                      onDragStart={onItemDragStart}
-                      onDragUpdate={onItemDragUpdate}
-                      onDragEnd={handleDragEnd}
-                      onLayoutChange={registerItemLayout}
-                      disabled={!canDrag}
-                    >
-                      {groupContent}
-                    </DraggableWrapper>
-                  );
                 }
               } else {
                 groupPosition++;
                 const uniqueKey = `${item.id}-${index}`;
-                const exerciseKey = `exercise-${item.id}-${index}`;
                 const isReordered = reorderAssignments[uniqueKey] !== undefined;
                 const reorderPosition = reorderAssignments[uniqueKey] || 0;
                 const isLastSelected = index === selectedExercises.length - 1;
                 const selectedCount = group ? group.count : 0;
                 const originalId = item.id;
                 
-                const exerciseContent = (
+                renderItems.push(
                   <ExerciseListItem
+                    key={uniqueKey}
                     item={{ ...item, id: uniqueKey }}
                     isSelected={true}
                     isLastSelected={isLastSelected}
                     selectionOrder={isReordering ? reorderPosition : groupPosition}
                     onToggle={handleReorderItemPress}
+                    onLongPress={handleLongPress}
                     hideNumber={isReordering && !isReordered}
                     isReordering={isReordering}
                     isReordered={isReordered}
-                    showAddMore={!isReordering && !isDragMode}
-                    onAddMore={onAddSet && !isDragMode ? () => onAddSet(originalId, index) : null}
-                    onRemoveSet={onRemoveSet && !isDragMode ? () => onRemoveSet(originalId, index) : null}
+                    showAddMore={!isReordering}
+                    onAddMore={onAddSet ? () => onAddSet(originalId, index) : null}
+                    onRemoveSet={onRemoveSet ? () => onRemoveSet(originalId, index) : null}
                     selectedCount={selectedCount}
                     renderingSection="reviewContainer"
                     exerciseGroup={null}
                   />
-                );
-                
-                // Wrap exercise in DraggableWrapper for drag-and-drop support
-                renderItems.push(
-                  <DraggableWrapper
-                    key={uniqueKey}
-                    itemKey={exerciseKey}
-                    itemType="exercise"
-                    itemData={{
-                      id: item.id,
-                      name: item.name,
-                      index,
-                      count: selectedCount,
-                    }}
-                    isDragMode={isDragMode}
-                    draggedItem={draggedItem}
-                    dropTargetKey={dropTargetKey}
-                    dropPosition={dropPosition}
-                    onDragStart={onItemDragStart}
-                    onDragUpdate={onItemDragUpdate}
-                    onDragEnd={handleDragEnd}
-                    onLayoutChange={registerItemLayout}
-                    disabled={!canDrag}
-                  >
-                    {exerciseContent}
-                  </DraggableWrapper>
                 );
               }
             });
@@ -1270,6 +817,17 @@ const SelectedReview = ({
           })()}
         </ScrollView>
       )}
+
+      <DragAndDropModal
+        visible={isDragDropModalVisible}
+        onClose={() => setIsDragDropModalVisible(false)}
+        selectedOrder={selectedOrder}
+        exerciseGroups={exerciseGroups}
+        groupedExercises={groupedExercises}
+        filtered={filtered}
+        getExerciseGroup={getExerciseGroup}
+        onReorder={handleDragDropReorder}
+      />
     </View>
   );
 };
@@ -1523,65 +1081,6 @@ const styles = StyleSheet.create({
     color: COLORS.green[500],
     fontSize: 12,
     fontWeight: 'bold',
-  },
-  
-  // Drag and drop styles
-  dragBanner: {
-    backgroundColor: COLORS.blue[500],
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.blue[600],
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  dragBannerText: {
-    fontSize: 12,
-    color: COLORS.white,
-    fontWeight: '600',
-  },
-  dragCancelButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-  },
-  dragCancelButtonText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: COLORS.white,
-    textTransform: 'uppercase',
-  },
-  draggingItem: {
-    opacity: 0.5,
-    backgroundColor: COLORS.blue[50],
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: COLORS.blue[300],
-    borderStyle: 'dashed',
-  },
-  dropTargetItem: {
-    position: 'relative',
-  },
-  dropIndicator: {
-    position: 'absolute',
-    left: 8,
-    right: 8,
-    height: 4,
-    backgroundColor: COLORS.blue[500],
-    borderRadius: 2,
-    zIndex: 100,
-  },
-  dropIndicatorTop: {
-    top: -2,
-  },
-  dropIndicatorBottom: {
-    bottom: -2,
-  },
-  draggableWrapper: {
-    // Ensure the wrapper can receive touch events
   },
 });
 

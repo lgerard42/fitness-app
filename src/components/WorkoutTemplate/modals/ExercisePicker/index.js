@@ -6,8 +6,8 @@ import { PRIMARY_TO_SECONDARY_MAP } from '../../../../constants/data';
 import HeaderTopRow from './HeaderTopRow';
 import SearchBar from './SearchBar';
 import Filters from './Filters';
-import SelectedExercisesSection from './SelectedExercisesSection';
-import UnselectedExercisesList from './UnselectedExercisesList';
+import SelectedReview from './SelectedReview';
+import SelectedInGlossary from './SelectedInGlossary';
 
 const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCreatedId = null }) => {
   const [search, setSearch] = useState("");
@@ -498,8 +498,8 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
       // Creating a new group still requires at least 2 exercises
       if (groupSelectionIndices.length < 2) return;
       handleCreateGroup(selectedGroupType, groupSelectionIndices);
-      // Clear selection but keep group mode open
-      setGroupSelectionMode(null);
+      // Clear selection but keep group mode open for creating another group
+      setGroupSelectionMode('create');
       setGroupSelectionIndices([]);
       setEditingGroupId(null);
       setSelectedGroupType('Superset'); // Reset to default
@@ -757,7 +757,7 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
         <GestureDetector gesture={blockDismissGesture}>
           <View style={styles.listContainer}>
             {/* Selected Exercises - separate section at top */}
-            <SelectedExercisesSection
+            <SelectedReview
               selectedExercises={selectedExercises}
               selectedOrder={selectedOrder}
               groupedExercises={getGroupedExercises}
@@ -785,11 +785,13 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
               isExerciseInGroup={isExerciseInGroup}
               editingGroupId={editingGroupId}
               filtered={filtered}
+              setExerciseGroups={setExerciseGroups}
+              setSelectedOrder={setSelectedOrder}
             />
             
             {/* All Exercises with integrated A-Z scrollbar - only show when selected section is collapsed */}
             {isSelectedSectionCollapsed && (
-              <UnselectedExercisesList
+              <SelectedInGlossary
                 exercises={allFilteredExercises}
                 onToggleSelect={handleToggleSelect}
                 highlightedLetter={highlightedLetter}

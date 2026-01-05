@@ -17,12 +17,13 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.lgerard42.fitnessapp",
-      "newArchEnabled": false,
+      "newArchEnabled": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
+      "newArchEnabled": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"

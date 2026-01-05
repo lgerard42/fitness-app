@@ -14,6 +14,7 @@ const ExerciseListItem = ({
   isLastSelected, 
   selectionOrder, 
   onToggle,
+  onLongPress = null,
   hideNumber = false,
   isReordering = false,
   isReordered = false,
@@ -30,6 +31,7 @@ const ExerciseListItem = ({
   isGroupItemReorder = false,
   isFirstInGroup = false,
   isLastInGroup = false,
+  disableTouch = false, // New prop to disable touch handling for drag mode
 }) => {
   const handlePress = () => {
     if (isGroupMode && onToggle) {
@@ -104,7 +106,10 @@ const ExerciseListItem = ({
 
   return (
     <TouchableOpacity 
-      onPress={handlePress}
+      onPress={disableTouch ? undefined : handlePress}
+      onLongPress={disableTouch ? undefined : onLongPress}
+      disabled={disableTouch}
+      activeOpacity={disableTouch ? 1 : 0.7}
       style={[
         styles.itemContainer,
         container_selectedInReviewContainer && !isReordering && !isGroupMode && isGrouped && renderingSection === 'reviewContainer' && getGroupBackgroundColor(100),
