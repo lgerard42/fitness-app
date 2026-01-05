@@ -107,7 +107,6 @@ const ExerciseListItem = ({
       onPress={handlePress}
       style={[
         styles.itemContainer,
-        container_selectedInReviewContainer && styles.containerSelectedInReviewContainer,
         container_selectedInReviewContainer && !isReordering && !isGroupMode && isGrouped && renderingSection === 'reviewContainer' && getGroupBackgroundColor(100),
         container_selected && styles.containerSelected,
         container_selected && !isReordering && !isGroupMode && isGrouped && renderingSection === 'reviewContainer' && [
@@ -201,7 +200,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.slate[50],
   },
   contentContainer: {
     flex: 1,
@@ -228,32 +226,30 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   
-  containerSelectedInReviewContainer: {
-    backgroundColor: COLORS.blue[50],
-    borderBottomColor: COLORS.white,
-    paddingRight: 32,
-  },
   nameTextSelectedInReviewContainer: {
     color: COLORS.slate[900],
   },
   
   containerSelected: {
-    backgroundColor: COLORS.blue[50],
-    borderBottomColor: COLORS.blue[100],
+    backgroundColor: COLORS.slate[50],
+    borderWidth: 1,
+    borderColor: COLORS.slate[100],
+    borderRadius: 8,
   },
   nameTextSelected: {
     color: COLORS.slate[900],
   },
   
   containerSelectedInGlossary: {
-    borderBottomColor: COLORS.slate[50],
+    borderWidth: 1,
+    borderRadius: 8,
+    borderColor: COLORS.slate[50],
   },
   nameTextSelectedInGlossary: {
     color: COLORS.slate[900],
   },
   
   containerLastSelected: {
-    borderBottomColor: COLORS.slate[100],
   },
   
   containerFirstInGroup: {
@@ -269,18 +265,21 @@ const styles = StyleSheet.create({
   
   containerReorderingMode: {
     backgroundColor: COLORS.white,
-    borderBottomColor: COLORS.blue[100],
+    borderWidth: 2,
+    borderRadius: 8,
+    borderColor: COLORS.slate[100],
   },
   nameTextReorderingMode: {
-    color: COLORS.amber[600],
   },
   nameTextReorderingModeGroup: {
     color: COLORS.indigo[600],
   },
   
   containerReorderedItem: {
-    backgroundColor: COLORS.blue[50],
-    borderBottomColor: COLORS.blue[100],
+    backgroundColor: COLORS.slate[50],
+    borderWidth: 2,
+    borderRadius: 8,
+    borderColor: COLORS.slate[100],
   },
   
   containerGroupModeSelected: {
