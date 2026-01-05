@@ -1,10 +1,10 @@
 import React, { useRef, useCallback, useMemo } from 'react';
-import { View, Text, SectionList } from 'react-native';
+import { View, Text, SectionList, StyleSheet } from 'react-native';
 import { COLORS } from '../../../../constants/colors';
 import ExerciseListItem from './ExerciseListItem';
 import UnselectedListScrollbar from './UnselectedListScrollbar';
 
-const UnselectedExercisesList = ({
+const SelectedInGlossary = ({
   exercises,
   onToggleSelect,
   highlightedLetter,
@@ -48,28 +48,14 @@ const UnselectedExercisesList = ({
   }, [sections, setHighlightedLetter]);
 
   const renderSectionHeader = useCallback(({ section }) => (
-    <View style={{
-      backgroundColor: COLORS.slate[50],
-      paddingHorizontal: 16,
-      paddingVertical: 6,
-      borderBottomWidth: 1,
-      borderBottomColor: COLORS.slate[50],
-    }}>
-      <Text style={{
-        fontSize: 10,
-        fontWeight: 'bold',
-        color: COLORS.slate[500],
-      }}>{section.title}</Text>
+    <View style={styles.sectionHeader}>
+      <Text style={styles.sectionHeaderText}>{section.title}</Text>
     </View>
   ), []);
 
   const renderItem = useCallback(({ item }) => {
     const isAlreadySelected = selectedIds.includes(item.id);
     const selectedCount = selectedOrder.filter(id => id === item.id).length;
-    
-    // Define conditional variables for passed styles
-    const container_selectedInList = isAlreadySelected;
-    const text_selectedInList = isAlreadySelected;
 
     return (
       <ExerciseListItem
@@ -82,13 +68,7 @@ const UnselectedExercisesList = ({
         onAddMore={onAddSet}
         onRemoveSet={onRemoveSet}
         selectedCount={selectedCount}
-        selectedInListStyle={container_selectedInList ? {
-          
-        } : null}
-        selectedInListNameStyle={text_selectedInList ? {
-          
-        } : null}
-        renderingSection="unselectedList"
+        renderingSection="glossary"
       />
     );
   }, [onToggleSelect, selectedIds, selectedOrder, onAddSet, onRemoveSet]);
@@ -97,24 +77,14 @@ const UnselectedExercisesList = ({
 
   if (exercises.length === 0) {
     return (
-      <View style={{
-        flex: 1,
-        paddingVertical: 40,
-        alignItems: 'center',
-      }}>
-        <Text style={{
-          color: COLORS.slate[400],
-          fontSize: 14,
-        }}>No exercises found.</Text>
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyText}>No exercises found.</Text>
       </View>
     );
   }
 
   return (
-    <View style={{
-      flex: 1,
-      flexDirection: 'row',
-    }}>
+    <View style={styles.container}>
       <SectionList
         ref={sectionListRef}
         sections={sections}
@@ -123,12 +93,8 @@ const UnselectedExercisesList = ({
         keyExtractor={keyExtractor}
         stickySectionHeadersEnabled={true}
         showsVerticalScrollIndicator={false}
-        style={{
-          flex: 1,
-        }}
-        contentContainerStyle={{
-          paddingBottom: 20,
-        }}
+        style={styles.sectionList}
+        contentContainerStyle={styles.sectionListContent}
         onScrollToIndexFailed={(info) => {
           console.log('[SectionList] onScrollToIndexFailed:', info);
         }}
@@ -144,4 +110,38 @@ const UnselectedExercisesList = ({
   );
 };
 
-export default UnselectedExercisesList;
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  sectionList: {
+    flex: 1,
+  },
+  sectionListContent: {
+    paddingBottom: 20,
+  },
+  sectionHeader: {
+    backgroundColor: COLORS.slate[50],
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.slate[50],
+  },
+  sectionHeaderText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: COLORS.slate[500],
+  },
+  emptyContainer: {
+    flex: 1,
+    paddingVertical: 40,
+    alignItems: 'center',
+  },
+  emptyText: {
+    color: COLORS.slate[400],
+    fontSize: 14,
+  },
+});
+
+export default SelectedInGlossary;

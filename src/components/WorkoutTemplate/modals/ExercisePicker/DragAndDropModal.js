@@ -173,6 +173,54 @@ const DragAndDropModal = ({
       ? (item.group.type === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme)
       : null;
 
+    // Match getGroupContainerStyle from SelectedReview
+    const getGroupContainerStyle = (colorScheme, isEdited = false) => ({
+      marginVertical: 8,
+      borderWidth: 2,
+      borderRadius: 8,
+      padding: 4,
+      borderColor: colorScheme[isEdited ? 300 : 200],
+      backgroundColor: colorScheme[isEdited ? 100 : 50],
+      borderStyle: isEdited ? 'dashed' : 'solid',
+    });
+
+    // Match getGroupHeaderStyle from SelectedReview
+    const getGroupHeaderStyle = (colorScheme) => ({
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 4,
+      borderBottomWidth: 0,
+      paddingTop: 4,
+      paddingBottom: 4,
+      paddingLeft: 8,
+      paddingRight: 16,
+      borderBottomColor: colorScheme[200],
+    });
+
+    // Match getGroupHeaderTypeTextStyle from SelectedReview
+    const getGroupHeaderTypeTextStyle = (colorScheme) => ({
+      fontSize: 14,
+      fontWeight: '600',
+      marginRight: 8,
+      color: colorScheme[700],
+    });
+
+    // Match getGroupHeaderBadgeStyle from SelectedReview
+    const getGroupHeaderBadgeStyle = (colorScheme) => ({
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: 12,
+      backgroundColor: colorScheme[100],
+    });
+
+    // Match getGroupHeaderBadgeTextStyle from SelectedReview
+    const getGroupHeaderBadgeTextStyle = (colorScheme) => ({
+      fontSize: 12,
+      fontWeight: 'bold',
+      color: colorScheme[600],
+    });
+
     return (
       <ScaleDecorator>
         <TouchableOpacity
@@ -185,36 +233,26 @@ const DragAndDropModal = ({
           disabled={isActive}
           delayLongPress={200}
           style={[
-            styles.itemWrapper,
-            isActive && styles.itemWrapperActive,
-            item.type === 'group' && styles.groupWrapper,
-            item.type === 'group' && {
-              borderColor: groupColorScheme[200],
-              backgroundColor: groupColorScheme[50],
+            { marginVertical: 4 },
+            isActive && {
+              opacity: 0.8,
+              elevation: 4,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.25,
+              shadowRadius: 3.84,
             },
           ]}
         >
           {item.type === 'group' ? (
-            <View style={styles.groupContainer}>
-              <View style={[
-                styles.groupHeader,
-                { borderBottomColor: groupColorScheme[200] },
-              ]}>
-                <View style={styles.groupHeaderLeft}>
-                  <Text style={[
-                    styles.groupHeaderTypeText,
-                    { color: groupColorScheme[700] },
-                  ]}>
+            <View style={getGroupContainerStyle(groupColorScheme, false)}>
+              <View style={getGroupHeaderStyle(groupColorScheme)}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                  <Text style={getGroupHeaderTypeTextStyle(groupColorScheme)}>
                     {item.group.type}
                   </Text>
-                  <View style={[
-                    styles.groupHeaderBadge,
-                    { backgroundColor: groupColorScheme[100] },
-                  ]}>
-                    <Text style={[
-                      styles.groupHeaderBadgeText,
-                      { color: groupColorScheme[600] },
-                    ]}>
+                  <View style={getGroupHeaderBadgeStyle(groupColorScheme)}>
+                    <Text style={getGroupHeaderBadgeTextStyle(groupColorScheme)}>
                       {item.group.type === 'HIIT' ? 'H' : 'S'}{item.group.number}
                     </Text>
                   </View>
@@ -232,12 +270,14 @@ const DragAndDropModal = ({
                     item={{ ...exercise, id: uniqueKey }}
                     isSelected={true}
                     isLastSelected={false}
-                    selectionOrder={null}
+                    selectionOrder={index + 1}
                     onToggle={() => {}}
                     hideNumber={true}
                     isReordering={false}
                     isReordered={false}
-                    showAddMore={false}
+                    showAddMore={true}
+                    onAddMore={null}
+                    onRemoveSet={null}
                     selectedCount={selectedCount}
                     renderingSection="reviewContainer"
                     exerciseGroup={item.group}
@@ -258,7 +298,9 @@ const DragAndDropModal = ({
               hideNumber={false}
               isReordering={false}
               isReordered={false}
-              showAddMore={false}
+              showAddMore={true}
+              onAddMore={null}
+              onRemoveSet={null}
               selectedCount={item.count || 1}
               renderingSection="reviewContainer"
               exerciseGroup={null}
@@ -273,8 +315,8 @@ const DragAndDropModal = ({
   return (
     <Modal
       visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
+      animationType="fade"
+      transparent={false}
       onRequestClose={onClose}
     >
       <SafeAreaView style={styles.container}>
@@ -366,53 +408,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   listContent: {
-    padding: 8,
-  },
-  itemWrapper: {
-    marginVertical: 4,
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  itemWrapperActive: {
-    opacity: 0.8,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-  },
-  groupWrapper: {
-    borderWidth: 2,
-  },
-  groupContainer: {
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  groupHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-  },
-  groupHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  groupHeaderTypeText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  groupHeaderBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12,
-  },
-  groupHeaderBadgeText: {
-    fontSize: 12,
-    fontWeight: 'bold',
+    gap: 4,
+    paddingHorizontal: 2,
   },
   emptyContainer: {
     flex: 1,

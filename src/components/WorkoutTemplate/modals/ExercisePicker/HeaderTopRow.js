@@ -29,7 +29,7 @@ const HeaderTopRow = ({
       </View>
       
       <View style={styles.headerRight}>
-        <View style={{ position: 'relative', zIndex: 10 }}>
+        <View style={styles.groupButtonContainer}>
           <TouchableOpacity
             disabled={isDisabled}
             onPress={() => setIsGroupDropdownOpen(!isGroupDropdownOpen)}
@@ -111,6 +111,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     zIndex: 102,
+  },
+  groupButtonContainer: {
+    position: 'relative',
+    zIndex: 10,
   },
   groupButton: {
     flexDirection: 'row',

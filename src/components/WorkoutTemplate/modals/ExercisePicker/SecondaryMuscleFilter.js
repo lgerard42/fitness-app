@@ -13,6 +13,13 @@ const SecondaryMuscleFilter = ({
 }) => {
   if (!isEnabled) return null;
   
+  const button_active = isActive;
+  const button_inactive = !isActive;
+  const button_openOrPrimaryActive = isOpen || isPrimaryActive;
+  const button_primaryActive = isPrimaryActive;
+  const icon_active = isActive;
+  const icon_inactive = !isActive;
+
   return (
     <View style={externalStyles.secondaryFilterContainer}>
       <TouchableOpacity 
@@ -20,20 +27,31 @@ const SecondaryMuscleFilter = ({
         style={[
           externalStyles.filterButton,
           externalStyles.secondaryFilterButton,
-          (isOpen || isPrimaryActive) ? externalStyles.secondaryFilterBorderActive : { borderColor: 'transparent' },
-          isPrimaryActive ? externalStyles.secondaryFilterLeftBorder : {},
-          isActive ? { backgroundColor: COLORS.blue[100] } : { backgroundColor: COLORS.slate[100] }
+          button_openOrPrimaryActive ? externalStyles.secondaryFilterBorderActive : styles.buttonBorderInactive,
+          button_primaryActive ? externalStyles.secondaryFilterLeftBorder : {},
+          button_active ? styles.buttonActive : styles.buttonInactive,
         ]}
       >
         <MaterialCommunityIcons 
-          name={isActive ? "arm-flex" : "arm-flex-outline"} 
+          name={icon_active ? "arm-flex" : "arm-flex-outline"} 
           size={14} 
-          color={isActive ? COLORS.blue[700] : COLORS.blue[400]} 
+          color={icon_active ? COLORS.blue[700] : COLORS.blue[400]} 
         />
       </TouchableOpacity>
     </View>
   );
 };
 
-export default SecondaryMuscleFilter;
+const styles = StyleSheet.create({
+  buttonBorderInactive: {
+    borderColor: 'transparent',
+  },
+  buttonActive: {
+    backgroundColor: COLORS.blue[100],
+  },
+  buttonInactive: {
+    backgroundColor: COLORS.slate[100],
+  },
+});
 
+export default SecondaryMuscleFilter;

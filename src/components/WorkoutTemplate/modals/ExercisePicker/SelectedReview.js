@@ -323,6 +323,18 @@ const SelectedReview = ({
       rootContainer_collapsed && styles.rootContainerCollapsed,
       rootContainer_expanded && styles.rootContainerExpanded,
     ]}>
+      {hasExercises && (
+        <TouchableOpacity
+          activeOpacity={0.7}
+          style={styles.headerEnabled}
+          onPress={handleLongPress}
+          disabled={isGroupMode || isReordering}
+        >
+          <Text style={styles.reviewSelectionsText}>
+            Review selections
+          </Text>
+        </TouchableOpacity>
+      )}
       <TouchableOpacity 
         activeOpacity={canToggle ? 0.7 : 1}
         onPress={canToggle ? () => setIsCollapsed(!isCollapsed) : undefined}
@@ -886,6 +898,13 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   chevronContainer: {},
+  reviewSelectionsText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: COLORS.white,
+    textTransform: 'uppercase',
+    textAlign: 'center',
+  },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',

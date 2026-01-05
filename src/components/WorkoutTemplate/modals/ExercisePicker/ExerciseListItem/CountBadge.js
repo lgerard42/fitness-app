@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { COLORS } from '../../../../../constants/colors';
 
 const CountBadge = ({ selectedCount, groupedStyles = {} }) => {
@@ -7,35 +7,50 @@ const CountBadge = ({ selectedCount, groupedStyles = {} }) => {
 
   return (
     <View style={[
-      {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 4,
-        paddingVertical: 2,
-        borderRadius: 12,
-        backgroundColor: COLORS.blue[50],
-      },
+      styles.container,
       groupedStyles.container,
     ]}>
       <Text style={[
-        {
-          color: COLORS.slate[600],
-          fontSize: 14,
-          fontWeight: 'normal',
-          marginRight: 1,
-        },
+        styles.plusText,
         groupedStyles.plusText,
       ]}>+</Text>
       <Text style={[
-        {
-          color: COLORS.blue[600],
-          fontSize: 14,
-          fontWeight: 'bold',
-        },
+        styles.countText,
         groupedStyles.countText,
       ]}>{selectedCount}</Text>
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 12,
+    backgroundColor: COLORS.blue[50],
+    height: 20, // Fixed height to prevent layout shifts
+    minHeight: 20,
+    maxHeight: 20,
+  },
+  plusText: {
+    color: COLORS.slate[600],
+    fontSize: 14,
+    fontWeight: 'normal',
+    lineHeight: 16, // Explicit line height to match count text
+    marginRight: 1,
+    includeFontPadding: false, // Prevent extra padding on Android
+    textAlignVertical: 'center',
+  },
+  countText: {
+    color: COLORS.blue[600],
+    fontSize: 14,
+    fontWeight: 'bold',
+    lineHeight: 16, // Explicit line height to match plus text
+    includeFontPadding: false, // Prevent extra padding on Android
+    textAlignVertical: 'center',
+  },
+});
 
 export default CountBadge;
