@@ -30,6 +30,8 @@ const ExerciseListItem = ({
   isCollapsedGroup = false, // Whether this is a collapsed group view
   groupExercises = [], // Array of {name, count} for collapsed group summary
   isGroupItemReorder = false, // Whether this is a group item being reordered (use indigo colors)
+  isFirstInGroup = false, // Whether this is the first item in a group
+  isLastInGroup = false, // Whether this is the last item in a group
 }) => {
   const handlePress = () => {
     // In group mode, container click toggles selection
@@ -91,6 +93,8 @@ const ExerciseListItem = ({
 
   const container_groupModeSelected = isGroupMode && isSelectedInGroup;
   const container_groupModeUnselected = isGroupMode && !isSelectedInGroup;
+  const container_firstInGroup = isFirstInGroup && isGrouped;
+  const container_lastInGroup = isLastInGroup && isGrouped;
 
   // Determine if we should show the count badge next to name (selected, non-reorder, only in unselectedList)
   const showCountBadge = isSelected && selectedCount > 0;
@@ -169,6 +173,7 @@ const ExerciseListItem = ({
           borderBottomWidth: 1,
           borderBottomColor: COLORS.slate[50],
         }, 
+        // ===== NORMAL VIEW MODE =====
         container_selectedInSection && {
           backgroundColor: COLORS.blue[50],
           borderBottomColor: COLORS.white,
@@ -185,6 +190,7 @@ const ExerciseListItem = ({
         },
         container_selectedInList && !isReordering && !isGroupMode && isGrouped && renderingSection === 'selectedSection' && {
           backgroundColor: groupColorScheme[100],
+          borderBottomColor: groupColorScheme[150],
         },
         container_selectedInList && renderingSection === 'unselectedList' && {
           borderBottomColor: COLORS.slate[50],
@@ -192,6 +198,23 @@ const ExerciseListItem = ({
         container_lastSelected && {
           borderBottomColor: COLORS.slate[100],
         },
+        // Normal view - First in group
+        isFirstInGroup && isGrouped && !isReordering && !isGroupMode && renderingSection === 'selectedSection' && {
+          borderTopLeftRadius: 8,
+          borderTopRightRadius: 8,
+        },
+        // Normal view - Last in group
+        isLastInGroup && isGrouped && !isReordering && !isGroupMode && renderingSection === 'selectedSection' && {
+          borderBottomColor: 'transparent',
+          borderBottomLeftRadius: 8,
+          borderBottomRightRadius: 8,
+        },
+        // Force grouped items border color - override any white borders that might be set earlier
+        isGrouped && !isGroupMode && renderingSection === 'selectedSection' && !isLastInGroup && {
+          borderBottomColor: groupColorScheme[150],
+        },
+        
+        // ===== REORDER MODE =====
         container_reorderingMode && {
           backgroundColor: COLORS.white,
           borderBottomColor: COLORS.blue[100],
@@ -200,14 +223,31 @@ const ExerciseListItem = ({
           backgroundColor: COLORS.blue[50],
           borderBottomColor: COLORS.blue[100],
         },
+        
+        // ===== GROUP MODE =====
+        // Group mode - Selected
         container_groupModeSelected && {
           backgroundColor: groupColorScheme[100],
           borderBottomColor: COLORS.blue[200],
         },
+        isFirstInGroup && isGrouped && isGroupMode && isSelectedInGroup && {
+          // First item in group - group mode selected
+        },
+        isLastInGroup && isGrouped && isGroupMode && isSelectedInGroup && {
+          borderBottomColor: COLORS.white, // Overrides container_groupModeSelected borderBottomColor
+        },
+        // Group mode - Unselected (grouped)
         container_groupModeUnselected && isGrouped && {
           backgroundColor: groupColorScheme[50],
           borderBottomColor: groupColorScheme[200],
         },
+        isFirstInGroup && isGrouped && isGroupMode && !isSelectedInGroup && {
+          // First item in group - group mode unselected
+        },
+        isLastInGroup && isGrouped && isGroupMode && !isSelectedInGroup && {
+          borderBottomColor: COLORS.white, // Overrides container_groupModeUnselected borderBottomColor
+        },
+        // Group mode - Unselected (ungrouped)
         container_groupModeUnselected && !isGrouped && {
           backgroundColor: COLORS.white,
           borderBottomColor: COLORS.slate[100],

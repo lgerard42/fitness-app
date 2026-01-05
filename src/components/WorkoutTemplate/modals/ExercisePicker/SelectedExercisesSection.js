@@ -575,14 +575,17 @@ const SelectedExercisesSection = ({
                 style={{
                   paddingHorizontal: 10,
                   paddingVertical: 4,
-                  borderRadius: 3,
+                  borderTopLeftRadius: 6,
+                  borderBottomLeftRadius: 6,
+                  borderWidth: 1,
+                  borderColor: selectedGroupType === 'Superset' ? defaultSupersetColorScheme[500] : defaultSupersetColorScheme[200],
                   backgroundColor: selectedGroupType === 'Superset' ? defaultSupersetColorScheme[500] : 'transparent',
                 }}
               >
                 <Text style={{
                   fontSize: 11,
                   fontWeight: '600',
-                  color: selectedGroupType === 'Superset' ? COLORS.white : COLORS.white,
+                  color: selectedGroupType === 'Superset' ? COLORS.white : defaultSupersetColorScheme[300],
                   textTransform: 'uppercase',
                 }}>Superset</Text>
               </TouchableOpacity>
@@ -595,14 +598,17 @@ const SelectedExercisesSection = ({
                 style={{
                   paddingHorizontal: 10,
                   paddingVertical: 4,
-                  borderRadius: 3,
+                  borderTopRightRadius: 6,
+                  borderBottomRightRadius: 6,
+                  borderWidth: 1,
+                  borderColor: selectedGroupType === 'HIIT' ? defaultHiitColorScheme[500] : defaultHiitColorScheme[200],
                   backgroundColor: selectedGroupType === 'HIIT' ? defaultHiitColorScheme[500] : 'transparent',
                 }}
               >
                 <Text style={{
                   fontSize: 11,
                   fontWeight: '600',
-                  color: selectedGroupType === 'HIIT' ? COLORS.white : COLORS.white,
+                  color: selectedGroupType === 'HIIT' ? COLORS.white :defaultHiitColorScheme[300],
                   textTransform: 'uppercase',
                 }}>HIIT</Text>
               </TouchableOpacity>
@@ -730,10 +736,12 @@ const SelectedExercisesSection = ({
                         padding: 8,
                       }}
                     >
-                      {groupExercises.map(({ item: exerciseItem, index: exerciseIndex, isSelectedInGroup }) => {
+                      {groupExercises.map(({ item: exerciseItem, index: exerciseIndex, isSelectedInGroup }, groupItemIndex) => {
                         const uniqueKey = `${exerciseItem.id}-${exerciseIndex}`;
                         const groupedExercise = indexToGroupedExerciseMap.get(exerciseIndex);
                         const selectedCount = groupedExercise ? groupedExercise.count : 1;
+                        const isFirstInGroup = groupItemIndex === 0;
+                        const isLastInGroup = groupItemIndex === groupExercises.length - 1;
                         return (
                           <ExerciseListItem
                             key={uniqueKey}
@@ -751,6 +759,8 @@ const SelectedExercisesSection = ({
                             isGroupMode={true}
                             isSelectedInGroup={isSelectedInGroup}
                             exerciseGroup={tempGroupObject}
+                            isFirstInGroup={isFirstInGroup}
+                            isLastInGroup={isLastInGroup}
                           />
                         );
                       })}
@@ -790,11 +800,13 @@ const SelectedExercisesSection = ({
                         padding: 8,
                       }}
                     >
-                      {groupExercises.map(({ item: exerciseItem, index: exerciseIndex }) => {
+                      {groupExercises.map(({ item: exerciseItem, index: exerciseIndex }, groupItemIndex) => {
                         const uniqueKey = `${exerciseItem.id}-${exerciseIndex}`;
                         const isSelectedInGroup = editingGroupId === existingGroup.id && groupSelectionIndices.includes(exerciseIndex);
                         const groupedExercise = indexToGroupedExerciseMap.get(exerciseIndex);
                         const selectedCount = groupedExercise ? groupedExercise.count : 1;
+                        const isFirstInGroup = groupItemIndex === 0;
+                        const isLastInGroup = groupItemIndex === groupExercises.length - 1;
                         return (
                           <ExerciseListItem
                             key={uniqueKey}
@@ -812,6 +824,8 @@ const SelectedExercisesSection = ({
                             isGroupMode={true}
                             isSelectedInGroup={isSelectedInGroup}
                             exerciseGroup={existingGroup}
+                            isFirstInGroup={isFirstInGroup}
+                            isLastInGroup={isLastInGroup}
                           />
                         );
                       })}
@@ -897,11 +911,11 @@ const SelectedExercisesSection = ({
                       key={`group-${exerciseGroup.id}-${groupPosition}`}
                       style={{
                         marginBottom: 8,
-                        borderWidth: 1,
+                        borderWidth: 2,
                         borderColor: groupColorScheme[200],
                         borderRadius: 8,
                         backgroundColor: groupColorScheme[50],
-                        padding: 8,
+                        padding: 4,
                       }}
                     >
                       {/* Group header with "Superset"/"HIIT" text + badge and reorder/Save-Cancel */}
@@ -910,11 +924,11 @@ const SelectedExercisesSection = ({
                         alignItems: 'center',
                         justifyContent: 'space-between',
                         marginBottom: 4,
-                        paddingBottom: 4,
-                        borderBottomWidth: 1,
+                        borderBottomWidth: 0,
                         borderBottomColor: groupColorScheme[200],
-                        paddingVertical: 12,
-                        paddingLeft: 0,
+                        paddingTop: 4,
+                        paddingBottom: 4,
+                        paddingLeft: 8,
                         paddingRight: 16,
                       }}>
                         <View style={{
@@ -976,10 +990,12 @@ const SelectedExercisesSection = ({
                       </View>
                       
                       {/* Expanded view: show all exercises */}
-                      {groupExercises.map(({ item: exerciseItem, index: exerciseIndex, group: exerciseGroupData }) => {
+                      {groupExercises.map(({ item: exerciseItem, index: exerciseIndex, group: exerciseGroupData }, groupItemIndex) => {
                         const uniqueKey = `${exerciseItem.id}-${exerciseIndex}`;
                         const selectedCount = exerciseGroupData ? exerciseGroupData.count : 0;
                         const originalId = exerciseItem.id;
+                        const isFirstInGroup = groupItemIndex === 0;
+                        const isLastInGroup = groupItemIndex === groupExercises.length - 1;
                         
                         return (
                           <ExerciseListItem
@@ -998,6 +1014,8 @@ const SelectedExercisesSection = ({
                             selectedCount={selectedCount}
                             renderingSection="selectedSection"
                             exerciseGroup={exerciseGroup} // Pass exerciseGroup for styling (background color)
+                            isFirstInGroup={isFirstInGroup}
+                            isLastInGroup={isLastInGroup}
                           />
                         );
                       })}
