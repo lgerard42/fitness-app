@@ -241,12 +241,44 @@ const DragAndDropModal = ({
               shadowOffset: { width: 0, height: 2 },
               shadowOpacity: 0.25,
               shadowRadius: 3.84,
+
+              width: '90%', // Compensate for elevation shadow width
+              alignSelf: 'center', // Center the slightly smaller item
             },
           ]}
         >
           {item.type === 'group' ? (
-            <View style={getGroupContainerStyle(groupColorScheme, false)}>
-              <View style={getGroupHeaderStyle(groupColorScheme)}>
+            <View style={[
+              isActive ? {
+                // When dragging, style like individual item
+                paddingLeft: 16,
+                paddingRight: 16,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingVertical: 12,
+                borderBottomWidth: 1,
+                backgroundColor: groupColorScheme[100],
+                borderBottomColor: COLORS.slate[200],
+                marginVertical: 0,
+                width: '98%', // Compensate for elevation shadow (shadowRadius 3.84 * 2 ≈ 8px)
+                alignSelf: 'center', // Center the slightly smaller item
+              } : getGroupContainerStyle(groupColorScheme, false),
+            ]}>
+              <View style={[
+                isActive ? {
+                  // When dragging, remove group header styling
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  flex: 1,
+                  marginBottom: 0,
+                  paddingTop: 0,
+                  paddingBottom: 0,
+                  paddingLeft: 0,
+                  paddingRight: 0,
+                  borderBottomWidth: 0,
+                } : getGroupHeaderStyle(groupColorScheme),
+              ]}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                   <Text style={getGroupHeaderTypeTextStyle(groupColorScheme)}>
                     {item.group.type}
@@ -258,7 +290,7 @@ const DragAndDropModal = ({
                   </View>
                 </View>
               </View>
-              {item.exercises.map(({ exercise, index, count }, groupItemIndex) => {
+              {!isActive && item.exercises.map(({ exercise, index, count }, groupItemIndex) => {
                 const uniqueKey = `${exercise.id}-${index}`;
                 const selectedCount = count || 1;
                 const isFirstInGroup = groupItemIndex === 0;
