@@ -479,11 +479,7 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
       return newOrder;
     });
     
-    setIsGroupMode(false);
-    setGroupSelectionMode(null);
-    setGroupSelectionIndices([]);
-    setEditingGroupId(null);
-    setSelectedGroupType('Superset'); // Reset to default
+    // Don't close group mode - let handleSaveGroup handle clearing selection state
   }, [getNextGroupNumber]);
 
   const handleEditGroup = useCallback((groupId) => {
@@ -502,6 +498,12 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
       // Creating a new group still requires at least 2 exercises
       if (groupSelectionIndices.length < 2) return;
       handleCreateGroup(selectedGroupType, groupSelectionIndices);
+      // Clear selection but keep group mode open
+      setGroupSelectionMode(null);
+      setGroupSelectionIndices([]);
+      setEditingGroupId(null);
+      setSelectedGroupType('Superset'); // Reset to default
+      return;
     } else if (groupSelectionMode === 'edit' && editingGroupId) {
       // When editing, allow saving with 0 or 1 item
       if (groupSelectionIndices.length === 0) {
@@ -526,7 +528,7 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
           });
         }
         
-        setIsGroupMode(false);
+        // Clear selection but keep group mode open
         setGroupSelectionMode(null);
         setEditingGroupId(null);
         setGroupSelectionIndices([]);
@@ -618,7 +620,7 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
         return newOrder;
       });
       
-      setIsGroupMode(false);
+      // Clear selection but keep group mode open
       setGroupSelectionMode(null);
       setEditingGroupId(null);
       setGroupSelectionIndices([]);
