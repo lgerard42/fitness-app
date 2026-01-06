@@ -75,6 +75,7 @@ const DragAndDropModal = ({
   }, [selectedOrder, exerciseGroups, groupedExercises, filtered, getExerciseGroup]);
 
   const [reorderedItems, setReorderedItems] = useState(dragItems);
+  const [collapsedGroups, setCollapsedGroups] = useState(new Set());
   const prevVisibleRef = useRef(visible);
 
   // Only reset state when modal opens (visible changes from false to true)
@@ -85,6 +86,7 @@ const DragAndDropModal = ({
     // Only initialize/reset when modal transitions from closed to open
     if (!wasVisible && isVisible) {
       setReorderedItems(dragItems);
+      setCollapsedGroups(new Set());
     }
     
     prevVisibleRef.current = isVisible;
@@ -93,6 +95,8 @@ const DragAndDropModal = ({
   const handleDragEnd = useCallback(({ data }) => {
     // Update state with the new order from the library
     setReorderedItems(data);
+    // Expand all groups when drag ends
+    setCollapsedGroups(new Set());
   }, []);
 
   const keyExtractor = useCallback((item) => item.id, []);
@@ -173,6 +177,9 @@ const DragAndDropModal = ({
       ? (item.group.type === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme)
       : null;
 
+    // Collapse group when dragging (isActive is true)
+    const isGroupCollapsed = item.type === 'group' && isActive;
+
     // Match getGroupContainerStyle from SelectedReview
     const getGroupContainerStyle = (colorScheme, isEdited = false) => ({
       marginVertical: 4,
@@ -182,6 +189,22 @@ const DragAndDropModal = ({
       borderColor: colorScheme[isEdited ? 300 : 200],
       backgroundColor: colorScheme[isEdited ? 100 : 50],
       borderStyle: isEdited ? 'dashed' : 'solid',
+    });
+
+    // Styling for collapsed group container
+    const getCollapsedGroupContainerStyle = (colorScheme) => ({
+      marginVertical: 4,
+      borderWidth: 2,
+      borderRadius: 8,
+      padding: 0,
+      borderColor: colorScheme[300],
+      backgroundColor: colorScheme[150],
+      borderStyle: 'solid',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
     });
 
     // Match getGroupHeaderStyle from SelectedReview
@@ -196,6 +219,20 @@ const DragAndDropModal = ({
       paddingLeft: 8,
       paddingRight: 16,
       borderBottomColor: colorScheme[200],
+    });
+
+    // Styling for collapsed group header
+    const getCollapsedGroupHeaderStyle = (colorScheme) => ({
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 0,
+      borderBottomWidth: 0,
+      paddingTop: 12,
+      paddingBottom: 12,
+      paddingLeft: 12,
+      paddingRight: 16,
+      borderBottomColor: 'transparent',
     });
 
     // Match getGroupHeaderTypeTextStyle from SelectedReview
@@ -235,14 +272,20 @@ const DragAndDropModal = ({
         ]}
       >
           {item.type === 'group' ? (
-            <View style={[
-              getGroupContainerStyle(groupColorScheme, false),
-              isActive && {
-                backgroundColor: groupColorScheme[100],
-                borderColor: groupColorScheme[200],
-              }
-            ]}>
-              <View style={getGroupHeaderStyle(groupColorScheme)}>
+            <View style={isGroupCollapsed 
+              ? getCollapsedGroupContainerStyle(groupColorScheme)
+              : [
+                  getGroupContainerStyle(groupColorScheme, false),
+                  isActive && {
+                    backgroundColor: groupColorScheme[100],
+                    borderColor: groupColorScheme[200],
+                  }
+                ]
+            }>
+              <View style={isGroupCollapsed 
+                ? getCollapsedGroupHeaderStyle(groupColorScheme)
+                : getGroupHeaderStyle(groupColorScheme)
+              }>
                 <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                   <Text style={getGroupHeaderTypeTextStyle(groupColorScheme)}>
                     {item.group.type}
@@ -254,7 +297,7 @@ const DragAndDropModal = ({
                   </View>
                 </View>
               </View>
-              {item.exercises.map(({ exercise, index, count }, groupItemIndex) => {
+              {!isGroupCollapsed && item.exercises.map(({ exercise, index, count }, groupItemIndex) => {
                 const uniqueKey = `${exercise.id}-${index}`;
                 const selectedCount = count || 1;
                 const isFirstInGroup = groupItemIndex === 0;
