@@ -27,7 +27,8 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.lgerard42.fitnessapp"
     },
     "web": {
       "favicon": "./assets/favicon.png"

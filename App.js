@@ -1,16 +1,10 @@
 import React from 'react';
 import { View } from 'react-native';
-// #region agent log
 import { NavigationContainer } from '@react-navigation/native';
-fetch('http://127.0.0.1:7243/ingest/751917f3-6b76-4143-ba7e-6983111b1561',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.js:3',message:'App.js imports starting',data:{step:'navigation'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-// #endregion
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-// #region agent log
-fetch('http://127.0.0.1:7243/ingest/751917f3-6b76-4143-ba7e-6983111b1561',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.js:7',message:'GestureHandlerRootView import complete',data:{step:'gesture-handler'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-// #endregion
 import { Play, Calendar, Book, User, CircleDashed } from 'lucide-react-native';
 import { COLORS } from './src/constants/colors';
 import { WorkoutProvider } from './src/context/WorkoutContext';
@@ -106,9 +100,6 @@ const MainTabs = () => {
 };
 
 export default function App() {
-  // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/751917f3-6b76-4143-ba7e-6983111b1561',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.js:102',message:'App component rendering',data:{step:'app-render'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>

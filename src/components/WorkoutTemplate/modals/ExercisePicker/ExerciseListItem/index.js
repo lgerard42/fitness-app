@@ -112,8 +112,9 @@ const ExerciseListItem = ({
       activeOpacity={disableTouch ? 1 : 0.7}
       style={[
         styles.itemContainer,
-        container_selectedInReviewContainer && !isReordering && !isGroupMode && isGrouped && renderingSection === 'reviewContainer' && getGroupBackgroundColor(100),
-        container_selected && styles.containerSelected,
+        isSelected && !isReordering && !isGroupMode && isGrouped && renderingSection === 'reviewContainer' && getGroupBackgroundColor(100),
+        isSelected && !isReordering && !isGroupMode && !isGrouped && renderingSection === 'reviewContainer' && styles.containerSelectedInReviewContainer,
+        container_selected && renderingSection !== 'reviewContainer' && styles.containerSelected,
         container_selected && !isReordering && !isGroupMode && isGrouped && renderingSection === 'reviewContainer' && [
           getGroupBackgroundColor(100),
           getGroupBorderColor(150),
@@ -156,11 +157,6 @@ const ExerciseListItem = ({
                 exerciseGroup={exerciseGroup} 
               />
             )}
-            {showCountBadge && (
-              <CountBadge 
-                selectedCount={selectedCount}
-              />
-            )}
           </View>
         </View>
         <View style={styles.tagsContainer}>
@@ -173,6 +169,13 @@ const ExerciseListItem = ({
           />
         </View>
       </View>
+      {showCountBadge && (
+        <View style={styles.countBadgeWrapper}>
+          <CountBadge 
+            selectedCount={selectedCount}
+          />
+        </View>
+      )}
       {showAddRemoveButtons || showAddButtonOnly ? (
         <ActionButtons
           isSelected={isSelected}
@@ -204,7 +207,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 12,
-    borderBottomWidth: 1,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    borderBottomColor: COLORS.slate[100],
   },
   contentContainer: {
     flex: 1,
@@ -230,16 +235,30 @@ const styles = StyleSheet.create({
     marginTop: 4,
     flexWrap: 'wrap',
   },
+  countBadgeWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+    height: 24, // Match the height of ActionButtons to prevent layout shifts
+  },
   
   nameTextSelectedInReviewContainer: {
     color: COLORS.slate[900],
   },
   
-  containerSelected: {
+  containerSelectedInReviewContainer: {
     backgroundColor: COLORS.slate[50],
-    borderWidth: 1,
-    borderColor: COLORS.slate[100],
+    borderWidth: 2,
     borderRadius: 8,
+    borderColor: COLORS.slate[150],
+    borderBottomColor: COLORS.slate[150],
+  },
+  
+  containerSelected: {
+    backgroundColor: COLORS.blue[100],
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.slate[50],
+    borderRadius: 0,
   },
   nameTextSelected: {
     color: COLORS.slate[900],
@@ -247,8 +266,8 @@ const styles = StyleSheet.create({
   
   containerSelectedInGlossary: {
     borderWidth: 1,
-    borderRadius: 8,
-    borderColor: COLORS.slate[50],
+    borderBottomRadius: 1,
+    borderBottomColor: COLORS.slate[50],
   },
   nameTextSelectedInGlossary: {
     color: COLORS.slate[900],
