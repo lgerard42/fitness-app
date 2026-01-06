@@ -1,6 +1,6 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { View, Text, Modal, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
-import DraggableFlatList from 'react-native-draggable-dynamic-flatlist';
+import DraggableFlatList from 'react-native-draggable-flatlist';
 import { COLORS } from '../../../../constants/colors';
 import { defaultSupersetColorScheme, defaultHiitColorScheme } from '../../../../constants/defaultStyles';
 import ExerciseListItem from './ExerciseListItem';
@@ -74,16 +74,28 @@ const DragAndDropModal = ({
     return items;
   }, [selectedOrder, exerciseGroups, groupedExercises, filtered, getExerciseGroup]);
 
-  const [items, setItems] = useState(dragItems);
+  const [reorderedItems, setReorderedItems] = useState(dragItems);
+  const prevVisibleRef = useRef(visible);
 
-  // Update items when props change
-  React.useEffect(() => {
-    setItems(dragItems);
-  }, [dragItems]);
+  // Only reset state when modal opens (visible changes from false to true)
+  useEffect(() => {
+    const wasVisible = prevVisibleRef.current;
+    const isVisible = visible;
+    
+    // Only initialize/reset when modal transitions from closed to open
+    if (!wasVisible && isVisible) {
+      setReorderedItems(dragItems);
+    }
+    
+    prevVisibleRef.current = isVisible;
+  }, [visible, dragItems]);
 
-  const handleMoveEnd = useCallback(({ data, from, to }) => {
-    setItems(data);
+  const handleDragEnd = useCallback(({ data }) => {
+    // Update state with the new order from the library
+    setReorderedItems(data);
   }, []);
+
+  const keyExtractor = useCallback((item) => item.id, []);
 
   const handleSave = useCallback(() => {
     if (!onReorder) return;
@@ -91,7 +103,7 @@ const DragAndDropModal = ({
     // Rebuild selectedOrder based on new item order
     const newOrder = [];
     
-    items.forEach(item => {
+    reorderedItems.forEach(item => {
       if (item.type === 'group') {
         // Add all exercises in the group with their counts
         item.exercises.forEach(({ exercise, count }) => {
@@ -111,7 +123,7 @@ const DragAndDropModal = ({
     
     // Update group indices based on new positions
     const updatedGroups = exerciseGroups.map(group => {
-      const itemIndex = items.findIndex(item => 
+      const itemIndex = reorderedItems.findIndex(item => 
         item.type === 'group' && item.group.id === group.id
       );
       
@@ -123,19 +135,19 @@ const DragAndDropModal = ({
       // Calculate new indices for this group
       let currentIndex = 0;
       for (let i = 0; i < itemIndex; i++) {
-        if (items[i].type === 'group') {
+        if (reorderedItems[i].type === 'group') {
           // Count all exercises in the group (with their counts)
-          items[i].exercises.forEach(({ count }) => {
+          reorderedItems[i].exercises.forEach(({ count }) => {
             currentIndex += count || 1;
           });
         } else {
-          currentIndex += items[i].count || 1;
+          currentIndex += reorderedItems[i].count || 1;
         }
       }
       
       const newIndices = [];
       let exerciseOffset = 0;
-      items[itemIndex].exercises.forEach(({ count }) => {
+      reorderedItems[itemIndex].exercises.forEach(({ count }) => {
         const exerciseCount = count || 1;
         for (let i = 0; i < exerciseCount; i++) {
           newIndices.push(currentIndex + exerciseOffset);
@@ -148,15 +160,15 @@ const DragAndDropModal = ({
         exerciseIndices: newIndices,
       };
     }).filter(group => {
-      // Only keep groups that still exist in items
-      return items.some(item => item.type === 'group' && item.group.id === group.id);
+      // Only keep groups that still exist in reorderedItems
+      return reorderedItems.some(item => item.type === 'group' && item.group.id === group.id);
     });
     
     onReorder(newOrder, updatedGroups);
     onClose();
-  }, [items, onReorder, onClose, exerciseGroups, groupedExercises]);
+  }, [reorderedItems, onReorder, onClose, exerciseGroups, groupedExercises]);
 
-  const renderItem = useCallback(({ item, index, isActive, move, moveEnd }) => {
+  const renderItem = useCallback(({ item, drag, isActive }) => {
     const groupColorScheme = item.type === 'group' 
       ? (item.group.type === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme)
       : null;
@@ -211,47 +223,26 @@ const DragAndDropModal = ({
 
     return (
       <TouchableOpacity
-        onLongPress={() => {
-          if (move) move();
-        }}
+        onLongPress={drag}
         disabled={isActive}
-        delayLongPress={200}
+        delayLongPress={150}
+        activeOpacity={1}
         style={[
           { marginVertical: 4 },
           isActive && {
             opacity: 0.8,
-            elevation: 4,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.25,
-            shadowRadius: 3.84,
-            width: '90%', // Compensate for elevation shadow width
-            alignSelf: 'center', // Center the slightly smaller item
           },
         ]}
       >
           {item.type === 'group' ? (
             <View style={[
-              isActive ? styles.activeGroupContainer : getGroupContainerStyle(groupColorScheme, false),
+              getGroupContainerStyle(groupColorScheme, false),
               isActive && {
                 backgroundColor: groupColorScheme[100],
                 borderColor: groupColorScheme[200],
               }
             ]}>
-              <View style={[
-                isActive ? {
-                  // When dragging, remove group header styling
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  flex: 1,
-                  marginBottom: 0,
-                  paddingTop: 0,
-                  paddingBottom: 0,
-                  paddingLeft: 0,
-                  paddingRight: 0,
-                  borderBottomWidth: 0,
-                } : getGroupHeaderStyle(groupColorScheme),
-              ]}>
+              <View style={getGroupHeaderStyle(groupColorScheme)}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                   <Text style={getGroupHeaderTypeTextStyle(groupColorScheme)}>
                     {item.group.type}
@@ -263,7 +254,7 @@ const DragAndDropModal = ({
                   </View>
                 </View>
               </View>
-              {!isActive && item.exercises.map(({ exercise, index, count }, groupItemIndex) => {
+              {item.exercises.map(({ exercise, index, count }, groupItemIndex) => {
                 const uniqueKey = `${exercise.id}-${index}`;
                 const selectedCount = count || 1;
                 const isFirstInGroup = groupItemIndex === 0;
@@ -294,7 +285,7 @@ const DragAndDropModal = ({
               })}
             </View>
           ) : (
-            <View style={isActive ? styles.activeItemContainer : {}}>
+            <View>
               <ExerciseListItem
                 item={item.exercise}
                 isSelected={true}
@@ -316,7 +307,7 @@ const DragAndDropModal = ({
           )}
       </TouchableOpacity>
     );
-  }, [groupedExercises]);
+  }, []);
 
   return (
     <Modal
@@ -342,11 +333,11 @@ const DragAndDropModal = ({
           </Text>
         </View>
 
-        {items.length > 0 ? (
+        {reorderedItems.length > 0 ? (
           <DraggableFlatList
-            data={items}
-            onMoveEnd={handleMoveEnd}
-            keyExtractor={(item) => item.id}
+            data={reorderedItems}
+            onDragEnd={handleDragEnd}
+            keyExtractor={keyExtractor}
             renderItem={renderItem}
             contentContainerStyle={styles.listContent}
           />
@@ -413,29 +404,6 @@ const styles = StyleSheet.create({
   listContent: {
     gap: 0,
     paddingHorizontal: 2,
-  },
-  activeItemContainer: {
-    paddingLeft: 16,
-    paddingRight: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.slate[200],
-  },
-  activeGroupContainer: {
-    paddingLeft: 16,
-    paddingRight: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.slate[200],
-    marginVertical: 0,
-    borderWidth: 2,
-    borderRadius: 8,
   },
   emptyContainer: {
     flex: 1,
