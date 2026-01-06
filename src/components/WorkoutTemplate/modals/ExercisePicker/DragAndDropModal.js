@@ -193,7 +193,7 @@ const DragAndDropModal = ({
 
     // Styling for collapsed group container
     const getCollapsedGroupContainerStyle = (colorScheme) => ({
-      marginVertical: 4,
+      marginTop: 4,
       borderWidth: 2,
       borderRadius: 8,
       padding: 0,
