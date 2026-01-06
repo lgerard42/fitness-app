@@ -1,9 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, Modal, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
-// #region agent log
-import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist';
-fetch('http://127.0.0.1:7243/ingest/751917f3-6b76-4143-ba7e-6983111b1561',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DragAndDropModal.js:4',message:'DraggableFlatList import attempt',data:{module:'react-native-draggable-flatlist'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-// #endregion
+import DraggableFlatList from 'react-native-draggable-dynamic-flatlist';
 import { COLORS } from '../../../../constants/colors';
 import { defaultSupersetColorScheme, defaultHiitColorScheme } from '../../../../constants/defaultStyles';
 import ExerciseListItem from './ExerciseListItem';
@@ -18,14 +15,8 @@ const DragAndDropModal = ({
   getExerciseGroup,
   onReorder,
 }) => {
-  // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/751917f3-6b76-4143-ba7e-6983111b1561',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DragAndDropModal.js:18',message:'DragAndDropModal component initialized',data:{visible},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-  // #endregion
   // Build a flat list of items (groups and individual exercises)
   const dragItems = useMemo(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/751917f3-6b76-4143-ba7e-6983111b1561',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DragAndDropModal.js:19',message:'dragItems useMemo executing',data:{selectedOrderLength:selectedOrder?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
     const items = [];
     const processedIndices = new Set();
     
@@ -84,15 +75,13 @@ const DragAndDropModal = ({
   }, [selectedOrder, exerciseGroups, groupedExercises, filtered, getExerciseGroup]);
 
   const [items, setItems] = useState(dragItems);
-  const [activeItemId, setActiveItemId] = useState(null);
 
   // Update items when props change
   React.useEffect(() => {
     setItems(dragItems);
   }, [dragItems]);
 
-  const handleDragEnd = useCallback(({ data }) => {
-    setActiveItemId(null);
+  const handleMoveEnd = useCallback(({ data, from, to }) => {
     setItems(data);
   }, []);
 
@@ -167,10 +156,7 @@ const DragAndDropModal = ({
     onClose();
   }, [items, onReorder, onClose, exerciseGroups, groupedExercises]);
 
-  const renderItem = useCallback(({ item, drag, isActive }) => {
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/751917f3-6b76-4143-ba7e-6983111b1561',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DragAndDropModal.js:168',message:'renderItem callback executing',data:{itemType:item?.type,isActive,hasDrag:!!drag},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
+  const renderItem = useCallback(({ item, index, isActive, move, moveEnd }) => {
     const groupColorScheme = item.type === 'group' 
       ? (item.group.type === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme)
       : null;
@@ -224,55 +210,36 @@ const DragAndDropModal = ({
     });
 
     return (
-      <ScaleDecorator>
-        <TouchableOpacity
-          onLongPress={() => {
-            // #region agent log
-            fetch('http://127.0.0.1:7243/ingest/751917f3-6b76-4143-ba7e-6983111b1561',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DragAndDropModal.js:179',message:'onLongPress triggered, calling drag',data:{itemType:item?.type},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'D'})}).catch(()=>{});
-            // #endregion
-            if (item.type === 'group') {
-              // Collapse group first, then delay drag to allow layout to settle
-              setActiveItemId(item.id);
-              requestAnimationFrame(() => {
-                setTimeout(() => {
-                  if (drag) drag();
-                }, 50);
-              });
-            } else {
-              // Individual items drag immediately
-              if (drag) drag();
-            }
-          }}
-          disabled={isActive}
-          delayLongPress={200}
-          style={[
-            { marginVertical: 4 },
-            isActive && item.type === 'group' && styles.activeGroupContainer,
-            isActive && item.type === 'exercise' && styles.activeItemContainer,
-            isActive && {
-              opacity: 0.8,
-              elevation: 4,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.25,
-              shadowRadius: 3.84,
-              width: '90%', // Compensate for elevation shadow width
-              alignSelf: 'center', // Center the slightly smaller item
-            },
-          ]}
-        >
+      <TouchableOpacity
+        onLongPress={() => {
+          if (move) move();
+        }}
+        disabled={isActive}
+        delayLongPress={200}
+        style={[
+          { marginVertical: 4 },
+          isActive && {
+            opacity: 0.8,
+            elevation: 4,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.25,
+            shadowRadius: 3.84,
+            width: '90%', // Compensate for elevation shadow width
+            alignSelf: 'center', // Center the slightly smaller item
+          },
+        ]}
+      >
           {item.type === 'group' ? (
             <View style={[
-              (isActive || item.id === activeItemId) ? [
-                styles.activeGroupContainerInner,
-                {
-                  backgroundColor: groupColorScheme[100],
-                  borderBottomColor: COLORS.slate[200],
-                }
-              ] : getGroupContainerStyle(groupColorScheme, false),
+              isActive ? styles.activeGroupContainer : getGroupContainerStyle(groupColorScheme, false),
+              isActive && {
+                backgroundColor: groupColorScheme[100],
+                borderColor: groupColorScheme[200],
+              }
             ]}>
               <View style={[
-                (isActive || item.id === activeItemId) ? {
+                isActive ? {
                   // When dragging, remove group header styling
                   flexDirection: 'row',
                   alignItems: 'center',
@@ -296,7 +263,7 @@ const DragAndDropModal = ({
                   </View>
                 </View>
               </View>
-              {item.id !== activeItemId && item.exercises.map(({ exercise, index, count }, groupItemIndex) => {
+              {!isActive && item.exercises.map(({ exercise, index, count }, groupItemIndex) => {
                 const uniqueKey = `${exercise.id}-${index}`;
                 const selectedCount = count || 1;
                 const isFirstInGroup = groupItemIndex === 0;
@@ -327,7 +294,7 @@ const DragAndDropModal = ({
               })}
             </View>
           ) : (
-            <View style={isActive ? styles.activeItemContainerInner : {}}>
+            <View style={isActive ? styles.activeItemContainer : {}}>
               <ExerciseListItem
                 item={item.exercise}
                 isSelected={true}
@@ -347,10 +314,9 @@ const DragAndDropModal = ({
               />
             </View>
           )}
-        </TouchableOpacity>
-      </ScaleDecorator>
+      </TouchableOpacity>
     );
-  }, [groupedExercises, activeItemId]);
+  }, [groupedExercises]);
 
   return (
     <Modal
@@ -377,12 +343,9 @@ const DragAndDropModal = ({
         </View>
 
         {items.length > 0 ? (
-          // #region agent log
-          (() => { fetch('http://127.0.0.1:7243/ingest/751917f3-6b76-4143-ba7e-6983111b1561',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DragAndDropModal.js:289',message:'About to render DraggableFlatList',data:{itemsCount:items.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{}); return null; })() ||
-          // #endregion
           <DraggableFlatList
             data={items}
-            onDragEnd={handleDragEnd}
+            onMoveEnd={handleMoveEnd}
             keyExtractor={(item) => item.id}
             renderItem={renderItem}
             contentContainerStyle={styles.listContent}
@@ -452,22 +415,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
   },
   activeItemContainer: {
-    borderWidth: 1,
-    borderColor: COLORS.slate[200],
-    borderRadius: 8,
-  },
-  activeItemContainerInner: {
-    borderWidth: 1,
-    borderColor: COLORS.slate[200],
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  activeGroupContainer: {
-    borderWidth: 2,
-    borderRadius: 8,
-  },
-  activeGroupContainerInner: {
-    // When dragging, style like individual item
     paddingLeft: 16,
     paddingRight: 16,
     flexDirection: 'row',
@@ -475,15 +422,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 12,
     borderBottomWidth: 1,
+    borderBottomColor: COLORS.slate[200],
+  },
+  activeGroupContainer: {
+    paddingLeft: 16,
+    paddingRight: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.slate[200],
     marginVertical: 0,
-    width: '98%', // Compensate for elevation shadow (shadowRadius 3.84 * 2 ≈ 8px)
-    alignSelf: 'center', // Center the slightly smaller item
-    borderWidth: 1,
-    borderColor: COLORS.slate[200],
+    borderWidth: 2,
     borderRadius: 8,
-    borderTopWidth: 1,
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
   },
   emptyContainer: {
     flex: 1,
