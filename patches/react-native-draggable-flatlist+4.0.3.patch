@@ -1,0 +1,26 @@
+diff --git a/node_modules/react-native-draggable-flatlist/src/components/CellRendererComponent.tsx b/node_modules/react-native-draggable-flatlist/src/components/CellRendererComponent.tsx
+index e4e861a..cdfe780 100644
+--- a/node_modules/react-native-draggable-flatlist/src/components/CellRendererComponent.tsx
++++ b/node_modules/react-native-draggable-flatlist/src/components/CellRendererComponent.tsx
+@@ -34,7 +34,7 @@ function CellRendererComponent<T>(props: Props<T>) {
+   const viewRef = useRef<Animated.View>(null);
+   const { cellDataRef, propsRef, containerRef } = useRefs<T>();
+ 
+-  const { horizontalAnim, scrollOffset } = useAnimatedValues();
++  const { horizontalAnim, scrollOffset, activeCellSize } = useAnimatedValues();
+   const {
+     activeKey,
+     keyExtractor,
+@@ -80,6 +80,12 @@ function CellRendererComponent<T>(props: Props<T>) {
+ 
+       size.value = cellSize;
+       offset.value = cellOffset;
++      
++      // Update activeCellSize if this is the active cell
++      // Check activeKey === key directly to avoid closure issues with isActive
++      if (activeKey === key) {
++        activeCellSize.value = cellSize;
++      }
+     };
+ 
+     const onFail = () => {
