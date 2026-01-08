@@ -18,20 +18,20 @@ const DragAndDropModal = ({
   const dragItems = useMemo(() => {
     const items = [];
     const processedIndices = new Set();
-    
+
     selectedOrder.forEach((exerciseId, orderIndex) => {
       if (processedIndices.has(orderIndex)) return;
-      
+
       const exercise = filtered.find(ex => ex.id === exerciseId);
       if (!exercise) return;
-      
+
       const exerciseGroup = getExerciseGroup ? getExerciseGroup(orderIndex) : null;
-      
+
       if (exerciseGroup) {
         // This is part of a group
         const firstIndexInGroup = exerciseGroup.exerciseIndices[0];
         const lastIndexInGroup = exerciseGroup.exerciseIndices[exerciseGroup.exerciseIndices.length - 1];
-        
+
         // If this is the first exercise in the group, push a GroupHeader
         if (orderIndex === firstIndexInGroup) {
           // Collect all exercises in this group for the header
@@ -48,7 +48,7 @@ const DragAndDropModal = ({
               });
             }
           });
-          
+
           items.push({
             id: `header-${exerciseGroup.id}`,
             type: 'GroupHeader',
@@ -57,12 +57,12 @@ const DragAndDropModal = ({
             groupExercises: groupExercisesData,
           });
         }
-        
+
         // Push the Item
         processedIndices.add(orderIndex);
         const groupedExercise = groupedExercises.find(g => g.orderIndices.includes(orderIndex));
         const count = groupedExercise ? groupedExercise.count : 1;
-        
+
         items.push({
           id: `item-${exerciseId}-${orderIndex}`,
           type: 'Item',
@@ -73,7 +73,7 @@ const DragAndDropModal = ({
           isFirstInGroup: orderIndex === firstIndexInGroup,
           isLastInGroup: orderIndex === lastIndexInGroup,
         });
-        
+
         // If this is the last exercise in the group, push a GroupFooter
         if (orderIndex === lastIndexInGroup) {
           items.push({
@@ -99,12 +99,14 @@ const DragAndDropModal = ({
         });
       }
     });
-    
+
     return items;
   }, [selectedOrder, exerciseGroups, groupedExercises, filtered, getExerciseGroup]);
 
   const [reorderedItems, setReorderedItems] = useState(dragItems);
   const [collapsedGroupId, setCollapsedGroupId] = useState(null);
+  const [groupHeights, setGroupHeights] = useState({}); // Store measured heights of groups
+  const groupHeightRefs = useRef({}); // Store refs for measuring group heights
   const prevVisibleRef = useRef(visible);
   const pendingDragRef = useRef(null); // Store drag function to call after collapse
 
@@ -112,13 +114,15 @@ const DragAndDropModal = ({
   useEffect(() => {
     const wasVisible = prevVisibleRef.current;
     const isVisible = visible;
-    
+
     if (!wasVisible && isVisible) {
       setReorderedItems(dragItems);
       setCollapsedGroupId(null);
+      setGroupHeights({});
+      groupHeightRefs.current = {};
       pendingDragRef.current = null;
     }
-    
+
     prevVisibleRef.current = isVisible;
   }, [visible, dragItems]);
 
@@ -138,67 +142,242 @@ const DragAndDropModal = ({
     });
   }, []);
 
-  // Helper: Expand a collapsed group (remove collapsed markers and ensure correct order)
-  const expandGroup = useCallback((items, groupId) => {
-    // Find the header position in the new array
-    const headerIndex = items.findIndex(item => 
-      item.type === 'GroupHeader' && item.groupId === groupId
-    );
-    
-    if (headerIndex === -1) {
-      // Header not found, just remove collapsed flags
+  // Helper: Calculate estimated height of a group based on its items
+  // Uses actual measurements from styles for accurate height preservation
+  const calculateGroupHeight = useCallback((items, groupId) => {
+    // Actual measurements from styles (DragAndDropModal renders items individually, no container wrapper):
+
+    // Group Header (from DragAndDropModal styles):
+    // - paddingVertical: 10 = 20px (10 top + 10 bottom)
+    // - marginTop: 12px
+    // - borderWidth: 2 (top) = 2px
+    // - Content height (text + badge): ~18px
+    // - marginBottom: 4px (normal) or 8px when collapsed
+    // Header normal: 20 + 12 + 2 + 18 + 4 = ~56px
+    // Header collapsed: 20 + 12 + 2 + 18 + 8 + 2 (bottom border) = ~62px
+    const HEADER_PADDING_VERTICAL = 20; // 10 top + 10 bottom
+    const HEADER_MARGIN_TOP = 12;
+    const HEADER_BORDER_TOP = 2;
+    const HEADER_CONTENT_HEIGHT = 18; // Text + badge approximate
+    const HEADER_MARGIN_BOTTOM_NORMAL = 4; // Normal marginBottom
+    const HEADER_BORDER_BOTTOM_COLLAPSED = 2; // Bottom border when collapsed
+    const HEADER_MARGIN_BOTTOM_COLLAPSED = 8; // marginBottom when collapsed (replaces normal 4)
+    const HEADER_COLLAPSED = HEADER_PADDING_VERTICAL + HEADER_MARGIN_TOP +
+      HEADER_BORDER_TOP + HEADER_BORDER_BOTTOM_COLLAPSED +
+      HEADER_CONTENT_HEIGHT + HEADER_MARGIN_BOTTOM_COLLAPSED; // ~62px
+
+    // Group Footer (from DragAndDropModal styles):
+    // - paddingVertical: 8 = 16px (8 top + 8 bottom)
+    // - marginBottom: 8px
+    // - borderWidth: 2 (bottom) = 2px
+    // - Content (divider line): 3px
+    // Footer: 16 + 8 + 2 + 3 = ~29px
+    const FOOTER_PADDING_VERTICAL = 16; // 8 top + 8 bottom
+    const FOOTER_MARGIN_BOTTOM = 8;
+    const FOOTER_BORDER_BOTTOM = 2;
+    const FOOTER_CONTENT_HEIGHT = 3; // Divider line
+    const FOOTER_TOTAL = FOOTER_PADDING_VERTICAL + FOOTER_MARGIN_BOTTOM +
+      FOOTER_BORDER_BOTTOM + FOOTER_CONTENT_HEIGHT; // ~29px
+
+    // Exercise List Items (from ExerciseListItem styles + group child styling):
+    // - paddingVertical: 12 = 24px (12 top + 12 bottom) from itemContainer
+    // - Text height: fontSize 16, bold = ~20px
+    // - Tags container marginTop: 4px
+    // - Tags height: ~20-24px
+    // - marginVertical: 3 = 6px (3 top + 3 bottom) from exerciseCardContent__groupChild
+    // - borderWidth: 1 when in group
+    // Item total: 24 + 20 + 4 + 22 + 6 + 1 = ~77px per item
+    const ITEM_PADDING_VERTICAL = 24; // 12 top + 12 bottom
+    const ITEM_TEXT_HEIGHT = 20; // Font size 16, bold, approximate line height
+    const ITEM_TAGS_MARGIN_TOP = 4; // marginTop for tags container
+    const ITEM_TAGS_HEIGHT = 22; // Approximate tags height
+    const ITEM_MARGIN_VERTICAL = 6; // 3 top + 3 bottom (from exerciseCardContent__groupChild)
+    const ITEM_BORDER = 1; // Border when in group
+    const ITEM_TOTAL = ITEM_PADDING_VERTICAL + ITEM_TEXT_HEIGHT +
+      ITEM_TAGS_MARGIN_TOP + ITEM_TAGS_HEIGHT +
+      ITEM_MARGIN_VERTICAL + ITEM_BORDER; // ~77px per item
+
+    let itemCount = 0;
+    let hasHeader = false;
+    let hasFooter = false;
+
+    items.forEach(item => {
+      if (item.groupId === groupId) {
+        if (item.type === 'GroupHeader') {
+          hasHeader = true;
+        } else if (item.type === 'GroupFooter') {
+          hasFooter = true;
+        } else if (item.type === 'Item') {
+          itemCount += item.count || 1;
+        }
+      }
+    });
+
+    // Calculate total height for collapsed header
+    // When collapsed, the header represents the ENTIRE group (header + items + footer)
+    // So we need: normal header height + all items + footer
+    let totalHeight = 0;
+
+    // Header (normal height when expanded, not collapsed height)
+    // Normal header: padding + marginTop + borderTop + content + marginBottom (normal)
+    const HEADER_NORMAL = HEADER_PADDING_VERTICAL + HEADER_MARGIN_TOP +
+      HEADER_BORDER_TOP + HEADER_CONTENT_HEIGHT +
+      HEADER_MARGIN_BOTTOM_NORMAL; // ~56px
+    if (hasHeader) {
+      totalHeight += HEADER_NORMAL; // ~56px
+    }
+
+    // Items (each item contributes its height when expanded)
+    totalHeight += itemCount * ITEM_TOTAL; // ~77px per item
+
+    // Footer
+    if (hasFooter) {
+      totalHeight += FOOTER_TOTAL; // ~29px
+    }
+
+    // Note: When the header is collapsed, it gets additional styling:
+    // - borderBottomWidth: 2 (adds 2px)
+    // - marginBottom: 8 (instead of normal 4, adds 4px)
+    // So collapsed header gets ~6px extra, but we're calculating the space it should fill
+    // which is the normal group height, not the collapsed header's own height
+
+    return totalHeight;
+  }, []);
+
+  // Helper: Collapse ALL other groups except the one being dragged
+  // This "freezes" other groups so they can't accept drops inside them
+  // Calculates and stores heights before collapsing
+  const collapseAllOtherGroups = useCallback((items, draggedGroupId) => {
+    // Find all unique group IDs except the one being dragged
+    const otherGroupIds = new Set();
+    items.forEach(item => {
+      if (item.groupId && item.groupId !== draggedGroupId) {
+        otherGroupIds.add(item.groupId);
+      }
+    });
+
+    // Calculate heights for all other groups before collapsing
+    const heights = {};
+    otherGroupIds.forEach(groupId => {
+      heights[groupId] = calculateGroupHeight(items, groupId);
+    });
+    setGroupHeights(prev => ({ ...prev, ...heights }));
+
+    // Collapse all other groups and add stored height to headers
+    return items.map(item => {
+      if (item.groupId && otherGroupIds.has(item.groupId)) {
+        if (item.type === 'GroupHeader') {
+          return {
+            ...item,
+            isCollapsed: true,
+            collapsedHeight: heights[item.groupId] // Store height for collapsed header
+          };
+        } else if (item.type === 'Item' || item.type === 'GroupFooter') {
+          return { ...item, isCollapsed: true };
+        }
+      }
+      return item;
+    });
+  }, [calculateGroupHeight]);
+
+  // Helper: Expand ALL collapsed groups (remove collapsed markers and ensure correct order)
+  const expandAllGroups = useCallback((items) => {
+    // Find all unique group IDs that have collapsed items
+    const collapsedGroupIds = new Set();
+    items.forEach(item => {
+      if (item.isCollapsed && item.groupId) {
+        collapsedGroupIds.add(item.groupId);
+      }
+    });
+
+    if (collapsedGroupIds.size === 0) {
+      // No collapsed groups, just remove all collapsed flags
       return items.map(item => {
-        if (item.groupId === groupId) {
+        if (item.isCollapsed) {
           const { isCollapsed, ...rest } = item;
           return rest;
         }
         return item;
       });
     }
-    
-    // Collect all group items (Items and Footer) that belong to this group
-    // Sort them by their original orderIndex to maintain order
-    const groupItems = [];
-    items.forEach(item => {
-      if (item.groupId === groupId && (item.type === 'Item' || item.type === 'GroupFooter')) {
-        const { isCollapsed, ...rest } = item;
-        groupItems.push(rest);
+
+    // Expand each group one by one
+    let result = [...items];
+
+    collapsedGroupIds.forEach(groupId => {
+      // Find the header position for this group
+      const headerIndex = result.findIndex(item =>
+        item.type === 'GroupHeader' && item.groupId === groupId
+      );
+
+      if (headerIndex === -1) {
+        // Header not found, just remove collapsed flags for this group
+        result = result.map(item => {
+          if (item.groupId === groupId && item.isCollapsed) {
+            const { isCollapsed, collapsedHeight, ...rest } = item;
+            return rest;
+          }
+          return item;
+        });
+        return;
       }
+
+      // Collect all group items (Items and Footer) that belong to this group
+      const groupItems = [];
+      result.forEach(item => {
+        if (item.groupId === groupId && (item.type === 'Item' || item.type === 'GroupFooter')) {
+          if (item.isCollapsed) {
+            const { isCollapsed, collapsedHeight, ...rest } = item;
+            groupItems.push(rest);
+          } else {
+            groupItems.push(item);
+          }
+        }
+      });
+
+      // Sort group items: Items first (by orderIndex), then Footer
+      groupItems.sort((a, b) => {
+        if (a.type === 'GroupFooter') return 1;
+        if (b.type === 'GroupFooter') return -1;
+        return (a.orderIndex || 0) - (b.orderIndex || 0);
+      });
+
+      // Reconstruct array: items before header, header, group items, items after header
+      const newResult = [];
+
+      // Add all items before the header (excluding this group's items)
+      for (let i = 0; i < headerIndex; i++) {
+        if (result[i].groupId !== groupId || result[i].type === 'GroupHeader') {
+          newResult.push(result[i]);
+        }
+      }
+
+      // Add the header (without isCollapsed flag and collapsedHeight)
+      const header = result[headerIndex];
+      const { isCollapsed, collapsedHeight, ...headerRest } = header;
+      newResult.push(headerRest);
+
+      // Add all group items right after the header
+      newResult.push(...groupItems);
+
+      // Add all items after the header (excluding this group's items)
+      for (let i = headerIndex + 1; i < result.length; i++) {
+        if (result[i].groupId !== groupId || result[i].type === 'GroupHeader') {
+          newResult.push(result[i]);
+        }
+      }
+
+      result = newResult;
     });
-    
-    // Sort group items: Items first (by orderIndex), then Footer
-    groupItems.sort((a, b) => {
-      if (a.type === 'GroupFooter') return 1;
-      if (b.type === 'GroupFooter') return -1;
-      return (a.orderIndex || 0) - (b.orderIndex || 0);
+
+    // Remove collapsed flags and collapsedHeight from any remaining items
+    return result.map(item => {
+      if (item.isCollapsed || item.collapsedHeight) {
+        const { isCollapsed, collapsedHeight, ...rest } = item;
+        return rest;
+      }
+      return item;
     });
-    
-    // Reconstruct array: items before header, header, group items, items after header
-    const result = [];
-    
-    // Add all items before the header (excluding group items)
-    for (let i = 0; i < headerIndex; i++) {
-      if (items[i].groupId !== groupId || items[i].type === 'GroupHeader') {
-        result.push(items[i]);
-      }
-    }
-    
-    // Add the header (without isCollapsed flag)
-    const header = items[headerIndex];
-    const { isCollapsed, ...headerRest } = header;
-    result.push(headerRest);
-    
-    // Add all group items right after the header
-    result.push(...groupItems);
-    
-    // Add all items after the header (excluding group items)
-    for (let i = headerIndex + 1; i < items.length; i++) {
-      if (items[i].groupId !== groupId || items[i].type === 'GroupHeader') {
-        result.push(items[i]);
-      }
-    }
-    
-    return result;
   }, []);
 
   // Effect to trigger pending drag after collapse is complete
@@ -215,46 +394,51 @@ const DragAndDropModal = ({
     }
   }, [collapsedGroupId, reorderedItems]);
 
-  // Handle initiating a group header drag - collapse first, then drag
+  // Handle initiating a group header drag - collapse dragged group AND freeze all others
   const initiateGroupDrag = useCallback((groupId, drag) => {
-    // Collapse the group in data
-    const collapsed = collapseGroup(reorderedItems, groupId);
+    // Step 1: Collapse the group being dragged
+    let collapsed = collapseGroup(reorderedItems, groupId);
+
+    // Step 2: Collapse ALL other groups to "freeze" them (prevent drops inside them)
+    collapsed = collapseAllOtherGroups(collapsed, groupId);
+
     setReorderedItems(collapsed);
     setCollapsedGroupId(groupId);
     // Store the drag function to call after state updates
     pendingDragRef.current = drag;
-  }, [reorderedItems, collapseGroup]);
+  }, [reorderedItems, collapseGroup, collapseAllOtherGroups]);
 
   const handleDragEnd = useCallback(({ data, from, to }) => {
-    // If we have a collapsed group, expand it at the new position
+    // If we have a collapsed group, expand ALL groups at their new positions
     if (collapsedGroupId) {
-      const expanded = expandGroup(data, collapsedGroupId);
+      const expanded = expandAllGroups(data);
       setReorderedItems(expanded);
       setCollapsedGroupId(null);
+      setGroupHeights({}); // Clear stored heights after drag ends
     } else {
       setReorderedItems(data);
     }
     pendingDragRef.current = null;
-  }, [collapsedGroupId, expandGroup]);
+  }, [collapsedGroupId, expandAllGroups]);
 
   const keyExtractor = useCallback((item) => item.id, []);
 
   const handleSave = useCallback(() => {
     if (!onReorder) return;
-    
+
     // Make sure any collapsed groups are expanded first
     let finalItems = reorderedItems;
     if (collapsedGroupId) {
-      finalItems = expandGroup(reorderedItems, collapsedGroupId);
+      finalItems = expandAllGroups(reorderedItems);
     }
-    
+
     // Parse the flat list to reconstruct newOrder and updatedGroups
     const newOrder = [];
     const updatedGroups = [];
-    
+
     let currentGroup = null;
     let currentGroupIndices = [];
-    
+
     finalItems.forEach((item) => {
       if (item.type === 'GroupHeader') {
         currentGroup = { ...item.group };
@@ -278,17 +462,17 @@ const DragAndDropModal = ({
         currentGroupIndices = [];
       }
     });
-    
+
     if (currentGroup && currentGroupIndices.length > 0) {
       updatedGroups.push({
         ...currentGroup,
         exerciseIndices: currentGroupIndices,
       });
     }
-    
+
     onReorder(newOrder, updatedGroups);
     onClose();
-  }, [reorderedItems, collapsedGroupId, expandGroup, onReorder, onClose]);
+  }, [reorderedItems, collapsedGroupId, expandAllGroups, onReorder, onClose]);
 
   // Helper to determine if an Item is visually inside a group based on current ordering
   const getItemGroupContext = useCallback((itemIndex) => {
@@ -296,7 +480,7 @@ const DragAndDropModal = ({
     let groupType = null;
     let isFirstInGroup = false;
     let isLastInGroup = false;
-    
+
     for (let i = 0; i <= itemIndex; i++) {
       const item = reorderedItems[i];
       if (item.type === 'GroupHeader') {
@@ -307,7 +491,7 @@ const DragAndDropModal = ({
         groupType = null;
       }
     }
-    
+
     if (currentGroupId) {
       let foundPreviousItem = false;
       for (let i = itemIndex - 1; i >= 0; i--) {
@@ -323,7 +507,7 @@ const DragAndDropModal = ({
         if (item.type === 'GroupFooter') break;
       }
       if (!foundPreviousItem) isFirstInGroup = true;
-      
+
       let foundNextItem = false;
       for (let i = itemIndex + 1; i < reorderedItems.length; i++) {
         const item = reorderedItems[i];
@@ -339,21 +523,24 @@ const DragAndDropModal = ({
       }
       if (!foundNextItem) isLastInGroup = true;
     }
-    
+
     return { currentGroupId, groupType, isFirstInGroup, isLastInGroup };
   }, [reorderedItems]);
 
   const renderItem = useCallback(({ item, drag, isActive, getIndex }) => {
     const itemIndex = getIndex ? getIndex() : 0;
-    
+
     // Render GroupHeader
     if (item.type === 'GroupHeader') {
-      const groupColorScheme = item.group.type === 'HIIT' 
-        ? defaultHiitColorScheme 
+      const groupColorScheme = item.group.type === 'HIIT'
+        ? defaultHiitColorScheme
         : defaultSupersetColorScheme;
       const isCollapsed = item.isCollapsed || collapsedGroupId === item.groupId;
-      
+      const isOtherGroupFrozen = item.isCollapsed && collapsedGroupId && collapsedGroupId !== item.groupId;
+      const collapsedHeight = item.collapsedHeight || groupHeights[item.groupId];
+
       // When collapsed, render header with rounded corners all around (no footer gap)
+      // If it's a frozen other group, apply the calculated height to preserve space
       return (
         <TouchableOpacity
           onLongPress={() => initiateGroupDrag(item.groupId, drag)}
@@ -366,6 +553,11 @@ const DragAndDropModal = ({
             {
               borderColor: groupColorScheme[200],
               backgroundColor: groupColorScheme[100],
+            },
+            isOtherGroupFrozen && collapsedHeight && {
+              minHeight: collapsedHeight,
+              height: collapsedHeight,
+              justifyContent: 'center',
             },
             isActive && {
               opacity: 0.9,
@@ -394,20 +586,20 @@ const DragAndDropModal = ({
         </TouchableOpacity>
       );
     }
-    
+
     // Render GroupFooter - hide if collapsed
     if (item.type === 'GroupFooter') {
       const isCollapsed = item.isCollapsed || collapsedGroupId === item.groupId;
-      
+
       // Hide footer when collapsed
       if (isCollapsed) {
         return <View style={styles.hiddenItem} />;
       }
-      
-      const groupColorScheme = item.group.type === 'HIIT' 
-        ? defaultHiitColorScheme 
+
+      const groupColorScheme = item.group.type === 'HIIT'
+        ? defaultHiitColorScheme
         : defaultSupersetColorScheme;
-      
+
       // Footer is not draggable - use View instead of TouchableOpacity
       return (
         <View
@@ -425,17 +617,17 @@ const DragAndDropModal = ({
         </View>
       );
     }
-    
+
     // Render Item (exercise) - hide if collapsed
     if (item.isCollapsed || (collapsedGroupId && item.groupId === collapsedGroupId)) {
       return <View style={styles.hiddenItem} />;
     }
-    
+
     const { currentGroupId, groupType, isFirstInGroup, isLastInGroup } = getItemGroupContext(itemIndex);
     const isGroupChild = !!currentGroupId;
-    
-    const groupColorScheme = groupType === 'HIIT' 
-      ? defaultHiitColorScheme 
+
+    const groupColorScheme = groupType === 'HIIT'
+      ? defaultHiitColorScheme
       : defaultSupersetColorScheme;
 
     return (
@@ -462,14 +654,14 @@ const DragAndDropModal = ({
         ]}
       >
         {isGroupChild && (
-          <View 
+          <View
             style={[
               styles.groupChildWrapperLeft,
               { backgroundColor: groupColorScheme[100] },
-            ]} 
+            ]}
           />
         )}
-        
+
         <View style={[
           styles.exerciseCardContent,
           isGroupChild && styles.exerciseCardContent__groupChild,
@@ -487,7 +679,7 @@ const DragAndDropModal = ({
               )}
             </View>
           </View>
-          
+
           <View style={styles.exerciseRight}>
             {item.count > 1 && (
               <View style={styles.countBadge}>
@@ -502,18 +694,18 @@ const DragAndDropModal = ({
             </View>
           </View>
         </View>
-        
+
         {isGroupChild && (
-          <View 
+          <View
             style={[
               styles.groupChildWrapperRight,
               { backgroundColor: groupColorScheme[100] },
-            ]} 
+            ]}
           />
         )}
       </TouchableOpacity>
     );
-  }, [getItemGroupContext, initiateGroupDrag]);
+  }, [getItemGroupContext, initiateGroupDrag, collapsedGroupId, groupHeights]);
 
   return (
     <Modal
@@ -532,7 +724,7 @@ const DragAndDropModal = ({
             <Text style={styles.saveButtonText}>Save</Text>
           </TouchableOpacity>
         </View>
-        
+
         <View style={styles.instructionsContainer}>
           <Text style={styles.instructionsText}>
             Press and hold to drag • Drag headers to move entire groups
@@ -623,13 +815,13 @@ const styles = StyleSheet.create({
     color: COLORS.slate[500],
     textAlign: 'center',
   },
-  
+
   // Hidden item (for collapsed group children)
   hiddenItem: {
     height: 0,
     overflow: 'hidden',
   },
-  
+
   // Group Header Styles
   groupHeader: {
     flexDirection: 'row',
@@ -673,7 +865,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: 'bold',
   },
-  
+
   // Group Footer Styles
   groupFooter: {
     paddingHorizontal: 12,
@@ -696,7 +888,7 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     opacity: 0.5,
   },
-  
+
   // Exercise Card Styles
   exerciseCard: {
     flexDirection: 'row',
@@ -726,14 +918,14 @@ const styles = StyleSheet.create({
     elevation: 6,
     transform: [{ scale: 1.02 }],
   },
-  
+
   groupChildWrapperLeft: {
     width: 2,
   },
   groupChildWrapperRight: {
     width: 2,
   },
-  
+
   exerciseCardContent: {
     flex: 1,
     flexDirection: 'row',
@@ -750,7 +942,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.slate[100],
   },
-  
+
   exerciseInfo: {
     flex: 1,
   },
@@ -772,13 +964,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.slate[400],
   },
-  
+
   exerciseRight: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  
+
   countBadge: {
     backgroundColor: COLORS.blue[100],
     paddingHorizontal: 8,
@@ -790,7 +982,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.blue[700],
   },
-  
+
   dragHandle: {
     paddingHorizontal: 4,
   },
