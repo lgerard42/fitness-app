@@ -138,15 +138,67 @@ const DragAndDropModal = ({
     });
   }, []);
 
-  // Helper: Expand a collapsed group (remove collapsed markers)
+  // Helper: Expand a collapsed group (remove collapsed markers and ensure correct order)
   const expandGroup = useCallback((items, groupId) => {
-    return items.map(item => {
-      if (item.groupId === groupId) {
+    // Find the header position in the new array
+    const headerIndex = items.findIndex(item => 
+      item.type === 'GroupHeader' && item.groupId === groupId
+    );
+    
+    if (headerIndex === -1) {
+      // Header not found, just remove collapsed flags
+      return items.map(item => {
+        if (item.groupId === groupId) {
+          const { isCollapsed, ...rest } = item;
+          return rest;
+        }
+        return item;
+      });
+    }
+    
+    // Collect all group items (Items and Footer) that belong to this group
+    // Sort them by their original orderIndex to maintain order
+    const groupItems = [];
+    items.forEach(item => {
+      if (item.groupId === groupId && (item.type === 'Item' || item.type === 'GroupFooter')) {
         const { isCollapsed, ...rest } = item;
-        return rest;
+        groupItems.push(rest);
       }
-      return item;
     });
+    
+    // Sort group items: Items first (by orderIndex), then Footer
+    groupItems.sort((a, b) => {
+      if (a.type === 'GroupFooter') return 1;
+      if (b.type === 'GroupFooter') return -1;
+      return (a.orderIndex || 0) - (b.orderIndex || 0);
+    });
+    
+    // Reconstruct array: items before header, header, group items, items after header
+    const result = [];
+    
+    // Add all items before the header (excluding group items)
+    for (let i = 0; i < headerIndex; i++) {
+      if (items[i].groupId !== groupId || items[i].type === 'GroupHeader') {
+        result.push(items[i]);
+      }
+    }
+    
+    // Add the header (without isCollapsed flag)
+    const header = items[headerIndex];
+    const { isCollapsed, ...headerRest } = header;
+    result.push(headerRest);
+    
+    // Add all group items right after the header
+    result.push(...groupItems);
+    
+    // Add all items after the header (excluding group items)
+    for (let i = headerIndex + 1; i < items.length; i++) {
+      if (items[i].groupId !== groupId || items[i].type === 'GroupHeader') {
+        result.push(items[i]);
+      }
+    }
+    
+    return result;
   }, []);
 
   // Effect to trigger pending drag after collapse is complete
