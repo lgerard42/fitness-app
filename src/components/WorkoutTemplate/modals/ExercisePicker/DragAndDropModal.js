@@ -122,93 +122,31 @@ const DragAndDropModal = ({
     prevVisibleRef.current = isVisible;
   }, [visible, dragItems]);
 
-  // Helper: Collapse a group into a single CollapsedGroup item
+  // Helper: Mark group items as collapsed (keep structure, just mark items as hidden)
   const collapseGroup = useCallback((items, groupId) => {
-    const result = [];
-    let groupHeader = null;
-    const groupItems = [];
-    let skipUntilFooter = false;
-    
-    for (const item of items) {
+    return items.map(item => {
+      if (item.type === 'Item' && item.groupId === groupId) {
+        return { ...item, isCollapsed: true };
+      }
       if (item.type === 'GroupHeader' && item.groupId === groupId) {
-        groupHeader = item;
-        skipUntilFooter = true;
-        continue;
+        return { ...item, isCollapsed: true };
       }
-      
-      if (skipUntilFooter) {
-        if (item.type === 'Item' && item.groupId === groupId) {
-          groupItems.push({
-            exercise: item.exercise,
-            count: item.count,
-            orderIndex: item.orderIndex,
-          });
-          continue;
-        }
-        
-        if (item.type === 'GroupFooter' && item.groupId === groupId) {
-          // Create the collapsed group item
-          result.push({
-            id: `collapsed-${groupId}`,
-            type: 'CollapsedGroup',
-            group: groupHeader.group,
-            groupId: groupId,
-            groupExercises: groupItems,
-            originalHeader: groupHeader,
-          });
-          skipUntilFooter = false;
-          continue;
-        }
+      if (item.type === 'GroupFooter' && item.groupId === groupId) {
+        return { ...item, isCollapsed: true };
       }
-      
-      result.push(item);
-    }
-    
-    return result;
+      return item;
+    });
   }, []);
 
-  // Helper: Expand a CollapsedGroup back to Header + Items + Footer
+  // Helper: Expand a collapsed group (remove collapsed markers)
   const expandGroup = useCallback((items, groupId) => {
-    const result = [];
-    
-    for (const item of items) {
-      if (item.type === 'CollapsedGroup' && item.groupId === groupId) {
-        // Push Header
-        result.push({
-          id: `header-${groupId}`,
-          type: 'GroupHeader',
-          group: item.group,
-          groupId: groupId,
-          groupExercises: item.groupExercises,
-        });
-        
-        // Push Items
-        item.groupExercises.forEach((ex, idx) => {
-          result.push({
-            id: `item-${ex.exercise.id}-${ex.orderIndex}`,
-            type: 'Item',
-            exercise: ex.exercise,
-            orderIndex: ex.orderIndex,
-            count: ex.count,
-            groupId: groupId,
-            isFirstInGroup: idx === 0,
-            isLastInGroup: idx === item.groupExercises.length - 1,
-          });
-        });
-        
-        // Push Footer
-        result.push({
-          id: `footer-${groupId}`,
-          type: 'GroupFooter',
-          group: item.group,
-          groupId: groupId,
-        });
-      } else {
-        result.push(item);
+    return items.map(item => {
+      if (item.groupId === groupId) {
+        const { isCollapsed, ...rest } = item;
+        return rest;
       }
-    }
-    
-    return result;
+      return item;
+    });
   }, []);
 
   // Effect to trigger pending drag after collapse is complete
@@ -286,20 +224,6 @@ const DragAndDropModal = ({
         }
         currentGroup = null;
         currentGroupIndices = [];
-      } else if (item.type === 'CollapsedGroup') {
-        // Handle collapsed groups in save
-        const groupIndices = [];
-        item.groupExercises.forEach((ex) => {
-          const count = ex.count || 1;
-          for (let i = 0; i < count; i++) {
-            groupIndices.push(newOrder.length);
-            newOrder.push(ex.exercise.id);
-          }
-        });
-        updatedGroups.push({
-          ...item.group,
-          exerciseIndices: groupIndices,
-        });
       }
     });
     
@@ -326,7 +250,7 @@ const DragAndDropModal = ({
       if (item.type === 'GroupHeader') {
         currentGroupId = item.groupId;
         groupType = item.group.type;
-      } else if (item.type === 'GroupFooter' || item.type === 'CollapsedGroup') {
+      } else if (item.type === 'GroupFooter') {
         currentGroupId = null;
         groupType = null;
       }
@@ -370,73 +294,14 @@ const DragAndDropModal = ({
   const renderItem = useCallback(({ item, drag, isActive, getIndex }) => {
     const itemIndex = getIndex ? getIndex() : 0;
     
-    // Render CollapsedGroup (single draggable unit containing entire group)
-    if (item.type === 'CollapsedGroup') {
-      const groupColorScheme = item.group.type === 'HIIT' 
-        ? defaultHiitColorScheme 
-        : defaultSupersetColorScheme;
-      
-      return (
-        <TouchableOpacity
-          onLongPress={drag}
-          disabled={isActive}
-          delayLongPress={150}
-          activeOpacity={1}
-          style={[
-            styles.collapsedGroupContainer,
-            {
-              borderColor: groupColorScheme[300],
-              backgroundColor: groupColorScheme[150],
-            },
-            isActive && styles.collapsedGroupContainer__active,
-          ]}
-        >
-          <View style={styles.collapsedGroupHeader}>
-            <View style={styles.groupHeaderContent}>
-              <Text style={[styles.groupHeaderTypeText, { color: groupColorScheme[700] }]}>
-                {item.group.type}
-              </Text>
-              <View style={[styles.groupHeaderBadge, { backgroundColor: groupColorScheme[200] }]}>
-                <Text style={[styles.groupHeaderBadgeText, { color: groupColorScheme[700] }]}>
-                  {item.group.type === 'HIIT' ? 'H' : 'S'}{item.group.number}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.dragHandle}>
-              <Text style={[styles.dragHandleText, { color: groupColorScheme[400] }]}>≡</Text>
-            </View>
-          </View>
-          
-          <View style={styles.collapsedExerciseList}>
-            {item.groupExercises.map((ex, idx) => (
-              <View 
-                key={`collapsed-${ex.exercise.id}-${idx}`} 
-                style={[
-                  styles.collapsedExerciseItem,
-                  { backgroundColor: groupColorScheme[100] },
-                ]}
-              >
-                <Text style={[styles.collapsedExerciseName, { color: groupColorScheme[800] }]}>
-                  {ex.exercise.name}
-                </Text>
-                {ex.count > 1 && (
-                  <Text style={[styles.collapsedExerciseCount, { color: groupColorScheme[600] }]}>
-                    ×{ex.count}
-                  </Text>
-                )}
-              </View>
-            ))}
-          </View>
-        </TouchableOpacity>
-      );
-    }
-    
     // Render GroupHeader
     if (item.type === 'GroupHeader') {
       const groupColorScheme = item.group.type === 'HIIT' 
         ? defaultHiitColorScheme 
         : defaultSupersetColorScheme;
+      const isCollapsed = item.isCollapsed || collapsedGroupId === item.groupId;
       
+      // When collapsed, render header with rounded corners all around (no footer gap)
       return (
         <TouchableOpacity
           onLongPress={() => initiateGroupDrag(item.groupId, drag)}
@@ -445,6 +310,7 @@ const DragAndDropModal = ({
           activeOpacity={1}
           style={[
             styles.groupHeader,
+            isCollapsed && styles.groupHeader__collapsed,
             {
               borderColor: groupColorScheme[200],
               backgroundColor: groupColorScheme[100],
@@ -477,38 +343,42 @@ const DragAndDropModal = ({
       );
     }
     
-    // Render GroupFooter
+    // Render GroupFooter - hide if collapsed
     if (item.type === 'GroupFooter') {
+      const isCollapsed = item.isCollapsed || collapsedGroupId === item.groupId;
+      
+      // Hide footer when collapsed
+      if (isCollapsed) {
+        return <View style={styles.hiddenItem} />;
+      }
+      
       const groupColorScheme = item.group.type === 'HIIT' 
         ? defaultHiitColorScheme 
         : defaultSupersetColorScheme;
       
+      // Footer is not draggable - use View instead of TouchableOpacity
       return (
-        <TouchableOpacity
-          onLongPress={drag}
-          disabled={isActive}
-          delayLongPress={150}
-          activeOpacity={1}
+        <View
           style={[
             styles.groupFooter,
             {
               borderColor: groupColorScheme[200],
               backgroundColor: groupColorScheme[100],
             },
-            isActive && {
-              opacity: 0.9,
-              backgroundColor: groupColorScheme[150],
-            },
           ]}
         >
           <View style={styles.groupFooterContent}>
             <View style={[styles.groupFooterLine, { backgroundColor: groupColorScheme[200] }]} />
           </View>
-        </TouchableOpacity>
+        </View>
       );
     }
     
-    // Render Item (exercise)
+    // Render Item (exercise) - hide if collapsed
+    if (item.isCollapsed || (collapsedGroupId && item.groupId === collapsedGroupId)) {
+      return <View style={styles.hiddenItem} />;
+    }
+    
     const { currentGroupId, groupType, isFirstInGroup, isLastInGroup } = getItemGroupContext(itemIndex);
     const isGroupChild = !!currentGroupId;
     
@@ -702,6 +572,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   
+  // Hidden item (for collapsed group children)
+  hiddenItem: {
+    height: 0,
+    overflow: 'hidden',
+  },
+  
   // Group Header Styles
   groupHeader: {
     flexDirection: 'row',
@@ -717,6 +593,13 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 10,
     borderBottomLeftRadius: 0,
     borderBottomRightRadius: 0,
+  },
+  groupHeader__collapsed: {
+    borderBottomWidth: 2,
+    borderBottomLeftRadius: 10,
+    borderBottomRightRadius: 10,
+    marginBottom: 8,
+    // When collapsed, header acts as a complete rounded container
   },
   groupHeaderContent: {
     flexDirection: 'row',
@@ -737,52 +620,6 @@ const styles = StyleSheet.create({
   groupHeaderBadgeText: {
     fontSize: 11,
     fontWeight: 'bold',
-  },
-  
-  // Collapsed Group Styles (when dragging entire group)
-  collapsedGroupContainer: {
-    marginTop: 12,
-    marginHorizontal: 0,
-    borderWidth: 2,
-    borderRadius: 10,
-    overflow: 'hidden',
-  },
-  collapsedGroupContainer__active: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  collapsedGroupHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  collapsedExerciseList: {
-    paddingHorizontal: 8,
-    paddingBottom: 8,
-    gap: 4,
-  },
-  collapsedExerciseItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 6,
-  },
-  collapsedExerciseName: {
-    fontSize: 14,
-    fontWeight: '600',
-    flex: 1,
-  },
-  collapsedExerciseCount: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    marginLeft: 8,
   },
   
   // Group Footer Styles
