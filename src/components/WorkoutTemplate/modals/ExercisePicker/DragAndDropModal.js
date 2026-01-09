@@ -778,7 +778,7 @@ const styles = StyleSheet.create({
   // Group Header Styles
   groupHeaderContainer: {
     // Container for the whole group when collapsed
-    marginTop: 12,
+    marginTop: 4,
     marginBottom: 0, // Add margin bottom here if it's the whole container
   },
   groupHeader: {
@@ -828,7 +828,7 @@ const styles = StyleSheet.create({
   groupFooter: {
     paddingHorizontal: 12,
     paddingVertical: 2,
-    marginBottom: 0, // <-- Changed to 0 because container handles margin
+    marginBottom: 4, // <-- Changed to 0 because container handles margin
     marginHorizontal: 0,
     borderWidth: 2,
     borderTopWidth: 0,
@@ -858,8 +858,10 @@ const styles = StyleSheet.create({
     marginHorizontal: 0,
     borderWidth: 0,
   },
-  exerciseCard__groupChild__first: {},
-  exerciseCard__groupChild__last: {},
+  exerciseCard__groupChild__first: {
+  },
+  exerciseCard__groupChild__last: {
+  },
   exerciseCard__active: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
