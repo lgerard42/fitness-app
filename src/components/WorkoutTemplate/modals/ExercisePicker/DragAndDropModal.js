@@ -481,12 +481,6 @@ const DragAndDropModal = ({
                 <Text style={styles.countBadgeText}>×{item.count}</Text>
               </View>
             )}
-            <View style={styles.dragHandle}>
-              <Text style={[
-                styles.dragHandleText,
-                groupColorScheme && { color: groupColorScheme[400] },
-              ]}>≡</Text>
-            </View>
           </View>
         </View>
 
@@ -572,9 +566,6 @@ const DragAndDropModal = ({
                   {item.group.type === 'HIIT' ? 'H' : 'S'}{item.group.number}
                 </Text>
               </View>
-            </View>
-            <View style={styles.dragHandle}>
-              <Text style={[styles.dragHandleText, { color: groupColorScheme[400] }]}>≡</Text>
             </View>
           </View>
 
@@ -664,9 +655,6 @@ const DragAndDropModal = ({
                 <Text style={styles.countBadgeText}>×{item.count}</Text>
               </View>
             )}
-            <View style={styles.dragHandle}>
-              <Text style={styles.dragHandleText}>≡</Text>
-            </View>
           </View>
         </View>
       </TouchableOpacity>
@@ -989,15 +977,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
     color: COLORS.blue[700],
-  },
-
-  dragHandle: {
-    paddingHorizontal: 4,
-  },
-  dragHandleText: {
-    fontSize: 20,
-    color: COLORS.slate[400],
-    fontWeight: 'bold',
   },
 });
 
