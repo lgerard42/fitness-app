@@ -419,14 +419,19 @@ const DragAndDropModal = ({
         key={item.id}
         style={[
           styles.exerciseCard,
-          styles.exerciseCard__groupChild, // Always group child if called here
+          styles.exerciseCard__groupChild,
           groupColorScheme && {
             borderColor: groupColorScheme[200],
             backgroundColor: groupColorScheme[100],
           },
+          // Outer Styles
           isFirstInGroup && styles.exerciseCard__groupChild__first,
           isLastInGroup && styles.exerciseCard__groupChild__last,
+
+          // Outer Active State
           isActive && styles.exerciseCard__active,
+          isActive && styles.exerciseCard__groupChild__active,
+
           isActive && groupColorScheme && {
             backgroundColor: groupColorScheme[100],
             borderColor: groupColorScheme[300],
@@ -437,6 +442,8 @@ const DragAndDropModal = ({
           style={[
             styles.groupChildWrapperLeft,
             { backgroundColor: groupColorScheme[200] },
+            // CHANGE: Collapse left rail when active
+            isActive && styles.groupChildWrapperLeft__active,
           ]}
         />
 
@@ -445,6 +452,16 @@ const DragAndDropModal = ({
           styles.exerciseCardContent__groupChild,
           groupColorScheme && { backgroundColor: groupColorScheme[50], borderColor: groupColorScheme[200] },
           isActive && groupColorScheme && { backgroundColor: groupColorScheme[100] },
+
+          // Inner Styles
+          isFirstInGroup && styles.exerciseCardContent__groupChild__first,
+          isFirstInGroup && { borderTopColor: groupColorScheme[200] },
+
+          isLastInGroup && styles.exerciseCardContent__groupChild__last,
+
+          // Inner Active State
+          isActive && styles.exerciseCardContent__active,
+          isActive && styles.exerciseCardContent__groupChild__active,
         ]}>
           <View style={styles.exerciseInfo}>
             <Text style={styles.exerciseName}>{item.exercise.name}</Text>
@@ -477,6 +494,8 @@ const DragAndDropModal = ({
           style={[
             styles.groupChildWrapperRight,
             { backgroundColor: groupColorScheme[200] },
+            // CHANGE: Collapse right rail when active
+            isActive && styles.groupChildWrapperRight__active,
           ]}
         />
       </View>
@@ -510,13 +529,7 @@ const DragAndDropModal = ({
         : defaultSupersetColorScheme;
 
       const isCollapsed = item.isCollapsed || collapsedGroupId === item.groupId;
-
-      // KEY FIX: 
-      // 1. Identify if this specific header is the one being dragged
       const isDraggedGroup = collapsedGroupId === item.groupId;
-
-      // 2. Only render ghosts if it is collapsed BUT NOT the one being dragged
-      // (Frozen groups stay big, dragged group gets small)
       const shouldRenderGhosts = isCollapsed && !isDraggedGroup;
 
       return (
@@ -541,12 +554,13 @@ const DragAndDropModal = ({
           <View
             style={[
               styles.groupHeader,
-              // 3. Apply the collapsed styling (rounded bottom) ONLY to the dragged group
               isDraggedGroup && styles.groupHeader__collapsed,
               {
                 borderColor: groupColorScheme[200],
                 backgroundColor: groupColorScheme[100],
               },
+              // Added here: Override border color when dragged
+              isDraggedGroup && { borderColor: groupColorScheme[300] },
             ]}
           >
             <View style={styles.groupHeaderContent}>
@@ -564,7 +578,7 @@ const DragAndDropModal = ({
             </View>
           </View>
 
-          {/* Ghost Items (Rendered inside header ONLY for frozen/background groups) */}
+          {/* Ghost Items */}
           {shouldRenderGhosts && (
             <View>
               {reorderedItems
@@ -754,7 +768,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: 8,
-    paddingTop: 0,
+    paddingTop: 4,
     paddingBottom: 100,
   },
   emptyContainer: {
@@ -786,7 +800,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 8,
     // marginTop: 12,  <-- REMOVED because container handles it now
     marginHorizontal: 0,
     borderWidth: 2,
@@ -801,7 +815,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomLeftRadius: 10,
     borderBottomRightRadius: 10,
-    marginBottom: 8,
+    paddingBottom: 22,
+    borderStyle: 'dashed',
+    marginBottom: 4,
   },
   groupHeaderContent: {
     flexDirection: 'row',
@@ -848,7 +864,7 @@ const styles = StyleSheet.create({
   },
   exerciseCard__standalone: {
     backgroundColor: COLORS.white,
-    borderRadius: 8,
+    borderRadius: 6,
     borderWidth: 1,
     borderColor: COLORS.slate[200],
     marginVertical: 4,
@@ -863,12 +879,27 @@ const styles = StyleSheet.create({
   exerciseCard__groupChild__last: {
   },
   exerciseCard__active: {
+    backgroundColor: COLORS.white,
+    borderWidth: 2,
+    borderColor: COLORS.slate[300],
+    borderStyle: 'dashed',
+    borderRadius: 6,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 6,
     elevation: 6,
     transform: [{ scale: 1.02 }],
+  },
+  exerciseCard__groupChild__active: {
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 6,
+    transform: [{ scale: 1.02 }],
+    // Ensure the dragged item has rounded corners even if it was a middle child
+    borderRadius: 8,
+    zIndex: 999,
   },
 
   groupChildWrapperLeft: {
@@ -885,15 +916,39 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 12,
     paddingHorizontal: 12,
-    backgroundColor: COLORS.white,
+    borderRadius: 6,
   },
   exerciseCardContent__groupChild: {
     marginHorizontal: 0,
-    borderRadius: 6,
+    borderRadius: 0,
     marginVertical: 0,
     marginHorizontal: 4,
     borderWidth: 1,
+    borderTopColor: 'transparent',
     borderColor: COLORS.red[500],
+  },
+  exerciseCardContent__groupChild__first: {
+    borderTopLeftRadius: 6,
+    borderTopRightRadius: 6,
+  },
+  exerciseCardContent__groupChild__last: {
+    borderBottomLeftRadius: 6,
+    borderBottomRightRadius: 6,
+  },
+  exerciseCardContent__active: {
+    borderRadius: 6,
+    backgroundColor: COLORS.white,
+  },
+  groupChildWrapperLeft__active: {
+    width: 0,
+  },
+  groupChildWrapperRight__active: {
+    width: 0,
+  },
+  exerciseCardContent__groupChild__active: {
+    marginHorizontal: 0,
+    borderRadius: 6,
+    backgroundColor: COLORS.white,
   },
 
   exerciseInfo: {
