@@ -450,7 +450,7 @@ const DragAndDropModal = ({
         <View style={[
           styles.exerciseCardContent,
           styles.exerciseCardContent__groupChild,
-          groupColorScheme && { backgroundColor: groupColorScheme[50], borderColor: groupColorScheme[200] },
+          groupColorScheme && { backgroundColor: groupColorScheme[50], borderBottomColor: groupColorScheme[200], borderColor: groupColorScheme[150] },
           isActive && groupColorScheme && { backgroundColor: groupColorScheme[100] },
 
           // Inner Styles
@@ -526,6 +526,9 @@ const DragAndDropModal = ({
       const isDraggedGroup = collapsedGroupId === item.groupId;
       const shouldRenderGhosts = isCollapsed && !isDraggedGroup;
 
+      // When actively dragging, simplify structure to avoid rendering order issues
+      const isActivelyDragging = isActive && isDraggedGroup;
+
       return (
         <TouchableOpacity
           onLongPress={() => initiateGroupDrag(item.groupId, drag)}
@@ -540,7 +543,10 @@ const DragAndDropModal = ({
               shadowOffset: { width: 0, height: 2 },
               shadowOpacity: 0.15,
               shadowRadius: 4,
-              elevation: 4,
+              elevation: 20, // Higher than other items to ensure it's on top
+              zIndex: 9999,  // Much higher z-index to force header to front when dragging
+              transform: [{ scale: 1.02 }], // Match regular items - creates stacking context
+              position: 'relative', // Ensure proper stacking context
             },
           ]}
         >
@@ -553,8 +559,16 @@ const DragAndDropModal = ({
                 borderColor: groupColorScheme[200],
                 backgroundColor: groupColorScheme[100],
               },
-              // Added here: Override border color when dragged
-              isDraggedGroup && { borderColor: groupColorScheme[300] },
+              // Added here: Override border color when dragged, with higher z-index
+              isDraggedGroup && isActive && {
+                borderColor: groupColorScheme[300],
+                zIndex: 9999,
+                elevation: 20,
+              },
+              isDraggedGroup && !isActive && {
+                borderColor: groupColorScheme[300],
+                zIndex: 900,
+              },
             ]}
           >
             <View style={styles.groupHeaderContent}>
@@ -569,8 +583,8 @@ const DragAndDropModal = ({
             </View>
           </View>
 
-          {/* Ghost Items */}
-          {shouldRenderGhosts && (
+          {/* Ghost Items - Only render when NOT actively dragging to simplify structure */}
+          {shouldRenderGhosts && !isActivelyDragging && (
             <View>
               {reorderedItems
                 .filter(i => i.groupId === item.groupId && i.type === 'Item')
@@ -692,6 +706,11 @@ const DragAndDropModal = ({
             keyExtractor={keyExtractor}
             renderItem={renderItem}
             contentContainerStyle={styles.listContent}
+            CellRendererComponent={({ children, style, ...props }) => (
+              <View style={[style, { position: 'relative' }]} {...props}>
+                {children}
+              </View>
+            )}
           />
         ) : (
           <View style={styles.emptyContainer}>
@@ -782,6 +801,7 @@ const styles = StyleSheet.create({
     // Container for the whole group when collapsed
     marginTop: 4,
     marginBottom: 0, // Add margin bottom here if it's the whole container
+    position: 'relative', // Ensure proper stacking context
   },
   groupHeader: {
     flexDirection: 'row',
@@ -803,9 +823,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomLeftRadius: 10,
     borderBottomRightRadius: 10,
-    paddingBottom: 22,
     borderStyle: 'dashed',
     marginBottom: 4,
+    zIndex: 999,
+    elevation: 10,
   },
   groupHeaderContent: {
     flexDirection: 'row',
@@ -876,8 +897,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 6,
-    elevation: 6,
+    elevation: 10,
     transform: [{ scale: 1.02 }],
+    zIndex: 999,
   },
   exerciseCard__groupChild__active: {
     shadowOffset: { width: 0, height: 4 },
@@ -911,9 +933,8 @@ const styles = StyleSheet.create({
     borderRadius: 0,
     marginVertical: 0,
     marginHorizontal: 4,
-    borderWidth: 1,
-    borderTopColor: 'transparent',
-    borderColor: COLORS.red[500],
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.red[500],
   },
   exerciseCardContent__groupChild__first: {
     borderTopLeftRadius: 6,
@@ -922,6 +943,7 @@ const styles = StyleSheet.create({
   exerciseCardContent__groupChild__last: {
     borderBottomLeftRadius: 6,
     borderBottomRightRadius: 6,
+    borderBottomColor: 'transparent',
   },
   exerciseCardContent__active: {
     borderRadius: 6,
