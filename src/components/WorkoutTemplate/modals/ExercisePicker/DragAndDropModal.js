@@ -106,8 +106,55 @@ const DragAndDropModal = ({
 
   const [reorderedItems, setReorderedItems] = useState(dragItems);
   const [collapsedGroupId, setCollapsedGroupId] = useState(null);
+  const [showGroupTypeModal, setShowGroupTypeModal] = useState(false);
   const prevVisibleRef = useRef(visible);
   const pendingDragRef = useRef(null); // Store drag function to call after collapse
+
+  // Helper to get next group number for a type
+  const getNextGroupNumber = useCallback((type) => {
+    // Check all existing groups in reorderedItems
+    const existingGroups = [];
+    reorderedItems.forEach(item => {
+      if (item.type === 'GroupHeader' && item.group) {
+        existingGroups.push(item.group);
+      }
+    });
+
+    const groupsOfType = existingGroups.filter(g => g.type === type);
+    if (groupsOfType.length === 0) return 1;
+    return Math.max(...groupsOfType.map(g => g.number), 0) + 1;
+  }, [reorderedItems]);
+
+  // Helper to add an empty group
+  const addEmptyGroup = useCallback((type) => {
+    const nextNumber = getNextGroupNumber(type);
+    const newGroup = {
+      id: `empty-group-${Date.now()}-${Math.random()}`,
+      type: type,
+      number: nextNumber,
+      exerciseIndices: [],
+    };
+
+    // Create header and footer items
+    const newItems = [
+      {
+        id: `header-${newGroup.id}`,
+        type: 'GroupHeader',
+        group: newGroup,
+        groupId: newGroup.id,
+        groupExercises: [],
+      },
+      {
+        id: `footer-${newGroup.id}`,
+        type: 'GroupFooter',
+        group: newGroup,
+        groupId: newGroup.id,
+      }
+    ];
+
+    // Append to end of reorderedItems
+    setReorderedItems(prev => [...prev, ...newItems]);
+  }, [getNextGroupNumber]);
 
   // Only reset state when modal opens (visible changes from false to true)
   useEffect(() => {
@@ -117,6 +164,7 @@ const DragAndDropModal = ({
     if (!wasVisible && isVisible) {
       setReorderedItems(dragItems);
       setCollapsedGroupId(null);
+      setShowGroupTypeModal(false);
       pendingDragRef.current = null;
     }
 
@@ -296,13 +344,57 @@ const DragAndDropModal = ({
 
   const handleDragEnd = useCallback(({ data, from, to }) => {
     // If we have a collapsed group, expand ALL groups at their new positions
+    let updatedData = data;
     if (collapsedGroupId) {
-      const expanded = expandAllGroups(data);
-      setReorderedItems(expanded);
+      updatedData = expandAllGroups(data);
       setCollapsedGroupId(null);
-    } else {
-      setReorderedItems(data);
     }
+
+    // Assign groupIds to items based on their position between headers and footers
+    updatedData = updatedData.map((item, index) => {
+      if (item.type !== 'Item') return item;
+
+      // Find which group (if any) this item is between
+      let foundGroupId = null;
+
+      // Find the nearest group header before this item
+      for (let i = index - 1; i >= 0; i--) {
+        const prevItem = updatedData[i];
+        if (prevItem.type === 'GroupHeader') {
+          const groupId = prevItem.groupId;
+          // Check if there's a matching footer after this item
+          for (let j = index + 1; j < updatedData.length; j++) {
+            const nextItem = updatedData[j];
+            if (nextItem.type === 'GroupFooter' && nextItem.groupId === groupId) {
+              // This item is inside this group
+              foundGroupId = groupId;
+              break;
+            }
+            if (nextItem.type === 'GroupHeader') break; // Hit another group header
+          }
+          break; // Found a header, stop searching
+        }
+      }
+
+      // Update item's groupId based on its position
+      if (foundGroupId) {
+        return {
+          ...item,
+          groupId: foundGroupId,
+          isFirstInGroup: false,
+          isLastInGroup: false,
+        };
+      } else {
+        // Item is not in any group, remove groupId if it had one
+        if (item.groupId) {
+          const { groupId, ...rest } = item;
+          return rest;
+        }
+        return item;
+      }
+    });
+
+    setReorderedItems(updatedData);
     pendingDragRef.current = null;
   }, [collapsedGroupId, expandAllGroups]);
 
@@ -470,8 +562,8 @@ const DragAndDropModal = ({
               {item.exercise.category && (
                 <Text style={styles.exerciseCategory}>{item.exercise.category}</Text>
               )}
-              {item.exercise.primaryMuscle && (
-                <Text style={styles.exerciseMuscle}>{item.exercise.primaryMuscle}</Text>
+              {item.exercise.primaryMuscles && item.exercise.primaryMuscles.length > 0 && (
+                <Text style={styles.exerciseMuscle}>{item.exercise.primaryMuscles.join(', ')}</Text>
               )}
             </View>
           </View>
@@ -530,6 +622,12 @@ const DragAndDropModal = ({
       // When actively dragging, simplify structure to avoid rendering order issues
       const isActivelyDragging = isActive && isDraggedGroup;
 
+      // Check if group is empty by checking if there are any Items with this groupId
+      const itemsInThisGroup = reorderedItems.filter(i =>
+        i.groupId === item.groupId && i.type === 'Item'
+      );
+      const isActuallyEmpty = itemsInThisGroup.length === 0;
+
       return (
         <TouchableOpacity
           onLongPress={() => initiateGroupDrag(item.groupId, drag)}
@@ -583,6 +681,21 @@ const DragAndDropModal = ({
               </View>
             </View>
           </View>
+
+          {/* Empty Group Placeholder */}
+          {isActuallyEmpty && !shouldRenderGhosts && !isActivelyDragging && (
+            <View style={[
+              styles.emptyGroupPlaceholder,
+              {
+                borderColor: groupColorScheme[200],
+                backgroundColor: groupColorScheme[50],
+              }
+            ]}>
+              <Text style={[styles.emptyGroupPlaceholderText, { color: groupColorScheme[500] }]}>
+                Drag exercises here
+              </Text>
+            </View>
+          )}
 
           {/* Ghost Items - Only render when NOT actively dragging to simplify structure */}
           {shouldRenderGhosts && !isActivelyDragging && (
@@ -658,8 +771,8 @@ const DragAndDropModal = ({
               {item.exercise.category && (
                 <Text style={styles.exerciseCategory}>{item.exercise.category}</Text>
               )}
-              {item.exercise.primaryMuscle && (
-                <Text style={styles.exerciseMuscle}>{item.exercise.primaryMuscle}</Text>
+              {item.exercise.primaryMuscles && item.exercise.primaryMuscles.length > 0 && (
+                <Text style={styles.exerciseMuscle}>{item.exercise.primaryMuscles.join(', ')}</Text>
               )}
             </View>
           </View>
@@ -684,7 +797,7 @@ const DragAndDropModal = ({
       onRequestClose={onClose}
     >
       <SafeAreaView style={styles.container}>
-        <View style={[styles.header, { paddingTop: 32 }]}>
+        <View style={[styles.header, { paddingTop: 64 }]}>
           <TouchableOpacity onPress={onClose} style={styles.cancelButton}>
             <Text style={styles.cancelButtonText}>Cancel</Text>
           </TouchableOpacity>
@@ -698,6 +811,12 @@ const DragAndDropModal = ({
           <Text style={styles.instructionsText}>
             Press and hold to drag • Drag headers to move entire groups
           </Text>
+          <TouchableOpacity
+            onPress={() => setShowGroupTypeModal(true)}
+            style={styles.addGroupButton}
+          >
+            <Text style={styles.addGroupButtonText}>+ Group</Text>
+          </TouchableOpacity>
         </View>
 
         {reorderedItems.length > 0 ? (
@@ -718,6 +837,56 @@ const DragAndDropModal = ({
             <Text style={styles.emptyText}>No items to reorder</Text>
           </View>
         )}
+
+        {/* Group Type Selection Modal */}
+        <Modal
+          visible={showGroupTypeModal}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowGroupTypeModal(false)}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowGroupTypeModal(false)}
+          >
+            <View style={styles.groupTypeModal} onStartShouldSetResponder={() => true}>
+              <Text style={styles.groupTypeModalTitle}>Select Group Type</Text>
+              <View style={styles.groupTypeButtons}>
+                <TouchableOpacity
+                  style={[
+                    styles.groupTypeButton,
+                    styles.groupTypeButtonSuperset,
+                  ]}
+                  onPress={() => {
+                    addEmptyGroup('Superset');
+                    setShowGroupTypeModal(false);
+                  }}
+                >
+                  <Text style={styles.groupTypeButtonText}>Superset</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.groupTypeButton,
+                    styles.groupTypeButtonHiit,
+                  ]}
+                  onPress={() => {
+                    addEmptyGroup('HIIT');
+                    setShowGroupTypeModal(false);
+                  }}
+                >
+                  <Text style={styles.groupTypeButtonText}>HIIT</Text>
+                </TouchableOpacity>
+              </View>
+              <TouchableOpacity
+                style={styles.groupTypeCancelButton}
+                onPress={() => setShowGroupTypeModal(false)}
+              >
+                <Text style={styles.groupTypeCancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
       </SafeAreaView>
     </Modal>
   );
@@ -768,11 +937,26 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.blue[50],
     borderBottomWidth: 1,
     borderBottomColor: COLORS.blue[100],
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   instructionsText: {
     fontSize: 12,
     color: COLORS.blue[700],
     textAlign: 'center',
+    flex: 1,
+  },
+  addGroupButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: COLORS.blue[500],
+    borderRadius: 6,
+  },
+  addGroupButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.white,
   },
   listContent: {
     paddingHorizontal: 8,
@@ -1000,6 +1184,77 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
     color: COLORS.blue[700],
+  },
+
+  // Empty Group Placeholder
+  emptyGroupPlaceholder: {
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderTopWidth: 0,
+    borderBottomWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyGroupPlaceholderText: {
+    fontSize: 13,
+    fontStyle: 'italic',
+  },
+
+  // Group Type Selection Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  groupTypeModal: {
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    padding: 24,
+    width: '80%',
+    maxWidth: 300,
+  },
+  groupTypeModalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.slate[900],
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  groupTypeButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  groupTypeButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  groupTypeButtonSuperset: {
+    backgroundColor: defaultSupersetColorScheme[500],
+  },
+  groupTypeButtonHiit: {
+    backgroundColor: defaultHiitColorScheme[500],
+  },
+  groupTypeButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.white,
+    textTransform: 'uppercase',
+  },
+  groupTypeCancelButton: {
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  groupTypeCancelButtonText: {
+    fontSize: 14,
+    color: COLORS.slate[600],
   },
 });
 
