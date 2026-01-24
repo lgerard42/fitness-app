@@ -13,6 +13,7 @@ const SelectedInGlossary = ({
   selectedOrder = [],
   onAddSet = null,
   onRemoveSet = null,
+  blockDismissGestureRef = null,
 }) => {
   const sectionListRef = useRef(null);
 
@@ -105,6 +106,7 @@ const SelectedInGlossary = ({
         highlightedLetter={highlightedLetter}
         setHighlightedLetter={setHighlightedLetter}
         onScrollToLetter={scrollToLetter}
+        blockDismissGestureRef={blockDismissGestureRef}
       />
     </View>
   );

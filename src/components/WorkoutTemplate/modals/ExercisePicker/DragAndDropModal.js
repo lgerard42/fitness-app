@@ -684,7 +684,7 @@ const DragAndDropModal = ({
       onRequestClose={onClose}
     >
       <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: 32 }]}>
           <TouchableOpacity onPress={onClose} style={styles.cancelButton}>
             <Text style={styles.cancelButtonText}>Cancel</Text>
           </TouchableOpacity>

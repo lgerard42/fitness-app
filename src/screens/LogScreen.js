@@ -14,7 +14,10 @@ const LogScreen = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView
+      style={styles.container}
+      edges={activeWorkout ? ['bottom', 'left', 'right'] : ['top', 'bottom', 'left', 'right']}
+    >
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <Text style={styles.title}>Workout Log</Text>

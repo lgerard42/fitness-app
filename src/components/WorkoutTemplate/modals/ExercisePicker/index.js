@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { View, Modal, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -704,11 +704,15 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
     { value: "HIIT", label: "HIIT" }
   ];
 
+  // Ref for the block dismiss gesture - passed to scrollbar so it can block this gesture
+  const blockDismissGestureRef = useRef(null);
+
   // Gesture to block modal swipe-to-dismiss on the list area
   // This captures vertical pan gestures to prevent them from triggering modal dismiss
   // while still allowing ScrollView/SectionList to handle scrolling via native gesture
   const blockDismissGesture = useMemo(() => 
     Gesture.Pan()
+      .withRef(blockDismissGestureRef)
       .activeOffsetY([-10, 10]) // Activate after 10px vertical movement
       .onStart(() => {})
       .onUpdate(() => {})
@@ -801,6 +805,7 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
                 selectedOrder={selectedOrder}
                 onAddSet={handleAddSet}
                 onRemoveSet={handleRemoveSet}
+                blockDismissGestureRef={blockDismissGestureRef}
               />
             )}
           </View>

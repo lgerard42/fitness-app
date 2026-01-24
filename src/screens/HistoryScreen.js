@@ -8,7 +8,7 @@ import { useWorkout } from '../context/WorkoutContext';
 
 const HistoryScreen = ({ navigation }) => {
   const [view, setView] = useState('workouts');
-  const { workoutHistory } = useWorkout();
+  const { workoutHistory, activeWorkout } = useWorkout();
   const displayHistory = [...(workoutHistory || []), ...HISTORY_DATA];
 
   const handleEditWorkout = (workout) => {
@@ -16,10 +16,13 @@ const HistoryScreen = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView
+      style={styles.container}
+      edges={activeWorkout ? ['bottom', 'left', 'right'] : ['top', 'bottom', 'left', 'right']}
+    >
       <View style={styles.content}>
         <View style={styles.segmentedControl}>
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => setView('workouts')}
             style={[styles.segmentButton, view === 'workouts' ? styles.segmentActive : styles.segmentInactive]}
           >
@@ -27,7 +30,7 @@ const HistoryScreen = ({ navigation }) => {
               Workouts
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => setView('stats')}
             style={[styles.segmentButton, view === 'stats' ? styles.segmentActive : styles.segmentInactive]}
           >
@@ -40,8 +43,8 @@ const HistoryScreen = ({ navigation }) => {
         {view === 'workouts' ? (
           <ScrollView contentContainerStyle={styles.listContent}>
             {displayHistory.map((workout, idx) => (
-              <TouchableOpacity 
-                key={workout.id || idx} 
+              <TouchableOpacity
+                key={workout.id || idx}
                 style={styles.card}
                 onPress={() => handleEditWorkout(workout)}
               >

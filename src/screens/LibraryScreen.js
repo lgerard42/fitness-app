@@ -12,7 +12,7 @@ const LibraryScreen = () => {
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedExercise, setSelectedExercise] = useState(null);
-  const { exercisesLibrary, addExerciseToLibrary, exerciseStats } = useWorkout();
+  const { exercisesLibrary, addExerciseToLibrary, exerciseStats, activeWorkout } = useWorkout();
 
   const filteredExercises = exercisesLibrary.filter(ex => ex.name.toLowerCase().includes(search.toLowerCase()));
 
@@ -26,7 +26,10 @@ const LibraryScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView 
+      style={styles.container}
+      edges={activeWorkout ? ['bottom', 'left', 'right'] : ['top', 'bottom', 'left', 'right']}
+    >
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <Text style={styles.title}>Exercise Library</Text>
