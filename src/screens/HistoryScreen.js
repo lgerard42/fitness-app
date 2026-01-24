@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, SafeAreaView } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Trophy, Clock, Dumbbell } from 'lucide-react-native';
 import { COLORS } from '../constants/colors';
 import { HISTORY_DATA } from '../constants/data';
