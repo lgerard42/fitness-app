@@ -328,6 +328,24 @@ const DragAndDropModal = ({
     }
   }, [collapsedGroupId, reorderedItems]);
 
+  // Handle toggling group type between HIIT and Superset
+  const toggleGroupType = useCallback((groupId) => {
+    setReorderedItems(prev => prev.map(item => {
+      if (item.groupId === groupId && item.group) {
+        // Toggle the type
+        const newType = item.group.type === 'HIIT' ? 'Superset' : 'HIIT';
+        return {
+          ...item,
+          group: {
+            ...item.group,
+            type: newType,
+          },
+        };
+      }
+      return item;
+    }));
+  }, []);
+
   // Handle initiating a group header drag - collapse dragged group AND freeze all others
   const initiateGroupDrag = useCallback((groupId, drag) => {
     // Step 1: Collapse the group being dragged
@@ -671,14 +689,15 @@ const DragAndDropModal = ({
             ]}
           >
             <View style={styles.groupHeaderContent}>
-              <Text style={[styles.groupHeaderTypeText, { color: groupColorScheme[700] }]}>
-                {item.group.type}
-              </Text>
-              <View style={[styles.groupHeaderBadge, { backgroundColor: groupColorScheme[200] }]}>
-                <Text style={[styles.groupHeaderBadgeText, { color: groupColorScheme[700] }]}>
-                  {item.group.type === 'HIIT' ? 'H' : 'S'}{item.group.number}
+              <TouchableOpacity
+                onPress={() => toggleGroupType(item.groupId)}
+                disabled={isActive}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.groupHeaderTypeText, { color: groupColorScheme[700] }]}>
+                  {item.group.type}
                 </Text>
-              </View>
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -787,7 +806,7 @@ const DragAndDropModal = ({
         </View>
       </TouchableOpacity>
     );
-  }, [getItemGroupContext, initiateGroupDrag, collapsedGroupId, reorderedItems]);
+  }, [getItemGroupContext, initiateGroupDrag, collapsedGroupId, reorderedItems, toggleGroupType]);
 
   return (
     <Modal
@@ -796,8 +815,8 @@ const DragAndDropModal = ({
       transparent={false}
       onRequestClose={onClose}
     >
-      <SafeAreaView style={styles.container}>
-        <View style={[styles.header, { paddingTop: 64 }]}>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
           <TouchableOpacity onPress={onClose} style={styles.cancelButton}>
             <Text style={styles.cancelButtonText}>Cancel</Text>
           </TouchableOpacity>
@@ -896,6 +915,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.slate[50],
+    paddingBottom: 50,
   },
   header: {
     flexDirection: 'row',
