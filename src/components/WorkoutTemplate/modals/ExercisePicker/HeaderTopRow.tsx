@@ -32,6 +32,7 @@ interface HeaderTopRowProps {
   getExerciseGroup: ((index: number) => ExerciseGroup | null) | null;
   setExerciseGroups: ((groups: ExerciseGroup[]) => void) | null;
   setSelectedOrder: ((order: string[]) => void) | null;
+  setSelectedIds: ((ids: string[] | ((prev: string[]) => string[])) => void) | null;
 }
 
 const HeaderTopRow: React.FC<HeaderTopRowProps> = ({
@@ -46,6 +47,7 @@ const HeaderTopRow: React.FC<HeaderTopRowProps> = ({
   getExerciseGroup,
   setExerciseGroups,
   setSelectedOrder,
+  setSelectedIds,
 }) => {
   const [isDragDropModalVisible, setIsDragDropModalVisible] = useState(false);
 
@@ -62,8 +64,18 @@ const HeaderTopRow: React.FC<HeaderTopRowProps> = ({
       if (updatedGroups) {
         setExerciseGroups(updatedGroups);
       }
+
+      // Update selectedIds to remove exercises that are no longer in the order
+      if (setSelectedIds) {
+        setSelectedIds(prev => {
+          // Get unique exercise IDs from newOrder
+          const uniqueIdsInOrder = Array.from(new Set(newOrder));
+          // Keep only IDs that are still in the order
+          return prev.filter(id => uniqueIdsInOrder.includes(id));
+        });
+      }
     }
-  }, [setSelectedOrder, setExerciseGroups]);
+  }, [setSelectedOrder, setExerciseGroups, setSelectedIds]);
 
   return (
     <>

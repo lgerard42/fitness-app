@@ -512,6 +512,7 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
                 getExerciseGroup={getExerciseGroup}
                 setExerciseGroups={setExerciseGroups}
                 setSelectedOrder={setSelectedOrder}
+                setSelectedIds={setSelectedIds}
               />
               <SearchBar search={search} setSearch={setSearch} />
               <Filters

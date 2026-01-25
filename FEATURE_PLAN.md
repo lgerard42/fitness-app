@@ -1,64 +1,123 @@
-# Feature Plan: Fix Set Count Save Logic in DragAndDropModal
+# Feature Plan: Improve Swipe-to-Delete UX in DragAndDropModal
 
 ## Current State Analysis
 
-### Problem
-When a user updates the set count to 2 and saves, then re-opens the drag and drop modal, they see 2 identical exercises each showing "2" sets instead of 1 exercise showing "2" sets.
+### Existing Code Structure
+- **File**: `src/components/WorkoutTemplate/modals/ExercisePicker/DragAndDropModal.tsx`
+- Swipe-to-delete is implemented with gesture handlers
+- Trash icon appears on ambiguous swipes (>50px but <70%)
+- Currently, clicking anywhere on the card when trash is visible triggers deletion
+- No visual indicator during swipe showing deletion threshold
+- Trash icon doesn't hide when interacting with other cards
 
-### Root Cause
-1. `handleSave` correctly creates `newOrder` by pushing exercise IDs `count` times (e.g., `['exercise1', 'exercise1']` for count=2)
-2. When modal re-opens, `dragItems` memo processes each index in `selectedOrder`
-3. For `selectedOrder = ['exercise1', 'exercise1']`, `getGroupedExercises` creates one `GroupedExercise` with `count: 2` and `orderIndices: [0, 1]`
-4. `dragItems` processes index 0: finds groupedExercise, creates item with count=2
-5. `dragItems` processes index 1: finds the SAME groupedExercise (orderIndices includes 1), creates ANOTHER item with count=2
-6. Result: Two items, each with count=2, instead of one item with count=2
+### Current Issues
+1. **Card click deletes when trash visible**: The `TouchableOpacity` wrapper on standalone cards has `onPress` that might interfere, and group children don't have explicit click handlers but the gesture might be triggering deletion
+2. **No swipe threshold indicator**: Users don't see visual feedback about the 70% threshold during swipe
+3. **Trash icon persistence**: Trash icon stays visible when clicking other cards or swiping back
 
-### Current Code Structure
-- `dragItems` memo (lines 87-167): Creates drag items from `selectedOrder`
-- For standalone exercises (lines 150-162): Creates one item per index, even if multiple indices belong to same grouped exercise
-- `handleSave` (lines 629-676): Correctly reconstructs order by pushing IDs `count` times
+### Key Components
+- `renderExerciseContent`: Renders group child exercises
+- `renderItem`: Renders standalone exercises
+- `createSwipeGesture`: Creates pan gesture handler
+- `handleSwipeEnd`: Handles swipe end logic
+- `swipedItemId`: State tracking which item is swiped
 
 ## Proposed Changes (Step-by-Step)
 
-### Step 1: Fix dragItems Memo for Standalone Exercises
+### Step 1: Prevent Card Click Deletion When Trash Visible
 **File**: `DragAndDropModal.tsx`
-**Location**: Lines 150-162 (standalone exercise handling in `dragItems` memo)
+**Location**: `renderExerciseContent` and `renderItem` functions
 **Changes**:
-- Before creating an item, check if this index is the `startIndex` of its grouped exercise
-- Only create an item if `orderIndex === groupedExercise.startIndex`
-- This ensures only ONE item is created per grouped exercise, regardless of how many indices it spans
-- The item will have the correct `count` from the grouped exercise
+- Add `onPress` handler to card that closes trash icon if visible (doesn't delete)
+- Ensure trash icon `TouchableOpacity` is the only element that triggers deletion
+- For standalone cards: Modify the existing `TouchableOpacity` to check if trash is visible and close it instead of triggering selection/drag
+- For group children: Add `TouchableOpacity` wrapper that closes trash if visible
 
-### Step 2: Verify Group Exercise Handling
+### Step 2: Hide Trash Icon on Swipe Right
 **File**: `DragAndDropModal.tsx`
-**Location**: Lines 99-149 (group exercise handling)
+**Location**: `createSwipeGesture` and `handleSwipeEnd` functions
 **Changes**:
-- Review the group exercise logic to ensure it doesn't have the same issue
-- Group exercises already use `firstIndexInGroup` check, so they should be fine
-- Verify that group children don't create duplicate items
+- Update `onUpdate` to detect left-to-right swipe when trash is visible
+- Update `handleSwipeEnd` to close trash icon when swiping right (even small swipes)
+- Reset swipe translation and `swipedItemId` when swiping right
 
-### Step 3: Test Edge Cases
-- Single exercise with count=1 (should work as before)
-- Single exercise with count>1 (should create one item with correct count)
-- Multiple different exercises (should work as before)
-- Exercises in groups (should work as before)
+### Step 3: Hide Trash Icon When Clicking Other Cards
+**File**: `DragAndDropModal.tsx`
+**Location**: `renderItem` callback and card press handlers
+**Changes**:
+- Add `onPress` handler to all cards that checks if a different card's trash is visible
+- If different card's trash is visible, close it before handling the current card's press
+- Update `handleExerciseSelection` to close trash icon
+- Update drag handlers to close trash icon
+
+### Step 4: Add Red Bar Indicator During Swipe
+**File**: `DragAndDropModal.tsx`
+**Location**: `renderExerciseContent` and `renderItem` functions
+**Changes**:
+- Create animated red bar that appears behind the card during swipe
+- Calculate bar width based on swipe distance (0% to 100% of card width)
+- Show red bar when `translationX < 0` (swiping left)
+- Position bar to the right of the card, revealed as card swipes left
+- Use `Animated.View` with width calculated from `translateX` value
+- Style with red background color
+
+### Step 5: Update Styles
+**File**: `DragAndDropModal.tsx`
+**Location**: `styles` object
+**Changes**:
+- Add `swipeIndicatorBar` style for the red deletion indicator
+- Ensure proper z-index and positioning
+- Make bar height match card height
 
 ## Potential Risks or Edge Cases
 
 ### Breaking Changes
-- **Risk**: Changing the item creation logic might affect drag-and-drop behavior
-- **Mitigation**: The change only affects how items are initially created, not their structure or drag behavior
+- **Risk**: Modifying card press handlers might break existing drag/selection functionality
+- **Mitigation**: Preserve existing behavior when trash is not visible, only add new logic when trash is visible
 
-### Group Exercise Indices
-- **Risk**: Group exercise indices might need adjustment
-- **Mitigation**: Group exercises already use `firstIndexInGroup` pattern, so they should be unaffected
+### Gesture Conflicts
+- **Risk**: Swipe right to close might conflict with drag gestures
+- **Mitigation**: Use gesture handler's `activeOffsetX` to distinguish swipe from drag
+- **Risk**: Card press might interfere with gesture detection
+- **Mitigation**: Use `TouchableOpacity` with proper `activeOpacity` and ensure gesture detector wraps correctly
 
-### Order Index Consistency
-- **Risk**: The `orderIndex` property on items might need to reference the first index
-- **Mitigation**: `orderIndex` is used for display/grouping, not for reconstruction. `handleSave` uses the item's `count` to reconstruct order.
+### State Synchronization
+- **Risk**: Trash icon state might not reset properly when clicking other cards
+- **Mitigation**: Add explicit reset logic in all card interaction handlers
+- **Risk**: Red bar animation might cause performance issues
+- **Mitigation**: Use native driver for animations, calculate width efficiently
+
+### Visual Feedback
+- **Risk**: Red bar might be too subtle or too prominent
+- **Mitigation**: Use clear red color, ensure adequate width, test on different screen sizes
+- **Risk**: Red bar might not align properly with card
+- **Mitigation**: Use absolute positioning, match card height exactly
+
+## Thinking Block: ExerciseItem Discriminated Union Analysis
+
+**Current Structure:**
+- No changes to `ExerciseItem` type structure
+- Changes are UI/UX only, affecting gesture handling and visual feedback
+- No impact on data structures or type narrowing
+
+**Proposed Change Impact:**
+- No changes to `ExerciseItem` discriminated union
+- All changes are in rendering and gesture handling logic
+- Type guards remain the same
+
+**Type Narrowing Considerations:**
+- No type narrowing changes needed
+- All changes use existing type guards
+
+**Utility Function Updates:**
+- No changes needed to external utility functions
+- All logic contained within `DragAndDropModal.tsx`
 
 ## User Approval Request
 
-This fix ensures that when a user sets an exercise to have 2 sets and saves, reopening the modal shows 1 exercise with "2 x Exercise Name" instead of 2 exercises each with "2 x Exercise Name".
+This plan improves the swipe-to-delete UX by:
+1. Requiring explicit trash icon click for deletion (not card click)
+2. Hiding trash icon when swiping right or clicking other cards
+3. Showing visual red bar indicator during swipe to indicate deletion threshold
 
 **Please review and approve this plan before I proceed with implementation.**
