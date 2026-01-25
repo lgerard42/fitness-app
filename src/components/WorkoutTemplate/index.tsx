@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Pressable, ScrollView, StyleSheet, Modal, Animated, Easing } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronDown, ChevronLeft, ChevronRight, Calendar, Clock, FileText, Plus, Dumbbell, Layers, MoreVertical, CalendarDays, Trash2, RefreshCw, Scale, X, Flame, TrendingDown, Zap, Check, Timer, Pause, Play, Delete } from 'lucide-react-native';
+import type { NavigationProp } from '@react-navigation/native';
 import { COLORS } from '../../constants/colors';
 import { defaultSupersetColorScheme, defaultHiitColorScheme } from '../../constants/defaultStyles';
 import { formatDuration } from '../../constants/data';
@@ -34,20 +35,37 @@ import CancelWorkoutModal from './modals/CancelWorkoutModal';
 import RestTimerInputModal from './modals/RestTimerInputModal';
 import ActiveRestTimerPopup from './modals/ActiveRestTimerPopup';
 import CustomNumberKeyboard from './modals/CustomNumberKeyboard';
+import type { Workout, WorkoutMode, ExerciseLibraryItem, ExerciseStatsMap, ExerciseItem, Exercise, Set, RestPeriodSetInfo, FocusNextSet, GroupType } from '../../types/workout';
 
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 
-const WorkoutTemplate = ({
+interface WorkoutTemplateProps {
+  navigation?: NavigationProp<any>;
+  workout: Workout | null;
+  mode?: WorkoutMode;
+  onUpdate: (workout: Workout) => void;
+  onFinish?: () => void;
+  onCancel?: () => void;
+  exercisesLibrary: ExerciseLibraryItem[];
+  addExerciseToLibrary: (exercise: ExerciseLibraryItem) => string;
+  updateExerciseInLibrary: (exerciseId: string, updates: Partial<ExerciseLibraryItem>) => void;
+  exerciseStats: ExerciseStatsMap;
+  customHeader?: React.ReactNode | null;
+  customFinishButton?: React.ReactNode | null;
+  hideTimer?: boolean;
+}
+
+const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
   navigation,
-  workout, // The workout object to display/edit
-  mode = 'live', // 'live' | 'edit' | 'readonly'
-  onUpdate, // Function to call when workout is updated
-  onFinish, // Function to call when finish button is pressed
-  onCancel, // Function to call when cancel button is pressed
-  exercisesLibrary, // Array of available exercises
-  addExerciseToLibrary, // Function to add new exercise to library
-  updateExerciseInLibrary, // Function to update exercise in library
-  exerciseStats, // Exercise statistics object
+  workout,
+  mode = 'live',
+  onUpdate,
+  onFinish,
+  onCancel,
+  exercisesLibrary,
+  addExerciseToLibrary,
+  updateExerciseInLibrary,
+  exerciseStats,
   customHeader = null,
   customFinishButton = null,
   hideTimer = false,
@@ -59,32 +77,44 @@ const WorkoutTemplate = ({
   const [elapsed, setElapsed] = useState(0);
   const [showPicker, setShowPicker] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [newlyCreatedExerciseId, setNewlyCreatedExerciseId] = useState(null);
+  const [newlyCreatedExerciseId, setNewlyCreatedExerciseId] = useState<string | null>(null);
   const [finishModalOpen, setFinishModalOpen] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
-  const [popupKey, setPopupKey] = useState(0); // Force popup re-mount
-
+  const [popupKey, setPopupKey] = useState(0);
 
   // Exercise Options State
-  const [optionsModalExId, setOptionsModalExId] = useState(null);
-  const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 16 });
-  const [replacingExerciseId, setReplacingExerciseId] = useState(null);
+  const [optionsModalExId, setOptionsModalExId] = useState<string | null>(null);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 16, originalTop: 0 });
+  const [replacingExerciseId, setReplacingExerciseId] = useState<string | null>(null);
   const [exerciseNoteModalOpen, setExerciseNoteModalOpen] = useState(false);
   const [currentExerciseNote, setCurrentExerciseNote] = useState("");
-  const [expandedExerciseNotes, setExpandedExerciseNotes] = useState({}); // { [instanceId]: boolean }
+  const [expandedExerciseNotes, setExpandedExerciseNotes] = useState<Record<string, boolean>>({});
 
   // Move Mode State
   const [isMoveMode, setIsMoveMode] = useState(false);
-  const [movingItemId, setMovingItemId] = useState(null);
-  const [originalExercisesSnapshot, setOriginalExercisesSnapshot] = useState(null);
+  const [movingItemId, setMovingItemId] = useState<string | null>(null);
+  const [originalExercisesSnapshot, setOriginalExercisesSnapshot] = useState<ExerciseItem[] | null>(null);
   const fadeAnim = useRef(new Animated.Value(1)).current;
-  const scrollViewRef = useRef(null);
+  const scrollViewRef = useRef<ScrollView | null>(null);
 
-  // Rest Period Modal State (still needed in main component for UI)
-  const [restPeriodModalOpen, setRestPeriodModalOpen] = useState(false); // Shows duration picker
-  const [restPeriodSetInfo, setRestPeriodSetInfo] = useState(null); // { exerciseId, setId } - which set we're adding rest to
-  const [restTimerInput, setRestTimerInput] = useState(''); // Raw input for rest timer
-  const [focusNextSet, setFocusNextSet] = useState(null); // { exerciseId, setId, field: 'weight' | 'reps' } - auto-focus target
+  // Rest Period Modal State
+  const [restPeriodModalOpen, setRestPeriodModalOpen] = useState(false);
+  const [restPeriodSetInfo, setRestPeriodSetInfo] = useState<RestPeriodSetInfo | null>(null);
+  const [restTimerInput, setRestTimerInput] = useState('');
+  const [focusNextSet, setFocusNextSet] = useState<FocusNextSet | null>(null);
+
+  // Use the workout prop directly
+  const currentWorkout = workout;
+  const handleWorkoutUpdate = onUpdate;
+
+  // Create a dummy workout for hooks if currentWorkout is null
+  const dummyWorkout: Workout = {
+    id: 'dummy',
+    name: '',
+    startedAt: Date.now(),
+    exercises: [],
+    sessionNotes: []
+  };
 
   // Custom Hooks
   const {
@@ -95,7 +125,7 @@ const WorkoutTemplate = ({
     handleAddRestPeriod: handleAddRestPeriodFromHook,
     startRestTimer,
     cancelRestTimer
-  } = useWorkoutRestTimer(currentWorkout, handleWorkoutUpdate);
+  } = useWorkoutRestTimer(currentWorkout || dummyWorkout, handleWorkoutUpdate);
 
   const {
     supersetSelectionMode,
@@ -105,7 +135,7 @@ const WorkoutTemplate = ({
     handleToggleSupersetSelection,
     handleConfirmSupersetSelection,
     handleCancelSupersetSelection
-  } = useWorkoutSupersets(currentWorkout, handleWorkoutUpdate);
+  } = useWorkoutSupersets(currentWorkout || dummyWorkout, handleWorkoutUpdate);
 
   const {
     selectionMode,
@@ -116,11 +146,11 @@ const WorkoutTemplate = ({
     handleToggleSetSelection,
     handleSubmitDropSet,
     handleCancelDropSet
-  } = useWorkoutGroups(currentWorkout, handleWorkoutUpdate);
+  } = useWorkoutGroups(currentWorkout || dummyWorkout, handleWorkoutUpdate);
 
   // Custom Keyboard State
   const [customKeyboardVisible, setCustomKeyboardVisible] = useState(false);
-  const [customKeyboardTarget, setCustomKeyboardTarget] = useState(null); // { exerciseId, setId, field: 'weight' | 'reps' }
+  const [customKeyboardTarget, setCustomKeyboardTarget] = useState<{ exerciseId: string; setId: string; field: 'weight' | 'reps' | 'duration' | 'distance' } | null>(null);
   const [customKeyboardValue, setCustomKeyboardValue] = useState('');
 
   // Rest Timer countdown is now handled in useWorkoutRestTimer hook
@@ -156,10 +186,6 @@ const WorkoutTemplate = ({
   const [newNote, setNewNote] = useState("");
   const [newNoteDate, setNewNoteDate] = useState(new Date().toISOString().split('T')[0]);
 
-  // Use the workout prop directly
-  const currentWorkout = workout;
-  const handleWorkoutUpdate = onUpdate;
-
   useEffect(() => {
     if (!currentWorkout) {
       if (isLiveMode && navigation) {
@@ -187,11 +213,11 @@ const WorkoutTemplate = ({
     setShowNotes(true);
   };
 
-  const handleRemoveNote = (noteId) => {
+  const handleRemoveNote = (noteId: string) => {
     handleWorkoutUpdate({ ...currentWorkout, sessionNotes: (currentWorkout.sessionNotes || []).filter(n => n.id !== noteId) });
   };
 
-  const handlePinNote = (noteId) => {
+  const handlePinNote = (noteId: string) => {
     handleWorkoutUpdate({ ...currentWorkout, sessionNotes: (currentWorkout.sessionNotes || []).map(n => n.id === noteId ? { ...n, pinned: !n.pinned } : n) });
   };
 
@@ -203,7 +229,7 @@ const WorkoutTemplate = ({
     });
   }, [currentWorkout.sessionNotes]);
 
-  const createExerciseInstance = (ex, setCount = 1) => {
+  const createExerciseInstance = (ex: ExerciseLibraryItem, setCount: number = 1): Exercise => {
     // Get pinned notes from the library exercise
     const libraryExercise = exercisesLibrary.find(libEx => libEx.id === ex.id);
     const pinnedNotes = libraryExercise?.pinnedNotes || [];
@@ -231,7 +257,7 @@ const WorkoutTemplate = ({
     };
   };
 
-  const handleAddExercisesFromPicker = (selectedExercises, groupType, groupsMetadata = null) => {
+  const handleAddExercisesFromPicker = (selectedExercises: ExerciseLibraryItem[], groupType: GroupType | null, groupsMetadata: any = null) => {
     if (replacingExerciseId) {
       // Handle Replacement
       if (selectedExercises.length > 0) {
@@ -285,7 +311,7 @@ const WorkoutTemplate = ({
     setShowPicker(false);
   };
 
-  const handleCreateExerciseSave = (newExData) => {
+  const handleCreateExerciseSave = (newExData: ExerciseLibraryItem) => {
     // Add to library globally - it will create an ID if needed
     const newExerciseId = addExerciseToLibrary(newExData);
     // Set the newly created exercise ID to auto-select it in ExercisePicker
@@ -301,7 +327,7 @@ const WorkoutTemplate = ({
     });
   };
 
-  const handleUpdateSet = (exInstanceId, updatedSet) => {
+  const handleUpdateSet = (exInstanceId: string, updatedSet: Set) => {
     handleWorkoutUpdate({
       ...currentWorkout,
       exercises: updateExercisesDeep(currentWorkout.exercises, exInstanceId, (ex) => ({
@@ -310,7 +336,7 @@ const WorkoutTemplate = ({
     });
   };
 
-  const handleAddSet = (exInstanceId) => {
+  const handleAddSet = (exInstanceId: string) => {
     handleWorkoutUpdate({
       ...currentWorkout,
       exercises: updateExercisesDeep(currentWorkout.exercises, exInstanceId, (ex) => {
@@ -325,7 +351,7 @@ const WorkoutTemplate = ({
     });
   };
 
-  const handleToggleComplete = (exInstanceId, set) => {
+  const handleToggleComplete = (exInstanceId: string, set: Set) => {
     const isBeingCompleted = !set.completed;
 
     if (isBeingCompleted) {
@@ -373,13 +399,13 @@ const WorkoutTemplate = ({
   };
 
   // Custom keyboard handler
-  const handleCustomKeyboardOpen = (exerciseId, setId, field, value) => {
+  const handleCustomKeyboardOpen = (exerciseId: string, setId: string, field: 'weight' | 'reps' | 'duration' | 'distance', value: string) => {
     setCustomKeyboardTarget({ exerciseId, setId, field });
     setCustomKeyboardValue(value || '');
     setCustomKeyboardVisible(true);
   };
 
-  const handleCustomKeyboardInput = (key) => {
+  const handleCustomKeyboardInput = (key: string) => {
     let newValue;
     if (key === 'backspace') {
       newValue = customKeyboardValue.slice(0, -1);
@@ -454,7 +480,7 @@ const WorkoutTemplate = ({
     }
   };
 
-  const handleDeleteSet = (exInstanceId, setId) => {
+  const handleDeleteSet = (exInstanceId: string, setId: string) => {
     handleWorkoutUpdate({
       ...currentWorkout,
       exercises: updateExercisesDeep(currentWorkout.exercises, exInstanceId, (ex) => ({
@@ -465,11 +491,11 @@ const WorkoutTemplate = ({
   };
 
 
-  const [activeSetMenu, setActiveSetMenu] = useState(null); // { exerciseId, setId, top, left, originalTop }
+  const [activeSetMenu, setActiveSetMenu] = useState<{ exerciseId: string; setId: string; top: number; left: number; originalTop: number } | null>(null);
   const [scrollOffset, setScrollOffset] = useState(0);
   // selectionMode and selectedSetIds are now managed by useWorkoutGroups hook
 
-  const handleSetNumberPress = (exerciseId, setId, pageX, pageY, width, height) => {
+  const handleSetNumberPress = (exerciseId: string, setId: string, pageX: number, pageY: number, width: number, height: number) => {
     // Close exercise-level popup if open
     setOptionsModalExId(null);
 
@@ -499,7 +525,7 @@ const WorkoutTemplate = ({
     });
   };
 
-  const handleSetMenuAction = (action) => {
+  const handleSetMenuAction = (action: string) => {
     if (!activeSetMenu) return;
     const { exerciseId, setId } = activeSetMenu;
 
@@ -672,7 +698,7 @@ const WorkoutTemplate = ({
   };
 
   // Exercise Options Handlers
-  const handleOpenOptions = (instanceId, event) => {
+  const handleOpenOptions = (instanceId: string, event: any) => {
     const { pageY } = event.nativeEvent;
 
     // Close set-level popup if open
@@ -694,7 +720,7 @@ const WorkoutTemplate = ({
     });
   };
 
-  const handleDeleteExercise = (instanceId) => {
+  const handleDeleteExercise = (instanceId: string) => {
     handleWorkoutUpdate({
       ...currentWorkout,
       exercises: deleteExerciseDeep(currentWorkout.exercises, instanceId)
@@ -702,13 +728,13 @@ const WorkoutTemplate = ({
     setOptionsModalExId(null);
   };
 
-  const handleReplaceExercise = (instanceId) => {
+  const handleReplaceExercise = (instanceId: string) => {
     setReplacingExerciseId(instanceId);
     setOptionsModalExId(null);
     setShowPicker(true);
   };
 
-  const handleToggleUnit = (instanceId) => {
+  const handleToggleUnit = (instanceId: string) => {
     handleWorkoutUpdate({
       ...currentWorkout,
       exercises: updateExercisesDeep(currentWorkout.exercises, instanceId, (ex) => {
@@ -718,7 +744,7 @@ const WorkoutTemplate = ({
     setOptionsModalExId(null);
   };
 
-  const handleOpenExerciseNote = (instanceId) => {
+  const handleOpenExerciseNote = (instanceId: string) => {
     setCurrentExerciseNote("");
     setReplacingExerciseId(instanceId);
     setExerciseNoteModalOpen(true);
@@ -745,7 +771,7 @@ const WorkoutTemplate = ({
     setCurrentExerciseNote("");
   };
 
-  const handlePinExerciseNote = (exId, noteId) => {
+  const handlePinExerciseNote = (exId: string, noteId: string) => {
     const exercise = findExerciseDeep(currentWorkout.exercises, exId);
     if (!exercise) return;
 
@@ -786,7 +812,7 @@ const WorkoutTemplate = ({
     });
   };
 
-  const handleRemoveExerciseNote = (exId, noteId) => {
+  const handleRemoveExerciseNote = (exId: string, noteId: string) => {
     handleWorkoutUpdate({
       ...currentWorkout,
       exercises: updateExercisesDeep(currentWorkout.exercises, exId, (ex) => ({
@@ -796,7 +822,7 @@ const WorkoutTemplate = ({
     });
   };
 
-  const handleUpdateExerciseNote = (exId, updatedNote) => {
+  const handleUpdateExerciseNote = (exId: string, updatedNote: any) => {
     handleWorkoutUpdate({
       ...currentWorkout,
       exercises: updateExercisesDeep(currentWorkout.exercises, exId, (ex) => ({
@@ -806,22 +832,22 @@ const WorkoutTemplate = ({
     });
   };
 
-  const toggleExerciseNotes = (exId) => {
+  const toggleExerciseNotes = (exId: string) => {
     setExpandedExerciseNotes(prev => ({ ...prev, [exId]: !prev[exId] }));
   };
 
   // --- Superset Handlers ---
   // (Now handled by useWorkoutSupersets hook)
-  
+
   // Wrapper to close options modal when editing superset
-  const handleEditSupersetWrapper = (exerciseId) => {
+  const handleEditSupersetWrapper = (exerciseId: string) => {
     setOptionsModalExId(null);
     handleEditSuperset(exerciseId);
   };
 
   // --- Move Mode Handlers ---
 
-  const handleStartMove = (itemId) => {
+  const handleStartMove = (itemId: string) => {
     if (!isMoveMode) {
       setOriginalExercisesSnapshot(currentWorkout.exercises);
       setIsMoveMode(true);
@@ -844,7 +870,7 @@ const WorkoutTemplate = ({
     setOriginalExercisesSnapshot(null);
   };
 
-  const handleMoveItem = (targetIndex, forceInsideGroup = false) => {
+  const handleMoveItem = (targetIndex: number, forceInsideGroup: boolean = false) => {
     if (!movingItemId) return;
 
     const flatRows = flattenExercises(currentWorkout.exercises);
@@ -938,7 +964,7 @@ const WorkoutTemplate = ({
 
   const hasExercises = currentWorkout.exercises.length > 0;
 
-  const renderExerciseCard = (ex, isGroupChild = false, isLastChild = false, parentGroupType = null) => {
+  const renderExerciseCard = (ex: Exercise, isGroupChild: boolean = false, isLastChild: boolean = false, parentGroupType: GroupType | null = null) => {
     const historyEntries = exerciseStats[ex.exerciseId]?.history || [];
     const groupColorScheme = isGroupChild && parentGroupType
       ? (parentGroupType === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme)
@@ -1235,7 +1261,7 @@ const WorkoutTemplate = ({
                 </Text>
                 <Text style={styles.colHeaderText}>{ex.category === "Lifts" ? "Reps" : "Dist/Reps"}</Text>
               </View>
-              <View style={styles.colCheck}><Text style={styles.colHeaderText}>✓</Text></View>
+              <View style={styles.colCheck}><Text style={styles.colHeaderText}>Î“Â£Ã´</Text></View>
             </View>
             <View style={styles.setsContainer}>
               {ex.sets.map((set, idx) => {
@@ -1507,7 +1533,7 @@ const WorkoutTemplate = ({
     return cardContent;
   };
 
-  const renderDropZone = (index, isGroupChild = false, isLastInGroup = false) => {
+  const renderDropZone = (index: number, isGroupChild: boolean = false, isLastInGroup: boolean = false) => {
     // Find the group type if we are inside a group
     let groupType = "";
     let dropZoneGroupId = null;
@@ -1576,7 +1602,7 @@ const WorkoutTemplate = ({
     );
   };
 
-  const renderSpacer = (index, isGroupChild = false, isLastInGroup = false) => {
+  const renderSpacer = (index: number, isGroupChild: boolean = false, isLastInGroup: boolean = false) => {
     const flatRows = flattenExercises(currentWorkout.exercises);
     let groupColorScheme = null;
 
@@ -2472,7 +2498,7 @@ const WorkoutTemplate = ({
                                 }
                               ]}>
                                 {selectedExerciseIds.has(child.instanceId) && (
-                                  <Text style={styles.supersetCheckmark}>✓</Text>
+                                  <Text style={styles.supersetCheckmark}>Î“Â£Ã´</Text>
                                 )}
                               </View>
                               <Text style={styles.supersetExerciseName}>{child.name}</Text>
@@ -2523,7 +2549,7 @@ const WorkoutTemplate = ({
                           }
                         ]}>
                           {selectedExerciseIds.has(exercise.instanceId) && (
-                            <Text style={styles.supersetCheckmark}>✓</Text>
+                            <Text style={styles.supersetCheckmark}>Î“Â£Ã´</Text>
                           )}
                         </View>
                         <Text style={styles.supersetExerciseName}>{exercise.name}</Text>

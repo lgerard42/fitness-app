@@ -1,17 +1,24 @@
 import { useState, useEffect } from 'react';
 import { updateExercisesDeep } from '../../../utils/workoutHelpers';
+import type { Workout, Set, RestTimer } from '../../../types/workout';
 
-/**
- * Custom hook for managing rest timer functionality in workouts
- * @param {Object} currentWorkout - The current workout object
- * @param {Function} handleWorkoutUpdate - Function to update the workout
- * @returns {Object} Rest timer state and handlers
- */
-export const useWorkoutRestTimer = (currentWorkout, handleWorkoutUpdate) => {
-  const [activeRestTimer, setActiveRestTimer] = useState(null); // { exerciseId, setId, remainingSeconds, totalSeconds, isPaused }
-  const [restTimerPopupOpen, setRestTimerPopupOpen] = useState(false); // Shows expanded timer popup
+interface UseWorkoutRestTimerReturn {
+  activeRestTimer: RestTimer | null;
+  setActiveRestTimer: React.Dispatch<React.SetStateAction<RestTimer | null>>;
+  restTimerPopupOpen: boolean;
+  setRestTimerPopupOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  handleAddRestPeriod: (exerciseId: string, setId: string, seconds: number) => void;
+  startRestTimer: (exInstanceId: string, set: Set) => void;
+  cancelRestTimer: (setId: string) => void;
+}
 
-  // Rest Timer Countdown Effect
+export const useWorkoutRestTimer = (
+  currentWorkout: Workout,
+  handleWorkoutUpdate: (workout: Workout) => void
+): UseWorkoutRestTimerReturn => {
+  const [activeRestTimer, setActiveRestTimer] = useState<RestTimer | null>(null);
+  const [restTimerPopupOpen, setRestTimerPopupOpen] = useState(false);
+
   useEffect(() => {
     if (!activeRestTimer || activeRestTimer.isPaused) return;
 
@@ -20,10 +27,8 @@ export const useWorkoutRestTimer = (currentWorkout, handleWorkoutUpdate) => {
         if (!prev || prev.isPaused) return prev;
         const newRemaining = prev.remainingSeconds - 1;
         if (newRemaining <= 0) {
-          // Timer finished - close popup if open and mark timer as completed
           setRestTimerPopupOpen(false);
 
-          // Mark this set's rest timer as completed
           handleWorkoutUpdate({
             ...currentWorkout,
             exercises: updateExercisesDeep(currentWorkout.exercises, prev.exerciseId, (ex) => ({
@@ -41,13 +46,7 @@ export const useWorkoutRestTimer = (currentWorkout, handleWorkoutUpdate) => {
     return () => clearInterval(interval);
   }, [activeRestTimer?.setId, activeRestTimer?.isPaused, currentWorkout, handleWorkoutUpdate]);
 
-  /**
-   * Handle adding rest period to a set
-   * @param {string} exerciseId - The exercise instance ID
-   * @param {string} setId - The set ID
-   * @param {number} seconds - Rest period in seconds
-   */
-  const handleAddRestPeriod = (exerciseId, setId, seconds) => {
+  const handleAddRestPeriod = (exerciseId: string, setId: string, seconds: number): void => {
     if (!exerciseId || !setId || seconds <= 0) return;
 
     handleWorkoutUpdate({
@@ -59,12 +58,7 @@ export const useWorkoutRestTimer = (currentWorkout, handleWorkoutUpdate) => {
     });
   };
 
-  /**
-   * Start rest timer for a completed set
-   * @param {string} exInstanceId - The exercise instance ID
-   * @param {Object} set - The set object
-   */
-  const startRestTimer = (exInstanceId, set) => {
+  const startRestTimer = (exInstanceId: string, set: Set): void => {
     if (set.restPeriodSeconds) {
       setActiveRestTimer({
         exerciseId: exInstanceId,
@@ -76,11 +70,7 @@ export const useWorkoutRestTimer = (currentWorkout, handleWorkoutUpdate) => {
     }
   };
 
-  /**
-   * Cancel rest timer for a set
-   * @param {string} setId - The set ID
-   */
-  const cancelRestTimer = (setId) => {
+  const cancelRestTimer = (setId: string): void => {
     if (activeRestTimer?.setId === setId) {
       setActiveRestTimer(null);
     }

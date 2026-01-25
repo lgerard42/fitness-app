@@ -34,9 +34,11 @@
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
+    "@types/react": "~19.1.10",
     "babel-preset-expo": "~54.0.10",
     "patch-package": "^8.0.0",
-    "react-refresh": "^0.18.0"
+    "react-refresh": "^0.18.0",
+    "typescript": "~5.9.2"
   },
   "private": true
 }
