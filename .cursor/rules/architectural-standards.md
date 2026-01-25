@@ -4,7 +4,9 @@
 
 ### 1. Custom Hooks for State-Heavy Logic
 
-**Rule:** Prefer Custom Hooks for state-heavy logic in WorkoutTemplate.
+**Rule:** Logic for WorkoutTemplate MUST reside in specialized hooks in `src/components/WorkoutTemplate/hooks/`.
+
+**STRICT REQUIREMENT:** The main `WorkoutTemplate/index.tsx` component MUST NOT contain complex state logic or event handlers. All such logic MUST be extracted into custom hooks.
 
 #### When to Extract to Hooks
 - State management involving multiple related state variables
@@ -43,7 +45,9 @@ export const useWorkoutFeature = (currentWorkout, handleWorkoutUpdate) => {
 
 ### 2. Component Extraction
 
-**Rule:** Extract reusable UI into `WorkoutTemplate/components/`.
+**Rule:** UI for WorkoutTemplate MUST be extracted into `src/components/WorkoutTemplate/components/` or `modals/`.
+
+**STRICT REQUIREMENT:** The main `WorkoutTemplate/index.tsx` component MUST act as an orchestrator only. Complex UI rendering logic MUST be extracted into dedicated components in `components/` or `modals/` directories.
 
 #### Component Structure
 - Place reusable UI components in `src/components/WorkoutTemplate/components/`
@@ -153,7 +157,16 @@ src/components/WorkoutTemplate/
 
 ### 5. Centralized Type Definitions
 
-**Rule:** The ground truth for all workout data structures is `src/types/workout.ts`. Never guess the shape of a workout, exercise, or set; always refer to this file.
+**Rule:** Centralized types in `src/types/workout.ts` are the absolute ground truth. Check this file before proposing any state changes.
+
+**STRICT REQUIREMENT:** 
+- Before modifying any workout-related state, data structure, or type, you MUST first read and understand `src/types/workout.ts`
+- Never guess the shape of a workout, exercise, set, or ExerciseItem union type
+- Always refer to this file when:
+  - Adding new state variables
+  - Modifying existing state structures
+  - Creating new handlers that manipulate workout data
+  - Proposing changes to component props
 
 #### Type Import Pattern
 - Always import types from `src/types/workout.ts` (or relative path `../../types/workout`)

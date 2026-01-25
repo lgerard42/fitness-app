@@ -39,6 +39,36 @@ The plan file MUST include the following sections:
 - Flag potential performance implications
 - Consider backward compatibility
 
+### 3a. Thinking Block: ExerciseItem Discriminated Union Analysis
+
+**REQUIRED for logic changes spanning more than 2 files:**
+
+For any logic change spanning more than 2 files, you MUST output a 'Thinking Block' analyzing how the change impacts the `ExerciseItem` discriminated union in `src/types/workout.ts`.
+
+The Thinking Block MUST include:
+- Current understanding of `ExerciseItem = Exercise | ExerciseGroup`
+- How the proposed change affects each union member (`Exercise` vs `ExerciseGroup`)
+- Type guards and narrowing strategies needed
+- Impact on existing code that processes `ExerciseItem[]`
+- Potential breaking changes to type narrowing logic
+- Required updates to utility functions (`flattenExercises`, `reconstructExercises`, etc.)
+
+Example Thinking Block format:
+```
+## Thinking: ExerciseItem Union Impact Analysis
+
+**Current Structure:**
+- `ExerciseItem = Exercise | ExerciseGroup`
+- `Exercise.type = 'exercise'`
+- `ExerciseGroup.type = 'group'`
+
+**Proposed Change Impact:**
+- [Analysis of how change affects Exercise type]
+- [Analysis of how change affects ExerciseGroup type]
+- [Type narrowing considerations]
+- [Utility function updates needed]
+```
+
 ### 4. User Approval Request
 - End the plan with a clear request for user approval
 - Wait for explicit confirmation before proceeding
