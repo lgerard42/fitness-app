@@ -151,18 +151,67 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
   } = useWorkoutGroups(currentWorkout || dummyWorkout, handleWorkoutUpdate);
 
   const {
-    isDragMode,
-    draggingItemId,
+    isDragging,
     dragItems,
-    handleDragStart,
+    collapsedGroupId,
+    pendingDragCallback,
+    pendingDragItemId,
+    listRef,
+    initiateGroupDrag,
+    handlePrepareDrag,
+    handleDragBegin,
     handleDragEnd,
     handleCancelDrag,
-    collapseGroupForDrag,
-    expandAllGroups,
   } = useWorkoutDragDrop({
     currentWorkout: currentWorkout || dummyWorkout,
     handleWorkoutUpdate,
   });
+
+  // Execute pending drag after layout settles (items collapsed) - for regular exercises
+  useEffect(() => {
+    if (isDragging && pendingDragCallback.current && pendingDragItemId.current && !collapsedGroupId) {
+      // Wait for layout to settle after collapse
+      const timer = setTimeout(() => {
+        // Scroll to center the item being dragged
+        if (pendingDragItemId.current && listRef.current) {
+          const itemIndex = dragItems.findIndex(item => item.id === pendingDragItemId.current);
+          if (itemIndex !== -1) {
+            try {
+              listRef.current.scrollToIndex({
+                index: itemIndex,
+                animated: false,
+                viewPosition: 0.5, // Center the item vertically
+              });
+            } catch (e) {
+              // scrollToIndex can fail if layout not ready, ignore
+            }
+          }
+        }
+
+        // Small delay after scroll to let it settle, then trigger drag
+        setTimeout(() => {
+          if (pendingDragCallback.current) {
+            pendingDragCallback.current();
+            pendingDragCallback.current = null;
+          }
+        }, 50);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isDragging, pendingDragCallback, pendingDragItemId, dragItems, listRef, collapsedGroupId]);
+
+  // Execute pending drag after group collapse (matches DragAndDropModal pattern)
+  useEffect(() => {
+    if (collapsedGroupId && pendingDragCallback.current) {
+      const timeoutId = setTimeout(() => {
+        if (pendingDragCallback.current) {
+          pendingDragCallback.current();
+          pendingDragCallback.current = null;
+        }
+      }, 50);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [collapsedGroupId, dragItems]);
 
   // Custom Keyboard State
   const [customKeyboardVisible, setCustomKeyboardVisible] = useState(false);
@@ -1165,22 +1214,8 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     const isNotMoving = isMoveMode && !isMoving;
 
     const cardContent = (
-      <TouchableOpacity
+      <View
         key={ex.instanceId}
-        activeOpacity={1}
-        onLongPress={() => {
-          // Start drag mode instead of old move mode
-          if (!readOnly) {
-            handleDragStart(ex.instanceId);
-          }
-        }}
-        onPress={() => {
-          if (isMoveMode) {
-            const flatRows = flattenExercises(currentWorkout.exercises);
-            const idx = flatRows.findIndex(r => r.id === ex.instanceId);
-            if (idx !== -1) handleMoveItem(idx);
-          }
-        }}
         style={[
           styles.exerciseCard,
           !isMoveMode && styles.exerciseCard__notMoveMode,
@@ -1580,7 +1615,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
             ]}
           />
         )}
-      </TouchableOpacity>
+      </View>
     );
 
     if (isGroupChild) {
@@ -1877,12 +1912,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
             <TouchableOpacity
               key={row.id}
               activeOpacity={1}
-              onLongPress={() => {
-                // Start drag mode for group
-                if (!readOnly) {
-                  handleDragStart(row.id);
-                }
-              }}
+              onLongPress={() => handleStartMove(row.id)}
               onPress={() => {
                 if (isMoveMode) {
                   const idx = flatRows.findIndex(r => r.id === row.id);
@@ -1993,14 +2023,30 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     return renderedItems;
   };
 
-  // Draggable list item renderer for drag mode
+  // Draggable list item renderer - shows collapsed cards when dragging, full view otherwise
   const renderDragItem = useCallback(({ item, drag, isActive }: RenderItemParams<WorkoutDragItem>) => {
+    // Helper to initiate drag with two-phase approach - passes item ID for scroll centering
+    const initiateDelayedDrag = () => {
+      handlePrepareDrag(drag, item.id);
+    };
+
     if (item.type === 'GroupHeader') {
       const groupColorScheme = item.groupType === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme;
+      const isCollapsed = item.isCollapsed || collapsedGroupId === item.groupId;
+      const isDraggedGroup = collapsedGroupId === item.groupId;
+
+      // Hide collapsed group headers (they're part of other groups being collapsed)
+      if (isCollapsed && !isDraggedGroup) {
+        return <View style={{ height: 0, overflow: 'hidden' }} />;
+      }
 
       return (
         <TouchableOpacity
-          onLongPress={drag}
+          onLongPress={() => {
+            if (item.groupId) {
+              initiateGroupDrag(item.groupId, drag);
+            }
+          }}
           disabled={isActive}
           delayLongPress={150}
           activeOpacity={1}
@@ -2011,6 +2057,11 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
               borderColor: groupColorScheme[200],
             },
             isActive && styles.dragItem__active,
+            isDraggedGroup && isActive && {
+              borderColor: groupColorScheme[300],
+              zIndex: 9999,
+              elevation: 20,
+            },
           ]}
         >
           <Layers size={16} color={groupColorScheme[600]} />
@@ -2023,6 +2074,12 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
 
     if (item.type === 'GroupFooter') {
       const groupColorScheme = item.groupType === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme;
+      const isCollapsed = item.isCollapsed || collapsedGroupId === item.groupId;
+
+      // Hide collapsed group footers
+      if (isCollapsed) {
+        return <View style={{ height: 0, overflow: 'hidden' }} />;
+      }
 
       return (
         <View
@@ -2044,66 +2101,157 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
         : defaultSupersetColorScheme
       : null;
 
+    const isCollapsed = item.isCollapsed || (collapsedGroupId && item.groupId === collapsedGroupId);
+
+    // Hide collapsed exercises (they're part of a group being dragged)
+    if (isCollapsed) {
+      return <View style={{ height: 0, overflow: 'hidden' }} />;
+    }
+
+    // When dragging or active, show collapsed card
+    if (isDragging || isActive) {
+      return (
+        <TouchableOpacity
+          onLongPress={drag}
+          disabled={isActive}
+          delayLongPress={150}
+          activeOpacity={1}
+          style={[
+            styles.dragExerciseCard,
+            item.groupId && styles.dragExerciseCard__inGroup,
+            item.groupId && groupColorScheme && {
+              backgroundColor: groupColorScheme[50],
+              borderColor: groupColorScheme[200],
+            },
+            item.isFirstInGroup && styles.dragExerciseCard__firstInGroup,
+            item.isLastInGroup && styles.dragExerciseCard__lastInGroup,
+            isActive && styles.dragItem__active,
+          ]}
+        >
+          <View style={styles.dragExerciseContent}>
+            <Text style={styles.dragExerciseName}>{item.exercise.name}</Text>
+            <Text style={[
+              styles.dragExerciseSetCount,
+              groupColorScheme && { color: groupColorScheme[600] }
+            ]}>
+              {item.setCount} sets
+            </Text>
+          </View>
+        </TouchableOpacity>
+      );
+    }
+
+    // When not dragging, render full exercise card wrapped with long-press handler
+    const fullCard = renderExerciseCard(
+      item.exercise,
+      !!item.groupId,
+      item.isLastInGroup,
+      item.groupId
+        ? (dragItems.find(d => d.type === 'GroupHeader' && d.groupId === item.groupId) as any)?.groupType || null
+        : null
+    );
+
+    // Wrap with TouchableOpacity that triggers two-phase drag
     return (
       <TouchableOpacity
-        onLongPress={drag}
-        disabled={isActive}
-        delayLongPress={150}
+        onLongPress={initiateDelayedDrag}
+        delayLongPress={200}
         activeOpacity={1}
-        style={[
-          styles.dragExerciseCard,
-          item.groupId && styles.dragExerciseCard__inGroup,
-          item.groupId && groupColorScheme && {
-            backgroundColor: groupColorScheme[50],
-            borderColor: groupColorScheme[200],
-          },
-          item.isFirstInGroup && styles.dragExerciseCard__firstInGroup,
-          item.isLastInGroup && styles.dragExerciseCard__lastInGroup,
-          isActive && styles.dragItem__active,
-        ]}
+        disabled={isActive}
       >
-        <View style={styles.dragExerciseContent}>
-          <Text style={styles.dragExerciseName}>{item.exercise.name}</Text>
-          <Text style={[
-            styles.dragExerciseSetCount,
-            groupColorScheme && { color: groupColorScheme[600] }
-          ]}>
-            {item.setCount} sets
-          </Text>
-        </View>
+        {fullCard}
       </TouchableOpacity>
     );
-  }, [dragItems]);
+  }, [dragItems, isDragging, collapsedGroupId, renderExerciseCard, handlePrepareDrag, initiateGroupDrag]);
 
   const dragKeyExtractor = useCallback((item: WorkoutDragItem) => item.id, []);
 
-  const renderDraggableList = () => {
+  const notesHeaderComponent = useMemo(() => {
+    if (isDragging || isMoveMode) return null;
+    return (
+      <View style={styles.notesSection}>
+        <View style={styles.notesHeader}>
+          <TouchableOpacity onPress={() => setShowNotes(!showNotes)} style={styles.notesToggle}>
+            <FileText size={16} color={COLORS.slate[500]} />
+            <Text style={styles.notesTitle}>Workout Notes</Text>
+            {(currentWorkout.sessionNotes && currentWorkout.sessionNotes.length > 0) && (
+              <View style={styles.notesBadge}>
+                <Text style={styles.notesBadgeText}>{currentWorkout.sessionNotes.length}</Text>
+              </View>
+            )}
+            <ChevronDown size={14} color={COLORS.slate[500]} style={{ transform: [{ rotate: showNotes ? '180deg' : '0deg' }] }} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setIsNoteModalOpen(true)} style={styles.addNoteButton}>
+            <Plus size={14} color={COLORS.blue[600]} strokeWidth={3} />
+            <Text style={styles.addNoteText} numberOfLines={1}>Add Note</Text>
+          </TouchableOpacity>
+        </View>
+        {showNotes && (
+          <View style={styles.notesList}>
+            {sortedNotes.length > 0 ? (
+              sortedNotes.map((note) => <SavedNoteItem key={note.id} note={note} onPin={handlePinNote} onRemove={handleRemoveNote} />)
+            ) : (
+              <Text style={styles.emptyNotesText}>No notes added yet.</Text>
+            )}
+          </View>
+        )}
+      </View>
+    );
+  }, [isDragging, isMoveMode, showNotes, currentWorkout.sessionNotes, sortedNotes, handlePinNote, handleRemoveNote]);
+
+  const renderDraggableExercises = () => {
+    if (currentWorkout.exercises.length === 0) {
+      return (
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          {notesHeaderComponent}
+          <View style={styles.emptyState}>
+            <Dumbbell size={48} color={COLORS.slate[300]} style={{ marginBottom: 16 }} />
+            <Text style={styles.emptyStateText}>No exercises added yet</Text>
+            <TouchableOpacity onPress={() => setShowPicker(true)} style={styles.emptyStateButton}>
+              <Text style={styles.emptyStateButtonText}>Add an Exercise</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      );
+    }
+
     return (
       <DraggableFlatList<WorkoutDragItem>
+        ref={listRef}
         data={dragItems}
+        onDragBegin={handleDragBegin}
         onDragEnd={handleDragEnd}
         keyExtractor={dragKeyExtractor}
         renderItem={renderDragItem}
         contentContainerStyle={styles.dragListContent}
-        scrollEnabled={true}
+        ListHeaderComponent={notesHeaderComponent}
+        ListFooterComponent={
+          !isDragging && !readOnly ? (
+            <View style={styles.exercisesContainer}>
+              <TouchableOpacity onPress={() => setShowPicker(true)} style={styles.addExerciseButton}>
+                <Plus size={20} color={COLORS.slate[500]} />
+                <Text style={styles.addExerciseButtonText}>ADD EXERCISE</Text>
+              </TouchableOpacity>
+              {hasExercises && (
+                customFinishButton ? customFinishButton : (
+                  <TouchableOpacity
+                    onPress={() => setFinishModalOpen(true)}
+                    style={styles.bottomFinishButton}
+                  >
+                    <Text style={styles.bottomFinishButtonText}>FINISH WORKOUT</Text>
+                  </TouchableOpacity>
+                )
+              )}
+            </View>
+          ) : null
+        }
       />
     );
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      {isDragMode && (
-        <MoveModeBanner
-          onCancel={handleCancelDrag}
-          onDone={() => {
-            // Drag is auto-committed on drop, this just exits mode if needed
-            handleDragEnd({ data: dragItems, from: 0, to: 0 });
-          }}
-          styles={styles}
-        />
-      )}
-
-      {isMoveMode && !isDragMode && (
+      {isMoveMode && (
         <MoveModeBanner
           onCancel={handleCancelMove}
           onDone={handleDoneMove}
@@ -2164,117 +2312,23 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
         }}
       >
         <View style={styles.mainContentWrapper}>
-          {isDragMode ? (
-            // Drag mode: Show DraggableFlatList with condensed exercise cards
-            <View style={styles.dragModeContainer}>
-              <View style={styles.dragModeInstructions}>
-                <Text style={styles.dragModeInstructionsText}>
-                  Drag exercises to reorder • Release to drop
-                </Text>
-              </View>
-              {renderDraggableList()}
+          {/* Dragging instructions banner with done button */}
+          {isDragging && (
+            <View style={styles.dragModeInstructions}>
+              <Text style={styles.dragModeInstructionsText}>
+                Hold & drag to reorder
+              </Text>
+              <TouchableOpacity
+                onPress={handleCancelDrag}
+                style={styles.dragModeDoneButton}
+              >
+                <Text style={styles.dragModeDoneButtonText}>Done</Text>
+              </TouchableOpacity>
             </View>
-          ) : (
-            // Normal mode: ScrollView with full exercise cards
-            <ScrollView
-              ref={scrollViewRef}
-              contentContainerStyle={styles.scrollContent}
-              onScroll={(event) => {
-                const currentOffset = event.nativeEvent.contentOffset.y;
-                setScrollOffset(currentOffset);
-
-                // Update set-level popup position if one is open
-                if (activeSetMenu) {
-                  const newTop = activeSetMenu.originalTop - currentOffset - 15;
-                  setActiveSetMenu(prev => ({
-                    ...prev,
-                    top: newTop
-                  }));
-                }
-
-                // Update 3-dot popup position if one is open
-                if (optionsModalExId && dropdownPos.originalTop !== undefined) {
-                  const newTop = dropdownPos.originalTop - currentOffset;
-                  setDropdownPos(prev => ({
-                    ...prev,
-                    top: newTop
-                  }));
-                }
-              }}
-              scrollEventThrottle={16}
-            >
-              {!isMoveMode && (
-                <View style={styles.notesSection}>
-                  <View style={styles.notesHeader}>
-                    <TouchableOpacity onPress={() => setShowNotes(!showNotes)} style={styles.notesToggle}>
-                      <FileText size={16} color={COLORS.slate[500]} />
-                      <Text style={styles.notesTitle}>Workout Notes</Text>
-                      {(currentWorkout.sessionNotes && currentWorkout.sessionNotes.length > 0) && (
-                        <View style={styles.notesBadge}>
-                          <Text style={styles.notesBadgeText}>{currentWorkout.sessionNotes.length}</Text>
-                        </View>
-                      )}
-                      <ChevronDown size={14} color={COLORS.slate[500]} style={{ transform: [{ rotate: showNotes ? '180deg' : '0deg' }] }} />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => setIsNoteModalOpen(true)} style={styles.addNoteButton}>
-                      <Plus size={14} color={COLORS.blue[600]} strokeWidth={3} />
-                      <Text style={styles.addNoteText} numberOfLines={1}>Add Note</Text>
-                    </TouchableOpacity>
-                  </View>
-                  {showNotes && (
-                    <View style={styles.notesList}>
-                      {sortedNotes.length > 0 ? (
-                        sortedNotes.map((note) => <SavedNoteItem key={note.id} note={note} onPin={handlePinNote} onRemove={handleRemoveNote} />)
-                      ) : (
-                        <Text style={styles.emptyNotesText}>No notes added yet.</Text>
-                      )}
-                    </View>
-                  )}
-                </View>
-              )}
-
-              <View style={styles.exercisesContainer}>
-                {currentWorkout.exercises.length === 0 && (
-                  <View style={styles.emptyState}>
-                    <Dumbbell size={48} color={COLORS.slate[300]} style={{ marginBottom: 16 }} />
-                    <Text style={styles.emptyStateText}>No exercises added yet</Text>
-                    <TouchableOpacity onPress={() => setShowPicker(true)} style={styles.emptyStateButton}>
-                      <Text style={styles.emptyStateButtonText}>Add an Exercise</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-
-                {renderFlatList()}
-
-                {!isMoveMode && !readOnly && (
-                  <TouchableOpacity onPress={() => setShowPicker(true)} style={styles.addExerciseButton}>
-                    <Plus size={20} color={COLORS.slate[500]} />
-                    <Text style={styles.addExerciseButtonText}>ADD EXERCISE</Text>
-                  </TouchableOpacity>
-                )}
-
-                {hasExercises && !isMoveMode && (
-                  customFinishButton ? customFinishButton : (
-                    <TouchableOpacity
-                      onPress={() => setFinishModalOpen(true)}
-                      style={styles.bottomFinishButton}
-                    >
-                      <Text style={styles.bottomFinishButtonText}>FINISH WORKOUT</Text>
-                    </TouchableOpacity>
-                  )
-                )}
-
-                {isMoveMode && (
-                  <TouchableOpacity
-                    onPress={handleCancelMove}
-                    style={[styles.bottomFinishButton, { backgroundColor: COLORS.slate[500] }]}
-                  >
-                    <Text style={styles.bottomFinishButtonText}>CANCEL</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            </ScrollView>
           )}
+
+          {/* Main exercise list with DraggableFlatList */}
+          {renderDraggableExercises()}
 
           {/* Render the set menu outside the Modal, using conditional rendering */}
           {activeSetMenu && (
@@ -4246,12 +4300,25 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.blue[50],
     borderBottomWidth: 1,
     borderBottomColor: COLORS.blue[100],
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
   dragModeInstructionsText: {
     fontSize: 12,
     color: COLORS.blue[700],
-    textAlign: 'center',
+    flex: 1,
+  },
+  dragModeDoneButton: {
+    backgroundColor: COLORS.blue[600],
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  dragModeDoneButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.white,
   },
   dragListContent: {
     paddingHorizontal: 8,

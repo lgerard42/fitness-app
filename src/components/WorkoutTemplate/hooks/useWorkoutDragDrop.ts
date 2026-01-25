@@ -1,6 +1,7 @@
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import type { Workout, ExerciseItem, Exercise, ExerciseGroup, FlatExerciseRow, GroupType } from '@/types/workout';
 import { flattenExercises, reconstructExercises } from '@/utils/workoutHelpers';
+import DraggableFlatList from 'react-native-draggable-flatlist';
 
 // Drag item types matching DragAndDropModal pattern
 interface DragItemBase {
@@ -37,26 +38,165 @@ interface UseWorkoutDragDropProps {
 }
 
 interface UseWorkoutDragDropReturn {
-  isDragMode: boolean;
-  draggingItemId: string | null;
+  isDragging: boolean;
   dragItems: WorkoutDragItem[];
-  handleDragStart: (itemId: string) => void;
+  collapsedGroupId: string | null;
+  pendingDragCallback: React.MutableRefObject<(() => void) | null>;
+  pendingDragItemId: React.MutableRefObject<string | null>;
+  listRef: React.RefObject<React.ComponentRef<typeof DraggableFlatList<WorkoutDragItem>>>;
+  initiateGroupDrag: (groupId: string, dragCallback: () => void) => void;
+  handlePrepareDrag: (dragCallback: () => void, itemId: string) => void;
+  handleDragBegin: () => void;
   handleDragEnd: (params: { data: WorkoutDragItem[]; from: number; to: number }) => void;
   handleCancelDrag: () => void;
-  collapseGroupForDrag: (items: WorkoutDragItem[], groupId: string) => WorkoutDragItem[];
-  expandAllGroups: (items: WorkoutDragItem[]) => WorkoutDragItem[];
 }
 
 export const useWorkoutDragDrop = ({
   currentWorkout,
   handleWorkoutUpdate,
 }: UseWorkoutDragDropProps): UseWorkoutDragDropReturn => {
-  const [isDragMode, setIsDragMode] = useState(false);
-  const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [collapsedGroupId, setCollapsedGroupId] = useState<string | null>(null);
+  const [reorderedDragItems, setReorderedDragItems] = useState<WorkoutDragItem[]>([]);
   const originalExercisesRef = useRef<ExerciseItem[] | null>(null);
+  const pendingDragCallback = useRef<(() => void) | null>(null);
+  const pendingDragItemId = useRef<string | null>(null);
+  const listRef = useRef<React.ComponentRef<typeof DraggableFlatList<WorkoutDragItem>>>(null);
 
-  // Convert workout exercises to drag items
-  const dragItems = useMemo((): WorkoutDragItem[] => {
+  // Helper to collapse a group
+  const collapseGroup = useCallback((items: WorkoutDragItem[], groupId: string): WorkoutDragItem[] => {
+    return items.map(item => {
+      if (item.type === 'Exercise' && item.groupId === groupId) {
+        return { ...item, isCollapsed: true };
+      }
+      if (item.type === 'GroupHeader' && item.groupId === groupId) {
+        return { ...item, isCollapsed: true };
+      }
+      if (item.type === 'GroupFooter' && item.groupId === groupId) {
+        return { ...item, isCollapsed: true };
+      }
+      return item;
+    });
+  }, []);
+
+  // Helper to collapse all other groups
+  const collapseAllOtherGroups = useCallback((items: WorkoutDragItem[], draggedGroupId: string): WorkoutDragItem[] => {
+    const otherGroupIds = new Set<string>();
+    items.forEach(item => {
+      if (item.groupId && item.groupId !== draggedGroupId) {
+        otherGroupIds.add(item.groupId);
+      }
+    });
+
+    return items.map(item => {
+      if (item.groupId && otherGroupIds.has(item.groupId)) {
+        if (item.type === 'GroupHeader' || item.type === 'Exercise' || item.type === 'GroupFooter') {
+          return { ...item, isCollapsed: true };
+        }
+      }
+      return item;
+    });
+  }, []);
+
+  // Helper to expand all groups - matches DragAndDropModal pattern
+  const expandAllGroups = useCallback((items: WorkoutDragItem[]): WorkoutDragItem[] => {
+    const collapsedGroupIds = new Set<string>();
+    items.forEach(item => {
+      if (item.isCollapsed && item.groupId) {
+        collapsedGroupIds.add(item.groupId);
+      }
+    });
+
+    if (collapsedGroupIds.size === 0) {
+      return items.map(item => {
+        if (item.isCollapsed) {
+          const { isCollapsed, ...rest } = item;
+          return rest as WorkoutDragItem;
+        }
+        return item;
+      });
+    }
+
+    let result = [...items];
+
+    collapsedGroupIds.forEach(groupId => {
+      const headerIndex = result.findIndex(item =>
+        item.type === 'GroupHeader' && item.groupId === groupId
+      );
+
+      if (headerIndex === -1) {
+        result = result.map(item => {
+          if (item.groupId === groupId && item.isCollapsed) {
+            const { isCollapsed, ...rest } = item;
+            return rest as WorkoutDragItem;
+          }
+          return item;
+        });
+        return;
+      }
+
+      const groupItems: WorkoutDragItem[] = [];
+      result.forEach(item => {
+        if (item.groupId === groupId && (item.type === 'Exercise' || item.type === 'GroupFooter')) {
+          if (item.isCollapsed) {
+            const { isCollapsed, ...rest } = item;
+            groupItems.push(rest as WorkoutDragItem);
+          } else {
+            groupItems.push(item);
+          }
+        }
+      });
+
+      // Sort group items: exercises first (maintain their order in the data array), footer last
+      groupItems.sort((a, b) => {
+        if (a.type === 'GroupFooter') return 1;
+        if (b.type === 'GroupFooter') return -1;
+        // For exercises, maintain order by checking their position in the current result array
+        const aIndex = result.findIndex(item => item.id === a.id);
+        const bIndex = result.findIndex(item => item.id === b.id);
+        return aIndex - bIndex;
+      });
+
+      const newResult: WorkoutDragItem[] = [];
+
+      // Add items before the header
+      for (let i = 0; i < headerIndex; i++) {
+        if (result[i].groupId !== groupId || result[i].type === 'GroupHeader') {
+          newResult.push(result[i]);
+        }
+      }
+
+      // Add the header (remove isCollapsed flag)
+      const header = result[headerIndex];
+      if (header.type === 'GroupHeader') {
+        const { isCollapsed, ...headerRest } = header;
+        newResult.push(headerRest);
+      }
+
+      // Add the group items (exercises and footer)
+      newResult.push(...groupItems);
+
+      // Add items after the header
+      for (let i = headerIndex + 1; i < result.length; i++) {
+        if (result[i].groupId !== groupId || result[i].type === 'GroupHeader') {
+          newResult.push(result[i]);
+        }
+      }
+
+      result = newResult;
+    });
+
+    return result.map(item => {
+      if (item.isCollapsed) {
+        const { isCollapsed, ...rest } = item;
+        return rest as WorkoutDragItem;
+      }
+      return item;
+    });
+  }, []);
+
+  // Convert workout exercises to drag items (base items, no collapse applied)
+  const baseDragItems = useMemo((): WorkoutDragItem[] => {
     const items: WorkoutDragItem[] = [];
     const flatRows = flattenExercises(currentWorkout.exercises);
 
@@ -64,7 +204,7 @@ export const useWorkoutDragDrop = ({
     let currentGroupType: GroupType | null = null;
     let exercisesInCurrentGroup: string[] = [];
 
-    flatRows.forEach((row, index) => {
+    flatRows.forEach((row) => {
       if (row.type === 'group_header') {
         const group = row.data as ExerciseGroup;
         currentGroupId = row.id;
@@ -136,60 +276,98 @@ export const useWorkoutDragDrop = ({
     return items;
   }, [currentWorkout.exercises]);
 
-  const handleDragStart = useCallback((itemId: string) => {
-    if (!isDragMode) {
-      originalExercisesRef.current = currentWorkout.exercises;
-      setIsDragMode(true);
+  // Use reorderedDragItems if available (for collapsed state), otherwise use baseDragItems
+  const dragItems = reorderedDragItems.length > 0 ? reorderedDragItems : baseDragItems;
+
+  // Reset reorderedDragItems when workout changes (unless we're actively dragging)
+  useEffect(() => {
+    if (!isDragging && reorderedDragItems.length > 0) {
+      setReorderedDragItems([]);
     }
-    setDraggingItemId(itemId);
-  }, [isDragMode, currentWorkout.exercises]);
+  }, [currentWorkout.exercises, isDragging]);
+
+  // Initiate group drag - matches DragAndDropModal pattern
+  const initiateGroupDrag = useCallback((groupId: string, dragCallback: () => void) => {
+    let collapsed = collapseGroup(baseDragItems, groupId);
+    collapsed = collapseAllOtherGroups(collapsed, groupId);
+
+    setReorderedDragItems(collapsed);
+    setCollapsedGroupId(groupId);
+    pendingDragCallback.current = dragCallback;
+  }, [baseDragItems, collapseGroup, collapseAllOtherGroups]);
+
+  // Phase 1: Collapse all items, then schedule the drag (for regular exercises)
+  const handlePrepareDrag = useCallback((dragCallback: () => void, itemId: string) => {
+    if (isDragging) {
+      // Already dragging, just call directly
+      dragCallback();
+      return;
+    }
+
+    // Save original state
+    originalExercisesRef.current = currentWorkout.exercises;
+    
+    // Regular exercise drag - collapse all items (not a group header)
+    setCollapsedGroupId(null);
+    setReorderedDragItems([]); // Reset to use baseDragItems
+    
+    // Store the item being dragged so we can scroll to it
+    pendingDragItemId.current = itemId;
+    
+    // Set dragging to collapse all items
+    setIsDragging(true);
+    
+    // Store the drag callback to be executed after layout settles
+    pendingDragCallback.current = dragCallback;
+  }, [isDragging, currentWorkout.exercises]);
+
+  // Called when drag actually begins (from DraggableFlatList onDragBegin)
+  const handleDragBegin = useCallback(() => {
+    // This is called by DraggableFlatList when drag actually starts
+    // At this point, items should already be collapsed
+    if (!isDragging) {
+      originalExercisesRef.current = currentWorkout.exercises;
+      setIsDragging(true);
+    }
+  }, [isDragging, currentWorkout.exercises]);
 
   const handleCancelDrag = useCallback(() => {
     if (originalExercisesRef.current) {
       handleWorkoutUpdate({ ...currentWorkout, exercises: originalExercisesRef.current });
     }
-    setIsDragMode(false);
-    setDraggingItemId(null);
+    setIsDragging(false);
+    setCollapsedGroupId(null);
+    setReorderedDragItems([]);
     originalExercisesRef.current = null;
+    pendingDragCallback.current = null;
+    pendingDragItemId.current = null;
   }, [currentWorkout, handleWorkoutUpdate]);
 
-  const collapseGroupForDrag = useCallback((items: WorkoutDragItem[], groupId: string): WorkoutDragItem[] => {
-    return items.map(item => {
-      if (item.groupId === groupId) {
-        return { ...item, isCollapsed: true };
-      }
-      return item;
-    });
-  }, []);
-
-  const expandAllGroups = useCallback((items: WorkoutDragItem[]): WorkoutDragItem[] => {
-    return items.map(item => {
-      if (item.isCollapsed) {
-        const { isCollapsed, ...rest } = item;
-        return rest as WorkoutDragItem;
-      }
-      return item;
-    });
-  }, []);
-
   const handleDragEnd = useCallback(({ data, from, to }: { data: WorkoutDragItem[]; from: number; to: number }) => {
+    pendingDragCallback.current = null;
+    pendingDragItemId.current = null;
+    
     if (from === to) {
-      setIsDragMode(false);
-      setDraggingItemId(null);
+      setIsDragging(false);
+      setCollapsedGroupId(null);
+      setReorderedDragItems([]);
       originalExercisesRef.current = null;
       return;
     }
 
-    // Expand any collapsed items
-    const expandedData = expandAllGroups(data);
+    // Expand groups if a group was being dragged (matches DragAndDropModal pattern)
+    let expandedData = data;
+    if (collapsedGroupId) {
+      expandedData = expandAllGroups(data);
+      setCollapsedGroupId(null);
+    }
+    setReorderedDragItems([]);
 
     // Convert drag items back to flat rows, then reconstruct exercises
     const newFlatRows: FlatExerciseRow[] = [];
-    let currentGroupId: string | null = null;
 
-    expandedData.forEach((item) => {
+    expandedData.forEach((item, itemIndex) => {
       if (item.type === 'GroupHeader') {
-        currentGroupId = item.groupId;
         newFlatRows.push({
           type: 'group_header',
           id: item.groupId!,
@@ -202,15 +380,11 @@ export const useWorkoutDragDrop = ({
         let depth = 0;
         let exerciseGroupId: string | null = null;
 
-        // Find the item's position and check what's before it
-        const itemIndex = expandedData.indexOf(item);
-
         // Look backwards for a group header (that hasn't been closed by a footer)
         let foundGroupId: string | null = null;
         for (let i = itemIndex - 1; i >= 0; i--) {
           const prevItem = expandedData[i];
           if (prevItem.type === 'GroupFooter') {
-            // Found a footer before finding a header - not in a group
             break;
           }
           if (prevItem.type === 'GroupHeader') {
@@ -224,12 +398,10 @@ export const useWorkoutDragDrop = ({
           for (let i = itemIndex + 1; i < expandedData.length; i++) {
             const nextItem = expandedData[i];
             if (nextItem.type === 'GroupHeader') {
-              // Found another header - not in the previous group
               foundGroupId = null;
               break;
             }
             if (nextItem.type === 'GroupFooter' && nextItem.groupId === foundGroupId) {
-              // Found the matching footer - we ARE in this group
               depth = 1;
               exerciseGroupId = foundGroupId;
               break;
@@ -251,19 +423,21 @@ export const useWorkoutDragDrop = ({
     const newExercises = reconstructExercises(newFlatRows);
     handleWorkoutUpdate({ ...currentWorkout, exercises: newExercises });
 
-    setIsDragMode(false);
-    setDraggingItemId(null);
+    setIsDragging(false);
     originalExercisesRef.current = null;
-  }, [currentWorkout, handleWorkoutUpdate, expandAllGroups]);
+  }, [currentWorkout, handleWorkoutUpdate, collapsedGroupId, expandAllGroups]);
 
   return {
-    isDragMode,
-    draggingItemId,
+    isDragging,
     dragItems,
-    handleDragStart,
+    collapsedGroupId,
+    pendingDragCallback,
+    pendingDragItemId,
+    listRef,
+    initiateGroupDrag,
+    handlePrepareDrag,
+    handleDragBegin,
     handleDragEnd,
     handleCancelDrag,
-    collapseGroupForDrag,
-    expandAllGroups,
   };
 };
