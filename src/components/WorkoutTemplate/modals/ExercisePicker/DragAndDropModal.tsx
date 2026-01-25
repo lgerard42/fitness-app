@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { View, Text, Modal, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DraggableFlatList from 'react-native-draggable-flatlist';
-import { Layers } from 'lucide-react-native';
+import { Layers, Check } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { defaultSupersetColorScheme, defaultHiitColorScheme } from '@/constants/defaultStyles';
 import type { ExerciseLibraryItem, GroupType } from '@/types/workout';
@@ -171,6 +171,10 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
   const [showGroupTypeModal, setShowGroupTypeModal] = useState(false);
   const [exerciseToGroup, setExerciseToGroup] = useState<ExerciseItem | null>(null);
   const [dropdownPosition, setDropdownPosition] = useState<{ x: number; y: number } | null>(null);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedExercisesForGroup, setSelectedExercisesForGroup] = useState<Set<string>>(new Set());
+  const [pendingGroupType, setPendingGroupType] = useState<GroupType | null>(null);
+  const [pendingGroupInitialExercise, setPendingGroupInitialExercise] = useState<ExerciseItem | null>(null);
   const buttonRefsMap = useRef<Map<string, any>>(new Map());
   const prevVisibleRef = useRef(visible);
   const pendingDragRef = useRef<(() => void) | null>(null);
@@ -188,7 +192,9 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
     return Math.max(...groupsOfType.map(g => g.number), 0) + 1;
   }, [reorderedItems]);
 
-  const addExerciseToGroup = useCallback((exerciseItem: ExerciseItem, type: GroupType) => {
+  const createGroupWithExercises = useCallback((exerciseItems: ExerciseItem[], type: GroupType) => {
+    if (exerciseItems.length === 0) return;
+
     const nextNumber = getNextGroupNumber(type);
     const newGroup: ExerciseGroup = {
       id: `group-${Date.now()}-${Math.random()}`,
@@ -197,32 +203,47 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
       exerciseIndices: [],
     };
 
-    setReorderedItems(prev => {
-      const exerciseIndex = prev.findIndex(item => item.id === exerciseItem.id);
-      if (exerciseIndex === -1) return prev;
+    // Sort exercises by their order index to maintain order
+    const sortedExercises = [...exerciseItems].sort((a, b) => a.orderIndex - b.orderIndex);
 
+    setReorderedItems(prev => {
+      // Find all indices of exercises to be grouped
+      const exerciseIndices: number[] = [];
+      sortedExercises.forEach(exerciseItem => {
+        const index = prev.findIndex(item => item.id === exerciseItem.id);
+        if (index !== -1) {
+          exerciseIndices.push(index);
+        }
+      });
+
+      if (exerciseIndices.length === 0) return prev;
+
+      // Get exercise data for group header
+      const groupExercisesData: GroupExerciseData[] = sortedExercises.map(item => ({
+        exercise: item.exercise,
+        orderIndex: item.orderIndex,
+        count: item.count,
+      }));
+
+      // Create new group items
       const newItems: DragItem[] = [
         {
           id: `header-${newGroup.id}`,
           type: 'GroupHeader',
           group: newGroup,
           groupId: newGroup.id,
-          groupExercises: [{
-            exercise: exerciseItem.exercise,
-            orderIndex: exerciseItem.orderIndex,
-            count: exerciseItem.count,
-          }],
+          groupExercises: groupExercisesData,
         },
-        {
-          type: 'Item',
-          id: exerciseItem.id,
-          exercise: exerciseItem.exercise,
-          orderIndex: exerciseItem.orderIndex,
-          count: exerciseItem.count,
+        ...sortedExercises.map((item, idx) => ({
+          type: 'Item' as const,
+          id: item.id,
+          exercise: item.exercise,
+          orderIndex: item.orderIndex,
+          count: item.count,
           groupId: newGroup.id,
-          isFirstInGroup: true,
-          isLastInGroup: true,
-        } as ExerciseItem,
+          isFirstInGroup: idx === 0,
+          isLastInGroup: idx === sortedExercises.length - 1,
+        } as ExerciseItem)),
         {
           id: `footer-${newGroup.id}`,
           type: 'GroupFooter',
@@ -231,11 +252,31 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
         }
       ];
 
+      // Remove old items starting from the highest index to avoid index shifting issues
       const result = [...prev];
-      result.splice(exerciseIndex, 1, ...newItems);
+      const sortedIndices = [...exerciseIndices].sort((a, b) => b - a); // Sort descending for safe removal
+
+      // Find the insertion point (lowest index) before removing items
+      const insertIndex = Math.min(...exerciseIndices);
+
+      // Remove items in descending order
+      sortedIndices.forEach(idx => {
+        result.splice(idx, 1);
+      });
+
+      // Insert new group items at the original position of the first exercise
+      // Adjust insertIndex if items were removed before it
+      const itemsRemovedBeforeInsert = sortedIndices.filter(idx => idx < insertIndex).length;
+      const adjustedInsertIndex = insertIndex - itemsRemovedBeforeInsert;
+
+      result.splice(adjustedInsertIndex, 0, ...newItems);
       return result;
     });
   }, [getNextGroupNumber]);
+
+  const addExerciseToGroup = useCallback((exerciseItem: ExerciseItem, type: GroupType) => {
+    createGroupWithExercises([exerciseItem], type);
+  }, [createGroupWithExercises]);
 
   useEffect(() => {
     const wasVisible = prevVisibleRef.current;
@@ -247,6 +288,10 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
       setShowGroupTypeModal(false);
       setExerciseToGroup(null);
       setDropdownPosition(null);
+      setIsSelectionMode(false);
+      setSelectedExercisesForGroup(new Set());
+      setPendingGroupType(null);
+      setPendingGroupInitialExercise(null);
       pendingDragRef.current = null;
     }
 
@@ -409,6 +454,58 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
       return () => clearTimeout(timeoutId);
     }
   }, [collapsedGroupId, reorderedItems]);
+
+  const handleExerciseSelection = useCallback((exerciseId: string) => {
+    if (!isSelectionMode) return;
+
+    // Prevent deselection of the initial exercise
+    if (pendingGroupInitialExercise && exerciseId === pendingGroupInitialExercise.id) {
+      return;
+    }
+
+    setSelectedExercisesForGroup(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(exerciseId)) {
+        newSet.delete(exerciseId);
+      } else {
+        newSet.add(exerciseId);
+      }
+      return newSet;
+    });
+  }, [isSelectionMode, pendingGroupInitialExercise]);
+
+  const handleCancelSelection = useCallback(() => {
+    setIsSelectionMode(false);
+    setSelectedExercisesForGroup(new Set());
+    setPendingGroupType(null);
+    setPendingGroupInitialExercise(null);
+  }, []);
+
+  const handleCreateGroupWithSelectedExercises = useCallback(() => {
+    if (!pendingGroupType || !pendingGroupInitialExercise) return;
+
+    const selectedItems: ExerciseItem[] = [];
+
+    // Always include the initial exercise
+    selectedItems.push(pendingGroupInitialExercise);
+
+    // Add other selected exercises
+    reorderedItems.forEach(item => {
+      if (item.type === 'Item' &&
+        item.groupId === null &&
+        item.id !== pendingGroupInitialExercise.id &&
+        selectedExercisesForGroup.has(item.id)) {
+        selectedItems.push(item);
+      }
+    });
+
+    if (selectedItems.length > 0) {
+      createGroupWithExercises(selectedItems, pendingGroupType);
+    }
+
+    // Reset selection mode
+    handleCancelSelection();
+  }, [pendingGroupType, pendingGroupInitialExercise, reorderedItems, selectedExercisesForGroup, createGroupWithExercises, handleCancelSelection]);
 
   const toggleGroupType = useCallback((groupId: string) => {
     setReorderedItems(prev => prev.map(item => {
@@ -832,16 +929,22 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
 
     const primaryMuscles = (item.exercise.primaryMuscles as string[]) || [];
 
+    const isSelected = isSelectionMode && selectedExercisesForGroup.has(item.id);
+    const isSelectable = isSelectionMode && item.groupId === null;
+
     return (
       <TouchableOpacity
-        onLongPress={drag}
-        disabled={isActive}
-        delayLongPress={150}
+        onLongPress={isSelectionMode ? undefined : drag}
+        onPress={isSelectable ? () => handleExerciseSelection(item.id) : undefined}
+        disabled={isActive && !isSelectionMode}
+        delayLongPress={isSelectionMode ? 0 : 150}
         activeOpacity={1}
         style={[
           styles.exerciseCard,
           styles.exerciseCard__standalone,
           isActive && styles.exerciseCard__active,
+          isSelected && styles.exerciseCard__selected,
+          isSelectable && !isSelected && styles.exerciseCard__selectable,
         ]}
       >
         <View style={styles.exerciseCardContent}>
@@ -863,33 +966,40 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
                 <Text style={styles.countBadgeText}>×{item.count}</Text>
               </View>
             )}
-            <View
-              ref={(ref) => {
-                if (ref) {
-                  buttonRefsMap.current.set(item.id, ref);
-                } else {
-                  buttonRefsMap.current.delete(item.id);
-                }
-              }}
-              collapsable={false}
-            >
-              <TouchableOpacity
-                onPress={() => {
-                  setExerciseToGroup(item);
-                  setShowGroupTypeModal(true);
+            {isSelected && (
+              <View style={styles.selectedIndicator}>
+                <Check size={20} color={COLORS.green[600]} />
+              </View>
+            )}
+            {!isSelectionMode && (
+              <View
+                ref={(ref) => {
+                  if (ref) {
+                    buttonRefsMap.current.set(item.id, ref);
+                  } else {
+                    buttonRefsMap.current.delete(item.id);
+                  }
                 }}
-                disabled={isActive}
-                style={styles.groupIconButton}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                collapsable={false}
               >
-                <Layers size={18} color={COLORS.blue[600]} />
-              </TouchableOpacity>
-            </View>
+                <TouchableOpacity
+                  onPress={() => {
+                    setExerciseToGroup(item);
+                    setShowGroupTypeModal(true);
+                  }}
+                  disabled={isActive}
+                  style={styles.groupIconButton}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Layers size={18} color={COLORS.blue[600]} />
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </View>
       </TouchableOpacity>
     );
-  }, [getItemGroupContext, initiateGroupDrag, collapsedGroupId, reorderedItems, toggleGroupType]);
+  }, [getItemGroupContext, initiateGroupDrag, collapsedGroupId, reorderedItems, toggleGroupType, isSelectionMode, selectedExercisesForGroup, handleExerciseSelection]);
 
   return (
     <Modal
@@ -909,19 +1019,44 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           </TouchableOpacity>
         </View>
 
-        <View style={styles.instructionsContainer}>
-          <Text style={styles.instructionsText}>
-            Press and hold to drag • Drag headers to move entire groups
-          </Text>
-        </View>
+        {isSelectionMode ? (
+          <View style={styles.selectionModeBanner}>
+            <View style={styles.selectionModeContent}>
+              <Text style={styles.selectionModeText}>
+                Select exercises to add to {pendingGroupType} group ({selectedExercisesForGroup.size} selected)
+              </Text>
+              <View style={styles.selectionModeButtons}>
+                <TouchableOpacity
+                  onPress={handleCancelSelection}
+                  style={styles.selectionCancelButton}
+                >
+                  <Text style={styles.selectionCancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleCreateGroupWithSelectedExercises}
+                  style={styles.selectionDoneButton}
+                >
+                  <Text style={styles.selectionDoneButtonText}>Done</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        ) : (
+          <View style={styles.instructionsContainer}>
+            <Text style={styles.instructionsText}>
+              Press and hold to drag • Drag headers to move entire groups
+            </Text>
+          </View>
+        )}
 
         {reorderedItems.length > 0 ? (
           <DraggableFlatList<DragItem>
             data={reorderedItems}
-            onDragEnd={handleDragEnd}
+            onDragEnd={isSelectionMode ? () => { } : handleDragEnd}
             keyExtractor={keyExtractor}
             renderItem={renderItem}
             contentContainerStyle={styles.listContent}
+            scrollEnabled={true}
             CellRendererComponent={({ children, style, ...props }: any) => (
               <View style={[style, { position: 'relative' }]} {...props}>
                 {children}
@@ -963,7 +1098,10 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
                   ]}
                   onPress={() => {
                     if (exerciseToGroup) {
-                      addExerciseToGroup(exerciseToGroup, 'Superset');
+                      setIsSelectionMode(true);
+                      setPendingGroupType('Superset');
+                      setPendingGroupInitialExercise(exerciseToGroup);
+                      setSelectedExercisesForGroup(new Set([exerciseToGroup.id]));
                     }
                     setShowGroupTypeModal(false);
                     setExerciseToGroup(null);
@@ -979,7 +1117,10 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
                   ]}
                   onPress={() => {
                     if (exerciseToGroup) {
-                      addExerciseToGroup(exerciseToGroup, 'HIIT');
+                      setIsSelectionMode(true);
+                      setPendingGroupType('HIIT');
+                      setPendingGroupInitialExercise(exerciseToGroup);
+                      setSelectedExercisesForGroup(new Set([exerciseToGroup.id]));
                     }
                     setShowGroupTypeModal(false);
                     setExerciseToGroup(null);
@@ -1318,6 +1459,65 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.slate[900],
     textTransform: 'uppercase',
+  },
+  selectionModeBanner: {
+    backgroundColor: COLORS.blue[100],
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.blue[200],
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  selectionModeContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  selectionModeText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.blue[900],
+    flex: 1,
+  },
+  selectionModeButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  selectionCancelButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.slate[300],
+  },
+  selectionCancelButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.slate[700],
+  },
+  selectionDoneButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+    backgroundColor: COLORS.green[500],
+  },
+  selectionDoneButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.white,
+  },
+  exerciseCard__selected: {
+    borderWidth: 2,
+    borderColor: COLORS.green[500],
+    backgroundColor: COLORS.green[50],
+  },
+  exerciseCard__selectable: {
+    borderWidth: 1,
+    borderColor: COLORS.blue[300],
+    backgroundColor: COLORS.blue[50],
+  },
+  selectedIndicator: {
+    marginLeft: 8,
   },
 });
 
