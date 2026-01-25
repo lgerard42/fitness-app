@@ -1,128 +1,145 @@
-# Feature Plan: Update Add Button to Use DragAndDropModal Configuration
+# Feature Plan: Refactor DragAndDropModal Button Functionality
 
 ## Current State Analysis
 
-**Current Flow:**
-1. **ExercisePicker** (`index.tsx`):
-   - Users select exercises and can organize them
-   - `handleAddAction` (line 442) creates:
-     - `exercisesToAdd`: Array of exercises with `_setCount` property
-     - `groupsMetadata`: Array of group metadata with `id`, `type`, `number`, `exerciseIndices`
-   - Calls `onAdd(exercisesToAdd, null, groupsMetadata)`
+**Current Implementation:**
+1. **Set Count Button** (lines 1193-1218, 1520-1545):
+   - Set count "N x" is a clickable button
+   - Shows duplicate dropdown when clicked
+   - Uses `duplicateButtonRefsMap` for positioning
 
-2. **DragAndDropModal** (`DragAndDropModal.tsx`):
-   - Users can reorder exercises, adjust set counts, create/modify groups
-   - `handleSave` (line 993) processes `reorderedItems` to create:
-     - `newOrder`: Array of exercise IDs in final order (with duplicates for set counts)
-     - `updatedGroups`: Array of groups with correct `exerciseIndices` based on final order
-   - Calls `onReorder(newOrder, updatedGroups)` which updates ExercisePicker state
+2. **Group Icon Button** (lines 1441-1463):
+   - Uses `Layers` icon from lucide-react-native
+   - Shows group type dropdown (Superset/HIIT) when clicked
+   - Uses `buttonRefsMap` for positioning
 
-3. **WorkoutTemplate** (`index.tsx`):
-   - `handleAddExercisesFromPicker` (line 260) receives:
-     - `selectedExercises`: Array of ExerciseLibraryItem with `_setCount`
-     - `groupType`: Single GroupType or null
-     - `groupsMetadata`: Currently ignored/unused
-   - Creates exercise instances but doesn't properly handle:
-     - Multiple groups (only handles single groupType)
-     - Correct exercise indices from groupsMetadata
-     - Set counts per exercise instance
-
-**Problem:**
-- The "Add" button uses ExercisePicker's state, not DragAndDropModal's final state
-- `handleAddExercisesFromPicker` doesn't properly process `groupsMetadata` with multiple groups
-- Set counts and group structure from DragAndDropModal are not properly transferred
+3. **Duplicate Dropdown** (lines 1749-1787):
+   - Separate dropdown for duplicate functionality
+   - Positioned relative to set count button
 
 **Relevant Files:**
-- `src/components/WorkoutTemplate/modals/ExercisePicker/index.tsx` (598 lines)
 - `src/components/WorkoutTemplate/modals/ExercisePicker/DragAndDropModal.tsx` (2267 lines)
-- `src/components/WorkoutTemplate/index.tsx` (4041 lines)
-- `src/types/workout.ts` (137 lines)
+- `src/types/workout.ts` - may need to check for dropset type
+
+**Current Patterns:**
+- Dropdowns use state: `showGroupTypeModal`, `showDuplicateModal`
+- Button refs stored in maps for position measurement
+- Group type dropdown shows Superset/HIIT options
 
 ## Proposed Changes (Step-by-Step)
 
-### Step 1: Create Data Conversion Function in ExercisePicker
-**File:** `src/components/WorkoutTemplate/modals/ExercisePicker/index.tsx`
-**Lines:** After `handleAddAction` (~line 464)
+### Step 1: Remove Set Count Button Functionality
+**File:** `DragAndDropModal.tsx`
+**Lines:** ~1193-1218 (grouped exercises), ~1520-1545 (standalone exercises)
 **Changes:**
-- Create `convertToWorkoutFormat` function that:
-  - Takes `selectedOrder`, `exerciseGroups`, `getGroupedExercises`, `filtered`
-  - Processes data similar to DragAndDropModal's `handleSave`
-  - Returns:
-    - `exercisesToAdd`: Array of exercises with `_setCount` in final order
-    - `groupsMetadata`: Array of groups with correct `exerciseIndices` relative to final exercise array
-- This function will mirror the logic from DragAndDropModal's `handleSave` (lines 991-1032)
+- Remove `TouchableOpacity` wrapper around set count text
+- Remove `duplicateButtonRefsMap` ref assignment
+- Convert back to plain `<Text>` component
+- Remove duplicate-related state and handlers from set count button
+- Keep the text display but make it non-interactive
 
-### Step 2: Update handleAddAction to Use Conversion Function
-**File:** `src/components/WorkoutTemplate/modals/ExercisePicker/index.tsx`
-**Lines:** ~442-464 (`handleAddAction`)
+### Step 2: Change Group Icon to Edit Icon
+**File:** `DragAndDropModal.tsx`
+**Lines:** ~7 (imports), ~1441-1463 (button rendering)
 **Changes:**
-- Replace current implementation with call to `convertToWorkoutFormat`
-- Use the converted data to call `onAdd`
-- Ensure the data structure matches what DragAndDropModal would produce
+- Replace `Layers` import with `Edit` or `Edit2` from lucide-react-native
+- Update icon component in button rendering
+- Update icon size/color if needed for consistency
 
-### Step 3: Update handleAddExercisesFromPicker to Process groupsMetadata
-**File:** `src/components/WorkoutTemplate/index.tsx`
-**Lines:** ~260-310 (`handleAddExercisesFromPicker`)
+### Step 3: Add Dropset State Management
+**File:** `DragAndDropModal.tsx`
+**Lines:** ~232-250 (state declarations)
 **Changes:**
-- Remove the simple `groupType` check (line 296)
-- Process `groupsMetadata` array to:
-  - Create multiple groups if `groupsMetadata` contains multiple groups
-  - Map `exerciseIndices` from metadata to actual exercise instances
-  - Handle exercises that are not in any group (standalone exercises)
-  - Preserve order from `selectedExercises` array
-- Create ExerciseGroup instances with correct `children` arrays based on `exerciseIndices`
+- Add `dropsetExercises` state: `Set<string>` to track which exercises are marked as dropsets
+- Add state to track dropset in the final data structure
+- Consider adding to `ExerciseItem` interface if needed
 
-### Step 4: Handle Set Counts Correctly
-**File:** `src/components/WorkoutTemplate/index.tsx`
-**Lines:** Within `handleAddExercisesFromPicker`
+### Step 4: Update Edit Button Dropdown Menu
+**File:** `DragAndDropModal.tsx`
+**Lines:** ~1664-1747 (group type dropdown), ~1749-1787 (duplicate dropdown)
 **Changes:**
-- Ensure `_setCount` from exercises is properly used when creating instances
-- Each exercise instance should have the correct number of sets based on `_setCount`
-- When grouping, maintain set counts for each exercise within the group
+- Replace group type dropdown with new edit dropdown
+- Add three options:
+  - **"Create Group"**: Only show if `item.groupId === null` (ungrouped)
+    - When clicked, show the existing Superset/HIIT selection flow
+  - **"Duplicate"**: Move duplicate functionality here
+    - Use existing `handleDuplicateExercise` function
+  - **"Dropset"**: New functionality
+    - Toggle dropset state for the exercise
+    - Add visual indicator (bar before "N x")
+- Update dropdown positioning to use edit button ref instead of group button ref
+- Merge duplicate dropdown logic into edit dropdown
 
-### Step 5: Test Edge Cases
-**Files:** All modified files
+### Step 5: Implement Dropset Visual Indicator
+**File:** `DragAndDropModal.tsx`
+**Lines:** ~1190-1220 (grouped exercise rendering), ~1517-1548 (standalone exercise rendering)
 **Changes:**
-- Test with:
-  - Single exercise, no groups
-  - Multiple exercises, no groups
-  - Single group with multiple exercises
-  - Multiple groups
-  - Mixed: some exercises in groups, some standalone
-  - Exercises with different set counts
-  - Groups with exercises that have different set counts
+- Add visual bar before "N x" when exercise is marked as dropset
+- Style similar to `groupChildWrapperLeft` (2px width, colored bar)
+- Use appropriate color (maybe orange/yellow for dropset vs blue/purple for groups)
+- Add to both grouped and standalone exercise rendering
+
+### Step 6: Update handleSave to Include Dropset Information
+**File:** `DragAndDropModal.tsx`
+**Lines:** ~993-1033 (`handleSave`)
+**Changes:**
+- Include dropset information in the data passed to `onReorder`
+- May need to extend the data structure to include dropset metadata
+- Ensure dropset exercises are properly marked when saved
+
+### Step 7: Clean Up Unused Code
+**File:** `DragAndDropModal.tsx`
+**Changes:**
+- Remove `duplicateButtonRefsMap` ref
+- Remove `showDuplicateModal` state
+- Remove `exerciseToDuplicate` state
+- Remove `duplicateDropdownPosition` state
+- Remove duplicate dropdown UI (lines 1749-1787)
+- Remove duplicate button positioning useEffect (lines 401-434)
+- Clean up any unused imports
+
+### Step 8: Update Styles
+**File:** `DragAndDropModal.tsx`
+**Lines:** ~2041-2044 (setCountButton), ~2180-2204 (duplicateDropdown styles)
+**Changes:**
+- Remove or update `setCountButton` style (may not be needed if text is not clickable)
+- Update dropdown styles to accommodate new menu options
+- Add style for dropset indicator bar
+- Consider renaming dropdown styles to be more generic (e.g., `editDropdown`)
 
 ## Potential Risks or Edge Cases
 
-1. **Index Mapping**: 
-   - `groupsMetadata.exerciseIndices` are relative to `selectedOrder` array
-   - Need to map these to the final `exercisesToAdd` array indices
-   - Must account for set counts (one exercise ID might appear multiple times)
+1. **Dropset State Persistence**:
+   - Dropset state needs to persist when exercises are reordered
+   - Need to track dropset by exercise ID, not just index
+   - Handle dropset state when exercises are duplicated
 
-2. **Set Count Handling**:
-   - `_setCount` represents how many times an exercise appears in `selectedOrder`
-   - Each appearance should create a separate exercise instance OR
-   - One instance with multiple sets (need to verify expected behavior)
+2. **Group Creation Flow**:
+   - "Create Group" should trigger the existing group creation flow
+   - Need to ensure it works for both grouped and standalone exercises
+   - May need to handle case where exercise is already in a group
 
-3. **Group Structure**:
-   - `ExerciseGroup` in workout template has `children: Exercise[]`
-   - Need to ensure exercises are added in correct order within groups
-   - Group `instanceId` generation must be unique
+3. **Visual Consistency**:
+   - Dropset bar should be visually distinct from group bars
+   - Need to ensure proper spacing and alignment
+   - Consider how dropset bar looks with group bars (if exercise is in both)
 
-4. **Order Preservation**:
-   - Final order in workout template must match order in DragAndDropModal
-   - Standalone exercises must appear in correct positions relative to groups
+4. **Data Structure**:
+   - Need to determine how dropset information is stored
+   - May need to extend `ExerciseItem` or create separate metadata
+   - Ensure dropset info is passed through `onReorder` correctly
 
-5. **Backward Compatibility**:
-   - Current code might have callers that don't provide `groupsMetadata`
-   - Need to handle `groupsMetadata === null` or empty array gracefully
+5. **Duplicate Functionality**:
+   - Moving duplicate to edit menu should preserve all existing behavior
+   - Duplicated exercises should inherit dropset state if applicable
+   - Need to ensure duplicate works for both grouped and standalone exercises
 
-6. **Data Structure Mismatch**:
-   - ExercisePicker uses `ExerciseGroup` interface (id, type, number, exerciseIndices)
-   - WorkoutTemplate uses `ExerciseGroup` type (instanceId, type, groupType, children)
-   - Need to convert between these structures
+6. **Backward Compatibility**:
+   - Ensure existing group functionality still works
+   - Don't break the save/reorder flow
+   - Maintain compatibility with ExercisePicker's expectations
 
-## Thinking Block: ExerciseItem Discriminated Union Analysis
+## Thinking Block: ExerciseItem Union Impact Analysis
 
 **Current Structure:**
 - `ExerciseItem = Exercise | ExerciseGroup` (from `src/types/workout.ts`)
@@ -130,31 +147,25 @@
 - `ExerciseGroup.type = 'group'`
 
 **Proposed Change Impact:**
-- **Exercise type**: No change - still created with `createExerciseInstance`
-- **ExerciseGroup type**: 
-  - Will be created from `groupsMetadata` array
-  - `children` array will contain Exercise instances based on `exerciseIndices`
-  - `groupType` will come from metadata `type` field
-  - `instanceId` will be generated (currently `group-${Date.now()}`)
+- **Exercise type**: May need to add `isDropset?: boolean` property
+- **ExerciseGroup type**: No change needed (dropset is per-exercise, not per-group)
+- **Type narrowing**: No breaking changes expected
+- **Utility functions**: May need to handle dropset flag when processing exercises
 
-**Type Narrowing:**
-- Existing code that processes `ExerciseItem[]` should work without changes
-- Type guards (`item.type === 'group'`) will continue to work
-- Utility functions like `flattenExercises` should handle new group structure
-
-**Utility Function Updates:**
-- `flattenExercises`: Should work as-is (handles ExerciseGroup.children)
-- `reconstructExercises`: Should work as-is
-- No breaking changes expected to type narrowing logic
+**Alternative Approach:**
+- Store dropset information separately in metadata (similar to groupsMetadata)
+- Pass dropset exercise IDs through `onReorder` callback
+- This avoids modifying the core Exercise type
 
 ## User Approval Request
 
 This plan will:
-1. Make the "Add" button use the exact same data structure as DragAndDropModal's save
-2. Properly handle multiple groups with correct exercise indices
-3. Preserve set counts and exercise order
-4. Convert ExercisePicker's group format to WorkoutTemplate's ExerciseGroup format
+1. Remove button functionality from set count display
+2. Change group icon to edit icon
+3. Create new edit dropdown with "Create Group", "Duplicate", and "Dropset" options
+4. Add visual dropset indicator (colored bar)
+5. Ensure dropset state is preserved and passed to workout template
 
-The implementation will ensure that when users click "Add", the exercises are inserted into the workout template with the exact configuration they see in the DragAndDropModal (including groups, set counts, and order).
+The implementation will maintain all existing functionality while consolidating actions into a single edit menu and adding dropset support.
 
 **Please approve this plan to proceed with implementation.**
