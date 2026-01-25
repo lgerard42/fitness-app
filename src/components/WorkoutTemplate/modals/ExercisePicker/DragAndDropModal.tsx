@@ -238,7 +238,11 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
   const [selectedExercisesForGroup, setSelectedExercisesForGroup] = useState<Set<string>>(new Set());
   const [pendingGroupType, setPendingGroupType] = useState<GroupType | null>(null);
   const [pendingGroupInitialExercise, setPendingGroupInitialExercise] = useState<ExerciseItem | null>(null);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [exerciseToDuplicate, setExerciseToDuplicate] = useState<ExerciseItem | null>(null);
+  const [duplicateDropdownPosition, setDuplicateDropdownPosition] = useState<{ x: number; y: number } | null>(null);
   const buttonRefsMap = useRef<Map<string, any>>(new Map());
+  const duplicateButtonRefsMap = useRef<Map<string, any>>(new Map());
   const prevVisibleRef = useRef(visible);
   const pendingDragRef = useRef<(() => void) | null>(null);
   const [swipedItemId, setSwipedItemId] = useState<string | null>(null);
@@ -358,6 +362,9 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
       setSelectedExercisesForGroup(new Set());
       setPendingGroupType(null);
       setPendingGroupInitialExercise(null);
+      setShowDuplicateModal(false);
+      setExerciseToDuplicate(null);
+      setDuplicateDropdownPosition(null);
       pendingDragRef.current = null;
       setSwipedItemId(null);
       // Reset all swipe translations
@@ -390,6 +397,41 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
       setTimeout(measureButton, 0);
     }
   }, [showGroupTypeModal, exerciseToGroup]);
+
+  useEffect(() => {
+    if (showDuplicateModal && exerciseToDuplicate) {
+      // Measure the button position after state updates
+      const measureButton = () => {
+        const buttonRef = duplicateButtonRefsMap.current.get(exerciseToDuplicate.id);
+        if (buttonRef) {
+          buttonRef.measureInWindow((pageX: number, pageY: number, pageWidth: number, pageHeight: number) => {
+            const dropdownWidth = 140;
+            const padding = 16;
+            let x = pageX + pageWidth - dropdownWidth;
+
+            // Ensure dropdown doesn't go off the left edge
+            if (x < padding) {
+              x = padding;
+            }
+
+            // Ensure dropdown doesn't go off the right edge
+            if (x + dropdownWidth > screenWidth - padding) {
+              x = screenWidth - dropdownWidth - padding;
+            }
+
+            setDuplicateDropdownPosition({
+              x: x,
+              y: pageY + pageHeight + 4,
+            });
+          });
+        } else {
+          // Retry if ref not available yet
+          setTimeout(measureButton, 10);
+        }
+      };
+      setTimeout(measureButton, 0);
+    }
+  }, [showDuplicateModal, exerciseToDuplicate, screenWidth]);
 
   const collapseGroup = useCallback((items: DragItem[], groupId: string): DragItem[] => {
     return items.map(item => {
@@ -702,6 +744,54 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
       if (translation) {
         translation.setValue(0);
         swipeTranslations.current.delete(itemId);
+      }
+
+      return newItems;
+    });
+  }, []);
+
+  const handleDuplicateExercise = useCallback((exerciseItem: ExerciseItem) => {
+    setReorderedItems(prev => {
+      const itemIndex = prev.findIndex(item => item.id === exerciseItem.id);
+      if (itemIndex === -1) return prev;
+
+      const newItems = [...prev];
+      const duplicate: ExerciseItem = {
+        ...exerciseItem,
+        id: `item-${exerciseItem.exercise.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      };
+
+      // Insert duplicate right after the original item
+      newItems.splice(itemIndex + 1, 0, duplicate);
+
+      // If item was in a group, update first/last flags for group items
+      if (exerciseItem.groupId) {
+        const groupId = exerciseItem.groupId;
+        const groupItemIndices: number[] = [];
+
+        for (let i = 0; i < newItems.length; i++) {
+          const item = newItems[i];
+          if (item.type === 'Item' && item.groupId === groupId) {
+            groupItemIndices.push(i);
+          }
+        }
+
+        // Update first/last flags
+        if (groupItemIndices.length > 0) {
+          const firstIndex = groupItemIndices[0];
+          const lastIndex = groupItemIndices[groupItemIndices.length - 1];
+
+          groupItemIndices.forEach((index) => {
+            const currentItem = newItems[index];
+            if (currentItem.type === 'Item') {
+              newItems[index] = {
+                ...currentItem,
+                isFirstInGroup: index === firstIndex,
+                isLastInGroup: index === lastIndex,
+              };
+            }
+          });
+        }
       }
 
       return newItems;
@@ -1077,7 +1167,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
                 }
               }}
               activeOpacity={1}
-              style={{ flex: 1 }}
+              style={{ flex: 1, flexDirection: 'row', alignItems: 'stretch' }}
             >
               <View
                 style={[
@@ -1100,7 +1190,33 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
               ]}>
                 <View style={styles.exerciseInfo}>
                   <View style={styles.exerciseNameRow}>
-                    <Text style={styles.setCountText}>{item.count} x</Text>
+                    <View
+                      ref={(ref) => {
+                        if (ref) {
+                          duplicateButtonRefsMap.current.set(item.id, ref);
+                        } else {
+                          duplicateButtonRefsMap.current.delete(item.id);
+                        }
+                      }}
+                      collapsable={false}
+                    >
+                      <TouchableOpacity
+                        onPress={() => {
+                          if (!isActive) {
+                            if (swipedItemId) {
+                              closeTrashIcon();
+                            }
+                            setExerciseToDuplicate(item);
+                            setShowDuplicateModal(true);
+                          }
+                        }}
+                        disabled={isActive || isSelectionMode}
+                        style={styles.setCountButton}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Text style={styles.setCountText}>{item.count} x</Text>
+                      </TouchableOpacity>
+                    </View>
                     <Text style={styles.exerciseName}>{item.exercise.name}</Text>
                   </View>
                 </View>
@@ -1401,7 +1517,33 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
               <View style={[styles.exerciseCardContent, styles.exerciseCardContent__standalone]}>
                 <View style={styles.exerciseInfo}>
                   <View style={styles.exerciseNameRow}>
-                    <Text style={styles.setCountText}>{item.count} x </Text>
+                    <View
+                      ref={(ref) => {
+                        if (ref) {
+                          duplicateButtonRefsMap.current.set(item.id, ref);
+                        } else {
+                          duplicateButtonRefsMap.current.delete(item.id);
+                        }
+                      }}
+                      collapsable={false}
+                    >
+                      <TouchableOpacity
+                        onPress={() => {
+                          if (!isActive && !isSelectionMode) {
+                            if (swipedItemId) {
+                              closeTrashIcon();
+                            }
+                            setExerciseToDuplicate(item);
+                            setShowDuplicateModal(true);
+                          }
+                        }}
+                        disabled={isActive || isSelectionMode}
+                        style={styles.setCountButton}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Text style={styles.setCountText}>{item.count} x </Text>
+                      </TouchableOpacity>
+                    </View>
                     <Text style={styles.exerciseName}>{item.exercise.name}</Text>
                   </View>
                 </View>
@@ -1603,6 +1745,46 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
             )}
           </>
         )}
+
+        {showDuplicateModal && (
+          <>
+            <TouchableOpacity
+              style={styles.dropdownOverlay}
+              activeOpacity={1}
+              onPress={() => {
+                setShowDuplicateModal(false);
+                setExerciseToDuplicate(null);
+                setDuplicateDropdownPosition(null);
+              }}
+            />
+            {duplicateDropdownPosition && (
+              <View
+                style={[
+                  styles.duplicateDropdown,
+                  {
+                    top: duplicateDropdownPosition.y,
+                    left: duplicateDropdownPosition.x,
+                  },
+                ]}
+                onStartShouldSetResponder={() => true}
+              >
+                <TouchableOpacity
+                  style={styles.duplicateDropdownItem}
+                  onPress={() => {
+                    if (exerciseToDuplicate) {
+                      handleDuplicateExercise(exerciseToDuplicate);
+                    }
+                    setShowDuplicateModal(false);
+                    setExerciseToDuplicate(null);
+                    setDuplicateDropdownPosition(null);
+                  }}
+                >
+                  <Text style={styles.duplicateDropdownItemText}>Duplicate</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </>
+        )}
       </SafeAreaView>
     </Modal>
   );
@@ -1788,9 +1970,11 @@ const styles = StyleSheet.create({
   },
   groupChildWrapperLeft: {
     width: 2,
+    alignSelf: 'stretch',
   },
   groupChildWrapperRight: {
     width: 2,
+    alignSelf: 'stretch',
   },
   exerciseCardContent: {
     flex: 1,
@@ -1853,6 +2037,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
     color: COLORS.slate[600],
+  },
+  setCountButton: {
+    paddingVertical: 2,
+    paddingHorizontal: 2,
   },
   exerciseMeta: {
     flexDirection: 'row',
@@ -1988,6 +2176,31 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.slate[900],
     textTransform: 'uppercase',
+  },
+  duplicateDropdown: {
+    position: 'absolute',
+    backgroundColor: COLORS.slate[700],
+    borderRadius: 8,
+    minWidth: 140,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 999,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: COLORS.slate[200],
+  },
+  duplicateDropdownItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  duplicateDropdownItemText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.white,
+    textTransform: 'none',
   },
   selectionModeBanner: {
     backgroundColor: COLORS.blue[100],

@@ -1,123 +1,126 @@
-# Feature Plan: Improve Swipe-to-Delete UX in DragAndDropModal
+# Feature Plan: Duplicate Exercise Button
 
 ## Current State Analysis
 
-### Existing Code Structure
-- **File**: `src/components/WorkoutTemplate/modals/ExercisePicker/DragAndDropModal.tsx`
-- Swipe-to-delete is implemented with gesture handlers
-- Trash icon appears on ambiguous swipes (>50px but <70%)
-- Currently, clicking anywhere on the card when trash is visible triggers deletion
-- No visual indicator during swipe showing deletion threshold
-- Trash icon doesn't hide when interacting with other cards
+The `DragAndDropModal.tsx` component displays exercise cards with:
+- Set count text (`{item.count} x`) displayed as plain text before exercise name
+- Group icon button that shows a dropdown menu for creating groups
+- Exercise items can be in groups or standalone
 
-### Current Issues
-1. **Card click deletes when trash visible**: The `TouchableOpacity` wrapper on standalone cards has `onPress` that might interfere, and group children don't have explicit click handlers but the gesture might be triggering deletion
-2. **No swipe threshold indicator**: Users don't see visual feedback about the 70% threshold during swipe
-3. **Trash icon persistence**: Trash icon stays visible when clicking other cards or swiping back
+**Relevant Files:**
+- `src/components/WorkoutTemplate/modals/ExercisePicker/DragAndDropModal.tsx` (2054 lines)
+  - `renderExerciseContent` function (lines 997-1164) - renders grouped exercise items
+  - `renderItem` function (lines 1181-1472) - renders all item types including standalone exercises
+  - Group type dropdown implementation (lines 1542-1604) - pattern to follow for duplicate dropdown
+  - State management for dropdowns (lines 234-241)
 
-### Key Components
-- `renderExerciseContent`: Renders group child exercises
-- `renderItem`: Renders standalone exercises
-- `createSwipeGesture`: Creates pan gesture handler
-- `handleSwipeEnd`: Handles swipe end logic
-- `swipedItemId`: State tracking which item is swiped
+**Current Patterns:**
+- Dropdowns use `showGroupTypeModal` state and `dropdownPosition` state
+- Button refs stored in `buttonRefsMap` for measuring position
+- `exerciseToGroup` state tracks which exercise triggered the dropdown
 
 ## Proposed Changes (Step-by-Step)
 
-### Step 1: Prevent Card Click Deletion When Trash Visible
-**File**: `DragAndDropModal.tsx`
-**Location**: `renderExerciseContent` and `renderItem` functions
-**Changes**:
-- Add `onPress` handler to card that closes trash icon if visible (doesn't delete)
-- Ensure trash icon `TouchableOpacity` is the only element that triggers deletion
-- For standalone cards: Modify the existing `TouchableOpacity` to check if trash is visible and close it instead of triggering selection/drag
-- For group children: Add `TouchableOpacity` wrapper that closes trash if visible
+### Step 1: Add State Management for Duplicate Dropdown
+**File:** `DragAndDropModal.tsx`
+**Lines:** ~234-241 (state declarations)
+**Changes:**
+- Add `showDuplicateModal` state (boolean)
+- Add `exerciseToDuplicate` state (ExerciseItem | null)
+- Add `duplicateDropdownPosition` state ({ x: number; y: number } | null)
+- Add ref map for duplicate button positions (or reuse existing pattern)
 
-### Step 2: Hide Trash Icon on Swipe Right
-**File**: `DragAndDropModal.tsx`
-**Location**: `createSwipeGesture` and `handleSwipeEnd` functions
-**Changes**:
-- Update `onUpdate` to detect left-to-right swipe when trash is visible
-- Update `handleSwipeEnd` to close trash icon when swiping right (even small swipes)
-- Reset swipe translation and `swipedItemId` when swiping right
+### Step 2: Create Duplicate Handler Function
+**File:** `DragAndDropModal.tsx`
+**Lines:** After `handleDeleteExercise` (~line 709)
+**Changes:**
+- Create `handleDuplicateExercise` callback function
+- Function should:
+  - Find the exercise item in `reorderedItems`
+  - Create a new exercise item with same properties (exercise, count, groupId, etc.)
+  - Generate new unique ID
+  - Insert duplicate after the original item
+  - If in a group, maintain group structure
+  - Update `reorderedItems` state
 
-### Step 3: Hide Trash Icon When Clicking Other Cards
-**File**: `DragAndDropModal.tsx`
-**Location**: `renderItem` callback and card press handlers
-**Changes**:
-- Add `onPress` handler to all cards that checks if a different card's trash is visible
-- If different card's trash is visible, close it before handling the current card's press
-- Update `handleExerciseSelection` to close trash icon
-- Update drag handlers to close trash icon
+### Step 3: Convert Set Count Text to Button (Grouped Exercises)
+**File:** `DragAndDropModal.tsx`
+**Lines:** ~1103 (in `renderExerciseContent`)
+**Changes:**
+- Replace `<Text style={styles.setCountText}>{item.count} x</Text>` with `TouchableOpacity`
+- Add `onPress` handler to show duplicate dropdown
+- Add ref for measuring button position
+- Style button appropriately (maintain current appearance but make it pressable)
 
-### Step 4: Add Red Bar Indicator During Swipe
-**File**: `DragAndDropModal.tsx`
-**Location**: `renderExerciseContent` and `renderItem` functions
-**Changes**:
-- Create animated red bar that appears behind the card during swipe
-- Calculate bar width based on swipe distance (0% to 100% of card width)
-- Show red bar when `translationX < 0` (swiping left)
-- Position bar to the right of the card, revealed as card swipes left
-- Use `Animated.View` with width calculated from `translateX` value
-- Style with red background color
+### Step 4: Convert Set Count Text to Button (Standalone Exercises)
+**File:** `DragAndDropModal.tsx`
+**Lines:** ~1404 (in `renderItem` for standalone items)
+**Changes:**
+- Replace `<Text style={styles.setCountText}>{item.count} x </Text>` with `TouchableOpacity`
+- Add `onPress` handler to show duplicate dropdown
+- Add ref for measuring button position
+- Style button appropriately
 
-### Step 5: Update Styles
-**File**: `DragAndDropModal.tsx`
-**Location**: `styles` object
-**Changes**:
-- Add `swipeIndicatorBar` style for the red deletion indicator
-- Ensure proper z-index and positioning
-- Make bar height match card height
+### Step 5: Add Dropdown Position Measurement Effect
+**File:** `DragAndDropModal.tsx`
+**Lines:** After existing `useEffect` for group type modal (~line 392)
+**Changes:**
+- Add `useEffect` to measure duplicate button position when `showDuplicateModal` becomes true
+- Similar pattern to existing group type modal measurement (lines 373-392)
+
+### Step 6: Add Duplicate Dropdown UI
+**File:** `DragAndDropModal.tsx`
+**Lines:** After group type dropdown (~line 1604)
+**Changes:**
+- Add duplicate dropdown modal similar to group type dropdown
+- Single option: "Duplicate"
+- Position dropdown based on `duplicateDropdownPosition`
+- Handle selection to call `handleDuplicateExercise`
+- Add overlay to close dropdown on outside click
+
+### Step 7: Add Styles for Set Count Button
+**File:** `DragAndDropModal.tsx`
+**Lines:** In `StyleSheet.create` section (~line 1611)
+**Changes:**
+- Add `setCountButton` style (make it look like current text but pressable)
+- Ensure proper hitSlop for touch target
+- Maintain current visual appearance
+
+### Step 8: Reset State on Modal Close
+**File:** `DragAndDropModal.tsx`
+**Lines:** In `useEffect` that resets on modal visibility change (~line 347)
+**Changes:**
+- Reset `showDuplicateModal` to false
+- Reset `exerciseToDuplicate` to null
+- Reset `duplicateDropdownPosition` to null
 
 ## Potential Risks or Edge Cases
 
-### Breaking Changes
-- **Risk**: Modifying card press handlers might break existing drag/selection functionality
-- **Mitigation**: Preserve existing behavior when trash is not visible, only add new logic when trash is visible
+1. **Group Membership**: When duplicating a grouped exercise, need to ensure:
+   - Duplicate maintains same `groupId`
+   - Duplicate is inserted in correct position within group
+   - Group header/footer remain intact
+   - First/last flags updated correctly
 
-### Gesture Conflicts
-- **Risk**: Swipe right to close might conflict with drag gestures
-- **Mitigation**: Use gesture handler's `activeOffsetX` to distinguish swipe from drag
-- **Risk**: Card press might interfere with gesture detection
-- **Mitigation**: Use `TouchableOpacity` with proper `activeOpacity` and ensure gesture detector wraps correctly
+2. **ID Collisions**: New duplicate must have unique ID to avoid conflicts
 
-### State Synchronization
-- **Risk**: Trash icon state might not reset properly when clicking other cards
-- **Mitigation**: Add explicit reset logic in all card interaction handlers
-- **Risk**: Red bar animation might cause performance issues
-- **Mitigation**: Use native driver for animations, calculate width efficiently
+3. **State Synchronization**: Duplicate dropdown state must reset when modal closes or when other actions occur
 
-### Visual Feedback
-- **Risk**: Red bar might be too subtle or too prominent
-- **Mitigation**: Use clear red color, ensure adequate width, test on different screen sizes
-- **Risk**: Red bar might not align properly with card
-- **Mitigation**: Use absolute positioning, match card height exactly
+4. **Position Measurement**: Button ref might not be available immediately, need retry logic (similar to group type modal)
 
-## Thinking Block: ExerciseItem Discriminated Union Analysis
+5. **Active Drag State**: Should disable duplicate button when item is being dragged (`isActive`)
 
-**Current Structure:**
-- No changes to `ExerciseItem` type structure
-- Changes are UI/UX only, affecting gesture handling and visual feedback
-- No impact on data structures or type narrowing
+6. **Selection Mode**: Should disable duplicate button when in selection mode
 
-**Proposed Change Impact:**
-- No changes to `ExerciseItem` discriminated union
-- All changes are in rendering and gesture handling logic
-- Type guards remain the same
-
-**Type Narrowing Considerations:**
-- No type narrowing changes needed
-- All changes use existing type guards
-
-**Utility Function Updates:**
-- No changes needed to external utility functions
-- All logic contained within `DragAndDropModal.tsx`
+7. **Empty Groups**: If duplicating last item in a group, need to handle group footer positioning
 
 ## User Approval Request
 
-This plan improves the swipe-to-delete UX by:
-1. Requiring explicit trash icon click for deletion (not card click)
-2. Hiding trash icon when swiping right or clicking other cards
-3. Showing visual red bar indicator during swipe to indicate deletion threshold
+This plan implements a duplicate exercise feature by:
+1. Converting the set count display to a clickable button
+2. Showing a dropdown menu with "Duplicate" option
+3. Creating an exact duplicate of the exercise (same count, same group membership)
 
-**Please review and approve this plan before I proceed with implementation.**
+The implementation follows existing patterns in the codebase (group type dropdown) for consistency.
+
+**Please approve this plan to proceed with implementation.**
