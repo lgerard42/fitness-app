@@ -6,7 +6,15 @@ import { COLORS } from '@/constants/colors';
 
 const LETTERS = Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i));
 
-const UnselectedListScrollbar = ({
+interface UnselectedListScrollbarProps {
+  availableLetters: string[];
+  highlightedLetter: string | null;
+  setHighlightedLetter: (letter: string | null) => void;
+  onScrollToLetter: (letter: string) => void;
+  blockDismissGestureRef?: any;
+}
+
+const UnselectedListScrollbar: React.FC<UnselectedListScrollbarProps> = ({
   availableLetters,
   highlightedLetter,
   setHighlightedLetter,
@@ -14,13 +22,13 @@ const UnselectedListScrollbar = ({
   blockDismissGestureRef = null,
 }) => {
   const containerHeight = useSharedValue(0);
-  const lastActivatedLetter = useSharedValue(null);
+  const lastActivatedLetter = useSharedValue<string | null>(null);
 
   const clearHighlight = () => {
     setTimeout(() => setHighlightedLetter(null), 300);
   };
 
-  const handleLetterChange = (letter) => {
+  const handleLetterChange = (letter: string) => {
     if (letter && availableLetters.includes(letter)) {
       onScrollToLetter(letter);
     }
@@ -30,7 +38,6 @@ const UnselectedListScrollbar = ({
     let gesture = Gesture.Pan()
       .onTouchesDown((event, stateManager) => {
         'worklet';
-        // Activate immediately on touch
         stateManager.activate();
 
         const height = containerHeight.value;
@@ -39,10 +46,7 @@ const UnselectedListScrollbar = ({
         const touch = event.allTouches[0];
         if (!touch) return;
 
-        // Clamp y between 0 and height
         const clampedY = Math.max(0, Math.min(touch.y, height));
-
-        // Calculate letter index
         const index = Math.floor((clampedY / height) * LETTERS.length);
         const safeIndex = Math.max(0, Math.min(index, LETTERS.length - 1));
         const letter = LETTERS[safeIndex];
@@ -58,10 +62,7 @@ const UnselectedListScrollbar = ({
         const touch = event.allTouches[0];
         if (!touch) return;
 
-        // Clamp y between 0 and height
         const clampedY = Math.max(0, Math.min(touch.y, height));
-
-        // Calculate letter index
         const index = Math.floor((clampedY / height) * LETTERS.length);
         const safeIndex = Math.max(0, Math.min(index, LETTERS.length - 1));
         const letter = LETTERS[safeIndex];
@@ -81,10 +82,9 @@ const UnselectedListScrollbar = ({
         lastActivatedLetter.value = null;
         runOnJS(clearHighlight)();
       })
-      .shouldCancelWhenOutside(false) // Keep gesture active even if finger moves outside
-      .hitSlop({ left: 10, right: 10 }); // Easier to hit
+      .shouldCancelWhenOutside(false)
+      .hitSlop({ left: 10, right: 10 });
 
-    // If we have a ref to the parent's gesture, block it when this gesture is active
     if (blockDismissGestureRef) {
       gesture = gesture.blocksExternalGesture(blockDismissGestureRef);
     }

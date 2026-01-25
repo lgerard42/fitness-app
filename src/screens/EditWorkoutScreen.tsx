@@ -1,21 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { TouchableOpacity, Text, StyleSheet } from 'react-native';
+import type { NavigationProp, RouteProp } from '@react-navigation/native';
 import { COLORS } from '@/constants/colors';
 import { useWorkout } from '@/context/WorkoutContext';
 import WorkoutTemplate from '@/components/WorkoutTemplate';
 import WorkoutHeader from '@/components/WorkoutTemplate/WorkoutHeader';
+import type { Workout } from '@/types/workout';
 
-const EditWorkoutScreen = ({ navigation, route }) => {
+interface EditWorkoutScreenProps {
+  navigation: NavigationProp<any>;
+  route: RouteProp<{ params: { workout: Workout } }, 'params'>;
+}
+
+const EditWorkoutScreen: React.FC<EditWorkoutScreenProps> = ({ navigation, route }) => {
   const { workout } = route.params;
   const { updateHistory, exercisesLibrary, addExerciseToLibrary, updateExerciseInLibrary, exerciseStats } = useWorkout();
-  const [editedWorkout, setEditedWorkout] = useState(null);
+  const [editedWorkout, setEditedWorkout] = useState<Workout | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     if (workout) {
-      // Create a deep copy and ensure it has the required structure
-      const workoutCopy = JSON.parse(JSON.stringify(workout));
-      // If the workout doesn't have startedAt, calculate it from date and duration
+      const workoutCopy = JSON.parse(JSON.stringify(workout)) as Workout;
       if (!workoutCopy.startedAt) {
         const workoutDate = new Date(workoutCopy.date || new Date());
         workoutCopy.startedAt = workoutDate.getTime();
@@ -28,15 +33,11 @@ const EditWorkoutScreen = ({ navigation, route }) => {
     if (!editedWorkout) return;
     
     if (!isEditing) {
-      // Enter edit mode
       setIsEditing(true);
       return;
     }
 
-    // Save changes
-    // Calculate endedAt based on startedAt and duration
     if (editedWorkout.duration) {
-      // Parse duration string (e.g., "1h 23m" or "45m")
       const durationMatch = editedWorkout.duration.match(/(?:(\d+)h\s*)?(?:(\d+)m)?/);
       if (durationMatch) {
         const hours = parseInt(durationMatch[1] || '0');
@@ -51,7 +52,6 @@ const EditWorkoutScreen = ({ navigation, route }) => {
     navigation.goBack();
   };
 
-  // Custom header component
   const CustomHeader = editedWorkout ? (
     <WorkoutHeader
       workout={editedWorkout}
@@ -70,7 +70,6 @@ const EditWorkoutScreen = ({ navigation, route }) => {
     />
   ) : null;
 
-  // Custom finish button
   const CustomFinishButton = isEditing && editedWorkout ? (
     <TouchableOpacity
       onPress={handleUpdate}

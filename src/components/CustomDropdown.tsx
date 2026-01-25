@@ -1,13 +1,20 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, FlatList, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, FlatList, StyleSheet, LayoutChangeEvent } from 'react-native';
 import { ChevronDown, Check } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 
-const CustomDropdown = ({ value, onChange, options, placeholder }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [layout, setLayout] = useState(null);
+interface CustomDropdownProps {
+  value: string;
+  onChange: (value: string) => void;
+  options: string[];
+  placeholder: string;
+}
 
-  const handleSelect = (option) => {
+const CustomDropdown: React.FC<CustomDropdownProps> = ({ value, onChange, options, placeholder }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [layout, setLayout] = useState<{ width: number; height: number; x: number; y: number } | null>(null);
+
+  const handleSelect = (option: string) => {
     onChange(option);
     setIsOpen(false);
   };
@@ -15,7 +22,7 @@ const CustomDropdown = ({ value, onChange, options, placeholder }) => {
   return (
     <View 
       style={[styles.container, isOpen && styles.containerOpen]}
-      onLayout={event => setLayout(event.nativeEvent.layout)}
+      onLayout={(event: LayoutChangeEvent) => setLayout(event.nativeEvent.layout)}
     >
       <TouchableOpacity
         onPress={() => setIsOpen(true)}
@@ -42,13 +49,6 @@ const CustomDropdown = ({ value, onChange, options, placeholder }) => {
           activeOpacity={1} 
           onPress={() => setIsOpen(false)}
         >
-          {/* 
-            In a real app, we'd calculate the position based on 'layout' and use absolute positioning here.
-            For simplicity and robustness in this context, I'll center it or put it at the bottom, 
-            OR I can try to position it relative to the trigger if I pass the coordinates.
-            However, the prompt asked for "absolute-positioned menu". 
-            I'll simulate the dropdown behavior by rendering it in the Modal.
-          */}
           <View style={styles.dropdownMenu}>
              <FlatList
                data={options}

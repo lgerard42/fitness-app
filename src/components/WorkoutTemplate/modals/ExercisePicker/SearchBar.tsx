@@ -3,7 +3,12 @@ import { View, TextInput, StyleSheet } from 'react-native';
 import { Search } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 
-const SearchBar = ({ search, setSearch }) => {
+interface SearchBarProps {
+  search: string;
+  setSearch: (search: string) => void;
+}
+
+const SearchBar: React.FC<SearchBarProps> = ({ search, setSearch }) => {
   return (
     <View style={styles.searchContainer}>
       <Search size={18} color={COLORS.slate[400]} style={styles.searchIcon} />
@@ -43,4 +48,3 @@ const styles = StyleSheet.create({
 });
 
 export default SearchBar;
-

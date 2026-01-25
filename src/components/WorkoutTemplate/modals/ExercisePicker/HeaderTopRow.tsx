@@ -2,8 +2,26 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { X, Plus, ChevronDown, Check } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
+import type { GroupType } from '@/types/workout';
 
-const HeaderTopRow = ({
+interface GroupOption {
+  label: string;
+  value: GroupType | '';
+}
+
+interface HeaderTopRowProps {
+  onClose: () => void;
+  onCreate: () => void;
+  groupType: GroupType | '';
+  setGroupType: (type: GroupType | '') => void;
+  isGroupDropdownOpen: boolean;
+  setIsGroupDropdownOpen: (open: boolean) => void;
+  selectedIds: string[];
+  onAdd: () => void;
+  groupOptions: GroupOption[];
+}
+
+const HeaderTopRow: React.FC<HeaderTopRowProps> = ({
   onClose,
   onCreate,
   groupType,
@@ -188,4 +206,3 @@ const styles = StyleSheet.create({
 });
 
 export default HeaderTopRow;
-

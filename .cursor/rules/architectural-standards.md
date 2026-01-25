@@ -225,6 +225,22 @@ When refactoring existing code:
 5. Update imports and prop passing
 6. Always import types from `src/types/workout.ts` - never guess data structures
 
+## TypeScript Adherence
+
+### 100% TSX ADHERENCE
+
+**CRITICAL RULE:** The project is now fully TypeScript. All new components or screens must be created as `.tsx` files using centralized types from `@/types/workout.ts`.
+
+**Requirements:**
+- ✅ All new components must be `.tsx` files
+- ✅ All new screens must be `.tsx` files
+- ✅ All types must reference `@/types/workout.ts` as the ground truth
+- ✅ Never create new `.js` files for React components
+- ✅ Use proper TypeScript interfaces for all props
+- ✅ Use type imports: `import type { Workout } from '@/types/workout';`
+
+**Exception:** Configuration files (e.g., `babel.config.js`, `app.json`) may remain as `.js` files.
+
 ---
 
 **GROUND TRUTH:** Refer to `src/types/workout.ts` for all data structures.

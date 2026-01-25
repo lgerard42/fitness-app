@@ -3,7 +3,16 @@ import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS } from '@/constants/colors';
 
-const SecondaryMuscleFilter = ({
+interface SecondaryMuscleFilterProps {
+  isEnabled: boolean;
+  isActive: boolean;
+  isOpen: boolean;
+  isPrimaryActive: boolean;
+  onToggle: () => void;
+  styles: any;
+}
+
+const SecondaryMuscleFilter: React.FC<SecondaryMuscleFilterProps> = ({
   isEnabled,
   isActive,
   isOpen,

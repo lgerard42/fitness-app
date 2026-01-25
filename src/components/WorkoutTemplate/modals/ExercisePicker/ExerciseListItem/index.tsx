@@ -7,8 +7,45 @@ import CountBadge from './CountBadge';
 import ExerciseTags from './ExerciseTags';
 import ActionButtons from './ActionButtons';
 import ReorderCheckbox from './ReorderCheckbox';
+import type { ExerciseLibraryItem, GroupType } from '@/types/workout';
 
-const ExerciseListItem = ({ 
+interface ExerciseGroup {
+  type: GroupType;
+  number: number;
+}
+
+interface GroupExercise {
+  name: string;
+  count: number;
+}
+
+interface ExerciseListItemProps {
+  item: ExerciseLibraryItem;
+  isSelected: boolean;
+  isLastSelected: boolean;
+  selectionOrder: number | null;
+  onToggle: (id: string) => void;
+  onLongPress?: (() => void) | null;
+  hideNumber?: boolean;
+  isReordering?: boolean;
+  isReordered?: boolean;
+  showAddMore?: boolean;
+  onAddMore?: (() => void) | null;
+  onRemoveSet?: (() => void) | null;
+  selectedCount?: number;
+  renderingSection?: 'reviewContainer' | 'glossary' | null;
+  exerciseGroup?: ExerciseGroup | null;
+  isGroupMode?: boolean;
+  isSelectedInGroup?: boolean;
+  isCollapsedGroup?: boolean;
+  groupExercises?: GroupExercise[];
+  isGroupItemReorder?: boolean;
+  isFirstInGroup?: boolean;
+  isLastInGroup?: boolean;
+  disableTouch?: boolean;
+}
+
+const ExerciseListItem: React.FC<ExerciseListItemProps> = ({ 
   item, 
   isSelected, 
   isLastSelected, 
@@ -22,7 +59,7 @@ const ExerciseListItem = ({
   onAddMore = null,
   onRemoveSet = null,
   selectedCount = 0,
-  renderingSection = null, // 'reviewContainer' | 'glossary' | null
+  renderingSection = null,
   exerciseGroup = null,
   isGroupMode = false,
   isSelectedInGroup = false,
@@ -31,7 +68,7 @@ const ExerciseListItem = ({
   isGroupItemReorder = false,
   isFirstInGroup = false,
   isLastInGroup = false,
-  disableTouch = false, // New prop to disable touch handling for drag mode
+  disableTouch = false,
 }) => {
   const handlePress = () => {
     if (isGroupMode && onToggle) {
@@ -49,23 +86,23 @@ const ExerciseListItem = ({
     }
     
     if (isSelected && showAddMore && onRemoveSet) {
-      onRemoveSet(item.id);
+      onRemoveSet();
     } else if (onToggle) {
       onToggle(item.id);
     }
   };
 
-  const handleRemove = (e) => {
+  const handleRemove = (e: any) => {
     e.stopPropagation();
     if (onRemoveSet) {
-      onRemoveSet(item.id);
+      onRemoveSet();
     }
   };
 
-  const handleAdd = (e) => {
+  const handleAdd = (e: any) => {
     e.stopPropagation();
     if (showAddMore && onAddMore) {
-      onAddMore(item.id);
+      onAddMore();
     } else if (onToggle) {
       onToggle(item.id);
     }
@@ -96,18 +133,18 @@ const ExerciseListItem = ({
   const groupColorScheme = exerciseGroup?.type === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme;
   const isGrouped = !!exerciseGroup;
 
-  const getGroupBackgroundColor = (shade) => ({
+  const getGroupBackgroundColor = (shade: keyof typeof defaultSupersetColorScheme) => ({
     backgroundColor: groupColorScheme[shade],
   });
 
-  const getGroupBorderColor = (shade) => ({
+  const getGroupBorderColor = (shade: keyof typeof defaultSupersetColorScheme) => ({
     borderBottomColor: groupColorScheme[shade],
   });
 
   return (
     <TouchableOpacity 
       onPress={disableTouch ? undefined : handlePress}
-      onLongPress={disableTouch ? undefined : onLongPress}
+      onLongPress={disableTouch ? undefined : onLongPress || undefined}
       disabled={disableTouch}
       activeOpacity={disableTouch ? 1 : 0.7}
       style={[
@@ -239,13 +276,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 8,
-    height: 24, // Match the height of ActionButtons to prevent layout shifts
+    height: 24,
   },
-  
   nameTextSelectedInReviewContainer: {
     color: COLORS.slate[900],
   },
-  
   containerSelectedInReviewContainer: {
     backgroundColor: COLORS.slate[50],
     borderWidth: 2,
@@ -253,7 +288,6 @@ const styles = StyleSheet.create({
     borderColor: COLORS.slate[150],
     borderBottomColor: COLORS.slate[150],
   },
-  
   containerSelected: {
     backgroundColor: COLORS.blue[100],
     borderBottomWidth: 1,
@@ -263,7 +297,6 @@ const styles = StyleSheet.create({
   nameTextSelected: {
     color: COLORS.slate[900],
   },
-  
   containerSelectedInGlossary: {
     borderWidth: 1,
     borderBottomRadius: 1,
@@ -272,51 +305,41 @@ const styles = StyleSheet.create({
   nameTextSelectedInGlossary: {
     color: COLORS.slate[900],
   },
-  
-  containerLastSelected: {
-  },
-  
+  containerLastSelected: {},
   containerFirstInGroup: {
     borderTopLeftRadius: 8,
     borderTopRightRadius: 8,
   },
-  
   containerLastInGroup: {
     borderBottomColor: 'transparent',
     borderBottomLeftRadius: 8,
     borderBottomRightRadius: 8,
   },
-  
   containerReorderingMode: {
     backgroundColor: COLORS.white,
     borderWidth: 2,
     borderRadius: 8,
     borderColor: COLORS.slate[100],
   },
-  nameTextReorderingMode: {
-  },
+  nameTextReorderingMode: {},
   nameTextReorderingModeGroup: {
     color: COLORS.indigo[600],
   },
-  
   containerReorderedItem: {
     backgroundColor: COLORS.slate[50],
     borderWidth: 2,
     borderRadius: 8,
     borderColor: COLORS.slate[100],
   },
-  
   containerGroupModeSelected: {
     borderBottomColor: COLORS.blue[200],
   },
   containerGroupModeSelectedLast: {
     borderBottomColor: COLORS.white,
   },
-  
   containerGroupModeUnselectedLast: {
     borderBottomColor: COLORS.white,
   },
-  
   containerGroupModeUnselectedUngrouped: {
     backgroundColor: COLORS.white,
     borderBottomColor: COLORS.slate[100],

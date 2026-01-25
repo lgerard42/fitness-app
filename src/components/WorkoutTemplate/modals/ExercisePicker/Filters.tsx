@@ -6,7 +6,21 @@ import { CATEGORIES, PRIMARY_MUSCLES, WEIGHT_EQUIP_TAGS } from '@/constants/data
 import FilterDropdown from './FilterDropdown';
 import SecondaryMuscleFilter from './SecondaryMuscleFilter';
 
-const Filters = ({
+interface FiltersProps {
+  filterCategory: string[];
+  filterMuscle: string[];
+  filterEquip: string[];
+  filterSecondaryMuscle: string[];
+  setFilterCategory: (value: string[]) => void;
+  setFilterMuscle: (value: string[]) => void;
+  setFilterEquip: (value: string[]) => void;
+  setFilterSecondaryMuscle: (value: string[]) => void;
+  openFilter: string | null;
+  setOpenFilter: (filter: string | null) => void;
+  getAvailableSecondaryMuscles: () => string[];
+}
+
+const Filters: React.FC<FiltersProps> = ({
   filterCategory,
   filterMuscle,
   filterEquip,
@@ -19,7 +33,7 @@ const Filters = ({
   setOpenFilter,
   getAvailableSecondaryMuscles
 }) => {
-  const handleToggleOption = (type, item, currentValue) => {
+  const handleToggleOption = (type: string, item: string, currentValue: string | string[]) => {
     if (Array.isArray(currentValue)) {
       const newValue = currentValue.includes(item) 
         ? currentValue.filter(v => v !== item)
@@ -35,7 +49,7 @@ const Filters = ({
     }
   };
 
-  const handleToggleMuscle = (item) => {
+  const handleToggleMuscle = (item: string) => {
     const newValue = filterMuscle.includes(item) 
       ? filterMuscle.filter(v => v !== item)
       : [...filterMuscle, item];
@@ -43,7 +57,7 @@ const Filters = ({
     if (newValue.length === 0) setFilterSecondaryMuscle([]);
   };
 
-  const handleToggleSecondary = (item) => {
+  const handleToggleSecondary = (item: string) => {
     setFilterSecondaryMuscle(
       filterSecondaryMuscle.includes(item) 
         ? filterSecondaryMuscle.filter(v => v !== item)
@@ -83,7 +97,6 @@ const Filters = ({
           onToggle={() => setOpenFilter(openFilter === 'secondary' ? null : 'secondary')}
           styles={styles}
         />
-        {/* Render dropdown menus at container level for proper positioning */}
         {openFilter === 'muscle' && (
           <View style={styles.muscleFilterMenu}>
             {PRIMARY_MUSCLES.map((item) => {
@@ -222,4 +235,3 @@ const styles = StyleSheet.create({
 });
 
 export default Filters;
-

@@ -3,7 +3,20 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Check } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 
-const FilterDropdown = ({ 
+interface FilterDropdownProps {
+  label: string;
+  value: string | string[];
+  options: string[];
+  type: string;
+  leftAligned?: boolean;
+  fullWidthContainer?: boolean;
+  openFilter: string | null;
+  setOpenFilter: (filter: string | null) => void;
+  onToggleOption: (type: string, item: string, currentValue: string | string[]) => void;
+  filterMuscle: string[];
+}
+
+const FilterDropdown: React.FC<FilterDropdownProps> = ({ 
   label, 
   value, 
   options, 
@@ -94,7 +107,6 @@ const styles = StyleSheet.create({
     zIndex: 1,
     flexShrink: 1,
   },
-  
   button: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -127,7 +139,6 @@ const styles = StyleSheet.create({
   buttonTextActive: {
     color: COLORS.blue[700],
   },
-  
   menu: {
     position: 'absolute',
     top: '100%',
@@ -150,7 +161,6 @@ const styles = StyleSheet.create({
     right: 'auto',
     minWidth: 180,
   },
-  
   option: {
     flexDirection: 'row',
     alignItems: 'center',

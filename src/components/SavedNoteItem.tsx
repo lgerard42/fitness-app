@@ -1,18 +1,27 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, TextInput, Platform } from 'react-native';
-import { Pin, Trash2, ChevronDown, Calendar } from 'lucide-react-native';
+import { Pin, Trash2 } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { COLORS } from '@/constants/colors';
+import type { Note } from '@/types/workout';
 
-const SavedNoteItem = ({ note, onPin, onRemove, onUpdate, readOnly = false }) => {
+interface SavedNoteItemProps {
+  note: Note;
+  onPin: (id: string) => void;
+  onRemove: (id: string) => void;
+  onUpdate: (note: Note) => void;
+  readOnly?: boolean;
+}
+
+const SavedNoteItem: React.FC<SavedNoteItemProps> = ({ note, onPin, onRemove, onUpdate, readOnly = false }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  const handleTextChange = (text) => {
+  const handleTextChange = (text: string) => {
     if (onUpdate) onUpdate({ ...note, text });
   };
 
-  const onDateChange = (event, selectedDate) => {
+  const onDateChange = (event: any, selectedDate?: Date) => {
     setShowDatePicker(false);
     if (selectedDate && onUpdate) {
       const dateString = selectedDate.toISOString().split('T')[0];
@@ -22,7 +31,7 @@ const SavedNoteItem = ({ note, onPin, onRemove, onUpdate, readOnly = false }) =>
 
   const formatDateText = () => {
     const date = new Date(note.date);
-    const options = { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' };
+    const options: Intl.DateTimeFormatOptions = { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' };
     return date.toLocaleDateString('en-US', options);
   };
 
@@ -30,22 +39,21 @@ const SavedNoteItem = ({ note, onPin, onRemove, onUpdate, readOnly = false }) =>
     const noteDate = new Date(note.date);
     const today = new Date();
     
-    // Reset time to start of day for accurate day counting
     noteDate.setHours(0, 0, 0, 0);
     today.setHours(0, 0, 0, 0);
     
-    const diffTime = today - noteDate;
+    const diffTime = today.getTime() - noteDate.getTime();
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
     
-    if (diffDays < 0) return ''; // Future date
-    if (diffDays === 0) return ''; // Today
+    if (diffDays < 0) return '';
+    if (diffDays === 0) return '';
     
     const months = Math.floor(diffDays / 30);
     const remainingDaysAfterMonths = diffDays % 30;
     const weeks = Math.floor(remainingDaysAfterMonths / 7);
     const days = remainingDaysAfterMonths % 7;
     
-    const parts = [];
+    const parts: string[] = [];
     if (months > 0) parts.push(`${months}m`);
     if (weeks > 0) parts.push(`${weeks}w`);
     if (days > 0) parts.push(`${days}d`);
@@ -159,7 +167,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.slate[100],
   },
   pinnedContainer: {
-    backgroundColor: '#fffbeb80', // amber-50 with opacity
+    backgroundColor: '#fffbeb80',
     borderColor: COLORS.amber[200],
   },
   header: {

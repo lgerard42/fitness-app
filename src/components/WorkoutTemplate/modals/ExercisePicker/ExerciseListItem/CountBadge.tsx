@@ -2,7 +2,12 @@ import React from 'react';
 import { Text, StyleSheet } from 'react-native';
 import { COLORS } from '@/constants/colors';
 
-const CountBadge = ({ selectedCount, groupedStyles = {} }) => {
+interface CountBadgeProps {
+  selectedCount: number;
+  groupedStyles?: any;
+}
+
+const CountBadge: React.FC<CountBadgeProps> = ({ selectedCount, groupedStyles = {} }) => {
   if (!selectedCount || selectedCount === 0) return null;
 
   return (
@@ -19,7 +24,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
     lineHeight: 16,
-    includeFontPadding: false, // Prevent extra padding on Android
+    includeFontPadding: false,
     textAlignVertical: 'center',
   },
 });

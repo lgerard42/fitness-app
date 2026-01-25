@@ -2,10 +2,15 @@ import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Settings, Plus, Play } from 'lucide-react-native';
+import type { NavigationProp } from '@react-navigation/native';
 import { COLORS } from '@/constants/colors';
 import { useWorkout } from '@/context/WorkoutContext';
 
-const LogScreen = ({ navigation }) => {
+interface LogScreenProps {
+  navigation: NavigationProp<any>;
+}
+
+const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
   const { activeWorkout, startEmptyWorkout } = useWorkout();
 
   const handleStart = () => {
@@ -161,7 +166,7 @@ const styles = StyleSheet.create({
     color: COLORS.blue[600],
   },
   quickStartCard: {
-    backgroundColor: COLORS.red[600], // Gradient not supported natively without library, using solid color or I could use a View with overflow hidden and absolute positioned elements to simulate gradient if needed, but solid is fine for parity logic.
+    backgroundColor: COLORS.red[600],
     borderRadius: 12,
     padding: 16,
     marginBottom: 24,

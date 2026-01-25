@@ -4,10 +4,21 @@ import { ChevronDown, Calendar, Clock } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { COLORS } from '@/constants/colors';
 import { formatDuration } from '@/constants/data';
+import type { Workout, WorkoutMode } from '@/types/workout';
 
-const WorkoutHeader = ({ 
+interface WorkoutHeaderProps {
+  workout: Workout | null;
+  mode?: WorkoutMode;
+  elapsed?: number;
+  onUpdate?: (workout: Workout) => void;
+  onBack?: () => void;
+  onFinish?: () => void;
+  onCancel?: () => void;
+}
+
+const WorkoutHeader: React.FC<WorkoutHeaderProps> = ({ 
   workout,
-  mode = 'live', // 'live', 'edit', 'readonly'
+  mode = 'live',
   elapsed = 0,
   onUpdate,
   onBack,
@@ -25,7 +36,7 @@ const WorkoutHeader = ({
   
   const startDate = workout ? new Date(workout.startedAt || Date.now()) : new Date();
 
-  const handleDateChange = (event, selectedDate) => {
+  const handleDateChange = (event: any, selectedDate?: Date) => {
     setShowDatePicker(false);
     if (selectedDate && isEditMode && workout && onUpdate) {
       const dateString = selectedDate.toISOString().split('T')[0];
@@ -37,7 +48,7 @@ const WorkoutHeader = ({
     }
   };
 
-  const handleTimeChange = (event, selectedTime) => {
+  const handleTimeChange = (event: any, selectedTime?: Date) => {
     setShowTimePicker(false);
     if (selectedTime && isEditMode && workout && onUpdate) {
       const currentDate = new Date(workout.startedAt || Date.now());
@@ -152,7 +163,6 @@ const WorkoutHeader = ({
         </TouchableOpacity>
       )}
 
-      {/* Date Picker */}
       {showDatePicker && (
         <DateTimePicker
           value={startDate}
@@ -162,7 +172,6 @@ const WorkoutHeader = ({
         />
       )}
 
-      {/* Time Picker */}
       {showTimePicker && (
         <DateTimePicker
           value={startDate}
@@ -172,7 +181,6 @@ const WorkoutHeader = ({
         />
       )}
 
-      {/* Duration Edit Modal */}
       <Modal visible={showDurationModal} transparent animationType="fade" onRequestClose={() => setShowDurationModal(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -245,7 +253,7 @@ const styles = StyleSheet.create({
     color: COLORS.slate[400],
   },
   monoText: {
-    fontFamily: 'monospace',
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
     fontWeight: 'bold',
   },
   actionButton: {
@@ -332,4 +340,3 @@ const styles = StyleSheet.create({
 });
 
 export default WorkoutHeader;
-

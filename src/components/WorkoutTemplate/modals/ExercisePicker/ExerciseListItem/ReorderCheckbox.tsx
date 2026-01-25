@@ -2,7 +2,17 @@ import React from 'react';
 import { View, Text } from 'react-native';
 import { COLORS } from '@/constants/colors';
 
-const ReorderCheckbox = ({ 
+interface ReorderCheckboxProps {
+  isSelected: boolean;
+  hideNumber: boolean;
+  selectionOrder: number | null;
+  isReordering: boolean;
+  isReordered: boolean;
+  isGroupItemReorder: boolean;
+  groupedStyles?: any;
+}
+
+const ReorderCheckbox: React.FC<ReorderCheckboxProps> = ({ 
   isSelected, 
   hideNumber, 
   selectionOrder, 
@@ -44,7 +54,7 @@ const ReorderCheckbox = ({
       },
       groupedStyles.container,
     ]}>
-      {isSelected && !hideNumber ? (
+      {isSelected && !hideNumber && selectionOrder !== null ? (
         <Text style={[
           {
             color: COLORS.green[500],

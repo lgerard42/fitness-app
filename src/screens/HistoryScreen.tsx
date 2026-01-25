@@ -2,16 +2,22 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Trophy, Clock, Dumbbell } from 'lucide-react-native';
+import type { NavigationProp } from '@react-navigation/native';
 import { COLORS } from '@/constants/colors';
 import { HISTORY_DATA } from '@/constants/data';
 import { useWorkout } from '@/context/WorkoutContext';
+import type { Workout } from '@/types/workout';
 
-const HistoryScreen = ({ navigation }) => {
-  const [view, setView] = useState('workouts');
+interface HistoryScreenProps {
+  navigation: NavigationProp<any>;
+}
+
+const HistoryScreen: React.FC<HistoryScreenProps> = ({ navigation }) => {
+  const [view, setView] = useState<'workouts' | 'stats'>('workouts');
   const { workoutHistory, activeWorkout } = useWorkout();
-  const displayHistory = [...(workoutHistory || []), ...HISTORY_DATA];
+  const displayHistory: Workout[] = [...(workoutHistory || []), ...HISTORY_DATA];
 
-  const handleEditWorkout = (workout) => {
+  const handleEditWorkout = (workout: Workout) => {
     navigation.navigate('EditWorkout', { workout });
   };
 
@@ -53,7 +59,7 @@ const HistoryScreen = ({ navigation }) => {
                     <Text style={styles.cardTitle}>{workout.name}</Text>
                     <Text style={styles.cardDate}>{workout.date || new Date().toLocaleDateString()}</Text>
                   </View>
-                  {workout.best && (
+                  {(workout as any).best && (
                     <View style={styles.prBadge}>
                       <Trophy size={12} color={COLORS.amber[700]} />
                       <Text style={styles.prText}>PR</Text>
@@ -68,7 +74,7 @@ const HistoryScreen = ({ navigation }) => {
                   <View style={styles.statItem}>
                     <Dumbbell size={14} color={COLORS.slate[600]} />
                     <Text style={styles.statText}>
-                      {workout.vol || (workout.exercises ? `${workout.exercises.length} Exercises` : "0kg")}
+                      {(workout as any).vol || (workout.exercises ? `${workout.exercises.length} Exercises` : "0kg")}
                     </Text>
                   </View>
                 </View>

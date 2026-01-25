@@ -1,27 +1,28 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Plus, Search } from 'lucide-react-native';
+import { Plus } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { CATEGORIES } from '@/constants/data';
 import { useWorkout } from '@/context/WorkoutContext';
 import NewExercise from '@/components/WorkoutTemplate/modals/NewExercise';
 import ExerciseHistoryModal from '@/components/ExerciseHistoryModal';
+import type { ExerciseLibraryItem } from '@/types/workout';
 
-const LibraryScreen = () => {
+const LibraryScreen: React.FC = () => {
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedExercise, setSelectedExercise] = useState(null);
+  const [selectedExercise, setSelectedExercise] = useState<ExerciseLibraryItem | null>(null);
   const { exercisesLibrary, addExerciseToLibrary, exerciseStats, activeWorkout } = useWorkout();
 
   const filteredExercises = exercisesLibrary.filter(ex => ex.name.toLowerCase().includes(search.toLowerCase()));
 
-  const handleSaveExercise = (newEx) => {
+  const handleSaveExercise = (newEx: ExerciseLibraryItem) => {
     addExerciseToLibrary(newEx);
     setIsModalOpen(false);
   };
 
-  const handleExerciseClick = (exercise) => {
+  const handleExerciseClick = (exercise: ExerciseLibraryItem) => {
     setSelectedExercise(exercise);
   };
 

@@ -2,7 +2,17 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { COLORS } from '@/constants/colors';
 
-const ActionButtons = ({
+interface ActionButtonsProps {
+  isSelected: boolean;
+  isReordering: boolean;
+  showAddMore: boolean;
+  renderingSection: 'selectedSection' | 'unselectedList' | null;
+  onAdd: () => void;
+  onRemove: () => void;
+  groupedStyles?: any;
+}
+
+const ActionButtons: React.FC<ActionButtonsProps> = ({
   isSelected,
   isReordering,
   showAddMore,
@@ -38,12 +48,9 @@ const ActionButtons = ({
                 alignItems: 'center',
                 justifyContent: 'center',
               },
-              removeButton_selected && {
-              },
-              removeButton_selected && renderingSection === 'selectedSection' && {
-              },
-              removeButton_selected && renderingSection === 'unselectedList' && {
-              },
+              removeButton_selected && {},
+              removeButton_selected && renderingSection === 'selectedSection' && {},
+              removeButton_selected && renderingSection === 'unselectedList' && {},
               groupedStyles.removeButtonContainer,
             ]}
           >
@@ -54,12 +61,9 @@ const ActionButtons = ({
                 fontWeight: 'bold',
                 lineHeight: 16,
               },
-              removeButton_selected && {
-              },
-              removeButton_selected && renderingSection === 'selectedSection' && {
-              },
-              removeButton_selected && renderingSection === 'unselectedList' && {
-              },
+              removeButton_selected && {},
+              removeButton_selected && renderingSection === 'selectedSection' && {},
+              removeButton_selected && renderingSection === 'unselectedList' && {},
               groupedStyles.removeButtonText,
             ]}>-</Text>
           </TouchableOpacity>
@@ -76,15 +80,13 @@ const ActionButtons = ({
                 alignItems: 'center',
                 justifyContent: 'center',
               },
-              addButton_selected && {
-              },
+              addButton_selected && {},
               addButton_selected && renderingSection === 'selectedSection' && {
                 backgroundColor: COLORS.blue[600],
                 borderWidth: 1,
                 borderColor: COLORS.blue[600], 
               },
-              addButton_selected && renderingSection === 'unselectedList' && {
-              },
+              addButton_selected && renderingSection === 'unselectedList' && {},
               groupedStyles.addButtonContainer,
             ]}
           >
@@ -95,13 +97,11 @@ const ActionButtons = ({
                 fontWeight: 'bold',
                 lineHeight: 16,
               },
-              addButton_selected && {
-              },
+              addButton_selected && {},
               addButton_selected && renderingSection === 'selectedSection' && {
                 color: COLORS.white,
               },
-              addButton_selected && renderingSection === 'unselectedList' && {
-              },
+              addButton_selected && renderingSection === 'unselectedList' && {},
               groupedStyles.addButtonText,
             ]}>+</Text>
           </TouchableOpacity>
@@ -122,15 +122,13 @@ const ActionButtons = ({
               alignItems: 'center',
               justifyContent: 'center',
             },
-            addButton_selected && {
-            },
+            addButton_selected && {},
             addButton_selected && renderingSection === 'selectedSection' && {
               backgroundColor: COLORS.blue[600],
               borderWidth: 1,
               borderColor: COLORS.blue[600], 
             },
-            addButton_selected && renderingSection === 'unselectedList' && {
-            },
+            addButton_selected && renderingSection === 'unselectedList' && {},
             groupedStyles.addButtonContainer,
           ]}
         >
@@ -141,13 +139,11 @@ const ActionButtons = ({
               fontWeight: 'bold',
               lineHeight: 16,
             },
-            addButton_selected && {
-            },
+            addButton_selected && {},
             addButton_selected && renderingSection === 'selectedSection' && {
               color: COLORS.white,
             },
-            addButton_selected && renderingSection === 'unselectedList' && {
-            },
+            addButton_selected && renderingSection === 'unselectedList' && {},
             groupedStyles.addButtonText,
           ]}>+</Text>
         </TouchableOpacity>
@@ -170,12 +166,9 @@ const ActionButtons = ({
             alignItems: 'center',
             justifyContent: 'center',
           },
-          addButton_unselected && {
-          },
-          addButton_unselected && renderingSection === 'selectedSection' && {
-          },
-          addButton_unselected && renderingSection === 'unselectedList' && {
-          },
+          addButton_unselected && {},
+          addButton_unselected && renderingSection === 'selectedSection' && {},
+          addButton_unselected && renderingSection === 'unselectedList' && {},
           groupedStyles.addButtonOnlyContainer,
         ]}
       >
@@ -186,12 +179,9 @@ const ActionButtons = ({
             fontWeight: 'bold',
             lineHeight: 16,
           },
-          addButton_unselected && {
-          },
-          addButton_unselected && renderingSection === 'selectedSection' && {
-          },
-          addButton_unselected && renderingSection === 'unselectedList' && {
-          },
+          addButton_unselected && {},
+          addButton_unselected && renderingSection === 'selectedSection' && {},
+          addButton_unselected && renderingSection === 'unselectedList' && {},
           groupedStyles.addButtonOnlyText,
         ]}>+</Text>
       </TouchableOpacity>

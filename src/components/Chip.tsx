@@ -3,7 +3,17 @@ import { TouchableOpacity, Text, View, StyleSheet } from 'react-native';
 import { Star, X } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 
-const Chip = ({ label, selected, isPrimary, isSpecial, onClick, onRemove, onMakePrimary }) => {
+interface ChipProps {
+  label: string;
+  selected: boolean;
+  isPrimary?: boolean;
+  isSpecial?: boolean;
+  onClick: () => void;
+  onRemove?: () => void;
+  onMakePrimary?: () => void;
+}
+
+const Chip: React.FC<ChipProps> = ({ label, selected, isPrimary, isSpecial, onClick, onRemove, onMakePrimary }) => {
   const isSelectedPrimary = selected && isPrimary;
   const isSelectedSecondary = selected && !isPrimary;
 

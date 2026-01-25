@@ -3,8 +3,16 @@ import { View, Text, Modal, TouchableOpacity, ScrollView, StyleSheet, PanRespond
 import { X, Calendar, Trophy } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '@/constants/colors';
+import type { ExerciseLibraryItem, ExerciseStats } from '@/types/workout';
 
-const ExerciseHistoryModal = ({ visible, onClose, exercise, stats }) => {
+interface ExerciseHistoryModalProps {
+  visible: boolean;
+  onClose: () => void;
+  exercise: ExerciseLibraryItem | null;
+  stats: ExerciseStats | {};
+}
+
+const ExerciseHistoryModal: React.FC<ExerciseHistoryModalProps> = ({ visible, onClose, exercise, stats }) => {
   const insets = useSafeAreaInsets();
   const pan = useRef(new Animated.ValueXY()).current;
 
@@ -12,7 +20,7 @@ const ExerciseHistoryModal = ({ visible, onClose, exercise, stats }) => {
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        return gestureState.dy > 5; // Only capture downward movement
+        return gestureState.dy > 5;
       },
       onPanResponderMove: (_, gestureState) => {
         if (gestureState.dy > 0) {
@@ -32,17 +40,17 @@ const ExerciseHistoryModal = ({ visible, onClose, exercise, stats }) => {
     })
   ).current;
 
-  // Reset pan position when modal becomes visible
   React.useEffect(() => {
     if (visible) {
       pan.setValue({ x: 0, y: 0 });
     }
-  }, [visible]);
+  }, [visible, pan]);
 
   if (!exercise) return null;
 
-  const history = stats?.history || [];
-  const pr = stats?.pr || 0;
+  const exerciseStats = stats as ExerciseStats;
+  const history = exerciseStats?.history || [];
+  const pr = exerciseStats?.pr || 0;
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -119,15 +127,15 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-start', // Changed from flex-end to allow top alignment
+    justifyContent: 'flex-start',
   },
   container: {
-    flex: 1, // Fill the rest of the screen
+    flex: 1,
     backgroundColor: COLORS.slate[50],
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
-    paddingTop: 8, // Reduced padding top since we have drag handle
+    paddingTop: 8,
   },
   dragHandleContainer: {
     alignItems: 'center',

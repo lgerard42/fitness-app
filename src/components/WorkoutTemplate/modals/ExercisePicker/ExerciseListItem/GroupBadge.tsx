@@ -1,8 +1,19 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import { defaultSupersetColorScheme, defaultHiitColorScheme } from '@/constants/defaultStyles';
+import type { GroupType } from '@/types/workout';
 
-const GroupBadge = ({ exerciseGroup, groupedStyles = {} }) => {
+interface ExerciseGroup {
+  type: GroupType;
+  number: number;
+}
+
+interface GroupBadgeProps {
+  exerciseGroup: ExerciseGroup | null;
+  groupedStyles?: any;
+}
+
+const GroupBadge: React.FC<GroupBadgeProps> = ({ exerciseGroup, groupedStyles = {} }) => {
   if (!exerciseGroup) return null;
 
   const groupColorScheme = exerciseGroup.type === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme;

@@ -6,33 +6,53 @@ import { COLORS } from '@/constants/colors';
 import { PRIMARY_MUSCLES, CARDIO_TYPES, TRAINING_FOCUS, WEIGHT_EQUIP_TAGS, PRIMARY_TO_SECONDARY_MAP } from '@/constants/data';
 import Chip from '@/components/Chip';
 import CustomDropdown from '@/components/CustomDropdown';
+import type { ExerciseLibraryItem, ExerciseCategory } from '@/types/workout';
 
-const NewExercise = ({ isOpen, onClose, onSave, categories }) => {
-  const [newExercise, setNewExercise] = useState({ 
+interface NewExerciseProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (exercise: ExerciseLibraryItem) => void;
+  categories: ExerciseCategory[];
+}
+
+interface NewExerciseState {
+  name: string;
+  category: ExerciseCategory | '';
+  primaryMuscles: string[];
+  secondaryMuscles: string[];
+  cardioType: string;
+  trainingFocus: string;
+  weightEquipTags: string[];
+  description: string;
+  trackDuration: boolean;
+}
+
+const NewExercise: React.FC<NewExerciseProps> = ({ isOpen, onClose, onSave, categories }) => {
+  const [newExercise, setNewExercise] = useState<NewExerciseState>({ 
     name: "", category: "", primaryMuscles: [], secondaryMuscles: [], 
     cardioType: "", trainingFocus: "", weightEquipTags: [], description: "", trackDuration: false 
   });
   const [secondaryMusclesEnabled, setSecondaryMusclesEnabled] = useState(true);
-  const [activePrimaryForPopup, setActivePrimaryForPopup] = useState(null);
+  const [activePrimaryForPopup, setActivePrimaryForPopup] = useState<string | null>(null);
   const [showDescription, setShowDescription] = useState(false);
   const [showSecondEquip, setShowSecondEquip] = useState(false);
   const [showWeightEquip, setShowWeightEquip] = useState(false);
 
-  const toggleSelection = (field, value) => {
+  const toggleSelection = (field: keyof NewExerciseState, value: string) => {
     setNewExercise(prev => {
-      const current = prev[field] || [];
+      const current = (prev[field] as string[]) || [];
       return { ...prev, [field]: current.includes(value) ? current.filter(item => item !== value) : [...current, value] };
     });
   };
 
-  const handleMakePrimary = (muscle) => {
+  const handleMakePrimary = (muscle: string) => {
     setNewExercise(prev => {
       const others = prev.primaryMuscles.filter(m => m !== muscle);
       return { ...prev, primaryMuscles: [muscle, ...others] };
     });
   };
 
-  const handleEquipChange = (index, value) => {
+  const handleEquipChange = (index: number, value: string) => {
     setNewExercise(prev => {
       const newTags = [...prev.weightEquipTags];
       newTags[index] = value;
@@ -40,13 +60,13 @@ const NewExercise = ({ isOpen, onClose, onSave, categories }) => {
     });
   };
 
-  const handlePrimaryMuscleToggle = (muscle) => {
+  const handlePrimaryMuscleToggle = (muscle: string) => {
     setNewExercise(prev => {
       const isSelected = prev.primaryMuscles.includes(muscle);
       const isSpecial = ["Full Body", "Olympic"].includes(muscle);
       const currentSpecials = prev.primaryMuscles.filter(m => ["Full Body", "Olympic"].includes(m));
       const hasSpecialSelected = currentSpecials.length > 0;
-      let newPrimaries = [], newSecondaries = prev.secondaryMuscles;
+      let newPrimaries: string[] = [], newSecondaries = prev.secondaryMuscles;
       
       if (isSelected) {
         newPrimaries = prev.primaryMuscles.filter(m => m !== muscle);
@@ -65,7 +85,7 @@ const NewExercise = ({ isOpen, onClose, onSave, categories }) => {
     });
   };
 
-  const handleCategoryChange = (cat) => {
+  const handleCategoryChange = (cat: ExerciseCategory) => {
     setNewExercise(prev => ({ ...prev, category: cat, primaryMuscles: [], secondaryMuscles: [], cardioType: "", trainingFocus: "", weightEquipTags: [] }));
     setShowWeightEquip(false);
   };
@@ -73,13 +93,27 @@ const NewExercise = ({ isOpen, onClose, onSave, categories }) => {
   const handleSave = () => {
     if (!newExercise.name || !newExercise.category) return;
     if (newExercise.category === 'Lifts' && newExercise.primaryMuscles.length === 0) return;
-    onSave(newExercise);
+    
+    const exerciseToSave: ExerciseLibraryItem = {
+      id: `ex-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      name: newExercise.name,
+      category: newExercise.category as ExerciseCategory,
+      ...(newExercise.primaryMuscles.length > 0 && { primaryMuscles: newExercise.primaryMuscles }),
+      ...(newExercise.secondaryMuscles.length > 0 && { secondaryMuscles: newExercise.secondaryMuscles }),
+      ...(newExercise.cardioType && { cardioType: newExercise.cardioType }),
+      ...(newExercise.trainingFocus && { trainingFocus: newExercise.trainingFocus }),
+      ...(newExercise.weightEquipTags.length > 0 && { weightEquipTags: newExercise.weightEquipTags.filter(Boolean) }),
+      ...(newExercise.description && { description: newExercise.description }),
+      ...(newExercise.trackDuration && { trackDuration: newExercise.trackDuration }),
+    };
+    
+    onSave(exerciseToSave);
     setNewExercise({ name: "", category: "", primaryMuscles: [], secondaryMuscles: [], cardioType: "", trainingFocus: "", weightEquipTags: [], description: "", trackDuration: false });
     setSecondaryMusclesEnabled(true);
     setShowDescription(false); setShowSecondEquip(false); setShowWeightEquip(false);
   };
 
-  const getAvailableSecondaryMuscles = (primary) => {
+  const getAvailableSecondaryMuscles = (primary: string): string[] => {
     if (PRIMARY_TO_SECONDARY_MAP[primary]) {
       return PRIMARY_TO_SECONDARY_MAP[primary].sort();
     }
@@ -327,7 +361,6 @@ const NewExercise = ({ isOpen, onClose, onSave, categories }) => {
           </TouchableOpacity>
         </View>
 
-        {/* Secondary Selection Popup */}
         <Modal visible={!!activePrimaryForPopup} transparent animationType="fade" onRequestClose={() => setActivePrimaryForPopup(null)}>
            <TouchableOpacity style={styles.popupOverlay} activeOpacity={1} onPress={() => setActivePrimaryForPopup(null)}>
               <View style={styles.popupContent} onStartShouldSetResponder={() => true}>
@@ -336,7 +369,7 @@ const NewExercise = ({ isOpen, onClose, onSave, categories }) => {
                     <TouchableOpacity onPress={() => setActivePrimaryForPopup(null)}><Text style={styles.popupSkip}>Skip</Text></TouchableOpacity>
                  </View>
                  <View style={styles.popupChips}>
-                    {getAvailableSecondaryMuscles(activePrimaryForPopup).map(m => (
+                    {getAvailableSecondaryMuscles(activePrimaryForPopup || '').map(m => (
                        <Chip key={m} label={m} selected={newExercise.secondaryMuscles.includes(m)} onClick={() => toggleSelection('secondaryMuscles', m)} />
                     ))}
                  </View>
@@ -577,4 +610,3 @@ const styles = StyleSheet.create({
 });
 
 export default NewExercise;
-

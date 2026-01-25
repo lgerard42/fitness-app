@@ -2,8 +2,30 @@ import React, { useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { COLORS } from '@/constants/colors';
 import DragAndDropModal from './DragAndDropModal';
+import type { ExerciseLibraryItem } from '@/types/workout';
 
-const SelectedReview = ({
+interface ExerciseGroup {
+  type: string;
+  number: number;
+}
+
+interface GroupedExercise {
+  name: string;
+  count: number;
+}
+
+interface SelectedReviewProps {
+  selectedExercises: ExerciseLibraryItem[];
+  selectedOrder: string[];
+  groupedExercises?: GroupedExercise[];
+  exerciseGroups?: ExerciseGroup[];
+  getExerciseGroup?: ((id: string) => ExerciseGroup | null) | null;
+  filtered?: ExerciseLibraryItem[];
+  setExerciseGroups?: ((groups: ExerciseGroup[]) => void) | null;
+  setSelectedOrder?: ((order: string[]) => void) | null;
+}
+
+const SelectedReview: React.FC<SelectedReviewProps> = ({
   selectedExercises,
   selectedOrder,
   groupedExercises = [],
@@ -21,12 +43,10 @@ const SelectedReview = ({
     }
   }, [selectedExercises.length, selectedOrder.length]);
 
-  const handleDragDropReorder = useCallback((newOrder, updatedGroups) => {
+  const handleDragDropReorder = useCallback((newOrder: string[], updatedGroups?: ExerciseGroup[]) => {
     if (setSelectedOrder && setExerciseGroups) {
-      // Update selectedOrder
       setSelectedOrder(newOrder);
 
-      // Update exerciseGroups
       if (updatedGroups) {
         setExerciseGroups(updatedGroups);
       }
@@ -68,7 +88,6 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.slate[200],
     borderBottomWidth: 2,
   },
-
   headerEnabled: {
     backgroundColor: COLORS.blue[400],
     paddingHorizontal: 16,

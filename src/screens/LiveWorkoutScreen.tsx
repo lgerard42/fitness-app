@@ -1,8 +1,13 @@
 import React from 'react';
+import type { NavigationProp } from '@react-navigation/native';
 import WorkoutTemplate from '@/components/WorkoutTemplate';
 import { useWorkout } from '@/context/WorkoutContext';
 
-const LiveWorkoutScreen = ({ navigation }) => {
+interface LiveWorkoutScreenProps {
+  navigation: NavigationProp<any>;
+}
+
+const LiveWorkoutScreen: React.FC<LiveWorkoutScreenProps> = ({ navigation }) => {
   const { 
     activeWorkout, 
     updateWorkout, 

@@ -3,8 +3,26 @@ import { View, Text, SectionList, StyleSheet } from 'react-native';
 import { COLORS } from '@/constants/colors';
 import ExerciseListItem from './ExerciseListItem';
 import UnselectedListScrollbar from './UnselectedListScrollbar';
+import type { ExerciseLibraryItem } from '@/types/workout';
 
-const SelectedInGlossary = ({
+interface SelectedInGlossaryProps {
+  exercises: ExerciseLibraryItem[];
+  onToggleSelect: (id: string) => void;
+  highlightedLetter: string | null;
+  setHighlightedLetter: (letter: string | null) => void;
+  selectedIds?: string[];
+  selectedOrder?: string[];
+  onAddSet?: ((id: string) => void) | null;
+  onRemoveSet?: ((id: string) => void) | null;
+  blockDismissGestureRef?: any;
+}
+
+interface Section {
+  title: string;
+  data: ExerciseLibraryItem[];
+}
+
+const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
   exercises,
   onToggleSelect,
   highlightedLetter,
@@ -15,10 +33,10 @@ const SelectedInGlossary = ({
   onRemoveSet = null,
   blockDismissGestureRef = null,
 }) => {
-  const sectionListRef = useRef(null);
+  const sectionListRef = useRef<SectionList<ExerciseLibraryItem, Section>>(null);
 
   const sections = useMemo(() => {
-    const grouped = {};
+    const grouped: Record<string, ExerciseLibraryItem[]> = {};
     exercises.forEach(ex => {
       const letter = ex.name.charAt(0).toUpperCase();
       if (!grouped[letter]) grouped[letter] = [];
@@ -31,7 +49,7 @@ const SelectedInGlossary = ({
     return sections.map(s => s.title);
   }, [sections]);
 
-  const scrollToLetter = useCallback((letter) => {
+  const scrollToLetter = useCallback((letter: string) => {
     const sectionIndex = sections.findIndex(s => s.title === letter);
     if (sectionIndex !== -1 && sectionListRef.current) {
       try {
@@ -48,13 +66,13 @@ const SelectedInGlossary = ({
     setHighlightedLetter(letter);
   }, [sections, setHighlightedLetter]);
 
-  const renderSectionHeader = useCallback(({ section }) => (
+  const renderSectionHeader = useCallback(({ section }: { section: Section }) => (
     <View style={styles.sectionHeader}>
       <Text style={styles.sectionHeaderText}>{section.title}</Text>
     </View>
   ), []);
 
-  const renderItem = useCallback(({ item }) => {
+  const renderItem = useCallback(({ item }: { item: ExerciseLibraryItem }) => {
     const isAlreadySelected = selectedIds.includes(item.id);
     const selectedCount = selectedOrder.filter(id => id === item.id).length;
 
@@ -66,15 +84,15 @@ const SelectedInGlossary = ({
         selectionOrder={null}
         onToggle={onToggleSelect}
         showAddMore={isAlreadySelected}
-        onAddMore={onAddSet}
-        onRemoveSet={onRemoveSet}
+        onAddMore={onAddSet ? () => onAddSet(item.id) : null}
+        onRemoveSet={onRemoveSet ? () => onRemoveSet(item.id) : null}
         selectedCount={selectedCount}
         renderingSection="glossary"
       />
     );
   }, [onToggleSelect, selectedIds, selectedOrder, onAddSet, onRemoveSet]);
 
-  const keyExtractor = useCallback((item) => item.id, []);
+  const keyExtractor = useCallback((item: ExerciseLibraryItem) => item.id, []);
 
   if (exercises.length === 0) {
     return (
@@ -86,7 +104,7 @@ const SelectedInGlossary = ({
 
   return (
     <View style={styles.container}>
-      <SectionList
+      <SectionList<ExerciseLibraryItem, Section>
         ref={sectionListRef}
         sections={sections}
         renderItem={renderItem}

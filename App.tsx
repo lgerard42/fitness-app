@@ -6,32 +6,32 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Play, Calendar, Book, User, CircleDashed } from 'lucide-react-native';
-import { COLORS } from './src/constants/colors';
-import { WorkoutProvider } from './src/context/WorkoutContext';
-import ActiveWorkoutBanner from './src/components/ActiveWorkoutBanner';
+import { COLORS } from '@/constants/colors';
+import { WorkoutProvider } from '@/context/WorkoutContext';
+import ActiveWorkoutBanner from '@/components/ActiveWorkoutBanner';
 
-import LogScreen from './src/screens/LogScreen';
-import HistoryScreen from './src/screens/HistoryScreen';
-import LibraryScreen from './src/screens/LibraryScreen';
-import LiveWorkoutScreen from './src/screens/LiveWorkoutScreen';
-import EditWorkoutScreen from './src/screens/EditWorkoutScreen';
+import LogScreen from '@/screens/LogScreen';
+import HistoryScreen from '@/screens/HistoryScreen';
+import LibraryScreen from '@/screens/LibraryScreen';
+import LiveWorkoutScreen from '@/screens/LiveWorkoutScreen';
+import EditWorkoutScreen from '@/screens/EditWorkoutScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
-const ProfileScreen = () => (
+const ProfileScreen: React.FC = () => (
   <SafeAreaProvider style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.slate[50] }}>
     <User size={48} color={COLORS.slate[300]} />
   </SafeAreaProvider>
 );
 
-const ComingSoonScreen = () => (
+const ComingSoonScreen: React.FC = () => (
   <SafeAreaProvider style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.slate[50] }}>
     <CircleDashed size={48} color={COLORS.slate[300]} />
   </SafeAreaProvider>
 );
 
-const MainTabs = () => {
+const MainTabs: React.FC = () => {
   return (
     <View style={{ flex: 1 }}>
       <ActiveWorkoutBanner />
@@ -99,7 +99,7 @@ const MainTabs = () => {
   );
 };
 
-export default function App() {
+const App: React.FC = () => {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
@@ -129,4 +129,6 @@ export default function App() {
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
-}
+};
+
+export default App;

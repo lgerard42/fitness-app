@@ -7,7 +7,7 @@ import { COLORS } from '@/constants/colors';
 import { useWorkout } from '@/context/WorkoutContext';
 import { formatDuration } from '@/constants/data';
 
-const ActiveWorkoutBanner = () => {
+const ActiveWorkoutBanner: React.FC = () => {
   const { activeWorkout } = useWorkout();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
@@ -39,7 +39,7 @@ const ActiveWorkoutBanner = () => {
         </View>
         <TouchableOpacity 
           style={styles.button}
-          onPress={() => navigation.navigate('LiveWorkout')}
+          onPress={() => navigation.navigate('LiveWorkout' as never)}
         >
           <Text style={styles.buttonText}>Resume</Text>
         </TouchableOpacity>
