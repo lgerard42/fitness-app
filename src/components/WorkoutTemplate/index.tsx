@@ -201,14 +201,17 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
   }, [isDragging, pendingDragCallback, pendingDragItemId, dragItems, listRef, collapsedGroupId]);
 
   // Execute pending drag after group collapse (matches DragAndDropModal pattern)
+  // Wait for reorderedDragItems to be set (collapsed state) and then wait for layout to settle
   useEffect(() => {
-    if (collapsedGroupId && pendingDragCallback.current) {
+    if (collapsedGroupId && pendingDragCallback.current && dragItems.length > 0) {
+      // Wait for layout to fully settle after collapse before triggering drag
+      // This ensures all collapsed items are rendered and layout calculations are complete
       const timeoutId = setTimeout(() => {
         if (pendingDragCallback.current) {
           pendingDragCallback.current();
           pendingDragCallback.current = null;
         }
-      }, 50);
+      }, 150); // Increased delay to ensure layout has fully settled
       return () => clearTimeout(timeoutId);
     }
   }, [collapsedGroupId, dragItems]);

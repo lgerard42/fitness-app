@@ -288,13 +288,19 @@ export const useWorkoutDragDrop = ({
 
   // Initiate group drag - matches DragAndDropModal pattern
   const initiateGroupDrag = useCallback((groupId: string, dragCallback: () => void) => {
+    // Save original state
+    if (!originalExercisesRef.current) {
+      originalExercisesRef.current = currentWorkout.exercises;
+    }
+
     let collapsed = collapseGroup(baseDragItems, groupId);
     collapsed = collapseAllOtherGroups(collapsed, groupId);
 
     setReorderedDragItems(collapsed);
     setCollapsedGroupId(groupId);
+    setIsDragging(true); // Set dragging state so UI shows collapsed items
     pendingDragCallback.current = dragCallback;
-  }, [baseDragItems, collapseGroup, collapseAllOtherGroups]);
+  }, [baseDragItems, collapseGroup, collapseAllOtherGroups, currentWorkout.exercises]);
 
   // Phase 1: Collapse all items, then schedule the drag (for regular exercises)
   const handlePrepareDrag = useCallback((dragCallback: () => void, itemId: string) => {
