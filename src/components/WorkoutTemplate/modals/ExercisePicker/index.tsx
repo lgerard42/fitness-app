@@ -7,7 +7,6 @@ import { PRIMARY_TO_SECONDARY_MAP } from '@/constants/data';
 import HeaderTopRow from './HeaderTopRow';
 import SearchBar from './SearchBar';
 import Filters from './Filters';
-import SelectedReview from './SelectedReview';
 import SelectedInGlossary from './SelectedInGlossary';
 import type { ExerciseLibraryItem, GroupType } from '@/types/workout';
 
@@ -532,8 +531,6 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
 
             <GestureDetector gesture={blockDismissGesture}>
               <View style={styles.listContainer}>
-                <SelectedReview />
-
                 {isSelectedSectionCollapsed && (
                   <SelectedInGlossary
                     exercises={allFilteredExercises}
