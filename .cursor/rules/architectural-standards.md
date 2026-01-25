@@ -1,0 +1,158 @@
+# Architectural Standards
+
+## WorkoutTemplate Component Architecture
+
+### 1. Custom Hooks for State-Heavy Logic
+
+**Rule:** Prefer Custom Hooks for state-heavy logic in WorkoutTemplate.
+
+#### When to Extract to Hooks
+- State management involving multiple related state variables
+- Complex `useEffect` dependencies and side effects
+- Event handlers that manipulate multiple pieces of state
+- Logic that can be reused or tested independently
+
+#### Hook Organization
+- Place hooks in `src/components/WorkoutTemplate/hooks/`
+- Name hooks with `use` prefix: `useWorkoutRestTimer.js`, `useWorkoutSupersets.js`
+- Each hook should handle a single domain of functionality
+- Hooks should return state and handlers as an object
+
+#### Example Pattern
+```javascript
+// hooks/useWorkoutFeature.js
+export const useWorkoutFeature = (currentWorkout, handleWorkoutUpdate) => {
+  const [state, setState] = useState(initialState);
+  
+  useEffect(() => {
+    // Side effects
+  }, [dependencies]);
+  
+  const handleAction = () => {
+    // Handler logic
+  };
+  
+  return {
+    state,
+    setState,
+    handleAction
+  };
+};
+```
+
+### 2. Component Extraction
+
+**Rule:** Extract reusable UI into `WorkoutTemplate/components/`.
+
+#### Component Structure
+- Place reusable UI components in `src/components/WorkoutTemplate/components/`
+- Keep components focused on presentation
+- Pass handlers and state as props
+- Use descriptive component names: `RestTimerBar.js`, `MoveModeBanner.js`
+
+#### When to Extract
+- UI elements used in multiple places
+- Complex rendering logic that clutters the main component
+- Modal or popup components
+- Form inputs or specialized controls
+
+### 3. Pure Functions in Utilities
+
+**Rule:** Always use pure functions in `src/utils/workoutHelpers.js` for data manipulation.
+
+#### Pure Function Requirements
+- No side effects (no mutations, no API calls, no state updates)
+- Same input always produces same output
+- No dependencies on external state or context
+- Functions should be easily testable
+
+#### Utility Function Patterns
+- Data transformation: `convertWorkoutUnits(exercise)`
+- Deep operations: `updateExercisesDeep(list, instanceId, updateFn)`
+- Queries: `findExerciseDeep(list, instanceId)`
+- Formatting: `formatRestTime(seconds)`
+- Parsing: `parseRestTimeInput(input)`
+
+#### Example
+```javascript
+// ✅ Pure function
+export const convertWorkoutUnits = (exercise) => {
+  // No mutations, no side effects
+  return {
+    ...exercise,
+    weightUnit: newUnit,
+    sets: exercise.sets.map(/* transformation */)
+  };
+};
+
+// ❌ Impure (avoid)
+export const convertWorkoutUnits = (exercise) => {
+  exercise.weightUnit = newUnit; // Mutation
+  updateDatabase(exercise); // Side effect
+  return exercise;
+};
+```
+
+### 4. Mode-Based Rendering
+
+**Rule:** Maintain strict mode-based rendering (live | edit | readonly).
+
+#### Mode Definitions
+- `live`: Active workout session with timer and completion tracking
+- `edit`: Template editing mode with full modification capabilities
+- `readonly`: View-only mode with no editing capabilities
+
+#### Implementation Requirements
+- Determine mode at component entry: `const isEditMode = mode === 'edit'`
+- Use mode flags consistently throughout the component
+- Conditionally render UI based on mode
+- Disable interactions in `readonly` mode
+- Show/hide controls based on mode
+
+#### Pattern
+```javascript
+const WorkoutTemplate = ({ mode = 'live', ... }) => {
+  const isEditMode = mode === 'edit';
+  const isLiveMode = mode === 'live';
+  const readOnly = mode === 'readonly';
+  
+  // Mode-specific logic
+  if (readOnly) {
+    // Disable all interactions
+  }
+  
+  return (
+    <View>
+      {isEditMode && <EditControls />}
+      {isLiveMode && <LiveTimer />}
+      {/* ... */}
+    </View>
+  );
+};
+```
+
+## File Organization
+
+```
+src/components/WorkoutTemplate/
+├── index.js                    # Main orchestrator component
+├── components/                 # Reusable UI components
+│   ├── RestTimerBar.js
+│   └── MoveModeBanner.js
+├── hooks/                      # Custom hooks for state logic
+│   ├── useWorkoutRestTimer.js
+│   ├── useWorkoutSupersets.js
+│   └── useWorkoutGroups.js
+└── modals/                     # Modal components
+    ├── ExercisePicker/
+    └── FinishWorkoutModal.js
+```
+
+## Migration Guidelines
+
+When refactoring existing code:
+1. Identify state-heavy logic → Extract to custom hook
+2. Identify reusable UI → Move to `components/`
+3. Identify data manipulation → Move to `workoutHelpers.js` as pure function
+4. Ensure mode-based rendering is maintained
+5. Update imports and prop passing
