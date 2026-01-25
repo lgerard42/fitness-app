@@ -21,8 +21,12 @@ import {
   getAllSupersets,
   findExerciseSuperset,
   isExerciseInSuperset,
-  getStandaloneExercises
+  getStandaloneExercises,
+  convertWorkoutUnits
 } from '../../utils/workoutHelpers';
+import { useWorkoutRestTimer } from './hooks/useWorkoutRestTimer';
+import { useWorkoutSupersets } from './hooks/useWorkoutSupersets';
+import { useWorkoutGroups } from './hooks/useWorkoutGroups';
 import RestTimerBar from './components/RestTimerBar';
 import MoveModeBanner from './components/MoveModeBanner';
 import FinishWorkoutModal from './modals/FinishWorkoutModal';
@@ -76,55 +80,50 @@ const WorkoutTemplate = ({
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const scrollViewRef = useRef(null);
 
-  // Group Set Type State (for editing groups)
-  const [groupSetType, setGroupSetType] = useState(null); // 'warmup', 'dropset', 'failure', or null
-
-  // Superset State
-  const [supersetSelectionMode, setSupersetSelectionMode] = useState(null); // { exerciseId, mode: 'create' | 'add' | 'edit' }
-  const [selectedExerciseIds, setSelectedExerciseIds] = useState(new Set());
-
-  // Rest Timer State
-  const [activeRestTimer, setActiveRestTimer] = useState(null); // { exerciseId, setId, remainingSeconds, totalSeconds, isPaused }
+  // Rest Period Modal State (still needed in main component for UI)
   const [restPeriodModalOpen, setRestPeriodModalOpen] = useState(false); // Shows duration picker
   const [restPeriodSetInfo, setRestPeriodSetInfo] = useState(null); // { exerciseId, setId } - which set we're adding rest to
   const [restTimerInput, setRestTimerInput] = useState(''); // Raw input for rest timer
   const [focusNextSet, setFocusNextSet] = useState(null); // { exerciseId, setId, field: 'weight' | 'reps' } - auto-focus target
-  const [restTimerPopupOpen, setRestTimerPopupOpen] = useState(false); // Shows expanded timer popup
+
+  // Custom Hooks
+  const {
+    activeRestTimer,
+    setActiveRestTimer,
+    restTimerPopupOpen,
+    setRestTimerPopupOpen,
+    handleAddRestPeriod: handleAddRestPeriodFromHook,
+    startRestTimer,
+    cancelRestTimer
+  } = useWorkoutRestTimer(currentWorkout, handleWorkoutUpdate);
+
+  const {
+    supersetSelectionMode,
+    selectedExerciseIds,
+    handleEditSuperset,
+    handleAddToSpecificSuperset,
+    handleToggleSupersetSelection,
+    handleConfirmSupersetSelection,
+    handleCancelSupersetSelection
+  } = useWorkoutSupersets(currentWorkout, handleWorkoutUpdate);
+
+  const {
+    selectionMode,
+    setSelectionMode,
+    selectedSetIds,
+    groupSetType,
+    setGroupSetType,
+    handleToggleSetSelection,
+    handleSubmitDropSet,
+    handleCancelDropSet
+  } = useWorkoutGroups(currentWorkout, handleWorkoutUpdate);
 
   // Custom Keyboard State
   const [customKeyboardVisible, setCustomKeyboardVisible] = useState(false);
   const [customKeyboardTarget, setCustomKeyboardTarget] = useState(null); // { exerciseId, setId, field: 'weight' | 'reps' }
   const [customKeyboardValue, setCustomKeyboardValue] = useState('');
 
-  // Rest Timer Countdown Effect
-  useEffect(() => {
-    if (!activeRestTimer || activeRestTimer.isPaused) return;
-
-    const interval = setInterval(() => {
-      setActiveRestTimer(prev => {
-        if (!prev || prev.isPaused) return prev;
-        const newRemaining = prev.remainingSeconds - 1;
-        if (newRemaining <= 0) {
-          // Timer finished - close popup if open and mark timer as completed
-          setRestTimerPopupOpen(false);
-
-          // Mark this set's rest timer as completed
-          handleWorkoutUpdate({
-            ...currentWorkout,
-            exercises: updateExercisesDeep(currentWorkout.exercises, prev.exerciseId, (ex) => ({
-              ...ex,
-              sets: ex.sets.map(s => s.id === prev.setId ? { ...s, restTimerCompleted: true } : s)
-            }))
-          });
-
-          return null;
-        }
-        return { ...prev, remainingSeconds: newRemaining };
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [activeRestTimer?.setId, activeRestTimer?.isPaused]);
+  // Rest Timer countdown is now handled in useWorkoutRestTimer hook
 
   useEffect(() => {
     if (isMoveMode && movingItemId) {
@@ -334,15 +333,7 @@ const WorkoutTemplate = ({
       handleUpdateSet(exInstanceId, { ...set, completed: true });
 
       // Start rest timer if this set has a rest period
-      if (set.restPeriodSeconds) {
-        setActiveRestTimer({
-          exerciseId: exInstanceId,
-          setId: set.id,
-          remainingSeconds: set.restPeriodSeconds,
-          totalSeconds: set.restPeriodSeconds,
-          isPaused: false
-        });
-      }
+      startRestTimer(exInstanceId, set);
 
       // Find and focus the next set's input
       const exercise = findExerciseDeep(currentWorkout.exercises, exInstanceId);
@@ -377,9 +368,7 @@ const WorkoutTemplate = ({
       handleUpdateSet(exInstanceId, updatedSet);
 
       // Also cancel any active timer for this set
-      if (activeRestTimer?.setId === set.id) {
-        setActiveRestTimer(null);
-      }
+      cancelRestTimer(set.id);
     }
   };
 
@@ -477,9 +466,8 @@ const WorkoutTemplate = ({
 
 
   const [activeSetMenu, setActiveSetMenu] = useState(null); // { exerciseId, setId, top, left, originalTop }
-  const [selectionMode, setSelectionMode] = useState(null); // { exerciseId, type: 'drop_set' }
-  const [selectedSetIds, setSelectedSetIds] = useState(new Set());
   const [scrollOffset, setScrollOffset] = useState(0);
+  // selectionMode and selectedSetIds are now managed by useWorkoutGroups hook
 
   const handleSetNumberPress = (exerciseId, setId, pageX, pageY, width, height) => {
     // Close exercise-level popup if open
@@ -648,342 +636,14 @@ const WorkoutTemplate = ({
 
     if (seconds <= 0) return;
 
-    handleWorkoutUpdate({
-      ...currentWorkout,
-      exercises: updateExercisesDeep(currentWorkout.exercises, exerciseId, (ex) => ({
-        ...ex,
-        sets: ex.sets.map(s => s.id === setId ? { ...s, restPeriodSeconds: seconds } : s)
-      }))
-    });
+    handleAddRestPeriodFromHook(exerciseId, setId, seconds);
 
     setRestPeriodModalOpen(false);
     setRestPeriodSetInfo(null);
     setRestTimerInput('');
   };
 
-  const handleToggleSetSelection = (setId, isAddToGroupAction = false) => {
-    if (!selectionMode) return;
-    const { exerciseId, editingGroupId } = selectionMode;
-    const exercise = findExerciseDeep(currentWorkout.exercises, exerciseId);
-    const set = exercise?.sets?.find(s => s.id === setId);
-
-    // If this is an "add to group" action (clicking + icon)
-    if (isAddToGroupAction && set?.dropSetId) {
-      const targetGroupId = set.dropSetId;
-
-      if (!editingGroupId) {
-        // Ungrouped set: Add the originally selected set to this group and move it to the end of the group
-        handleWorkoutUpdate({
-          ...currentWorkout,
-          exercises: updateExercisesDeep(currentWorkout.exercises, exerciseId, (ex) => {
-            // First, mark the sets with the new group ID
-            const updatedSets = ex.sets.map(s => {
-              if (selectedSetIds.has(s.id)) {
-                return { ...s, dropSetId: targetGroupId };
-              }
-              return s;
-            });
-
-            // Then reorder: remove the newly added sets and insert them at the end of the target group
-            const setsToMove = [];
-            const setsWithoutMoved = updatedSets.filter(s => {
-              if (selectedSetIds.has(s.id)) {
-                setsToMove.push(s);
-                return false;
-              }
-              return true;
-            });
-
-            // Find the last index of the target group
-            let lastGroupIndex = -1;
-            for (let i = setsWithoutMoved.length - 1; i >= 0; i--) {
-              if (setsWithoutMoved[i].dropSetId === targetGroupId) {
-                lastGroupIndex = i;
-                break;
-              }
-            }
-
-            // Insert the moved sets after the last set in the target group
-            if (lastGroupIndex !== -1) {
-              setsWithoutMoved.splice(lastGroupIndex + 1, 0, ...setsToMove);
-            }
-
-            return { ...ex, sets: setsWithoutMoved };
-          })
-        });
-
-        // Close selection mode
-        setSelectionMode(null);
-        setSelectedSetIds(new Set());
-        return;
-      } else {
-        // Grouped set: Move SELECTED (checked) sets from current group to target group
-        // Unselected sets remain in the original group
-        handleWorkoutUpdate({
-          ...currentWorkout,
-          exercises: updateExercisesDeep(currentWorkout.exercises, exerciseId, (ex) => {
-            // First, mark the sets with the new group ID
-            const updatedSets = ex.sets.map(s => {
-              if (selectedSetIds.has(s.id)) {
-                // Move selected sets to target group
-                return { ...s, dropSetId: targetGroupId };
-              }
-              return s;
-            });
-
-            // Then reorder: remove the moved sets and insert them at the end of the target group
-            const setsToMove = [];
-            const setsWithoutMoved = updatedSets.filter(s => {
-              if (selectedSetIds.has(s.id)) {
-                setsToMove.push(s);
-                return false;
-              }
-              return true;
-            });
-
-            // Find the last index of the target group
-            let lastGroupIndex = -1;
-            for (let i = setsWithoutMoved.length - 1; i >= 0; i--) {
-              if (setsWithoutMoved[i].dropSetId === targetGroupId) {
-                lastGroupIndex = i;
-                break;
-              }
-            }
-
-            // Insert the moved sets after the last set in the target group
-            if (lastGroupIndex !== -1) {
-              setsWithoutMoved.splice(lastGroupIndex + 1, 0, ...setsToMove);
-            }
-
-            return { ...ex, sets: setsWithoutMoved };
-          })
-        });
-
-        // Close selection mode
-        setSelectionMode(null);
-        setSelectedSetIds(new Set());
-        return;
-      }
-    }
-
-    // Regular checkbox toggle behavior
-    const newSelectedIds = new Set(selectedSetIds);
-
-    if (editingGroupId) {
-      // Editing a grouped set - can toggle sets in that group AND ungrouped sets
-      if (set?.dropSetId === editingGroupId || !set?.dropSetId) {
-        if (newSelectedIds.has(setId)) {
-          newSelectedIds.delete(setId);
-        } else {
-          newSelectedIds.add(setId);
-        }
-      }
-    } else {
-      // Creating a new group from ungrouped sets - only toggle ungrouped sets
-      if (!set?.dropSetId) {
-        if (newSelectedIds.has(setId)) {
-          newSelectedIds.delete(setId);
-        } else {
-          newSelectedIds.add(setId);
-        }
-      }
-    }
-
-    setSelectedSetIds(newSelectedIds);
-  };
-
-  const handleSubmitDropSet = () => {
-    if (!selectionMode) return;
-    const { exerciseId, editingGroupId } = selectionMode;
-    const exercise = findExerciseDeep(currentWorkout.exercises, exerciseId);
-
-    if (editingGroupId) {
-      // Editing existing group
-      const originalGroupSetIds = exercise.sets
-        .filter(s => s.dropSetId === editingGroupId)
-        .map(s => s.id);
-
-      // Find sets that were deselected from the group (need to be ungrouped)
-      const deselectedSetIds = originalGroupSetIds.filter(id => !selectedSetIds.has(id));
-
-      // Find ungrouped sets that were selected (need to be added to the group)
-      const selectedUngroupedSetIds = Array.from(selectedSetIds).filter(id => {
-        const set = exercise.sets.find(s => s.id === id);
-        return set && !set.dropSetId;
-      });
-
-      handleWorkoutUpdate({
-        ...currentWorkout,
-        exercises: updateExercisesDeep(currentWorkout.exercises, exerciseId, (ex) => {
-          // Update the group membership and apply group set type
-          let updatedSets = ex.sets.map(s => {
-            let updatedSet = { ...s };
-            let willBeInGroup = false;
-
-            if (s.dropSetId === editingGroupId && !selectedSetIds.has(s.id)) {
-              // Remove from group (was deselected)
-              delete updatedSet.dropSetId;
-              willBeInGroup = false;
-            } else if (s.dropSetId === editingGroupId && selectedSetIds.has(s.id)) {
-              // Stay in group (still selected)
-              willBeInGroup = true;
-            } else if (!s.dropSetId && selectedSetIds.has(s.id)) {
-              // Add to group (ungrouped set that was selected)
-              updatedSet.dropSetId = editingGroupId;
-              willBeInGroup = true;
-            }
-
-            // Apply or remove group set type for all sets that will be in the group
-            if (willBeInGroup) {
-              if (groupSetType) {
-                // Clear previous type flags and set the new one
-                delete updatedSet.isWarmup;
-                delete updatedSet.isDropset;
-                delete updatedSet.isFailure;
-                const typeKey = groupSetType === 'warmup' ? 'isWarmup' : groupSetType === 'dropset' ? 'isDropset' : 'isFailure';
-                updatedSet[typeKey] = true;
-              } else {
-                // groupSetType is null, remove all type flags from sets in the group
-                delete updatedSet.isWarmup;
-                delete updatedSet.isDropset;
-                delete updatedSet.isFailure;
-              }
-            }
-
-            return updatedSet;
-          });
-
-          // Move newly added ungrouped sets to the end of the group
-          if (selectedUngroupedSetIds.length > 0) {
-            const setsToMove = [];
-            const setsWithoutMoved = updatedSets.filter(s => {
-              if (selectedUngroupedSetIds.includes(s.id)) {
-                setsToMove.push(s);
-                return false;
-              }
-              return true;
-            });
-
-            // Find the last index of the edited group
-            let lastGroupIndex = -1;
-            for (let i = setsWithoutMoved.length - 1; i >= 0; i--) {
-              if (setsWithoutMoved[i].dropSetId === editingGroupId) {
-                lastGroupIndex = i;
-                break;
-              }
-            }
-
-            // Insert the newly added sets at the end of the group
-            if (lastGroupIndex !== -1) {
-              setsWithoutMoved.splice(lastGroupIndex + 1, 0, ...setsToMove);
-            }
-
-            updatedSets = setsWithoutMoved;
-          }
-
-          // If there are deselected sets, reorder them to appear right after the group
-          if (deselectedSetIds.length > 0) {
-            // Find the last index of any set in the edited group
-            let lastGroupIndex = -1;
-            for (let i = updatedSets.length - 1; i >= 0; i--) {
-              if (updatedSets[i].dropSetId === editingGroupId) {
-                lastGroupIndex = i;
-                break;
-              }
-            }
-
-            if (lastGroupIndex !== -1) {
-              // Remove deselected sets from their current positions
-              const deselectedSets = [];
-              const setsWithoutDeselected = updatedSets.filter(s => {
-                if (deselectedSetIds.includes(s.id)) {
-                  deselectedSets.push(s);
-                  return false;
-                }
-                return true;
-              });
-
-              // Find the new position to insert (after the group)
-              let insertIndex = -1;
-              for (let i = setsWithoutDeselected.length - 1; i >= 0; i--) {
-                if (setsWithoutDeselected[i].dropSetId === editingGroupId) {
-                  insertIndex = i + 1;
-                  break;
-                }
-              }
-
-              // Insert deselected sets after the group
-              if (insertIndex !== -1) {
-                setsWithoutDeselected.splice(insertIndex, 0, ...deselectedSets);
-              }
-
-              return { ...ex, sets: setsWithoutDeselected };
-            }
-          }
-
-          return { ...ex, sets: updatedSets };
-        })
-      });
-    } else {
-      // Creating new group from ungrouped sets
-      if (selectedSetIds.size < 2) {
-        // Need at least 2 sets to create a group
-        setSelectionMode(null);
-        setSelectedSetIds(new Set());
-        setGroupSetType(null);
-        return;
-      }
-
-      const dropSetId = Date.now().toString();
-
-      handleWorkoutUpdate({
-        ...currentWorkout,
-        exercises: updateExercisesDeep(currentWorkout.exercises, exerciseId, (ex) => {
-          // First, separate selected and non-selected sets
-          const selectedSets = [];
-          const nonSelectedSets = [];
-
-          ex.sets.forEach(s => {
-            if (selectedSetIds.has(s.id)) {
-              let newSet = { ...s, dropSetId };
-
-              // Apply group set type if selected
-              if (groupSetType) {
-                delete newSet.isWarmup;
-                delete newSet.isDropset;
-                delete newSet.isFailure;
-                const typeKey = groupSetType === 'warmup' ? 'isWarmup' : groupSetType === 'dropset' ? 'isDropset' : 'isFailure';
-                newSet[typeKey] = true;
-              }
-
-              selectedSets.push(newSet);
-            } else {
-              nonSelectedSets.push(s);
-            }
-          });
-
-          // Find the position of the first selected set in the original array
-          const firstSelectedIndex = ex.sets.findIndex(s => selectedSetIds.has(s.id));
-
-          // Insert all selected sets at the position of the first selected set
-          const newSets = [...nonSelectedSets];
-          newSets.splice(firstSelectedIndex, 0, ...selectedSets);
-
-          return { ...ex, sets: newSets };
-        })
-      });
-    }
-
-    setSelectionMode(null);
-    setSelectedSetIds(new Set());
-    setGroupSetType(null);
-  };
-
-  const handleCancelDropSet = () => {
-    setSelectionMode(null);
-    setSelectedSetIds(new Set());
-    setGroupSetType(null);
-  };
+  // Group handlers are now in useWorkoutGroups hook
 
   const handleFinish = () => {
     if (onFinish) {
@@ -1052,27 +712,7 @@ const WorkoutTemplate = ({
     handleWorkoutUpdate({
       ...currentWorkout,
       exercises: updateExercisesDeep(currentWorkout.exercises, instanceId, (ex) => {
-        const isKg = ex.weightUnit === 'kg';
-        const newUnit = isKg ? 'lbs' : 'kg';
-
-        const convert = (val) => {
-          if (val === "" || val === null || val === undefined) return val;
-          const num = parseFloat(val);
-          if (isNaN(num)) return val;
-          // kg -> lbs: * 2.20462
-          // lbs -> kg: / 2.20462
-          const result = isKg ? num * 2.20462 : num / 2.20462;
-          return parseFloat(result.toFixed(1)).toString();
-        };
-
-        return {
-          ...ex,
-          weightUnit: newUnit,
-          sets: ex.sets.map(s => ({
-            ...s,
-            weight: ex.category === 'Lifts' ? convert(s.weight) : s.weight
-          }))
-        };
+        return convertWorkoutUnits(ex);
       })
     });
     setOptionsModalExId(null);
@@ -1171,142 +811,12 @@ const WorkoutTemplate = ({
   };
 
   // --- Superset Handlers ---
-
-  const handleEditSuperset = (exerciseId) => {
+  // (Now handled by useWorkoutSupersets hook)
+  
+  // Wrapper to close options modal when editing superset
+  const handleEditSupersetWrapper = (exerciseId) => {
     setOptionsModalExId(null);
-    const superset = findExerciseSuperset(currentWorkout.exercises, exerciseId);
-
-    if (superset) {
-      // Exercise is already in a superset - pre-select all exercises in that superset
-      const selectedIds = new Set(superset.children.map(child => child.instanceId));
-      setSupersetSelectionMode({ exerciseId, mode: 'edit', supersetId: superset.instanceId });
-      setSelectedExerciseIds(selectedIds);
-    } else {
-      // Exercise is NOT in a superset - start fresh selection with just this exercise
-      setSupersetSelectionMode({ exerciseId, mode: 'create' });
-      setSelectedExerciseIds(new Set([exerciseId]));
-    }
-  };
-
-  const handleAddToSpecificSuperset = (exerciseId, supersetId) => {
-    const exercise = findExerciseDeep(currentWorkout.exercises, exerciseId);
-    if (exercise) {
-      handleWorkoutUpdate({
-        ...currentWorkout,
-        exercises: updateExercisesDeep(currentWorkout.exercises, supersetId, (group) => ({
-          ...group,
-          children: [...(group.children || []), exercise]
-        })).filter(ex => ex.instanceId !== exerciseId) // Remove from original position
-      });
-    }
-    setSupersetSelectionMode(null);
-    setSelectedExerciseIds(new Set());
-  };
-
-  const handleToggleSupersetSelection = (exerciseId) => {
-    if (!supersetSelectionMode) return;
-
-    const newSelectedIds = new Set(selectedExerciseIds);
-
-    if (newSelectedIds.has(exerciseId)) {
-      newSelectedIds.delete(exerciseId);
-    } else {
-      newSelectedIds.add(exerciseId);
-    }
-
-    setSelectedExerciseIds(newSelectedIds);
-  };
-
-  const handleConfirmSupersetSelection = () => {
-    if (!supersetSelectionMode) return;
-
-    const { mode, exerciseId, supersetId } = supersetSelectionMode;
-
-    if (mode === 'edit' && supersetId) {
-      // Editing existing superset
-      const superset = currentWorkout.exercises.find(ex => ex.instanceId === supersetId);
-      if (!superset) return;
-
-      const originalExercises = superset.children || [];
-      const selectedExercises = Array.from(selectedExerciseIds)
-        .map(id => findExerciseDeep(currentWorkout.exercises, id))
-        .filter(ex => ex);
-
-      // Find exercises that were unselected (removed from superset)
-      const unselectedExercises = originalExercises.filter(
-        ex => !selectedExerciseIds.has(ex.instanceId)
-      );
-
-      if (selectedExercises.length <= 1) {
-        // Dissolve the superset if only 1 or 0 exercises remain selected
-        // Place all exercises (selected + unselected) as standalone after the superset position
-        const newExercises = currentWorkout.exercises.reduce((acc, item) => {
-          if (item.instanceId === supersetId) {
-            return [...acc, ...selectedExercises, ...unselectedExercises];
-          }
-          return [...acc, item];
-        }, []);
-        handleWorkoutUpdate({ ...currentWorkout, exercises: newExercises });
-      } else {
-        // Update the superset with new selection
-        // Place unselected exercises immediately after the superset
-        const newExercises = currentWorkout.exercises
-          .reduce((acc, item) => {
-            if (item.instanceId === supersetId) {
-              // Update superset with only selected exercises
-              return [...acc, { ...item, children: selectedExercises }, ...unselectedExercises];
-            }
-            return [...acc, item];
-          }, [])
-          .filter(ex => {
-            // Remove standalone exercises that are now in the superset
-            if (ex.type === 'exercise' && selectedExerciseIds.has(ex.instanceId)) {
-              return false;
-            }
-            return true;
-          });
-
-        handleWorkoutUpdate({ ...currentWorkout, exercises: newExercises });
-      }
-    } else if (mode === 'create') {
-      // Creating new superset
-      if (selectedExerciseIds.size < 2) {
-        // Need at least 2 exercises for a superset
-        setSupersetSelectionMode(null);
-        setSelectedExerciseIds(new Set());
-        return;
-      }
-
-      const selectedExercises = Array.from(selectedExerciseIds)
-        .map(id => findExerciseDeep(currentWorkout.exercises, id))
-        .filter(ex => ex);
-
-      const newSuperset = {
-        instanceId: `group-${Date.now()}`,
-        type: 'group',
-        groupType: 'Superset',
-        children: selectedExercises
-      };
-
-      const newExercises = currentWorkout.exercises.filter(
-        ex => !selectedExerciseIds.has(ex.instanceId)
-      );
-
-      // Insert superset at the position of the first selected exercise
-      const firstSelectedId = Array.from(selectedExerciseIds)[0];
-      const insertIndex = currentWorkout.exercises.findIndex(ex => ex.instanceId === firstSelectedId);
-      newExercises.splice(insertIndex >= 0 ? insertIndex : 0, 0, newSuperset);
-
-      handleWorkoutUpdate({ ...currentWorkout, exercises: newExercises });
-    }
-
-    setSupersetSelectionMode(null);
-    setSelectedExerciseIds(new Set());
-  };
-
-  const handleCancelSupersetSelection = () => {
-    setSupersetSelectionMode(null);
-    setSelectedExerciseIds(new Set());
+    handleEditSuperset(exerciseId);
   };
 
   // --- Move Mode Handlers ---
@@ -2676,7 +2186,7 @@ const WorkoutTemplate = ({
                     </TouchableOpacity>
 
                     {/* Superset Options */}
-                    <TouchableOpacity style={styles.setPopupOptionItem} onPress={() => handleEditSuperset(optionsModalExId)}>
+                    <TouchableOpacity style={styles.setPopupOptionItem} onPress={() => handleEditSupersetWrapper(optionsModalExId)}>
                       <Layers size={18} color={COLORS.indigo[600]} />
                       <Text style={styles.setPopupOptionText}>Edit superset</Text>
                     </TouchableOpacity>

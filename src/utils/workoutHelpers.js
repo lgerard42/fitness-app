@@ -150,3 +150,32 @@ export const getStandaloneExercises = (exercises) => {
   });
   return standalone;
 };
+
+/**
+ * Convert workout units (lbs/kg) for an exercise
+ * @param {Object} exercise - The exercise object to convert
+ * @returns {Object} The exercise with converted weight unit and updated set weights
+ */
+export const convertWorkoutUnits = (exercise) => {
+  const isKg = exercise.weightUnit === 'kg';
+  const newUnit = isKg ? 'lbs' : 'kg';
+
+  const convert = (val) => {
+    if (val === "" || val === null || val === undefined) return val;
+    const num = parseFloat(val);
+    if (isNaN(num)) return val;
+    // kg -> lbs: * 2.20462
+    // lbs -> kg: / 2.20462
+    const result = isKg ? num * 2.20462 : num / 2.20462;
+    return parseFloat(result.toFixed(1)).toString();
+  };
+
+  return {
+    ...exercise,
+    weightUnit: newUnit,
+    sets: exercise.sets.map(s => ({
+      ...s,
+      weight: exercise.category === 'Lifts' ? convert(s.weight) : s.weight
+    }))
+  };
+};
