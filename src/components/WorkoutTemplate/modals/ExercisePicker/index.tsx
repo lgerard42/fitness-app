@@ -38,8 +38,6 @@ interface GroupedExercise {
 const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCreatedId = null }) => {
   const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [groupType, setGroupType] = useState<GroupType | "">("");
-  const [isGroupDropdownOpen, setIsGroupDropdownOpen] = useState(false);
 
   const [filterCategory, setFilterCategory] = useState<string[]>([]);
   const [filterMuscle, setFilterMuscle] = useState<string[]>([]);
@@ -71,12 +69,6 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
       }
     }
   }, [newlyCreatedId, selectedIds, exercises]);
-
-  useEffect(() => {
-    if (selectedIds.length < 2 && groupType !== "") {
-      setGroupType("");
-    }
-  }, [selectedIds, groupType]);
 
   useEffect(() => {
     if (isOpen) {
@@ -461,10 +453,9 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
       exerciseIndices: group.exerciseIndices
     })) : null;
 
-    onAdd(exercisesToAdd, groupType || null, groupsMetadata);
+    onAdd(exercisesToAdd, null, groupsMetadata);
     setSelectedIds([]);
     setSelectedOrder([]);
-    setGroupType("");
     setExerciseGroups([]);
     setIsGroupMode(false);
     setEditingGroupId(null);
@@ -476,7 +467,6 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
   const handleClose = () => {
     setSelectedIds([]);
     setSelectedOrder([]);
-    setGroupType("");
     setExerciseGroups([]);
     setIsGroupMode(false);
     setEditingGroupId(null);
@@ -485,12 +475,6 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
     setGroupSelectionIndices([]);
     onClose();
   };
-
-  const groupOptions = [
-    { value: "" as const, label: "Individual" },
-    { value: "Superset" as const, label: "Superset" },
-    { value: "HIIT" as const, label: "HIIT" }
-  ];
 
   const blockDismissGestureRef = useRef<any>(null);
 
@@ -520,13 +504,15 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
               <HeaderTopRow
                 onClose={handleClose}
                 onCreate={onCreate}
-                groupType={groupType}
-                setGroupType={setGroupType}
-                isGroupDropdownOpen={isGroupDropdownOpen}
-                setIsGroupDropdownOpen={setIsGroupDropdownOpen}
                 selectedIds={selectedIds}
                 onAdd={handleAddAction}
-                groupOptions={groupOptions}
+                selectedOrder={selectedOrder}
+                exerciseGroups={exerciseGroups}
+                groupedExercises={getGroupedExercises}
+                filtered={filtered}
+                getExerciseGroup={getExerciseGroup}
+                setExerciseGroups={setExerciseGroups}
+                setSelectedOrder={setSelectedOrder}
               />
               <SearchBar search={search} setSearch={setSearch} />
               <Filters
@@ -546,16 +532,7 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
 
             <GestureDetector gesture={blockDismissGesture}>
               <View style={styles.listContainer}>
-                <SelectedReview
-                  selectedExercises={selectedExercises}
-                  selectedOrder={selectedOrder}
-                  groupedExercises={getGroupedExercises}
-                  exerciseGroups={exerciseGroups}
-                  getExerciseGroup={getExerciseGroup}
-                  filtered={filtered}
-                  setExerciseGroups={setExerciseGroups}
-                  setSelectedOrder={setSelectedOrder}
-                />
+                <SelectedReview />
 
                 {isSelectedSectionCollapsed && (
                   <SelectedInGlossary
