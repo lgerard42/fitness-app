@@ -67,7 +67,7 @@ interface DragAndDropModalProps {
   groupedExercises: GroupedExercise[];
   filtered: ExerciseLibraryItem[];
   getExerciseGroup: ((index: number) => ExerciseGroup | null) | null;
-  onReorder: (newOrder: string[], updatedGroups: ExerciseGroup[]) => void;
+  onReorder: (newOrder: string[], updatedGroups: ExerciseGroup[], dropsetExerciseIds?: string[]) => void;
 }
 
 interface ItemGroupContext {
@@ -317,6 +317,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           groupId: newGroup.id,
           isFirstInGroup: idx === 0,
           isLastInGroup: idx === sortedExercises.length - 1,
+          isDropset: item.isDropset, // Preserve dropset state when adding to group
         } as ExerciseItem)),
         {
           id: `footer-${newGroup.id}`,
@@ -1059,7 +1060,17 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
       });
     }
 
-    onReorder(newOrder, updatedGroups);
+    // Collect dropset exercise IDs from finalItems
+    const dropsetExerciseIds: string[] = [];
+    finalItems.forEach((item) => {
+      if (item.type === 'Item' && item.isDropset) {
+        if (!dropsetExerciseIds.includes(item.exercise.id)) {
+          dropsetExerciseIds.push(item.exercise.id);
+        }
+      }
+    });
+
+    onReorder(newOrder, updatedGroups, dropsetExerciseIds);
     onClose();
   }, [reorderedItems, collapsedGroupId, expandAllGroups, onReorder, onClose]);
 
@@ -1221,15 +1232,17 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
               ]}>
                 <View style={styles.exerciseInfo}>
                   <View style={styles.exerciseNameRow}>
-                    {item.isDropset && (
-                      <View
-                        style={[
-                          styles.dropsetIndicator,
-                          groupColorScheme && { backgroundColor: COLORS.orange[500] }
-                        ]}
-                      />
-                    )}
-                    <Text style={styles.setCountText}>{item.count} x</Text>
+                    <View style={styles.setCountContainer}>
+                      {item.isDropset && (
+                        <View
+                          style={[
+                            styles.dropsetIndicator,
+                            groupColorScheme && { backgroundColor: COLORS.orange[500] }
+                          ]}
+                        />
+                      )}
+                      <Text style={styles.setCountText}>{item.count} x</Text>
+                    </View>
                     <Text style={styles.exerciseName}>{item.exercise.name}</Text>
                   </View>
                 </View>
@@ -1557,10 +1570,12 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
               <View style={[styles.exerciseCardContent, styles.exerciseCardContent__standalone]}>
                 <View style={styles.exerciseInfo}>
                   <View style={styles.exerciseNameRow}>
-                    {item.isDropset && (
-                      <View style={[styles.dropsetIndicator, { backgroundColor: COLORS.orange[500] }]} />
-                    )}
-                    <Text style={styles.setCountText}>{item.count} x </Text>
+                    <View style={styles.setCountContainer}>
+                      {item.isDropset && (
+                        <View style={[styles.dropsetIndicator, { backgroundColor: COLORS.orange[500] }]} />
+                      )}
+                      <Text style={styles.setCountText}>{item.count} x </Text>
+                    </View>
                     <Text style={styles.exerciseName}>{item.exercise.name}</Text>
                   </View>
                 </View>
@@ -2085,6 +2100,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.slate[900],
   },
+  setCountContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    position: 'relative',
+  },
   setCountText: {
     fontSize: 13,
     fontWeight: '500',
@@ -2261,8 +2281,10 @@ const styles = StyleSheet.create({
   },
   dropsetIndicator: {
     width: 2,
-    alignSelf: 'stretch',
-    marginRight: 8,
+    position: 'absolute',
+    left: -4,
+    top: 0,
+    bottom: 0,
   },
   selectionModeBanner: {
     backgroundColor: COLORS.blue[100],

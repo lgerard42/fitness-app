@@ -33,6 +33,7 @@ interface HeaderTopRowProps {
   setExerciseGroups: ((groups: ExerciseGroup[]) => void) | null;
   setSelectedOrder: ((order: string[]) => void) | null;
   setSelectedIds: ((ids: string[] | ((prev: string[]) => string[])) => void) | null;
+  setDropsetExerciseIds: ((ids: string[]) => void) | null;
 }
 
 const HeaderTopRow: React.FC<HeaderTopRowProps> = ({
@@ -48,6 +49,7 @@ const HeaderTopRow: React.FC<HeaderTopRowProps> = ({
   setExerciseGroups,
   setSelectedOrder,
   setSelectedIds,
+  setDropsetExerciseIds,
 }) => {
   const [isDragDropModalVisible, setIsDragDropModalVisible] = useState(false);
 
@@ -57,7 +59,7 @@ const HeaderTopRow: React.FC<HeaderTopRowProps> = ({
     }
   }, [selectedIds.length, selectedOrder.length]);
 
-  const handleDragDropReorder = useCallback((newOrder: string[], updatedGroups?: ExerciseGroup[]) => {
+  const handleDragDropReorder = useCallback((newOrder: string[], updatedGroups?: ExerciseGroup[], dropsetExerciseIds?: string[]) => {
     if (setSelectedOrder && setExerciseGroups) {
       setSelectedOrder(newOrder);
 
@@ -74,8 +76,13 @@ const HeaderTopRow: React.FC<HeaderTopRowProps> = ({
           return prev.filter(id => uniqueIdsInOrder.includes(id));
         });
       }
+
+      // Store dropset exercise IDs (always set, even if empty array)
+      if (setDropsetExerciseIds) {
+        setDropsetExerciseIds(dropsetExerciseIds || []);
+      }
     }
-  }, [setSelectedOrder, setExerciseGroups, setSelectedIds]);
+  }, [setSelectedOrder, setExerciseGroups, setSelectedIds, setDropsetExerciseIds]);
 
   return (
     <>

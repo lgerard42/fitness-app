@@ -229,10 +229,13 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     });
   }, [currentWorkout.sessionNotes]);
 
-  const createExerciseInstance = (ex: ExerciseLibraryItem, setCount: number = 1): Exercise => {
+  const createExerciseInstance = (ex: ExerciseLibraryItem, setCount: number = 1, isDropset: boolean = false): Exercise => {
     // Get pinned notes from the library exercise
     const libraryExercise = exercisesLibrary.find(libEx => libEx.id === ex.id);
     const pinnedNotes = libraryExercise?.pinnedNotes || [];
+
+    // Generate a shared dropSetId if this is a dropset (groups sets together visually)
+    const dropSetId = isDropset ? `dropset-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` : undefined;
 
     // Create the specified number of sets
     const sets = Array.from({ length: setCount }, (_, i) => ({
@@ -242,7 +245,9 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
       reps: "",
       duration: "",
       distance: "",
-      completed: false
+      completed: false,
+      // If dropset, assign the shared dropSetId to group sets together
+      ...(dropSetId && { dropSetId })
     }));
 
     return {
@@ -257,12 +262,13 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     };
   };
 
-  const handleAddExercisesFromPicker = (selectedExercises: ExerciseLibraryItem[], groupType: GroupType | null, groupsMetadata: any = null) => {
+  const handleAddExercisesFromPicker = (selectedExercises: (ExerciseLibraryItem & { _setCount?: number; _isDropset?: boolean })[], groupType: GroupType | null, groupsMetadata: any = null) => {
     if (replacingExerciseId) {
       // Handle Replacement
       if (selectedExercises.length > 0) {
         const setCount = selectedExercises[0]._setCount || 1;
-        const newEx = createExerciseInstance(selectedExercises[0], setCount);
+        const isDropset = selectedExercises[0]._isDropset || false;
+        const newEx = createExerciseInstance(selectedExercises[0], setCount, isDropset);
         // Preserve sets if possible? For now, let's just replace with new sets.
         // Or maybe try to map old sets to new? The user said "replace", usually implies a swap.
         // Let's keep it simple: swap the exercise, keep the instanceId? No, new instanceId is safer.
@@ -289,7 +295,8 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     // Create instances with the specified set count from grouped exercises
     const newInstances = selectedExercises.map(ex => {
       const setCount = ex._setCount || 1; // Use _setCount if provided, otherwise default to 1
-      return createExerciseInstance(ex, setCount);
+      const isDropset = ex._isDropset || false; // Use _isDropset if provided, otherwise default to false
+      return createExerciseInstance(ex, setCount, isDropset);
     });
 
     let itemsToAdd: ExerciseItem[] = [];
@@ -299,7 +306,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
       // Create a map: exercise index -> group it belongs to (if any)
       const exerciseToGroup = new Map<number, typeof groupsMetadata[0]>();
       const exercisesInGroups = new Set<number>();
-      
+
       groupsMetadata.forEach((group) => {
         group.exerciseIndices.forEach((idx) => {
           if (idx < newInstances.length) {
@@ -311,7 +318,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
 
       // Build itemsToAdd by iterating through exercises in order
       const processedGroups = new Set<string>();
-      
+
       for (let i = 0; i < newInstances.length; i++) {
         if (exercisesInGroups.has(i)) {
           const group = exerciseToGroup.get(i);
@@ -1307,7 +1314,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                 </Text>
                 <Text style={styles.colHeaderText}>{ex.category === "Lifts" ? "Reps" : "Dist/Reps"}</Text>
               </View>
-              <View style={styles.colCheck}><Text style={styles.colHeaderText}>Î“Â£Ã´</Text></View>
+              <View style={styles.colCheck}><Text style={styles.colHeaderText}>-</Text></View>
             </View>
             <View style={styles.setsContainer}>
               {ex.sets.map((set, idx) => {
