@@ -439,19 +439,72 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
     });
   }, [getNextGroupNumber]);
 
-  const handleAddAction = () => {
+  const convertToWorkoutFormat = useCallback(() => {
+    // Build exercises array with _setCount from getGroupedExercises
+    // This gives us unique exercises with their set counts
     const exercisesToAdd = getGroupedExercises.map(group => ({
       ...group.exercise,
       _setCount: group.count
     }));
 
-    const groupsMetadata = exerciseGroups.length > 0 ? exerciseGroups.map(group => ({
-      id: group.id,
-      type: group.type,
-      number: group.number,
-      exerciseIndices: group.exerciseIndices
-    })) : null;
+    // Build groupsMetadata with exerciseIndices relative to the final exercises array
+    // The final array will have one entry per unique exercise (with _setCount)
+    // But we need to map the indices to account for how exercises will be expanded
+    const groupsMetadata: Array<{
+      id: string;
+      type: GroupType;
+      number: number;
+      exerciseIndices: number[];
+    }> = [];
 
+    if (exerciseGroups.length > 0) {
+      // Create a map from exercise ID to its index in exercisesToAdd
+      const exerciseIdToIndex = new Map<string, number>();
+      exercisesToAdd.forEach((ex, index) => {
+        exerciseIdToIndex.set(ex.id, index);
+      });
+
+      // Process each group
+      exerciseGroups.forEach((group) => {
+        // Get unique exercise IDs in this group (based on selectedOrder indices)
+        const groupExerciseIds = new Set<string>();
+        group.exerciseIndices.forEach((idx) => {
+          if (idx < selectedOrder.length) {
+            groupExerciseIds.add(selectedOrder[idx]);
+          }
+        });
+
+        // Map to indices in exercisesToAdd array
+        const groupIndices: number[] = [];
+        groupExerciseIds.forEach((exerciseId) => {
+          const exerciseIndex = exerciseIdToIndex.get(exerciseId);
+          if (exerciseIndex !== undefined && !groupIndices.includes(exerciseIndex)) {
+            groupIndices.push(exerciseIndex);
+          }
+        });
+
+        // Sort to maintain order
+        groupIndices.sort((a, b) => a - b);
+
+        if (groupIndices.length > 0) {
+          groupsMetadata.push({
+            id: group.id,
+            type: group.type,
+            number: group.number,
+            exerciseIndices: groupIndices
+          });
+        }
+      });
+    }
+
+    return {
+      exercisesToAdd,
+      groupsMetadata: groupsMetadata.length > 0 ? groupsMetadata : null
+    };
+  }, [selectedOrder, exerciseGroups, getGroupedExercises, filtered]);
+
+  const handleAddAction = () => {
+    const { exercisesToAdd, groupsMetadata } = convertToWorkoutFormat();
     onAdd(exercisesToAdd, null, groupsMetadata);
     setSelectedIds([]);
     setSelectedOrder([]);

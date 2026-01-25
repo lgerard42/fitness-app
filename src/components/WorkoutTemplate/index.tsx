@@ -292,8 +292,54 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
       return createExerciseInstance(ex, setCount);
     });
 
-    let itemsToAdd = [];
-    if (groupType && newInstances.length > 1) {
+    let itemsToAdd: ExerciseItem[] = [];
+
+    // Process groupsMetadata if provided
+    if (groupsMetadata && Array.isArray(groupsMetadata) && groupsMetadata.length > 0) {
+      // Create a map: exercise index -> group it belongs to (if any)
+      const exerciseToGroup = new Map<number, typeof groupsMetadata[0]>();
+      const exercisesInGroups = new Set<number>();
+      
+      groupsMetadata.forEach((group) => {
+        group.exerciseIndices.forEach((idx) => {
+          if (idx < newInstances.length) {
+            exerciseToGroup.set(idx, group);
+            exercisesInGroups.add(idx);
+          }
+        });
+      });
+
+      // Build itemsToAdd by iterating through exercises in order
+      const processedGroups = new Set<string>();
+      
+      for (let i = 0; i < newInstances.length; i++) {
+        if (exercisesInGroups.has(i)) {
+          const group = exerciseToGroup.get(i);
+          if (group && !processedGroups.has(group.id)) {
+            // Collect all exercises in this group, sorted by their indices
+            const groupExercises = group.exerciseIndices
+              .filter(idx => idx < newInstances.length)
+              .sort((a, b) => a - b)
+              .map(idx => newInstances[idx]);
+
+            if (groupExercises.length > 0) {
+              itemsToAdd.push({
+                instanceId: `group-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                type: 'group',
+                groupType: group.type,
+                children: groupExercises
+              });
+              processedGroups.add(group.id);
+            }
+          }
+          // Skip this exercise (it's part of a group we just added)
+        } else {
+          // Standalone exercise
+          itemsToAdd.push(newInstances[i]);
+        }
+      }
+    } else if (groupType && newInstances.length > 1) {
+      // Fallback to old behavior if groupsMetadata is not provided
       itemsToAdd = [{
         instanceId: `group-${Date.now()}`,
         type: 'group',
