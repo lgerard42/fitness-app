@@ -102,16 +102,23 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
 
         if (orderIndex === firstIndexInGroup) {
           const groupExercisesData: GroupExerciseData[] = [];
+          // Collect unique exercises in the group (by their startIndex)
+          // This ensures we only show each unique exercise once in the header, with its total count
+          const processedStartIndices = new Set<number>();
           exerciseGroup.exerciseIndices.forEach(idx => {
-            const exId = selectedOrder[idx];
-            const ex = filtered.find(e => e.id === exId);
             const groupedEx = groupedExercises.find(g => g.orderIndices.includes(idx));
-            if (ex) {
-              groupExercisesData.push({
-                exercise: ex,
-                orderIndex: idx,
-                count: groupedEx ? groupedEx.count : 1,
-              });
+            // Only add to groupExercisesData if this is the startIndex of the grouped exercise
+            if (groupedEx && idx === groupedEx.startIndex && !processedStartIndices.has(idx)) {
+              const exId = selectedOrder[idx];
+              const ex = filtered.find(e => e.id === exId);
+              if (ex) {
+                groupExercisesData.push({
+                  exercise: ex,
+                  orderIndex: idx,
+                  count: groupedEx.count,
+                });
+                processedStartIndices.add(idx);
+              }
             }
           });
 
@@ -124,9 +131,38 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           });
         }
 
-        processedIndices.add(orderIndex);
         const groupedExercise = groupedExercises.find(g => g.orderIndices.includes(orderIndex));
+        // Only create an item if this is the start index of the grouped exercise
+        // This prevents creating multiple items for the same exercise when count > 1
+        if (groupedExercise && orderIndex !== groupedExercise.startIndex) {
+          // Skip this index - it's part of a grouped exercise that will be processed at startIndex
+          return;
+        }
+
+        // Mark all indices in the grouped exercise as processed (if it exists)
+        if (groupedExercise) {
+          groupedExercise.orderIndices.forEach(idx => processedIndices.add(idx));
+        } else {
+          processedIndices.add(orderIndex);
+        }
+
         const count = groupedExercise ? groupedExercise.count : 1;
+
+        // Determine if this is first/last in group based on the grouped exercise's position
+        let isFirstInGroup = false;
+        let isLastInGroup = false;
+        if (groupedExercise) {
+          // Get all unique grouped exercises in this group (by startIndex)
+          const exercisesInGroup = groupedExercises
+            .filter(g => exerciseGroup.exerciseIndices.some(idx => g.orderIndices.includes(idx)))
+            .sort((a, b) => a.startIndex - b.startIndex);
+
+          isFirstInGroup = exercisesInGroup[0]?.startIndex === groupedExercise.startIndex;
+          isLastInGroup = exercisesInGroup[exercisesInGroup.length - 1]?.startIndex === groupedExercise.startIndex;
+        } else {
+          isFirstInGroup = orderIndex === firstIndexInGroup;
+          isLastInGroup = orderIndex === lastIndexInGroup;
+        }
 
         items.push({
           id: `item-${exerciseId}-${orderIndex}`,
@@ -135,11 +171,23 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           orderIndex: orderIndex,
           count: count,
           groupId: exerciseGroup.id,
-          isFirstInGroup: orderIndex === firstIndexInGroup,
-          isLastInGroup: orderIndex === lastIndexInGroup,
+          isFirstInGroup: isFirstInGroup,
+          isLastInGroup: isLastInGroup,
         });
 
-        if (orderIndex === lastIndexInGroup) {
+        // Add footer if this is the last unique exercise in the group
+        // Check if this grouped exercise's last index matches the group's last index
+        if (groupedExercise) {
+          const lastIndexOfGroupedExercise = groupedExercise.orderIndices[groupedExercise.orderIndices.length - 1];
+          if (lastIndexOfGroupedExercise === lastIndexInGroup) {
+            items.push({
+              id: `footer-${exerciseGroup.id}`,
+              type: 'GroupFooter',
+              group: exerciseGroup,
+              groupId: exerciseGroup.id,
+            });
+          }
+        } else if (orderIndex === lastIndexInGroup) {
           items.push({
             id: `footer-${exerciseGroup.id}`,
             type: 'GroupFooter',
@@ -148,8 +196,21 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           });
         }
       } else {
-        processedIndices.add(orderIndex);
         const groupedExercise = groupedExercises.find(g => g.orderIndices.includes(orderIndex));
+        // Only create an item if this is the start index of the grouped exercise
+        // This prevents creating multiple items for the same exercise when count > 1
+        if (groupedExercise && orderIndex !== groupedExercise.startIndex) {
+          // Skip this index - it's part of a grouped exercise that will be processed at startIndex
+          return;
+        }
+
+        // Mark all indices in the grouped exercise as processed (if it exists)
+        if (groupedExercise) {
+          groupedExercise.orderIndices.forEach(idx => processedIndices.add(idx));
+        } else {
+          processedIndices.add(orderIndex);
+        }
+
         items.push({
           id: `item-${exerciseId}-${orderIndex}`,
           type: 'Item',
@@ -734,8 +795,6 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
     isLastInGroup: boolean,
     isActive: boolean
   ) => {
-    const primaryMuscles = (item.exercise.primaryMuscles as string[]) || [];
-
     return (
       <View
         key={item.id}
@@ -777,16 +836,8 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
         ]}>
           <View style={styles.exerciseInfo}>
             <View style={styles.exerciseNameRow}>
+              <Text style={styles.setCountText}>{item.count} x</Text>
               <Text style={styles.exerciseName}>{item.exercise.name}</Text>
-              <Text style={styles.setCountText}>({item.count} {item.count === 1 ? 'set' : 'sets'})</Text>
-            </View>
-            <View style={styles.exerciseMeta}>
-              {item.exercise.category && (
-                <Text style={styles.exerciseCategory}>{item.exercise.category}</Text>
-              )}
-              {primaryMuscles.length > 0 && (
-                <Text style={styles.exerciseMuscle}>{primaryMuscles.join(', ')}</Text>
-              )}
             </View>
           </View>
 
@@ -797,22 +848,38 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
                 disabled={isActive || item.count <= 1}
                 style={[
                   styles.setControlButton,
+                  groupColorScheme && { backgroundColor: groupColorScheme[100] },
                   (isActive || item.count <= 1) && styles.setControlButton__disabled,
                 ]}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Minus size={16} color={item.count <= 1 ? COLORS.slate[300] : COLORS.slate[700]} />
+                <Minus
+                  size={16}
+                  color={
+                    item.count <= 1
+                      ? (groupColorScheme ? groupColorScheme[700] : COLORS.slate[300])
+                      : (groupColorScheme ? groupColorScheme[700] : COLORS.slate[700])
+                  }
+                />
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => handleIncrementSet(item)}
                 disabled={isActive}
                 style={[
                   styles.setControlButton,
+                  groupColorScheme && { backgroundColor: groupColorScheme[150] },
                   isActive && styles.setControlButton__disabled,
                 ]}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Plus size={16} color={isActive ? COLORS.slate[300] : COLORS.slate[700]} />
+                <Plus
+                  size={16}
+                  color={
+                    isActive
+                      ? (groupColorScheme ? groupColorScheme[400] : COLORS.slate[300])
+                      : (groupColorScheme ? groupColorScheme[700] : COLORS.slate[700])
+                  }
+                />
               </TouchableOpacity>
             </View>
           </View>
@@ -979,8 +1046,6 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
       );
     }
 
-    const primaryMuscles = (item.exercise.primaryMuscles as string[]) || [];
-
     const isSelected = isSelectionMode && selectedExercisesForGroup.has(item.id);
     const isSelectable = isSelectionMode && item.groupId === null;
 
@@ -999,19 +1064,11 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           isSelectable && !isSelected && styles.exerciseCard__selectable,
         ]}
       >
-        <View style={styles.exerciseCardContent}>
+        <View style={[styles.exerciseCardContent, styles.exerciseCardContent__standalone]}>
           <View style={styles.exerciseInfo}>
             <View style={styles.exerciseNameRow}>
+              <Text style={styles.setCountText}>{item.count} x </Text>
               <Text style={styles.exerciseName}>{item.exercise.name}</Text>
-              <Text style={styles.setCountText}>({item.count} {item.count === 1 ? 'set' : 'sets'})</Text>
-            </View>
-            <View style={styles.exerciseMeta}>
-              {item.exercise.category && (
-                <Text style={styles.exerciseCategory}>{item.exercise.category}</Text>
-              )}
-              {primaryMuscles.length > 0 && (
-                <Text style={styles.exerciseMuscle}>{primaryMuscles.join(', ')}</Text>
-              )}
             </View>
           </View>
 
@@ -1360,7 +1417,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     borderWidth: 1,
     borderColor: COLORS.slate[200],
-    marginVertical: 4,
+    marginVertical: 2,
     marginHorizontal: 0,
   },
   exerciseCard__groupChild: {
@@ -1403,9 +1460,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
+    paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 6,
+  },
+  exerciseCardContent__standalone: {
+    paddingVertical: 8,
   },
   exerciseCardContent__groupChild: {
     marginHorizontal: 4,
