@@ -1,8 +1,15 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Modal } from 'react-native';
 import { COLORS } from '@/constants/colors';
 
-const CancelWorkoutModal = ({ visible, onClose, onConfirm, styles }) => {
+interface CancelWorkoutModalProps {
+  visible: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  styles: any;
+}
+
+const CancelWorkoutModal: React.FC<CancelWorkoutModalProps> = ({ visible, onClose, onConfirm, styles }) => {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.modalOverlay}>

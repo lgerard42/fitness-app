@@ -4,9 +4,16 @@ import { Swipeable } from 'react-native-gesture-handler';
 import { Timer, Trash2 } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { formatRestTime, updateExercisesDeep } from '@/utils/workoutHelpers';
+import type { Set, Workout, RestTimer, GroupSetType } from '@/types/workout';
+import type { Animated } from 'react-native';
 
-// Swipe-to-delete action component for rest timers
-const RestTimerDeleteAction = ({ progress, dragX, onDelete, onSwipeComplete }) => {
+interface RestTimerDeleteActionProps {
+  progress: Animated.AnimatedInterpolation<number>;
+  dragX: Animated.AnimatedInterpolation<number>;
+  onDelete: () => void;
+}
+
+const RestTimerDeleteAction: React.FC<RestTimerDeleteActionProps> = ({ progress, dragX, onDelete }) => {
   const hasDeleted = React.useRef(false);
   const onDeleteRef = React.useRef(onDelete);
   
@@ -15,11 +22,9 @@ const RestTimerDeleteAction = ({ progress, dragX, onDelete, onSwipeComplete }) =
   }, [onDelete]);
 
   React.useEffect(() => {
-    // Reset hasDeleted when component mounts (new swipe gesture)
     hasDeleted.current = false;
     
     const id = dragX.addListener(({ value }) => {
-      // Trigger delete when swiped past ~120px (value is negative when swiping left)
       if (value < -120 && !hasDeleted.current) {
         hasDeleted.current = true;
         if (onDeleteRef.current) {
@@ -46,7 +51,23 @@ const RestTimerDeleteAction = ({ progress, dragX, onDelete, onSwipeComplete }) =
   );
 };
 
-const RestTimerBar = ({
+interface RestTimerBarProps {
+  set: Set;
+  exerciseId: string;
+  currentWorkout: Workout;
+  handleWorkoutUpdate: (workout: Workout) => void;
+  activeRestTimer: RestTimer | null;
+  setActiveRestTimer: React.Dispatch<React.SetStateAction<RestTimer | null>>;
+  setRestPeriodSetInfo: (info: { exerciseId: string; setId: string }) => void;
+  setRestTimerInput: (input: string) => void;
+  setRestPeriodModalOpen: (open: boolean) => void;
+  setRestTimerPopupOpen: (open: boolean) => void;
+  isRestTimerDropSetEnd: boolean;
+  displayGroupSetType: GroupSetType;
+  styles: any;
+}
+
+const RestTimerBar: React.FC<RestTimerBarProps> = ({
   set,
   exerciseId,
   currentWorkout,
@@ -59,7 +80,7 @@ const RestTimerBar = ({
   setRestTimerPopupOpen,
   isRestTimerDropSetEnd,
   displayGroupSetType,
-  styles,
+  styles
 }) => {
   const isRestTimerActive = activeRestTimer?.setId === set.id;
 
@@ -77,7 +98,6 @@ const RestTimerBar = ({
         })
       }))
     });
-    // Also cancel any active timer for this set
     if (activeRestTimer?.setId === set.id) {
       setActiveRestTimer(null);
     }
@@ -93,7 +113,6 @@ const RestTimerBar = ({
         />
       )}
       onSwipeableWillOpen={(direction) => {
-        // If fully opened to the right (swiped left), trigger delete
         if (direction === 'right') {
           handleDeleteRestTimer();
         }
@@ -106,7 +125,6 @@ const RestTimerBar = ({
         styles.restTimerBar,
         set.completed && set.restTimerCompleted && styles.restTimerBar__completed
       ]}>
-        {/* Dropset indicator for rest timer */}
         {set.dropSetId && (
           <View style={[
             styles.restTimerDropSetIndicator,
@@ -127,17 +145,15 @@ const RestTimerBar = ({
           ]}
           onPress={() => {
             if (isRestTimerActive) {
-              // Open the timer control popup
               setRestTimerPopupOpen(true);
             } else {
-              // Open the duration picker to edit the timer
               setRestPeriodSetInfo({ exerciseId, setId: set.id });
-              setRestTimerInput(String(set.restPeriodSeconds));
+              setRestTimerInput(String(set.restPeriodSeconds || ''));
               setRestPeriodModalOpen(true);
             }
           }}
         >
-          {isRestTimerActive ? (
+          {isRestTimerActive && activeRestTimer ? (
             <Text style={styles.restTimerText__activeLarge}>
               {formatRestTime(activeRestTimer.remainingSeconds)}
             </Text>
@@ -148,7 +164,7 @@ const RestTimerBar = ({
                 styles.restTimerText,
                 set.restTimerCompleted && styles.restTimerText__completed
               ]}>
-                {formatRestTime(set.restPeriodSeconds)}
+                {formatRestTime(set.restPeriodSeconds || 0)}
               </Text>
             </>
           )}

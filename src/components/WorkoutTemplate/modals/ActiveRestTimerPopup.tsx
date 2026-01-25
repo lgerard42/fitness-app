@@ -3,8 +3,19 @@ import { View, Text, TouchableOpacity, Modal, Pressable } from 'react-native';
 import { Play, Pause } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { formatRestTime, updateExercisesDeep } from '@/utils/workoutHelpers';
+import type { Workout, RestTimer } from '@/types/workout';
 
-const ActiveRestTimerPopup = ({
+interface ActiveRestTimerPopupProps {
+  visible: boolean;
+  activeRestTimer: RestTimer | null;
+  onClose: () => void;
+  setActiveRestTimer: React.Dispatch<React.SetStateAction<RestTimer | null>>;
+  currentWorkout: Workout;
+  handleWorkoutUpdate: (workout: Workout) => void;
+  styles: any;
+}
+
+const ActiveRestTimerPopup: React.FC<ActiveRestTimerPopupProps> = ({
   visible,
   activeRestTimer,
   onClose,
@@ -17,7 +28,7 @@ const ActiveRestTimerPopup = ({
     setActiveRestTimer(prev => prev ? { ...prev, isPaused: !prev.isPaused } : null);
   };
 
-  const handleAdjustTime = (seconds, isAdd) => {
+  const handleAdjustTime = (seconds: number, isAdd: boolean) => {
     if (!activeRestTimer) return;
     
     if (isAdd) {
@@ -37,7 +48,6 @@ const ActiveRestTimerPopup = ({
 
   const handleComplete = () => {
     if (activeRestTimer) {
-      // Mark timer as completed
       handleWorkoutUpdate({
         ...currentWorkout,
         exercises: updateExercisesDeep(currentWorkout.exercises, activeRestTimer.exerciseId, (ex) => ({
@@ -62,18 +72,14 @@ const ActiveRestTimerPopup = ({
         onPress={onClose}
       >
         <Pressable style={styles.timerPopupContent} onPress={(e) => e.stopPropagation()}>
-          {/* Circular Timer Display */}
           <View style={styles.timerCircleContainer}>
-            {/* Background Circle */}
             <View style={styles.timerCircleBg} />
-            {/* Progress Circle - using a simple approach with opacity */}
             <View style={[
               styles.timerCircleProgress,
               {
                 opacity: activeRestTimer ? (activeRestTimer.remainingSeconds / activeRestTimer.totalSeconds) : 0
               }
             ]} />
-            {/* Timer Text */}
             <View style={styles.timerCircleTextContainer}>
               <Text style={styles.timerCircleText}>
                 {activeRestTimer ? formatRestTime(activeRestTimer.remainingSeconds) : '0:00'}
@@ -84,7 +90,6 @@ const ActiveRestTimerPopup = ({
             </View>
           </View>
           
-          {/* Pause/Resume Button */}
           <TouchableOpacity 
             style={[
               styles.timerPopupMainButton,
@@ -105,7 +110,6 @@ const ActiveRestTimerPopup = ({
             )}
           </TouchableOpacity>
           
-          {/* Time Adjustment Buttons */}
           <View style={styles.timerAdjustContainer}>
             {[5, 10, 15, 30].map(seconds => (
               <View key={seconds} style={styles.timerAdjustColumn}>
@@ -125,7 +129,6 @@ const ActiveRestTimerPopup = ({
             ))}
           </View>
           
-          {/* Bottom Buttons */}
           <View style={styles.timerPopupBottomButtons}>
             <TouchableOpacity 
               style={styles.timerPopupCloseButton}

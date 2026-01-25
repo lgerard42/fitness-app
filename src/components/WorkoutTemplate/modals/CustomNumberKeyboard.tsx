@@ -3,7 +3,17 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { X, ChevronRight, Check, Delete } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 
-const CustomNumberKeyboard = ({
+interface CustomNumberKeyboardProps {
+  visible: boolean;
+  customKeyboardTarget: { field: 'weight' | 'reps'; exerciseId: string; setId: string } | null;
+  customKeyboardValue: string;
+  onInput: (key: string) => void;
+  onNext: () => void;
+  onClose: () => void;
+  styles: any;
+}
+
+const CustomNumberKeyboard: React.FC<CustomNumberKeyboardProps> = ({
   visible,
   customKeyboardTarget,
   customKeyboardValue,
@@ -14,13 +24,12 @@ const CustomNumberKeyboard = ({
 }) => {
   if (!visible) return null;
 
-  const handleInput = (key) => {
+  const handleInput = (key: string) => {
     onInput(key);
   };
 
   return (
     <View style={styles.customKeyboardContainer}>
-      {/* Display Current Value */}
       <View style={styles.customKeyboardHeader}>
         <View style={styles.customKeyboardValueContainer}>
           <Text style={styles.customKeyboardLabel}>
@@ -38,7 +47,6 @@ const CustomNumberKeyboard = ({
         </TouchableOpacity>
       </View>
       
-      {/* Keyboard Grid */}
       <View style={styles.customKeyboardGrid}>
         <View style={styles.customKeyboardRow}>
           {['1', '2', '3'].map(key => (
@@ -95,7 +103,6 @@ const CustomNumberKeyboard = ({
         </View>
       </View>
       
-      {/* Bottom Action Row */}
       <View style={styles.customKeyboardActions}>
         <TouchableOpacity 
           style={styles.customKeyboardNextButton}

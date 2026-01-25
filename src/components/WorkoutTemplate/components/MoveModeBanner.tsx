@@ -1,8 +1,14 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { COLORS } from '@/constants/colors';
+import { View, Text, TouchableOpacity } from 'react-native';
+import type { StyleSheet } from 'react-native';
 
-const MoveModeBanner = ({ onCancel, onDone, styles }) => {
+interface MoveModeBannerProps {
+  onCancel: () => void;
+  onDone: () => void;
+  styles: any;
+}
+
+const MoveModeBanner: React.FC<MoveModeBannerProps> = ({ onCancel, onDone, styles }) => {
   return (
     <View style={styles.moveModeBanner}>
       <TouchableOpacity onPress={onCancel}>

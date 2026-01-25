@@ -1,10 +1,25 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Modal } from 'react-native';
 import { Timer, Play } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { formatRestTime, parseRestTimeInput, updateExercisesDeep } from '@/utils/workoutHelpers';
+import type { Workout, RestTimer, RestPeriodSetInfo } from '@/types/workout';
 
-const RestTimerInputModal = ({
+interface RestTimerInputModalProps {
+  visible: boolean;
+  onClose: () => void;
+  restTimerInput: string;
+  setRestTimerInput: (input: string) => void;
+  restPeriodSetInfo: RestPeriodSetInfo | null;
+  currentWorkout: Workout;
+  handleWorkoutUpdate: (workout: Workout) => void;
+  setActiveRestTimer: React.Dispatch<React.SetStateAction<RestTimer | null>>;
+  setRestTimerPopupOpen: (open: boolean) => void;
+  onAddRestPeriod?: () => void;
+  styles: any;
+}
+
+const RestTimerInputModal: React.FC<RestTimerInputModalProps> = ({
   visible,
   onClose,
   restTimerInput,
@@ -23,7 +38,6 @@ const RestTimerInputModal = ({
     
     const { exerciseId, setId } = restPeriodSetInfo;
     
-    // Update the set's rest period
     handleWorkoutUpdate({
       ...currentWorkout,
       exercises: updateExercisesDeep(currentWorkout.exercises, exerciseId, (ex) => ({
@@ -32,7 +46,6 @@ const RestTimerInputModal = ({
       }))
     });
     
-    // Start the timer
     setActiveRestTimer({
       exerciseId,
       setId,
@@ -62,7 +75,6 @@ const RestTimerInputModal = ({
         <View style={styles.modalContent}>
           <Text style={styles.modalTitle}>Set Rest Timer</Text>
           
-          {/* Live Preview */}
           <View style={styles.restTimerPreview}>
             <Timer size={28} color={parseRestTimeInput(restTimerInput) > 0 ? COLORS.blue[500] : COLORS.slate[300]} />
             <Text style={[
@@ -75,7 +87,6 @@ const RestTimerInputModal = ({
             </Text>
           </View>
           
-          {/* Quick Select Buttons - Row 1: 0:30 -> 1:30 */}
           <View style={styles.restPeriodQuickOptions}>
             {[30, 45, 60, 75, 90].map(seconds => (
               <TouchableOpacity
@@ -94,7 +105,6 @@ const RestTimerInputModal = ({
             ))}
           </View>
           
-          {/* Quick Select Buttons - Row 2: 1:45 -> 3:30 */}
           <View style={[styles.restPeriodQuickOptions, { marginBottom: 16 }]}>
             {[105, 120, 150, 180, 210].map(seconds => (
               <TouchableOpacity
@@ -113,7 +123,6 @@ const RestTimerInputModal = ({
             ))}
           </View>
           
-          {/* Phone Dialpad */}
           <View style={styles.dialpad}>
             <View style={styles.dialpadRow}>
               {[1, 2, 3].map(num => (
@@ -189,7 +198,6 @@ const RestTimerInputModal = ({
             </TouchableOpacity>
           </View>
           
-          {/* Start Timer Button - always visible, disabled when no valid input */}
           <TouchableOpacity 
             onPress={handleStartTimer}
             style={[

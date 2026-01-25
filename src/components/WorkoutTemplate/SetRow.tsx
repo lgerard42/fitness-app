@@ -1,10 +1,24 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { Check, Trash2, Plus } from 'lucide-react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { COLORS } from '@/constants/colors';
+import { useSetRowLogic } from './hooks/useSetRowLogic';
+import type { Set, ExerciseCategory, WeightUnit, GroupSetType } from '@/types/workout';
 
-const DeleteAction = ({ progress, dragX, onDelete, buttonStyle }) => {
+interface SetIndex {
+  group: number;
+  subIndex: number | null;
+}
+
+interface DeleteActionProps {
+  progress: Animated.AnimatedInterpolation<number>;
+  dragX: Animated.AnimatedInterpolation<number>;
+  onDelete: () => void;
+  buttonStyle: object;
+}
+
+const DeleteAction: React.FC<DeleteActionProps> = ({ progress, dragX, onDelete, buttonStyle }) => {
   const hasDeleted = React.useRef(false);
   const onDeleteRef = React.useRef(onDelete);
   
@@ -13,14 +27,9 @@ const DeleteAction = ({ progress, dragX, onDelete, buttonStyle }) => {
   }, [onDelete]);
 
   React.useEffect(() => {
-    // Reset hasDeleted when component mounts (new swipe gesture)
     hasDeleted.current = false;
     
-    // Listen to dragX directly
     const id = dragX.addListener(({ value }) => {
-      // value is negative when swiping left. 
-      // Button width is 50.
-      // We want to trigger delete when swiped past ~120px (more than double the button)
       if (value < -120 && !hasDeleted.current) {
         hasDeleted.current = true;
         if (onDeleteRef.current) {
@@ -30,12 +39,6 @@ const DeleteAction = ({ progress, dragX, onDelete, buttonStyle }) => {
     });
     return () => dragX.removeListener(id);
   }, [dragX]);
-
-  const scale = dragX.interpolate({
-    inputRange: [-150, -80],
-    outputRange: [1.5, 1],
-    extrapolate: 'clamp',
-  });
 
   return (
     <TouchableOpacity
@@ -49,7 +52,40 @@ const DeleteAction = ({ progress, dragX, onDelete, buttonStyle }) => {
   );
 };
 
-const SetRow = ({
+interface SetRowProps {
+  set: Set;
+  index: number;
+  category: ExerciseCategory;
+  onUpdate: (set: Set) => void;
+  onToggle: () => void;
+  onDelete: () => void;
+  weightUnit?: WeightUnit;
+  previousSet: Set | null;
+  previousSetIsFromOlderHistory?: boolean;
+  isLast: boolean;
+  onPressSetNumber: (pageX: number, pageY: number, width: number, height: number) => void;
+  isSelectionMode: boolean;
+  isSelected: boolean;
+  onToggleSelection: (isAddToGroupAction?: boolean) => void;
+  dropSetId?: string;
+  isDropSetStart: boolean;
+  isDropSetEnd: boolean;
+  groupSetNumber: number;
+  indexInGroup: number;
+  overallSetNumber: number;
+  warmupIndex: SetIndex | null;
+  workingIndex: SetIndex | null;
+  editingGroupId?: string;
+  groupSetType: GroupSetType;
+  readOnly?: boolean;
+  shouldFocus?: 'weight' | 'reps' | 'duration' | 'distance' | null;
+  onFocusHandled?: () => void;
+  onCustomKeyboardOpen?: ((params: { field: 'weight' | 'reps'; value: string }) => void) | null;
+  customKeyboardActive?: boolean;
+  customKeyboardField?: 'weight' | 'reps' | null;
+}
+
+const SetRow: React.FC<SetRowProps> = ({
   set,
   index,
   category,
@@ -75,85 +111,39 @@ const SetRow = ({
   editingGroupId,
   groupSetType,
   readOnly = false,
-  shouldFocus = null, // 'weight', 'reps', 'duration', 'distance' or null
+  shouldFocus = null,
   onFocusHandled = () => {},
-  onCustomKeyboardOpen = null, // ({ field, value }) => void - opens custom keyboard
-  customKeyboardActive = false, // true if custom keyboard is currently targeting this set
-  customKeyboardField = null // 'weight' | 'reps' | null - which field the custom keyboard is targeting
+  onCustomKeyboardOpen = null,
+  customKeyboardActive = false,
+  customKeyboardField = null
 }) => {
-  const isLift = category === "Lifts";
-  const isCardio = category === "Cardio";
-  const [focusedInput, setFocusedInput] = React.useState(null);
-  const firstInputRef = React.useRef(null);
-  const secondInputRef = React.useRef(null);
-  const indexContainerRef = React.useRef(null);
+  const isLift = category === 'Lifts';
+  const isCardio = category === 'Cardio';
 
-  // Auto-focus effect when shouldFocus is set
-  React.useEffect(() => {
-    if (shouldFocus && !readOnly) {
-      const focusInput = () => {
-        if (shouldFocus === 'weight' && firstInputRef.current) {
-          firstInputRef.current.focus();
-        } else if (shouldFocus === 'reps' && secondInputRef.current) {
-          secondInputRef.current.focus();
-        } else if (shouldFocus === 'duration' && firstInputRef.current) {
-          firstInputRef.current.focus();
-        } else if (shouldFocus === 'distance' && secondInputRef.current) {
-          secondInputRef.current.focus();
-        }
-        onFocusHandled();
-      };
-      // Small delay to ensure the component is fully rendered
-      setTimeout(focusInput, 100);
-    }
-  }, [shouldFocus, readOnly, onFocusHandled]);
+  const {
+    focusedInput,
+    firstInputRef,
+    secondInputRef,
+    indexContainerRef,
+    handleFocus
+  } = useSetRowLogic({
+    set,
+    category,
+    shouldFocus: shouldFocus || null,
+    onFocusHandled,
+    onCustomKeyboardOpen,
+    customKeyboardActive,
+    customKeyboardField: customKeyboardField || null,
+    readOnly
+  });
 
-  // Focus the correct input when custom keyboard targets this set
-  React.useEffect(() => {
-    if (customKeyboardActive && customKeyboardField && !readOnly) {
-      const focusInput = () => {
-        if (customKeyboardField === 'weight' && firstInputRef.current) {
-          firstInputRef.current.focus();
-          setFocusedInput('first');
-        } else if (customKeyboardField === 'reps' && secondInputRef.current) {
-          secondInputRef.current.focus();
-          setFocusedInput('second');
-        }
-      };
-      // Small delay to ensure smooth transition
-      setTimeout(focusInput, 50);
-    } else if (!customKeyboardActive) {
-      // Clear focus state when keyboard is not targeting this set
-      setFocusedInput(null);
-    }
-  }, [customKeyboardActive, customKeyboardField, readOnly]);
-
-  const handleFocus = (inputRef, value, inputId) => {
-    setFocusedInput(inputId);
-    const strVal = value === null || value === undefined ? '' : String(value);
-    
-    if (strVal.length > 0) {
-      const selectAll = () => {
-        inputRef.current?.setNativeProps({ 
-          selection: { start: 0, end: strVal.length } 
-        });
-      };
-
-      // Multiple attempts to ensure selection happens after focus/keyboard animation
-      selectAll();
-      requestAnimationFrame(selectAll);
-      setTimeout(selectAll, 50);
-      setTimeout(selectAll, 200);
-    }
-  };
-
-  const getInputStyle = (value) => {
+  const getInputStyle = (value: string | null | undefined) => {
     if (!set.completed) return null;
     const isEmpty = value === null || value === undefined || String(value).trim() === '';
     return isEmpty ? styles.inputCompletedEmpty : styles.inputCompletedFilled;
   };
 
-  const renderRightActions = React.useCallback((progress, dragX) => {
+  const renderRightActions = useCallback((progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
     return <DeleteAction progress={progress} dragX={dragX} onDelete={onDelete} buttonStyle={styles.deleteButton} />;
   }, [onDelete]);
 
@@ -187,7 +177,6 @@ const SetRow = ({
       <Swipeable 
         renderRightActions={renderRightActions}
         onSwipeableWillOpen={(direction) => {
-          // If fully opened to the right (swiped left past threshold), trigger delete
           if (direction === 'right') {
             onDelete();
           }
@@ -222,15 +211,11 @@ const SetRow = ({
             ]}>
               {isSelectionMode ? (
                 (() => {
-                  // For grouped sets
                   if (dropSetId) {
-                    // Only show on first set in group
                     if (indexInGroup === 1) {
-                      // Check if this is a different group than the one being edited OR if no group is being edited
                       const isDifferentGroup = !editingGroupId || dropSetId !== editingGroupId;
                       
                       if (isDifferentGroup) {
-                        // Show "+" icon for groups when: editing an ungrouped set OR editing a different group
                         return (
                           <TouchableOpacity 
                             onPress={() => onToggleSelection(true)}
@@ -240,7 +225,6 @@ const SetRow = ({
                           </TouchableOpacity>
                         );
                       } else {
-                        // Show checkbox for the group being edited
                         return (
                           <TouchableOpacity 
                             onPress={() => onToggleSelection(false)}
@@ -257,8 +241,6 @@ const SetRow = ({
                         );
                       }
                     } else {
-                      // Not the first set in group
-                      // If this is the group being edited, show checkbox for each set
                       if (editingGroupId && dropSetId === editingGroupId) {
                         return (
                           <TouchableOpacity 
@@ -275,12 +257,10 @@ const SetRow = ({
                           </TouchableOpacity>
                         );
                       } else {
-                        // Otherwise show empty space
                         return <View style={styles.selectionMode__emptySpace} />;
                       }
                     }
                   } else {
-                    // Ungrouped set - always show checkbox (can be added to any group or create new group)
                     return (
                       <TouchableOpacity 
                         onPress={() => onToggleSelection(false)}
@@ -300,11 +280,9 @@ const SetRow = ({
               ) : (
                 <TouchableOpacity
                   ref={indexContainerRef}
-                  onPress={(e) => {
+                  onPress={() => {
                     if (!readOnly && onPressSetNumber && indexContainerRef.current) {
-                      // Measure the indexContainer position instead of using touch coordinates
-                      indexContainerRef.current.measure((x, y, width, height, pageX, pageY) => {
-                        // Pass the full bounds of the indexContainer
+                      indexContainerRef.current.measure((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
                         onPressSetNumber(pageX, pageY, width, height);
                       });
                     }
@@ -315,9 +293,7 @@ const SetRow = ({
                     set.completed && styles.indexBadge__completed
                   ]}
                 >
-                  {/* Display index based on warmupIndex or workingIndex */}
                   {warmupIndex ? (
-                    // Warmup set - display warmup-specific index
                     warmupIndex.subIndex !== null ? (
                       <Text style={styles.indexText}>
                         <Text style={styles.indexText__groupMain}>{warmupIndex.group}</Text>
@@ -327,7 +303,6 @@ const SetRow = ({
                       <Text style={styles.indexText}>{warmupIndex.group}</Text>
                     )
                   ) : workingIndex ? (
-                    // Working set - display working-specific index
                     workingIndex.subIndex !== null ? (
                       <Text style={styles.indexText}>
                         <Text style={styles.indexText__groupMain}>{workingIndex.group}</Text>
@@ -337,7 +312,6 @@ const SetRow = ({
                       <Text style={styles.indexText}>{workingIndex.group}</Text>
                     )
                   ) : (
-                    // Fallback to legacy display
                     dropSetId ? (
                       <Text style={styles.indexText}>
                         <Text style={styles.indexText__groupMain}>{groupSetNumber}</Text>
@@ -348,7 +322,6 @@ const SetRow = ({
                     )
                   )}
                   
-                  {/* Set type badge */}
                   {set.isWarmup && (
                     <View style={styles.setTypeBadge}>
                       <Text style={[styles.setTypeBadgeText, styles.setTypeBadgeText__warmup]}>W</Text>
@@ -381,7 +354,6 @@ const SetRow = ({
                   if (!readOnly) {
                     const val = isLift ? (set.weight || "") : (set.duration || "");
                     if (onCustomKeyboardOpen && isLift) {
-                      setFocusedInput('first');
                       onCustomKeyboardOpen({ field: 'weight', value: val });
                     } else {
                       handleFocus(firstInputRef, val, 'first');
@@ -389,10 +361,9 @@ const SetRow = ({
                   }
                 }}
                 onBlur={() => {
-                  // Don't clear focus if custom keyboard is active for this input
                   if (!customKeyboardActive || customKeyboardField !== 'weight') {
                     if (!onCustomKeyboardOpen || !isLift) {
-                      setFocusedInput(null);
+                      // Focus cleared by hook
                     }
                   }
                 }}
@@ -419,7 +390,6 @@ const SetRow = ({
                   if (!readOnly) {
                     const val = isLift ? (set.reps || "") : isCardio ? (set.distance || "") : (set.reps || "");
                     if (onCustomKeyboardOpen && isLift) {
-                      setFocusedInput('second');
                       onCustomKeyboardOpen({ field: 'reps', value: val });
                     } else {
                       handleFocus(secondInputRef, val, 'second');
@@ -427,10 +397,9 @@ const SetRow = ({
                   }
                 }}
                 onBlur={() => {
-                  // Don't clear focus if custom keyboard is active for this input
                   if (!customKeyboardActive || customKeyboardField !== 'reps') {
                     if (!onCustomKeyboardOpen || !isLift) {
-                      setFocusedInput(null);
+                      // Focus cleared by hook
                     }
                   }
                 }}
@@ -445,7 +414,7 @@ const SetRow = ({
           </View>
 
           <TouchableOpacity 
-            onPress={readOnly ? null : onToggle}
+            onPress={readOnly ? undefined : onToggle}
             disabled={readOnly}
             style={[styles.checkButton, set.completed ? styles.checkButtonCompleted : styles.checkButtonIncomplete]}
           >
@@ -460,12 +429,9 @@ const SetRow = ({
 };
 
 const styles = StyleSheet.create({
-  // Row wrapper (contains group number and swipeable)
   rowWrapper: {
     position: 'relative',
   },
-  
-  // Base container styles
   container: {
     flexDirection: 'column',
     overflow: 'visible',
@@ -485,14 +451,10 @@ const styles = StyleSheet.create({
   completedContainer: {
     backgroundColor: COLORS.green[50],
   },
-  
-  // Swipeable row
   swipeableRow: {
     flexDirection: 'row',
     overflow: 'visible',
   },
-  
-  // Drop set indicator styles
   dropSetIndicator: {
     position: 'absolute',
     left: 0,
@@ -516,8 +478,6 @@ const styles = StyleSheet.create({
   dropSetIndicator__failure: {
     backgroundColor: COLORS.red[500],
   },
-  
-  // Container conditional styles
   container__dropSetStart: {
     borderTopWidth: 2,
     borderTopColor: COLORS.indigo[200],
@@ -536,8 +496,6 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 0,
   },
-  
-  // Content row conditional styles
   contentRow__dropSet: {
     paddingLeft: 3,
     paddingTop: 2,
@@ -549,14 +507,10 @@ const styles = StyleSheet.create({
   contentRow__dropSet__end: {
     paddingBottom: 8,
   },
-  
-  // Selection mode styles
   selectionMode__emptySpace: {
     width: 32,
     marginRight: 4,
   },
-  
-  // Index badge styles (consolidated from indexContainer)
   indexBadge: {
     width: 32,
     height: 22,
@@ -573,8 +527,6 @@ const styles = StyleSheet.create({
   indexBadge__completed: {
     backgroundColor: COLORS.green[50],
   },
-  
-  // Index text styles
   indexText: {
     fontSize: 12,
     fontWeight: 'bold',
@@ -593,8 +545,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.indigo[400],
   },
-
-  // Set type badge
   setTypeBadge: {
     position: 'absolute',
     top: -3,
@@ -616,8 +566,6 @@ const styles = StyleSheet.create({
   setTypeBadgeText__failure: {
     color: COLORS.red[500],
   },
-  
-  // Previous container
   previousContainer: {
     width: 70,
     alignItems: 'center',
@@ -635,8 +583,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.slate[300],
   },
-  
-  // Input styles
   inputsContainer: {
     flex: 1,
     flexDirection: 'row',
@@ -674,8 +620,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'transparent',
   },
-  
-  // Check button styles
   checkButton: {
     width: 32,
     height: 24,
@@ -690,8 +634,6 @@ const styles = StyleSheet.create({
   checkButtonIncomplete: {
     backgroundColor: COLORS.slate[200],
   },
-  
-  // Delete button
   deleteButton: {
     backgroundColor: COLORS.red[500],
     justifyContent: 'center',
@@ -701,13 +643,9 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     borderRadius: 8,
   },
-  
-  // Delete action animated
   deleteAction__animatedScale: {
     transform: [{ scale: 1 }],
   },
-  
-  // Selection checkbox styles
   selectionCheckbox: {
     width: 32,
     height: 32,
@@ -740,8 +678,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.red[500],
     borderColor: COLORS.red[500],
   },
-  
-  // Selection plus button styles
   selectionPlusButton: {
     width: 32,
     height: 32,
@@ -757,4 +693,3 @@ const styles = StyleSheet.create({
 });
 
 export default SetRow;
-
