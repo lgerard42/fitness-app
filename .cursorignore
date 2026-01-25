@@ -1,0 +1,33 @@
+# Cursor ignore file - reduces token usage and improves AI accuracy
+
+# Build outputs and dependencies
+node_modules/
+dist/
+build/
+*.log
+package-lock.json
+
+# Platform-specific directories
+android/
+ios/
+
+# Assets (unless specifically working on UI assets)
+assets/
+android/app/src/main/res/
+
+# Temporary files
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Git
+.git/
+
+# Testing
+coverage/
+.nyc_output/

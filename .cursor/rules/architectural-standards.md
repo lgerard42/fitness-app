@@ -14,9 +14,10 @@
 
 #### Hook Organization
 - Place hooks in `src/components/WorkoutTemplate/hooks/`
-- Name hooks with `use` prefix: `useWorkoutRestTimer.js`, `useWorkoutSupersets.js`
+- Name hooks with `use` prefix: `useWorkoutRestTimer.ts`, `useWorkoutSupersets.ts`
 - Each hook should handle a single domain of functionality
 - Hooks should return state and handlers as an object
+- All hooks must be TypeScript files (`.ts`) with proper type annotations
 
 #### Example Pattern
 ```javascript
@@ -58,7 +59,7 @@ export const useWorkoutFeature = (currentWorkout, handleWorkoutUpdate) => {
 
 ### 3. Pure Functions in Utilities
 
-**Rule:** Always use pure functions in `src/utils/workoutHelpers.js` for data manipulation.
+**Rule:** Always use pure functions in `src/utils/workoutHelpers.ts` for data manipulation.
 
 #### Pure Function Requirements
 - No side effects (no mutations, no API calls, no state updates)
@@ -135,24 +136,56 @@ const WorkoutTemplate = ({ mode = 'live', ... }) => {
 
 ```
 src/components/WorkoutTemplate/
-├── index.js                    # Main orchestrator component
+├── index.tsx                   # Main orchestrator component (TypeScript)
 ├── components/                 # Reusable UI components
 │   ├── RestTimerBar.js
 │   └── MoveModeBanner.js
-├── hooks/                      # Custom hooks for state logic
-│   ├── useWorkoutRestTimer.js
-│   ├── useWorkoutSupersets.js
-│   └── useWorkoutGroups.js
+├── hooks/                      # Custom hooks for state logic (TypeScript)
+│   ├── useWorkoutRestTimer.ts
+│   ├── useWorkoutSupersets.ts
+│   └── useWorkoutGroups.ts
 └── modals/                     # Modal components
     ├── ExercisePicker/
     └── FinishWorkoutModal.js
 ```
+
+## Type Definitions
+
+### 5. Centralized Type Definitions
+
+**Rule:** The ground truth for all workout data structures is `src/types/workout.ts`. Never guess the shape of a workout, exercise, or set; always refer to this file.
+
+#### Type Import Pattern
+- Always import types from `src/types/workout.ts` (or relative path `../../types/workout`)
+- Never define inline interfaces for workout-related types
+- Use the centralized types for:
+  - `Workout`, `Exercise`, `Set`, `ExerciseItem`
+  - `WorkoutMode`, `GroupType`, `ExerciseCategory`
+  - `ExerciseLibraryItem`, `ExerciseStatsMap`
+  - `RestTimer`, `SupersetSelection`, `GroupSelectionMode`
+
+#### Example
+```typescript
+// ✅ Correct - import from centralized types
+import type { Workout, Exercise, Set, WorkoutMode } from '../../types/workout';
+
+// ❌ Incorrect - inline type definition
+interface Workout {
+  // Don't define here - use src/types/workout.ts
+}
+```
+
+#### When Adding New Types
+- Add new workout-related types to `src/types/workout.ts`
+- Export all types from this single source of truth
+- Update existing types in this file, not in component files
 
 ## Migration Guidelines
 
 When refactoring existing code:
 1. Identify state-heavy logic → Extract to custom hook
 2. Identify reusable UI → Move to `components/`
-3. Identify data manipulation → Move to `workoutHelpers.js` as pure function
+3. Identify data manipulation → Move to `workoutHelpers.ts` as pure function
 4. Ensure mode-based rendering is maintained
 5. Update imports and prop passing
+6. Always import types from `src/types/workout.ts` - never guess data structures
