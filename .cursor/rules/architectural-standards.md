@@ -1,5 +1,21 @@
 # Architectural Standards
 
+## Import Standards
+
+### IMPORT STANDARD: Path Alias Usage
+
+**CRITICAL RULE:** Always use the `@/` path alias for any file inside the `src` directory. Never use relative paths (`../`) for shared utilities, types, or constants.
+
+**Examples:**
+- ✅ `import { COLORS } from '@/constants/colors';`
+- ✅ `import type { Workout } from '@/types/workout';`
+- ✅ `import { updateExercisesDeep } from '@/utils/workoutHelpers';`
+- ✅ `import { useWorkout } from '@/context/WorkoutContext';`
+- ❌ `import { COLORS } from '../../constants/colors';`
+- ❌ `import type { Workout } from '../../../types/workout';`
+
+**Exception:** Relative imports (`./` or `../`) are acceptable ONLY for files within the same component directory structure (e.g., `./hooks/useWorkoutRestTimer` within `WorkoutTemplate/index.tsx`).
+
 ## WorkoutTemplate Component Architecture
 
 ### 1. Custom Hooks for State-Heavy Logic

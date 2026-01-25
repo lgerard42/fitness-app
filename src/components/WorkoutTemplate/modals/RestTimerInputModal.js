@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
 import { Timer, Play } from 'lucide-react-native';
-import { COLORS } from '../../../constants/colors';
-import { formatRestTime, parseRestTimeInput, updateExercisesDeep } from '../../../utils/workoutHelpers';
+import { COLORS } from '@/constants/colors';
+import { formatRestTime, parseRestTimeInput, updateExercisesDeep } from '@/utils/workoutHelpers';
 
 const RestTimerInputModal = ({
   visible,

@@ -7,7 +7,7 @@ import { COLORS } from '@/constants/colors';
 import { defaultSupersetColorScheme, defaultHiitColorScheme } from '@/constants/defaultStyles';
 import { formatDuration } from '@/constants/data';
 import SetRow from './SetRow';
-import SavedNoteItem from '../SavedNoteItem';
+import SavedNoteItem from '@/components/SavedNoteItem';
 import ExercisePicker from './modals/ExercisePicker';
 import NewExercise from './modals/NewExercise';
 import { CATEGORIES } from '@/constants/data';

@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Modal, Pressable } from 'react-native';
 import { Play, Pause } from 'lucide-react-native';
-import { COLORS } from '../../../constants/colors';
-import { formatRestTime, updateExercisesDeep } from '../../../utils/workoutHelpers';
+import { COLORS } from '@/constants/colors';
+import { formatRestTime, updateExercisesDeep } from '@/utils/workoutHelpers';
 
 const ActiveRestTimerPopup = ({
   visible,

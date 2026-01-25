@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import { COLORS } from '../../../../../constants/colors';
+import { COLORS } from '@/constants/colors';
 
 const ActionButtons = ({
   isSelected,

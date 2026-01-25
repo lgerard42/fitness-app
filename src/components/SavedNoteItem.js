@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, TextInput, Platform } from 'react-native';
 import { Pin, Trash2, ChevronDown, Calendar } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { COLORS } from '../constants/colors';
+import { COLORS } from '@/constants/colors';
 
 const SavedNoteItem = ({ note, onPin, onRemove, onUpdate, readOnly = false }) => {
   const [isExpanded, setIsExpanded] = useState(true);

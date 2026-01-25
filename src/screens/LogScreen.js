@@ -2,8 +2,8 @@ import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Settings, Plus, Play } from 'lucide-react-native';
-import { COLORS } from '../constants/colors';
-import { useWorkout } from '../context/WorkoutContext';
+import { COLORS } from '@/constants/colors';
+import { useWorkout } from '@/context/WorkoutContext';
 
 const LogScreen = ({ navigation }) => {
   const { activeWorkout, startEmptyWorkout } = useWorkout();

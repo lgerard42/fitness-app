@@ -1,6 +1,6 @@
 import React, { useRef, useCallback, useMemo } from 'react';
 import { View, Text, SectionList, StyleSheet } from 'react-native';
-import { COLORS } from '../../../../constants/colors';
+import { COLORS } from '@/constants/colors';
 import ExerciseListItem from './ExerciseListItem';
 import UnselectedListScrollbar from './UnselectedListScrollbar';
 

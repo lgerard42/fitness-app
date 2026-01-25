@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TextInput, StyleSheet } from 'react-native';
 import { Search } from 'lucide-react-native';
-import { COLORS } from '../../../../constants/colors';
+import { COLORS } from '@/constants/colors';
 
 const SearchBar = ({ search, setSearch }) => {
   return (

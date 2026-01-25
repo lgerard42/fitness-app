@@ -2,8 +2,8 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { Timer, Trash2 } from 'lucide-react-native';
-import { COLORS } from '../../../constants/colors';
-import { formatRestTime, updateExercisesDeep } from '../../../utils/workoutHelpers';
+import { COLORS } from '@/constants/colors';
+import { formatRestTime, updateExercisesDeep } from '@/utils/workoutHelpers';
 
 // Swipe-to-delete action component for rest timers
 const RestTimerDeleteAction = ({ progress, dragX, onDelete, onSwipeComplete }) => {

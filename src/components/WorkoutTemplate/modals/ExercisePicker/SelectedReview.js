@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { COLORS } from '../../../../constants/colors';
+import { COLORS } from '@/constants/colors';
 import DragAndDropModal from './DragAndDropModal';
 
 const SelectedReview = ({

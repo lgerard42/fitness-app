@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Platform, Modal } from 'react-native';
 import { ChevronDown, Calendar, Clock } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { COLORS } from '../../constants/colors';
-import { formatDuration } from '../../constants/data';
+import { COLORS } from '@/constants/colors';
+import { formatDuration } from '@/constants/data';
 
 const WorkoutHeader = ({ 
   workout,

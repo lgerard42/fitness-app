@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text } from 'react-native';
-import { defaultSupersetColorScheme, defaultHiitColorScheme } from '../../../../../constants/defaultStyles';
+import { defaultSupersetColorScheme, defaultHiitColorScheme } from '@/constants/defaultStyles';
 
 const GroupBadge = ({ exerciseGroup, groupedStyles = {} }) => {
   if (!exerciseGroup) return null;

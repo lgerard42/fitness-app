@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import { View, Text, Modal, TouchableOpacity, ScrollView, StyleSheet, PanResponder, Animated } from 'react-native';
 import { X, Calendar, Trophy } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS } from '../constants/colors';
+import { COLORS } from '@/constants/colors';
 
 const ExerciseHistoryModal = ({ visible, onClose, exercise, stats }) => {
   const insets = useSafeAreaInsets();

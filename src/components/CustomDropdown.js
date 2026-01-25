@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Modal, FlatList, StyleSheet } from 'react-native';
 import { ChevronDown, Check } from 'lucide-react-native';
-import { COLORS } from '../constants/colors';
+import { COLORS } from '@/constants/colors';
 
 const CustomDropdown = ({ value, onChange, options, placeholder }) => {
   const [isOpen, setIsOpen] = useState(false);

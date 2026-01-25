@@ -1,6 +1,6 @@
 import React from 'react';
-import WorkoutTemplate from '../components/WorkoutTemplate';
-import { useWorkout } from '../context/WorkoutContext';
+import WorkoutTemplate from '@/components/WorkoutTemplate';
+import { useWorkout } from '@/context/WorkoutContext';
 
 const LiveWorkoutScreen = ({ navigation }) => {
   const { 

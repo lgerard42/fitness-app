@@ -2,8 +2,8 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { View, Modal, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { COLORS } from '../../../../constants/colors';
-import { PRIMARY_TO_SECONDARY_MAP } from '../../../../constants/data';
+import { COLORS } from '@/constants/colors';
+import { PRIMARY_TO_SECONDARY_MAP } from '@/constants/data';
 import HeaderTopRow from './HeaderTopRow';
 import SearchBar from './SearchBar';
 import Filters from './Filters';

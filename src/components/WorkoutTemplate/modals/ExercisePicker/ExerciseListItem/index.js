@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { COLORS } from '../../../../../constants/colors';
-import { defaultSupersetColorScheme, defaultHiitColorScheme } from '../../../../../constants/defaultStyles';
+import { COLORS } from '@/constants/colors';
+import { defaultSupersetColorScheme, defaultHiitColorScheme } from '@/constants/defaultStyles';
 import GroupBadge from './GroupBadge';
 import CountBadge from './CountBadge';
 import ExerciseTags from './ExerciseTags';

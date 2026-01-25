@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { Check } from 'lucide-react-native';
-import { COLORS } from '../../../../constants/colors';
-import { CATEGORIES, PRIMARY_MUSCLES, WEIGHT_EQUIP_TAGS } from '../../../../constants/data';
+import { COLORS } from '@/constants/colors';
+import { CATEGORIES, PRIMARY_MUSCLES, WEIGHT_EQUIP_TAGS } from '@/constants/data';
 import FilterDropdown from './FilterDropdown';
 import SecondaryMuscleFilter from './SecondaryMuscleFilter';
 

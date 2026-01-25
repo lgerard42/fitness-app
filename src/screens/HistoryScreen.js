@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Trophy, Clock, Dumbbell } from 'lucide-react-native';
-import { COLORS } from '../constants/colors';
-import { HISTORY_DATA } from '../constants/data';
-import { useWorkout } from '../context/WorkoutContext';
+import { COLORS } from '@/constants/colors';
+import { HISTORY_DATA } from '@/constants/data';
+import { useWorkout } from '@/context/WorkoutContext';
 
 const HistoryScreen = ({ navigation }) => {
   const [view, setView] = useState('workouts');

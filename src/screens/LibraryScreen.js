@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Plus, Search } from 'lucide-react-native';
-import { COLORS } from '../constants/colors';
-import { CATEGORIES } from '../constants/data';
-import { useWorkout } from '../context/WorkoutContext';
-import NewExercise from '../components/WorkoutTemplate/modals/NewExercise';
-import ExerciseHistoryModal from '../components/ExerciseHistoryModal';
+import { COLORS } from '@/constants/colors';
+import { CATEGORIES } from '@/constants/data';
+import { useWorkout } from '@/context/WorkoutContext';
+import NewExercise from '@/components/WorkoutTemplate/modals/NewExercise';
+import ExerciseHistoryModal from '@/components/ExerciseHistoryModal';
 
 const LibraryScreen = () => {
   const [search, setSearch] = useState("");

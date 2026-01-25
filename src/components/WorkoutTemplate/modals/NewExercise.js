@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Modal, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronDown, ToggleLeft, ToggleRight } from 'lucide-react-native';
-import { COLORS } from '../../../constants/colors';
-import { PRIMARY_MUSCLES, CARDIO_TYPES, TRAINING_FOCUS, WEIGHT_EQUIP_TAGS, PRIMARY_TO_SECONDARY_MAP } from '../../../constants/data';
-import Chip from '../../Chip';
-import CustomDropdown from '../../CustomDropdown';
+import { COLORS } from '@/constants/colors';
+import { PRIMARY_MUSCLES, CARDIO_TYPES, TRAINING_FOCUS, WEIGHT_EQUIP_TAGS, PRIMARY_TO_SECONDARY_MAP } from '@/constants/data';
+import Chip from '@/components/Chip';
+import CustomDropdown from '@/components/CustomDropdown';
 
 const NewExercise = ({ isOpen, onClose, onSave, categories }) => {
   const [newExercise, setNewExercise] = useState({ 

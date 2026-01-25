@@ -3,9 +3,9 @@ import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Clock } from 'lucide-react-native';
-import { COLORS } from '../constants/colors';
-import { useWorkout } from '../context/WorkoutContext';
-import { formatDuration } from '../constants/data';
+import { COLORS } from '@/constants/colors';
+import { useWorkout } from '@/context/WorkoutContext';
+import { formatDuration } from '@/constants/data';
 
 const ActiveWorkoutBanner = () => {
   const { activeWorkout } = useWorkout();

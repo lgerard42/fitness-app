@@ -2,7 +2,7 @@ import React, { useRef, useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, runOnJS } from 'react-native-reanimated';
-import { COLORS } from '../../../../constants/colors';
+import { COLORS } from '@/constants/colors';
 
 const LETTERS = Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i));
 

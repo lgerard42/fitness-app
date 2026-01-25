@@ -1,7 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, Text, View, StyleSheet } from 'react-native';
 import { Star, X } from 'lucide-react-native';
-import { COLORS } from '../constants/colors';
+import { COLORS } from '@/constants/colors';
 
 const Chip = ({ label, selected, isPrimary, isSpecial, onClick, onRemove, onMakePrimary }) => {
   const isSelectedPrimary = selected && isPrimary;

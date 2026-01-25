@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { TouchableOpacity, Text, StyleSheet } from 'react-native';
-import { COLORS } from '../constants/colors';
-import { useWorkout } from '../context/WorkoutContext';
-import WorkoutTemplate from '../components/WorkoutTemplate';
-import WorkoutHeader from '../components/WorkoutTemplate/WorkoutHeader';
+import { COLORS } from '@/constants/colors';
+import { useWorkout } from '@/context/WorkoutContext';
+import WorkoutTemplate from '@/components/WorkoutTemplate';
+import WorkoutHeader from '@/components/WorkoutTemplate/WorkoutHeader';
 
 const EditWorkoutScreen = ({ navigation, route }) => {
   const { workout } = route.params;

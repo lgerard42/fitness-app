@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
-import { COLORS } from '../../../constants/colors';
+import { COLORS } from '@/constants/colors';
 
 const CancelWorkoutModal = ({ visible, onClose, onConfirm, styles }) => {
   return (
