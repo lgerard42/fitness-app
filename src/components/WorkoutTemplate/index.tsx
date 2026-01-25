@@ -2054,23 +2054,46 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
           delayLongPress={150}
           activeOpacity={1}
           style={[
-            styles.dragGroupHeader,
-            {
-              backgroundColor: groupColorScheme[100],
-              borderColor: groupColorScheme[200],
-            },
-            isActive && styles.dragItem__active,
-            isDraggedGroup && isActive && {
-              borderColor: groupColorScheme[300],
-              zIndex: 9999,
+            styles.dragGroupHeaderContainer,
+            isActive && {
+              opacity: 0.9,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.15,
+              shadowRadius: 4,
               elevation: 20,
+              zIndex: 9999,
+              transform: [{ scale: 1.02 }],
+              position: 'relative',
             },
           ]}
         >
-          <Layers size={16} color={groupColorScheme[600]} />
-          <Text style={[styles.dragGroupHeaderText, { color: groupColorScheme[700] }]}>
-            {item.groupType} ({item.childCount})
-          </Text>
+          <View
+            style={[
+              styles.dragGroupHeader,
+              isDraggedGroup && styles.dragGroupHeader__collapsed,
+              {
+                borderColor: groupColorScheme[200],
+                backgroundColor: groupColorScheme[100],
+              },
+              isDraggedGroup && isActive && {
+                borderColor: groupColorScheme[300],
+                zIndex: 9999,
+                elevation: 20,
+              },
+              isDraggedGroup && !isActive && {
+                borderColor: groupColorScheme[300],
+                zIndex: 900,
+              },
+            ]}
+          >
+            <View style={styles.dragGroupHeaderContent}>
+              <Layers size={16} color={groupColorScheme[600]} />
+              <Text style={[styles.dragGroupHeaderText, { color: groupColorScheme[700] }]}>
+                {item.groupType} ({item.childCount})
+              </Text>
+            </View>
+          </View>
         </TouchableOpacity>
       );
     }
@@ -2089,8 +2112,8 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
           style={[
             styles.dragGroupFooter,
             {
-              backgroundColor: groupColorScheme[100],
               borderColor: groupColorScheme[200],
+              backgroundColor: groupColorScheme[100],
             },
           ]}
         />
@@ -4328,17 +4351,37 @@ const styles = StyleSheet.create({
     paddingTop: 4,
     paddingBottom: 100,
   },
+  dragGroupHeaderContainer: {
+    marginTop: 4,
+    marginBottom: 0,
+    position: 'relative',
+  },
   dragGroupHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 8,
     marginHorizontal: 0,
-    marginTop: 4,
     borderWidth: 2,
     borderBottomWidth: 0,
     borderTopLeftRadius: 10,
     borderTopRightRadius: 10,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+  },
+  dragGroupHeader__collapsed: {
+    borderBottomWidth: 2,
+    borderBottomLeftRadius: 10,
+    borderBottomRightRadius: 10,
+    borderStyle: 'dashed',
+    marginBottom: 4,
+    zIndex: 999,
+    elevation: 10,
+  },
+  dragGroupHeaderContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
   dragGroupHeaderText: {
@@ -4349,11 +4392,13 @@ const styles = StyleSheet.create({
   },
   dragGroupFooter: {
     paddingHorizontal: 12,
-    paddingVertical: 3,
+    paddingVertical: 2,
     marginBottom: 4,
     marginHorizontal: 0,
     borderWidth: 2,
     borderTopWidth: 0,
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
     borderBottomLeftRadius: 10,
     borderBottomRightRadius: 10,
   },
