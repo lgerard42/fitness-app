@@ -88,3 +88,7 @@ Planning may be skipped for:
 - Simple variable renaming
 - Documentation-only changes
 - Trivial UI adjustments (< 10 lines)
+
+---
+
+**GROUND TRUTH:** Refer to `src/types/workout.ts` for all data structures.

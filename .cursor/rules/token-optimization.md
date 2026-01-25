@@ -3,6 +3,10 @@
 ## Core Principle
 Minimize output verbosity to reduce token usage and improve efficiency. Focus on code changes, not explanations.
 
+## PROACTIVE RETRIEVAL: Workout Feature Modifications
+
+**CRITICAL RULE:** Before proposing any modification to a workout feature, you MUST retrieve and read the corresponding hook in `src/components/WorkoutTemplate/hooks/`. Never assume state logic lives in the main component file.
+
 ## Specific Rules
 
 ### 1. Code Logic Explanations
@@ -61,3 +65,7 @@ function convertWorkoutUnits(exercise) {
   // ... implementation
 }
 ```
+
+---
+
+**GROUND TRUTH:** Refer to `src/types/workout.ts` for all data structures.

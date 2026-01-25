@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { updateExercisesDeep } from '../../../utils/workoutHelpers';
-import type { Workout, Set, RestTimer } from '../../../types/workout';
+import { updateExercisesDeep } from '@/utils/workoutHelpers';
+import type { Workout, Set, RestTimer } from '@/types/workout';
 
 interface UseWorkoutRestTimerReturn {
   activeRestTimer: RestTimer | null;

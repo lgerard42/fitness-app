@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { findExerciseDeep, findExerciseSuperset, updateExercisesDeep } from '../../../utils/workoutHelpers';
-import type { Workout, SupersetSelection, ExerciseGroup } from '../../../types/workout';
+import { findExerciseDeep, findExerciseSuperset, updateExercisesDeep } from '@/utils/workoutHelpers';
+import type { Workout, SupersetSelection, ExerciseGroup } from '@/types/workout';
 
 interface UseWorkoutSupersetsReturn {
   supersetSelectionMode: SupersetSelection | null;

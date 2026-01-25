@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { findExerciseDeep, updateExercisesDeep } from '../../../utils/workoutHelpers';
-import type { Workout, GroupSelectionMode, GroupSetType } from '../../../types/workout';
+import { findExerciseDeep, updateExercisesDeep } from '@/utils/workoutHelpers';
+import type { Workout, GroupSelectionMode, GroupSetType } from '@/types/workout';
 
 interface UseWorkoutGroupsReturn {
   selectionMode: GroupSelectionMode | null;

@@ -8,6 +8,8 @@
 
 **STRICT REQUIREMENT:** The main `WorkoutTemplate/index.tsx` component MUST NOT contain complex state logic or event handlers. All such logic MUST be extracted into custom hooks.
 
+**UI and Logic Separation:** All state management and event handlers for WorkoutTemplate must reside in `src/components/WorkoutTemplate/hooks/`. The `SetRow.js` component should remain a 'dumb' UI component, receiving its action handlers as props from the hooks orchestrated in `index.tsx`.
+
 #### When to Extract to Hooks
 - State management involving multiple related state variables
 - Complex `useEffect` dependencies and side effects
@@ -202,3 +204,7 @@ When refactoring existing code:
 4. Ensure mode-based rendering is maintained
 5. Update imports and prop passing
 6. Always import types from `src/types/workout.ts` - never guess data structures
+
+---
+
+**GROUND TRUTH:** Refer to `src/types/workout.ts` for all data structures.

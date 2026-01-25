@@ -3,14 +3,14 @@ import { View, Text, TextInput, TouchableOpacity, Pressable, ScrollView, StyleSh
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronDown, ChevronLeft, ChevronRight, Calendar, Clock, FileText, Plus, Dumbbell, Layers, MoreVertical, CalendarDays, Trash2, RefreshCw, Scale, X, Flame, TrendingDown, Zap, Check, Timer, Pause, Play, Delete } from 'lucide-react-native';
 import type { NavigationProp } from '@react-navigation/native';
-import { COLORS } from '../../constants/colors';
-import { defaultSupersetColorScheme, defaultHiitColorScheme } from '../../constants/defaultStyles';
-import { formatDuration } from '../../constants/data';
+import { COLORS } from '@/constants/colors';
+import { defaultSupersetColorScheme, defaultHiitColorScheme } from '@/constants/defaultStyles';
+import { formatDuration } from '@/constants/data';
 import SetRow from './SetRow';
 import SavedNoteItem from '../SavedNoteItem';
 import ExercisePicker from './modals/ExercisePicker';
 import NewExercise from './modals/NewExercise';
-import { CATEGORIES } from '../../constants/data';
+import { CATEGORIES } from '@/constants/data';
 import {
   updateExercisesDeep,
   deleteExerciseDeep,
@@ -24,7 +24,7 @@ import {
   isExerciseInSuperset,
   getStandaloneExercises,
   convertWorkoutUnits
-} from '../../utils/workoutHelpers';
+} from '@/utils/workoutHelpers';
 import { useWorkoutRestTimer } from './hooks/useWorkoutRestTimer';
 import { useWorkoutSupersets } from './hooks/useWorkoutSupersets';
 import { useWorkoutGroups } from './hooks/useWorkoutGroups';
@@ -35,7 +35,7 @@ import CancelWorkoutModal from './modals/CancelWorkoutModal';
 import RestTimerInputModal from './modals/RestTimerInputModal';
 import ActiveRestTimerPopup from './modals/ActiveRestTimerPopup';
 import CustomNumberKeyboard from './modals/CustomNumberKeyboard';
-import type { Workout, WorkoutMode, ExerciseLibraryItem, ExerciseStatsMap, ExerciseItem, Exercise, Set, RestPeriodSetInfo, FocusNextSet, GroupType } from '../../types/workout';
+import type { Workout, WorkoutMode, ExerciseLibraryItem, ExerciseStatsMap, ExerciseItem, Exercise, Set, RestPeriodSetInfo, FocusNextSet, GroupType } from '@/types/workout';
 
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 

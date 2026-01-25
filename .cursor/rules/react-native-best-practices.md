@@ -195,3 +195,7 @@ import type { MyType } from '../../types/myTypes';
 import { myUtil } from '../../utils/myUtils';
 import { COLORS } from '../../constants/colors';
 ```
+
+---
+
+**GROUND TRUTH:** Refer to `src/types/workout.ts` for all data structures.

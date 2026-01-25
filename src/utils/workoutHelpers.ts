@@ -1,4 +1,4 @@
-import type { ExerciseItem, Exercise, ExerciseGroup, FlatExerciseRow, GroupType } from '../types/workout';
+import type { ExerciseItem, Exercise, ExerciseGroup, FlatExerciseRow, GroupType } from '@/types/workout';
 
 export const updateExercisesDeep = (
   list: ExerciseItem[],

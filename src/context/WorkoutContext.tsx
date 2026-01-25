@@ -1,7 +1,7 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { EXERCISE_LIBRARY, migrateExercise, formatDuration } from '../constants/data';
-import type { Workout, Exercise, ExerciseLibraryItem, ExerciseStatsMap, ExerciseStats } from '../types/workout';
+import { EXERCISE_LIBRARY, migrateExercise, formatDuration } from '@/constants/data';
+import type { Workout, Exercise, ExerciseLibraryItem, ExerciseStatsMap, ExerciseStats } from '@/types/workout';
 
 interface WorkoutContextValue {
   activeWorkout: Workout | null;
