@@ -170,6 +170,8 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
   const [collapsedGroupId, setCollapsedGroupId] = useState<string | null>(null);
   const [showGroupTypeModal, setShowGroupTypeModal] = useState(false);
   const [exerciseToGroup, setExerciseToGroup] = useState<ExerciseItem | null>(null);
+  const [dropdownPosition, setDropdownPosition] = useState<{ x: number; y: number } | null>(null);
+  const buttonRefsMap = useRef<Map<string, any>>(new Map());
   const prevVisibleRef = useRef(visible);
   const pendingDragRef = useRef<(() => void) | null>(null);
 
@@ -244,11 +246,33 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
       setCollapsedGroupId(null);
       setShowGroupTypeModal(false);
       setExerciseToGroup(null);
+      setDropdownPosition(null);
       pendingDragRef.current = null;
     }
 
     prevVisibleRef.current = isVisible;
   }, [visible, dragItems]);
+
+  useEffect(() => {
+    if (showGroupTypeModal && exerciseToGroup) {
+      // Measure the button position after state updates
+      const measureButton = () => {
+        const buttonRef = buttonRefsMap.current.get(exerciseToGroup.id);
+        if (buttonRef) {
+          buttonRef.measureInWindow((pageX: number, pageY: number, pageWidth: number, pageHeight: number) => {
+            setDropdownPosition({
+              x: pageX + pageWidth - 140,
+              y: pageY + pageHeight + 4,
+            });
+          });
+        } else {
+          // Retry if ref not available yet
+          setTimeout(measureButton, 10);
+        }
+      };
+      setTimeout(measureButton, 0);
+    }
+  }, [showGroupTypeModal, exerciseToGroup]);
 
   const collapseGroup = useCallback((items: DragItem[], groupId: string): DragItem[] => {
     return items.map(item => {
@@ -839,17 +863,28 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
                 <Text style={styles.countBadgeText}>×{item.count}</Text>
               </View>
             )}
-            <TouchableOpacity
-              onPress={() => {
-                setExerciseToGroup(item);
-                setShowGroupTypeModal(true);
+            <View
+              ref={(ref) => {
+                if (ref) {
+                  buttonRefsMap.current.set(item.id, ref);
+                } else {
+                  buttonRefsMap.current.delete(item.id);
+                }
               }}
-              disabled={isActive}
-              style={styles.groupIconButton}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              collapsable={false}
             >
-              <Layers size={18} color={COLORS.blue[600]} />
-            </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  setExerciseToGroup(item);
+                  setShowGroupTypeModal(true);
+                }}
+                disabled={isActive}
+                style={styles.groupIconButton}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Layers size={18} color={COLORS.blue[600]} />
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </TouchableOpacity>
@@ -863,7 +898,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
       transparent={false}
       onRequestClose={onClose}
     >
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={styles.container} edges={[]}>
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} style={styles.cancelButton}>
             <Text style={styles.cancelButtonText}>Cancel</Text>
@@ -899,30 +934,32 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           </View>
         )}
 
-        <Modal
-          visible={showGroupTypeModal}
-          transparent={true}
-          animationType="fade"
-          onRequestClose={() => {
-            setShowGroupTypeModal(false);
-            setExerciseToGroup(null);
-          }}
-        >
-          <TouchableOpacity
-            style={styles.modalOverlay}
-            activeOpacity={1}
-            onPress={() => {
-              setShowGroupTypeModal(false);
-              setExerciseToGroup(null);
-            }}
-          >
-            <View style={styles.groupTypeModal} onStartShouldSetResponder={() => true}>
-              <Text style={styles.groupTypeModalTitle}>Select Group Type</Text>
-              <View style={styles.groupTypeButtons}>
+        {showGroupTypeModal && (
+          <>
+            <TouchableOpacity
+              style={styles.dropdownOverlay}
+              activeOpacity={1}
+              onPress={() => {
+                setShowGroupTypeModal(false);
+                setExerciseToGroup(null);
+                setDropdownPosition(null);
+              }}
+            />
+            {dropdownPosition && (
+              <View
+                style={[
+                  styles.groupTypeDropdown,
+                  {
+                    top: dropdownPosition.y,
+                    left: dropdownPosition.x,
+                  },
+                ]}
+                onStartShouldSetResponder={() => true}
+              >
                 <TouchableOpacity
                   style={[
-                    styles.groupTypeButton,
-                    styles.groupTypeButtonSuperset,
+                    styles.groupTypeDropdownItem,
+                    styles.groupTypeDropdownItemSuperset,
                   ]}
                   onPress={() => {
                     if (exerciseToGroup) {
@@ -930,14 +967,15 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
                     }
                     setShowGroupTypeModal(false);
                     setExerciseToGroup(null);
+                    setDropdownPosition(null);
                   }}
                 >
-                  <Text style={styles.groupTypeButtonText}>Superset</Text>
+                  <Text style={styles.groupTypeDropdownItemText}>Superset</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[
-                    styles.groupTypeButton,
-                    styles.groupTypeButtonHiit,
+                    styles.groupTypeDropdownItem,
+                    styles.groupTypeDropdownItemHiit,
                   ]}
                   onPress={() => {
                     if (exerciseToGroup) {
@@ -945,23 +983,15 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
                     }
                     setShowGroupTypeModal(false);
                     setExerciseToGroup(null);
+                    setDropdownPosition(null);
                   }}
                 >
-                  <Text style={styles.groupTypeButtonText}>HIIT</Text>
+                  <Text style={styles.groupTypeDropdownItemText}>HIIT</Text>
                 </TouchableOpacity>
               </View>
-              <TouchableOpacity
-                style={styles.groupTypeCancelButton}
-                onPress={() => {
-                  setShowGroupTypeModal(false);
-                  setExerciseToGroup(null);
-                }}
-              >
-                <Text style={styles.groupTypeCancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        </Modal>
+            )}
+          </>
+        )}
       </SafeAreaView>
     </Modal>
   );
@@ -979,10 +1009,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingBottom: 12,
-    paddingTop: 12,
+    paddingTop: 64,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.slate[200],
     backgroundColor: COLORS.white,
+    marginTop: 0,
   },
   headerTitle: {
     fontSize: 18,
@@ -1245,58 +1276,48 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontStyle: 'italic',
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+  dropdownOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'transparent',
+    zIndex: 998,
   },
-  groupTypeModal: {
+  groupTypeDropdown: {
+    position: 'absolute',
     backgroundColor: COLORS.white,
-    borderRadius: 12,
-    padding: 24,
-    width: '80%',
-    maxWidth: 300,
+    borderRadius: 8,
+    minWidth: 140,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 999,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: COLORS.slate[200],
   },
-  groupTypeModalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.slate[900],
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  groupTypeButtons: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
-  },
-  groupTypeButton: {
-    flex: 1,
+  groupTypeDropdownItem: {
     paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.slate[100],
   },
-  groupTypeButtonSuperset: {
-    backgroundColor: defaultSupersetColorScheme[500],
+  groupTypeDropdownItemSuperset: {
+    backgroundColor: defaultSupersetColorScheme[150],
   },
-  groupTypeButtonHiit: {
-    backgroundColor: defaultHiitColorScheme[500],
+  groupTypeDropdownItemHiit: {
+    backgroundColor: defaultHiitColorScheme[150],
+    borderBottomWidth: 0,
   },
-  groupTypeButtonText: {
+  groupTypeDropdownItemText: {
     fontSize: 14,
     fontWeight: '600',
-    color: COLORS.white,
+    color: COLORS.slate[900],
     textTransform: 'uppercase',
-  },
-  groupTypeCancelButton: {
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  groupTypeCancelButtonText: {
-    fontSize: 14,
-    color: COLORS.slate[600],
   },
 });
 
