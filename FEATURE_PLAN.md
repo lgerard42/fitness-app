@@ -1,177 +1,160 @@
-# Feature Plan: Multi-Exercise Group Creation with Selection Mode
+# Feature Plan: Add Set Count Display and Controls to DragAndDropModal
 
-## 1. Current State Analysis
+## Current State Analysis
 
 ### Existing Code Structure
 - **File**: `src/components/WorkoutTemplate/modals/ExercisePicker/DragAndDropModal.tsx`
-- **Current Flow**:
-  1. User clicks group icon on an ungrouped exercise card
-  2. Dropdown appears with "Superset" and "HIIT" options
-  3. User selects a group type
-  4. `addExerciseToGroup` is called immediately, creating a group with only that single exercise
+- The `DragAndDropModal` component manages a reorderable list of exercises with support for grouping (Superset/HIIT)
+- Each `ExerciseItem` has a `count` property representing how many sets (instances) of that exercise exist
+- Currently, the count is only displayed as a badge (`×{count}`) when `count > 1`
+- The count is derived from how many times an exercise ID appears in the `selectedOrder` array
+- The component receives `selectedOrder` as a prop and calls `onReorder` with updated order and groups
 
-### Key Components
-- `addExerciseToGroup`: Currently creates a group with a single exercise immediately
-- `exerciseToGroup`: State tracking which exercise triggered the group creation
-- `showGroupTypeModal`: Controls dropdown visibility
-- `reorderedItems`: Array of `DragItem[]` representing the current order
-- `renderItem`: Renders exercise cards, group headers, and footers
+### Key Data Structures
+- `ExerciseItem`: Contains `exercise`, `orderIndex`, `count`, `groupId`, etc.
+- `DragItem`: Union type of `GroupHeaderItem | GroupFooterItem | ExerciseItem`
+- `selectedOrder`: Array of exercise IDs representing the order
+- `reorderedItems`: Local state array of `DragItem[]` used for drag-and-drop
 
-### Current State Variables
-- `exerciseToGroup: ExerciseItem | null` - The exercise that triggered group creation
-- `showGroupTypeModal: boolean` - Controls dropdown visibility
-- `dropdownPosition: { x: number; y: number } | null` - Dropdown positioning
+### Current Rendering
+- Standalone exercises: Show exercise name, category, muscles, optional count badge (if > 1), and group icon button
+- Group children: Show exercise name, category, muscles, optional count badge (if > 1)
+- Count badge is positioned in `exerciseRight` section, only visible when `count > 1`
 
-## 2. Proposed Changes (Step-by-Step)
+## Proposed Changes (Step-by-Step)
 
-### Step 1: Add Selection Mode State
+### Step 1: Add Set Count Display
 **File**: `DragAndDropModal.tsx`
+**Location**: `renderExerciseContent` function (lines 700-778) and standalone exercise rendering (lines 950-1000)
 **Changes**:
-- Add `isSelectionMode: boolean` state to track when user is in selection mode
-- Add `selectedExercisesForGroup: Set<string>` state to track selected exercise IDs
-- Add `pendingGroupType: GroupType | null` state to store the selected group type
-- Add `pendingGroupInitialExercise: ExerciseItem | null` state to store the initial exercise
+- Modify the exercise name display to always show the set count to the right of the name
+- Format: `{exerciseName} ({count} sets)` or similar
+- Update both `renderExerciseContent` (for group children) and standalone exercise rendering
+- Remove the conditional count badge display (or keep it as a secondary indicator)
 
-**Approximate lines**: ~10 lines
-
-### Step 2: Modify Dropdown Selection Handler
+### Step 2: Add Set Control Buttons
 **File**: `DragAndDropModal.tsx`
+**Location**: Same rendering locations as Step 1
 **Changes**:
-- Instead of calling `addExerciseToGroup` immediately when user selects "Superset" or "HIIT"
-- Set `isSelectionMode = true`
-- Set `pendingGroupType` to the selected type
-- Set `pendingGroupInitialExercise` to `exerciseToGroup`
-- Add the initial exercise to `selectedExercisesForGroup`
-- Close the dropdown
-- Keep the initial exercise highlighted/selected
+- Add "-" and "+" buttons before the group icon button (for standalone exercises)
+- Add "-" and "+" buttons in the `exerciseRight` section (for group children)
+- Position buttons between the count display and the group icon
+- Style buttons consistently with existing UI patterns
+- Disable "-" button when count is 1 (minimum one set)
+- Disable buttons during drag operations (`isActive` check)
 
-**Location**: Lines ~959-990 (dropdown item onPress handlers)
-**Approximate lines**: ~15 lines modified
-
-### Step 3: Add Visual Selection Indicators
+### Step 3: Implement Set Increment Handler
 **File**: `DragAndDropModal.tsx`
+**Location**: New callback function, add after `handleCreateGroupWithSelectedExercises` (around line 509)
 **Changes**:
-- Modify `renderItem` to show selection state for ungrouped exercises when `isSelectionMode` is true
-- Add visual indicator (e.g., border color, background color, checkmark) for selected exercises
-- Disable drag functionality when in selection mode
-- Show different styling for selectable vs selected exercises
+- Create `handleIncrementSet` callback
+- Find the exercise item in `reorderedItems` by ID
+- Add the exercise ID to `selectedOrder` at the appropriate position
+- Update `reorderedItems` to reflect the new count
+- Handle both standalone exercises and group children
+- For group children, add the new instance within the group boundaries
+- Update `dragItems` memoization dependency if needed
 
-**Location**: `renderItem` function, specifically the standalone exercise card rendering (~833-891)
-**Approximate lines**: ~30 lines
-
-### Step 4: Add Exercise Selection Logic
+### Step 4: Implement Set Decrement Handler
 **File**: `DragAndDropModal.tsx`
+**Location**: New callback function, add after `handleIncrementSet`
 **Changes**:
-- Add `handleExerciseSelection` function that toggles exercise selection
-- Only allow selection of ungrouped exercises (where `groupId === null`)
-- Update `selectedExercisesForGroup` Set when exercise is clicked
-- Prevent selection of the initial exercise (it's already in the group)
+- Create `handleDecrementSet` callback
+- Find the exercise item in `reorderedItems` by ID
+- Remove one instance of the exercise ID from `selectedOrder` at the appropriate position
+- Update `reorderedItems` to reflect the new count
+- Handle edge case: prevent removing if count would go below 1
+- For group children, remove the last instance within the group
+- Update group indices if needed
 
-**Approximate lines**: ~20 lines
-
-### Step 5: Add Selection Mode UI Banner
+### Step 5: Update Save Handler
 **File**: `DragAndDropModal.tsx`
+**Location**: `handleSave` function (lines 596-646)
 **Changes**:
-- Add a banner/header above the list when `isSelectionMode` is true
-- Display: "Select exercises to add to [GroupType] group" or similar message
-- Show count of selected exercises
-- Include "Done" and "Cancel" buttons
+- Ensure the save handler correctly processes the updated counts
+- The existing logic already handles count by iterating through items and pushing IDs `count` times
+- Verify that group indices are correctly maintained when sets are added/removed
+- No major changes needed, but verify edge cases
 
-**Location**: After instructionsContainer, before DraggableFlatList
-**Approximate lines**: ~40 lines
-
-### Step 6: Implement Done Button Handler
+### Step 6: Update UI Styles
 **File**: `DragAndDropModal.tsx`
+**Location**: `styles` object (lines 1141-1522)
 **Changes**:
-- Create `handleCreateGroupWithSelectedExercises` function
-- Find all selected exercises in `reorderedItems` (including initial exercise)
-- Sort them by their current order index
-- Create a new group with all selected exercises
-- Replace selected exercises with group header, all exercise items, and group footer
-- Reset selection mode state
-- Close any open modals/dropdowns
+- Add styles for set count text (next to exercise name)
+- Add styles for increment/decrement buttons
+- Ensure buttons are properly sized and positioned
+- Add disabled state styles for buttons
+- Import icons if needed (likely use `Minus` and `Plus` from `lucide-react-native`)
 
-**Approximate lines**: ~50 lines
-
-### Step 7: Implement Cancel Handler
+### Step 7: Update Props and State Management
 **File**: `DragAndDropModal.tsx`
+**Location**: Component props and state (lines 77-180)
 **Changes**:
-- Create `handleCancelSelection` function
-- Reset all selection mode state variables
-- Clear `selectedExercisesForGroup`
-- Set `isSelectionMode = false`
-- Reset `pendingGroupType` and `pendingGroupInitialExercise`
+- May need to update `onReorder` callback signature if parent needs to know about count changes
+- Verify that `selectedOrder` prop updates correctly when parent re-renders
+- Ensure `dragItems` memoization accounts for count changes
 
-**Approximate lines**: ~10 lines
-
-### Step 8: Update State Reset Logic
-**File**: `DragAndDropModal.tsx`
-**Changes**:
-- Update the `useEffect` that resets state when modal opens/closes
-- Include new selection mode state variables in reset
-- Ensure clean state on modal close
-
-**Location**: Lines ~240-254
-**Approximate lines**: ~5 lines
-
-### Step 9: Modify Exercise Card Click Handler
-**File**: `DragAndDropModal.tsx`
-**Changes**:
-- When in selection mode, clicking an ungrouped exercise should toggle selection
-- When not in selection mode, clicking should do nothing (or maintain current behavior)
-- Update the TouchableOpacity onPress for standalone exercise cards
-
-**Location**: `renderItem` function, standalone exercise card (~836-890)
-**Approximate lines**: ~10 lines
-
-### Step 10: Update addExerciseToGroup (Optional Refactor)
-**File**: `DragAndDropModal.tsx`
-**Changes**:
-- Consider refactoring `addExerciseToGroup` to accept multiple exercises
-- Or create a new function `createGroupWithExercises` that handles multiple exercises
-- Keep `addExerciseToGroup` for backward compatibility if needed elsewhere
-
-**Approximate lines**: ~30 lines (if refactoring)
-
-## 3. Potential Risks or Edge Cases
+## Potential Risks or Edge Cases
 
 ### Breaking Changes
-- **Risk**: Changing the immediate group creation behavior might affect other parts of the codebase
-- **Mitigation**: Keep `addExerciseToGroup` function but make it private/internal, or create a new function for multi-exercise groups
+- **Risk**: Modifying `selectedOrder` directly could break parent component expectations
+- **Mitigation**: The component already calls `onReorder` with updated order, so parent should handle updates correctly
 
-### State Management
-- **Risk**: Complex state management with multiple related state variables
-- **Mitigation**: Consider using a reducer pattern if state becomes too complex, but for now, individual state variables should be manageable
+### State Synchronization
+- **Risk**: `reorderedItems` state might get out of sync with `selectedOrder` prop
+- **Mitigation**: The `useEffect` at line 281 already syncs `reorderedItems` when modal opens. Need to ensure count changes update both local state and trigger proper save.
 
-### UI/UX Considerations
-- **Edge Case**: User selects group type but then cancels - need to ensure clean state reset
-- **Edge Case**: User tries to select grouped exercises - should be prevented
-- **Edge Case**: User tries to select the same exercise twice - should toggle off
-- **Edge Case**: User selects exercises but they get reordered - need to maintain selection by ID, not index
+### Group Boundaries
+- **Risk**: Adding/removing sets for group children could break group structure
+- **Mitigation**: When modifying group children, ensure new instances are added within group boundaries (between header and footer)
 
-### Performance Implications
-- **Risk**: Re-rendering all items when selection state changes
-- **Mitigation**: Use `useMemo` and `useCallback` appropriately, which are already in use
+### Minimum Set Count
+- **Risk**: User might try to remove all sets, leaving exercise with 0 sets
+- **Mitigation**: Disable "-" button when count is 1, prevent decrement below 1
 
-### Backward Compatibility
-- **Risk**: If `addExerciseToGroup` is used elsewhere, changing its behavior could break things
-- **Mitigation**: Check for other usages, create new function if needed
+### Drag State Conflicts
+- **Risk**: User might try to modify sets while dragging
+- **Mitigation**: Disable buttons when `isActive` is true
 
-### Edge Cases to Handle
-1. User clicks "Done" with only the initial exercise selected (should still create group)
-2. User scrolls while in selection mode (selections should persist)
-3. User tries to drag while in selection mode (should be disabled)
-4. Modal closes while in selection mode (should reset state)
-5. User selects exercises that are not adjacent in the list (group should include all selected, maintaining relative order)
+### Performance
+- **Risk**: Frequent re-renders when rapidly clicking +/- buttons
+- **Mitigation**: Use `useCallback` for handlers, ensure proper memoization
 
-## 4. User Approval Request
+### Selection Mode
+- **Risk**: Set controls might interfere with selection mode UI
+- **Mitigation**: Hide or disable set controls during selection mode (similar to group icon button)
 
-This plan implements a selection mode for multi-exercise group creation. The flow will be:
-1. User clicks group icon → selects "Superset" or "HIIT"
-2. Enters selection mode with initial exercise pre-selected
-3. User can tap other ungrouped exercises to add them to selection
-4. Visual feedback shows which exercises are selected
-5. User clicks "Done" to create group with all selected exercises
-6. User can click "Cancel" to exit selection mode without creating group
+## Thinking Block: ExerciseItem Discriminated Union Analysis
+
+**Current Structure:**
+- `ExerciseItem = Exercise | ExerciseGroup` (from `src/types/workout.ts`)
+- However, in `DragAndDropModal.tsx`, there's a local `ExerciseItem` interface (line 48) that represents a drag item, not the workout type
+- The local `ExerciseItem` has `type: 'Item'` and contains `exercise: ExerciseLibraryItem`, `orderIndex`, `count`, etc.
+- This is different from the workout `ExerciseItem` type
+
+**Proposed Change Impact:**
+- The change affects the local `ExerciseItem` interface in `DragAndDropModal.tsx`, not the workout type system
+- No impact on `Exercise | ExerciseGroup` discriminated union
+- The `count` property already exists on the local `ExerciseItem` type
+- Changes are UI-only for displaying and modifying the count value
+- The underlying data structure (how exercises are stored in `selectedOrder`) remains the same
+
+**Type Narrowing Considerations:**
+- No type narrowing changes needed
+- The local `ExerciseItem` is already part of the `DragItem` union type
+- Type guards remain the same (`item.type === 'Item'`)
+
+**Utility Function Updates:**
+- No changes needed to `flattenExercises` or `reconstructExercises` in `workoutHelpers.ts`
+- The count is handled at the UI level in the modal, and the final order is passed back via `onReorder`
+
+## User Approval Request
+
+This plan adds:
+1. Always-visible set count display next to exercise names
+2. Increment/decrement buttons for adjusting set counts
+3. Proper handling of set changes for both standalone and grouped exercises
+
+The implementation will maintain existing functionality while adding the requested features. All changes are contained within `DragAndDropModal.tsx`.
 
 **Please review and approve this plan before I proceed with implementation.**

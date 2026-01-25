@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { View, Text, Modal, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DraggableFlatList from 'react-native-draggable-flatlist';
-import { Layers, Check } from 'lucide-react-native';
+import { Layers, Check, Plus, Minus } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { defaultSupersetColorScheme, defaultHiitColorScheme } from '@/constants/defaultStyles';
 import type { ExerciseLibraryItem, GroupType } from '@/types/workout';
@@ -507,6 +507,36 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
     handleCancelSelection();
   }, [pendingGroupType, pendingGroupInitialExercise, reorderedItems, selectedExercisesForGroup, createGroupWithExercises, handleCancelSelection]);
 
+  const handleIncrementSet = useCallback((exerciseItem: ExerciseItem) => {
+    setReorderedItems(prev => {
+      return prev.map(item => {
+        if (item.id === exerciseItem.id && item.type === 'Item') {
+          return {
+            ...item,
+            count: item.count + 1,
+          };
+        }
+        return item;
+      });
+    });
+  }, []);
+
+  const handleDecrementSet = useCallback((exerciseItem: ExerciseItem) => {
+    if (exerciseItem.count <= 1) return;
+
+    setReorderedItems(prev => {
+      return prev.map(item => {
+        if (item.id === exerciseItem.id && item.type === 'Item' && item.count > 1) {
+          return {
+            ...item,
+            count: item.count - 1,
+          };
+        }
+        return item;
+      });
+    });
+  }, []);
+
   const toggleGroupType = useCallback((groupId: string) => {
     setReorderedItems(prev => prev.map(item => {
       if (item.groupId === groupId && item.type === 'GroupHeader' && item.group) {
@@ -746,7 +776,10 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           isActive && styles.exerciseCardContent__groupChild__active,
         ]}>
           <View style={styles.exerciseInfo}>
-            <Text style={styles.exerciseName}>{item.exercise.name}</Text>
+            <View style={styles.exerciseNameRow}>
+              <Text style={styles.exerciseName}>{item.exercise.name}</Text>
+              <Text style={styles.setCountText}>({item.count} {item.count === 1 ? 'set' : 'sets'})</Text>
+            </View>
             <View style={styles.exerciseMeta}>
               {item.exercise.category && (
                 <Text style={styles.exerciseCategory}>{item.exercise.category}</Text>
@@ -758,11 +791,30 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           </View>
 
           <View style={styles.exerciseRight}>
-            {item.count > 1 && (
-              <View style={styles.countBadge}>
-                <Text style={styles.countBadgeText}>×{item.count}</Text>
-              </View>
-            )}
+            <View style={styles.setControls}>
+              <TouchableOpacity
+                onPress={() => handleDecrementSet(item)}
+                disabled={isActive || item.count <= 1}
+                style={[
+                  styles.setControlButton,
+                  (isActive || item.count <= 1) && styles.setControlButton__disabled,
+                ]}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Minus size={16} color={item.count <= 1 ? COLORS.slate[300] : COLORS.slate[700]} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => handleIncrementSet(item)}
+                disabled={isActive}
+                style={[
+                  styles.setControlButton,
+                  isActive && styles.setControlButton__disabled,
+                ]}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Plus size={16} color={isActive ? COLORS.slate[300] : COLORS.slate[700]} />
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
@@ -949,7 +1001,10 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
       >
         <View style={styles.exerciseCardContent}>
           <View style={styles.exerciseInfo}>
-            <Text style={styles.exerciseName}>{item.exercise.name}</Text>
+            <View style={styles.exerciseNameRow}>
+              <Text style={styles.exerciseName}>{item.exercise.name}</Text>
+              <Text style={styles.setCountText}>({item.count} {item.count === 1 ? 'set' : 'sets'})</Text>
+            </View>
             <View style={styles.exerciseMeta}>
               {item.exercise.category && (
                 <Text style={styles.exerciseCategory}>{item.exercise.category}</Text>
@@ -961,9 +1016,30 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           </View>
 
           <View style={styles.exerciseRight}>
-            {item.count > 1 && (
-              <View style={styles.countBadge}>
-                <Text style={styles.countBadgeText}>×{item.count}</Text>
+            {!isSelectionMode && (
+              <View style={styles.setControls}>
+                <TouchableOpacity
+                  onPress={() => handleDecrementSet(item)}
+                  disabled={isActive || item.count <= 1}
+                  style={[
+                    styles.setControlButton,
+                    (isActive || item.count <= 1) && styles.setControlButton__disabled,
+                  ]}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Minus size={16} color={item.count <= 1 ? COLORS.slate[300] : COLORS.slate[700]} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => handleIncrementSet(item)}
+                  disabled={isActive}
+                  style={[
+                    styles.setControlButton,
+                    isActive && styles.setControlButton__disabled,
+                  ]}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Plus size={16} color={isActive ? COLORS.slate[300] : COLORS.slate[700]} />
+                </TouchableOpacity>
               </View>
             )}
             {isSelected && (
@@ -999,7 +1075,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
         </View>
       </TouchableOpacity>
     );
-  }, [getItemGroupContext, initiateGroupDrag, collapsedGroupId, reorderedItems, toggleGroupType, isSelectionMode, selectedExercisesForGroup, handleExerciseSelection]);
+  }, [getItemGroupContext, initiateGroupDrag, collapsedGroupId, reorderedItems, toggleGroupType, isSelectionMode, selectedExercisesForGroup, handleExerciseSelection, handleIncrementSet, handleDecrementSet]);
 
   return (
     <Modal
@@ -1365,10 +1441,21 @@ const styles = StyleSheet.create({
   exerciseInfo: {
     flex: 1,
   },
+  exerciseNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
   exerciseName: {
     fontSize: 15,
     fontWeight: '600',
     color: COLORS.slate[900],
+  },
+  setCountText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: COLORS.slate[600],
   },
   exerciseMeta: {
     flexDirection: 'row',
@@ -1398,6 +1485,24 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
     color: COLORS.blue[700],
+  },
+  setControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginRight: 4,
+  },
+  setControlButton: {
+    padding: 4,
+    borderRadius: 4,
+    backgroundColor: COLORS.slate[100],
+    justifyContent: 'center',
+    alignItems: 'center',
+    minWidth: 28,
+    minHeight: 28,
+  },
+  setControlButton__disabled: {
+    opacity: 0.5,
   },
   groupIconButton: {
     padding: 4,
