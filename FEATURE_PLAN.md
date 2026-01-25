@@ -1,137 +1,108 @@
-# Feature Plan: Fix Dropset Application in Workout Template
+# Feature Plan: Drag and Drop for Workout Template Exercise Reordering
 
-## SOLUTION IMPLEMENTED
+## Status: IMPLEMENTED ✓
 
-**Root Cause Found**: The UI expects sets to have a shared `dropSetId` string to visually group them together. We were incorrectly setting `isDropset: true` on individual sets, which doesn't create the visual grouping.
+## Overview
 
-**Fix Applied**: In `createExerciseInstance`, when `isDropset` is true:
-1. Generate a unique `dropSetId` string
-2. Assign that `dropSetId` to ALL sets in the exercise
-3. This causes the UI to visually group those sets as a dropset
+Native drag and drop functionality for reordering exercises directly on the WorkoutTemplate, following the DragAndDropModal as the golden standard.
 
-## Current State Analysis
+## Implementation Summary
 
-### Data Flow Traced:
-1. **DragAndDropModal**: User toggles dropset → `dropsetExercises` state (Set<string>) is updated
-2. **DragAndDropModal.handleSave**: Collects dropset IDs from `finalItems`, calls `onReorder(newOrder, updatedGroups, dropsetExerciseIds)`
-3. **HeaderTopRow.handleDragDropReorder**: Receives dropset IDs, calls `setDropsetExerciseIds(dropsetExerciseIds || [])`
-4. **ExercisePicker**: State is updated → useEffect syncs to ref
-5. **ExercisePicker.handleAddAction**: Calls `convertToWorkoutFormat()` which uses `dropsetExerciseIdsRef.current`
-6. **WorkoutTemplate.handleAddExercisesFromPicker**: Receives exercises with `_isDropset`, creates instances
+### Files Created:
+1. **`src/components/WorkoutTemplate/hooks/useWorkoutDragDrop.ts`** (~230 lines)
+   - Custom hook managing drag mode state
+   - Converts workout exercises to drag items
+   - Handles drag start, end, and cancel
+   - Manages group collapse/expand logic
+   - Uses `flattenExercises` and `reconstructExercises` utilities
 
-### IDENTIFIED ISSUES:
+### Files Modified:
+1. **`src/components/WorkoutTemplate/index.tsx`**
+   - Added `DraggableFlatList` import from `react-native-draggable-flatlist`
+   - Added `useWorkoutDragDrop` hook import and usage
+   - Added `renderDragItem` callback for rendering drag items
+   - Added `renderDraggableList` function for drag mode UI
+   - Modified main render to conditionally show DraggableFlatList in drag mode
+   - Updated exercise card `onLongPress` to trigger `handleDragStart`
+   - Updated group header `onLongPress` to trigger `handleDragStart`
+   - Added new styles for drag mode UI
 
-**Issue 1: Race Condition with Ref Sync**
-The `useEffect` that syncs the ref runs AFTER the render. If state updates and `handleAddAction` are batched or happen in quick succession, the ref might not be updated yet.
+## Key Behaviors
 
-```javascript
-// Current (buggy):
-useEffect(() => {
-  dropsetExerciseIdsRef.current = dropsetExerciseIds;  // Runs AFTER render
-}, [dropsetExerciseIds]);
+### User Interaction:
+1. **Long press on exercise header** → Enters drag mode with all sets collapsed
+2. **Long press on group header** → Enters drag mode with entire group as draggable unit
+3. **Drag item to new position** → Visual feedback during drag
+4. **Release to drop** → Applies reordering and exits drag mode
+5. **Tap Cancel button** → Reverts to original order and exits drag mode
+
+### Technical Behavior:
+- When drag mode activates, displays `DraggableFlatList` with condensed exercise cards
+- Only exercise name and set count shown during drag (sets hidden)
+- Groups displayed as: Header → Exercise items → Footer
+- Uses `MoveModeBanner` for cancel/done actions
+- Drag changes are applied via `reconstructExercises` utility
+
+## Drag Item Types
+
+```typescript
+type WorkoutDragItem = GroupHeaderDragItem | GroupFooterDragItem | ExerciseDragItem;
+
+interface GroupHeaderDragItem {
+  id: string;
+  type: 'GroupHeader';
+  groupId: string | null;
+  groupType: GroupType;
+  childCount: number;
+  data: ExerciseGroup;
+}
+
+interface ExerciseDragItem {
+  id: string;
+  type: 'Exercise';
+  groupId: string | null;
+  exercise: Exercise;
+  isFirstInGroup: boolean;
+  isLastInGroup: boolean;
+  setCount: number;
+}
 ```
 
-**Issue 2: Missing Dependency in handleDragDropReorder**
-In `HeaderTopRow.tsx`, the `handleDragDropReorder` callback is missing `setDropsetExerciseIds` in its dependency array:
-```javascript
-}, [setSelectedOrder, setExerciseGroups, setSelectedIds]);
-// Missing: setDropsetExerciseIds
-```
+## Architecture Compliance
 
-**Issue 3: State Update Timing**
-React's state updates are asynchronous. When `handleDragDropReorder` calls `setDropsetExerciseIds`, the state update is queued but may not complete before `convertToWorkoutFormat` reads the ref.
+### Follows `.cursor/rules/architectural-standards.md`:
+- ✓ State logic extracted to `hooks/useWorkoutDragDrop.ts`
+- ✓ Uses `@/` path alias for imports
+- ✓ Types imported from `@/types/workout`
+- ✓ Pure functions used from `@/utils/workoutHelpers`
+- ✓ Mode-based rendering (drag mode vs normal mode)
 
-## Proposed Changes (Step-by-Step)
+### Follows DragAndDropModal Pattern:
+- ✓ Uses `DraggableFlatList` from same library
+- ✓ Similar item type structure (Header, Footer, Item)
+- ✓ Collapsed view during drag
+- ✓ Color schemes for groups (Superset/HIIT)
+- ✓ Visual feedback for active drag item
 
-### Step 1: Create Atomic Setter for Dropset IDs
-**File**: `src/components/WorkoutTemplate/modals/ExercisePicker/index.tsx`
-**Lines**: 57-63
-**Action**: 
-- Create a custom setter that updates BOTH the ref AND the state synchronously
-- Remove the useEffect that syncs state to ref (no longer needed)
+## Testing Notes
 
-```javascript
-// Before:
-const [dropsetExerciseIds, setDropsetExerciseIds] = useState<string[]>([]);
-const dropsetExerciseIdsRef = useRef<string[]>([]);
+To test the implementation:
+1. Open a workout with exercises
+2. Long press on an exercise card header
+3. Observe: All sets collapse, drag mode banner appears
+4. Drag exercise to new position
+5. Release to confirm reorder
+6. Verify exercises are in new order
 
-useEffect(() => {
-  dropsetExerciseIdsRef.current = dropsetExerciseIds;
-}, [dropsetExerciseIds]);
+For groups:
+1. Long press on a group header (Superset/HIIT)
+2. Observe: Entire group moves as one unit
+3. Drag to new position
+4. Release to confirm
 
-// After:
-const [dropsetExerciseIds, setDropsetExerciseIdsRaw] = useState<string[]>([]);
-const dropsetExerciseIdsRef = useRef<string[]>([]);
+## Potential Future Enhancements
 
-const setDropsetExerciseIds = useCallback((ids: string[]) => {
-  dropsetExerciseIdsRef.current = ids; // Update ref IMMEDIATELY
-  setDropsetExerciseIdsRaw(ids);       // Queue state update
-}, []);
-```
-
-**Why**: This ensures the ref is ALWAYS up-to-date immediately when the setter is called, not after a render cycle.
-
-### Step 2: Fix Dependency Array in HeaderTopRow
-**File**: `src/components/WorkoutTemplate/modals/ExercisePicker/HeaderTopRow.tsx`
-**Lines**: 85
-**Action**: Add `setDropsetExerciseIds` to the dependency array
-
-```javascript
-// Before:
-}, [setSelectedOrder, setExerciseGroups, setSelectedIds]);
-
-// After:
-}, [setSelectedOrder, setExerciseGroups, setSelectedIds, setDropsetExerciseIds]);
-```
-
-**Why**: Ensures the callback always has the latest reference to `setDropsetExerciseIds`.
-
-### Step 3: Update Reset Calls to Use New Setter
-**File**: `src/components/WorkoutTemplate/modals/ExercisePicker/index.tsx`
-**Lines**: 529, 541
-**Action**: Ensure the reset calls use the new setter (should work automatically since we're keeping the same function name)
-
-## Thinking Block: ExerciseItem Discriminated Union Analysis
-
-**Current Structure:**
-- `ExerciseItem = Exercise | ExerciseGroup`
-- `Set.isDropset?: boolean` (on individual sets)
-
-**Proposed Change Impact:**
-- No changes to the ExerciseItem union structure
-- Dropset is handled at the Set level within Exercise
-- The change is purely in the flow of data from ExercisePicker to WorkoutTemplate
-- No type narrowing or utility function changes needed
-
-## Potential Risks or Edge Cases
-
-1. **Multiple Rapid Clicks**: If user clicks "Add" multiple times rapidly, the state might not match the ref - but the ref is always correct so this is fine.
-
-2. **Component Unmount**: If ExercisePicker unmounts before state update completes, no issue since we're using the ref.
-
-3. **Callback Stability**: The new `setDropsetExerciseIds` callback needs to be stable (wrapped in useCallback with empty deps).
-
-## Implementation Status: COMPLETE
-
-### Changes Made:
-
-1. **ExercisePicker (index.tsx)** - Lines 57-65:
-   - Renamed state setter to `setDropsetExerciseIdsRaw`
-   - Created custom `setDropsetExerciseIds` callback that updates BOTH the ref AND state
-   - The ref is now updated SYNCHRONOUSLY before the async state update
-   - Removed the useEffect that synced state to ref (no longer needed)
-
-2. **HeaderTopRow.tsx** - Line 85:
-   - Added `setDropsetExerciseIds` to the dependency array of `handleDragDropReorder`
-
-### How It Works Now:
-
-1. User opens DragAndDropModal and toggles dropsets
-2. User clicks "Save" → `handleSave` collects dropset IDs and calls `onReorder(..., dropsetExerciseIds)`
-3. `handleDragDropReorder` calls `setDropsetExerciseIds(dropsetExerciseIds)`
-4. **NEW**: The custom setter immediately updates `dropsetExerciseIdsRef.current` (synchronous)
-5. Modal closes
-6. User clicks "Add" → `handleAddAction` calls `convertToWorkoutFormat()`
-7. `convertToWorkoutFormat` reads from `dropsetExerciseIdsRef.current` which is guaranteed to be up-to-date
-8. Exercises are created with `_isDropset: true`
-9. WorkoutTemplate receives exercises with `_isDropset` and marks all sets with `isDropset: true`
+1. **Haptic feedback** on drag start/end
+2. **Auto-scroll** when dragging near edges
+3. **Visual drop indicators** showing where item will land
+4. **Undo** functionality after reorder
