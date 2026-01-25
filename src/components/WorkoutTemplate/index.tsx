@@ -29,7 +29,7 @@ import {
 import { useWorkoutRestTimer } from './hooks/useWorkoutRestTimer';
 import { useWorkoutSupersets } from './hooks/useWorkoutSupersets';
 import { useWorkoutGroups } from './hooks/useWorkoutGroups';
-import { useWorkoutDragDrop, WorkoutDragItem } from './hooks/useWorkoutDragDrop';
+import { useWorkoutDragDrop, WorkoutDragItem, ExerciseDragItem } from './hooks/useWorkoutDragDrop';
 import RestTimerBar from './components/RestTimerBar';
 import MoveModeBanner from './components/MoveModeBanner';
 import FinishWorkoutModal from './modals/FinishWorkoutModal';
@@ -1085,7 +1085,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
 
   const hasExercises = currentWorkout.exercises.length > 0;
 
-  const renderExerciseCard = (ex: Exercise, isGroupChild: boolean = false, isLastChild: boolean = false, parentGroupType: GroupType | null = null) => {
+  const renderExerciseCard = (ex: Exercise, isGroupChild: boolean = false, isLastChild: boolean = false, parentGroupType: GroupType | null = null, parentGroupId: string | null = null) => {
     const historyEntries = exerciseStats[ex.exerciseId]?.history || [];
     const groupColorScheme = isGroupChild && parentGroupType
       ? (parentGroupType === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme)
@@ -1622,6 +1622,9 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     );
 
     if (isGroupChild) {
+      // Determine marginBottom: 16 if in drag mode and group is unselected (collapsed), 0 otherwise
+      const shouldHaveMargin = isDragging && collapsedGroupId && parentGroupId && collapsedGroupId !== parentGroupId;
+
       return (
         <View
           key={ex.instanceId}
@@ -1632,6 +1635,8 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
               backgroundColor: groupColorScheme[100],
             },
             isLastChild && !isMoveMode && styles.groupChildWrapper__last,
+            isLastChild && !isMoveMode && shouldHaveMargin && { marginBottom: 16 },
+            isLastChild && !isMoveMode && !shouldHaveMargin && { marginBottom: 0 },
             isMoveMode && groupColorScheme && {
               backgroundColor: groupColorScheme[50],
             }
@@ -1957,21 +1962,23 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
         // Check if it's the last child of the group
         let isLastChild = false;
         let parentGroupType = null;
+        let parentGroupId = null;
         if (isGroupChild) {
           const nextRow = flatRows[index + 1];
           if (!nextRow || nextRow.type === 'group_header' || nextRow.depth === 0) {
             isLastChild = true;
           }
-          // Find parent group to get group type
+          // Find parent group to get group type and id
           for (let i = index - 1; i >= 0; i--) {
             if (flatRows[i].type === 'group_header') {
               parentGroupType = flatRows[i].data.groupType;
+              parentGroupId = flatRows[i].id;
               break;
             }
           }
         }
 
-        renderedItems.push(renderExerciseCard(row.data, isGroupChild, isLastChild, parentGroupType));
+        renderedItems.push(renderExerciseCard(row.data, isGroupChild, isLastChild, parentGroupType, parentGroupId));
       }
     });
 
@@ -2037,11 +2044,13 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
       const groupColorScheme = item.groupType === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme;
       const isCollapsed = item.isCollapsed || collapsedGroupId === item.groupId;
       const isDraggedGroup = collapsedGroupId === item.groupId;
+      const shouldRenderGhosts = isCollapsed && !isDraggedGroup;
+      const isActivelyDragging = isActive && isDraggedGroup;
 
-      // Hide collapsed group headers (they're part of other groups being collapsed)
-      if (isCollapsed && !isDraggedGroup) {
-        return <View style={{ height: 0, overflow: 'hidden' }} />;
-      }
+      const itemsInThisGroup = dragItems.filter(i =>
+        i.groupId === item.groupId && i.type === 'Exercise'
+      );
+      const isActuallyEmpty = itemsInThisGroup.length === 0;
 
       return (
         <TouchableOpacity
@@ -2094,6 +2103,51 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
               </Text>
             </View>
           </View>
+
+          {shouldRenderGhosts && !isActivelyDragging && (
+            <View>
+              {dragItems
+                .filter((i): i is ExerciseDragItem => i.groupId === item.groupId && i.type === 'Exercise')
+                .map((ghostItem, index, array) => {
+                  const isFirst = index === 0;
+                  const isLast = index === array.length - 1;
+                  return (
+                    <View
+                      key={ghostItem.id}
+                      style={[
+                        styles.dragExerciseCard,
+                        styles.dragExerciseCard__inGroup,
+                        groupColorScheme && {
+                          backgroundColor: groupColorScheme[50],
+                          borderColor: groupColorScheme[200],
+                        },
+                        isFirst && styles.dragExerciseCard__firstInGroup,
+                        isLast && styles.dragExerciseCard__lastInGroup,
+                      ]}
+                    >
+                      <View style={styles.dragExerciseContent}>
+                        <Text style={styles.dragExerciseName}>{ghostItem.exercise.name}</Text>
+                        <Text style={[
+                          styles.dragExerciseSetCount,
+                          groupColorScheme && { color: groupColorScheme[600] }
+                        ]}>
+                          {ghostItem.setCount} sets
+                        </Text>
+                      </View>
+                    </View>
+                  );
+                })}
+              <View
+                style={[
+                  styles.dragGroupFooter,
+                  {
+                    borderColor: groupColorScheme[200],
+                    backgroundColor: groupColorScheme[100],
+                  },
+                ]}
+              />
+            </View>
+          )}
         </TouchableOpacity>
       );
     }
@@ -2101,9 +2155,16 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     if (item.type === 'GroupFooter') {
       const groupColorScheme = item.groupType === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme;
       const isCollapsed = item.isCollapsed || collapsedGroupId === item.groupId;
+      const isDraggedGroup = collapsedGroupId === item.groupId;
 
-      // Hide collapsed group footers
-      if (isCollapsed) {
+      // Hide collapsed group footers only if they're part of the dragged group
+      // Other collapsed groups show their footer as part of the ghost rendering
+      if (isCollapsed && isDraggedGroup) {
+        return <View style={{ height: 0, overflow: 'hidden' }} />;
+      }
+
+      // Don't render footer if it's part of a collapsed group (ghost rendering handles it)
+      if (isCollapsed && !isDraggedGroup) {
         return <View style={{ height: 0, overflow: 'hidden' }} />;
       }
 
@@ -2128,9 +2189,16 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
       : null;
 
     const isCollapsed = item.isCollapsed || (collapsedGroupId && item.groupId === collapsedGroupId);
+    const isDraggedGroup = collapsedGroupId === item.groupId;
 
-    // Hide collapsed exercises (they're part of a group being dragged)
-    if (isCollapsed) {
+    // Hide collapsed exercises only if they're part of the dragged group
+    // Other collapsed groups show their exercises as ghosts in the header
+    if (isCollapsed && isDraggedGroup) {
+      return <View style={{ height: 0, overflow: 'hidden' }} />;
+    }
+
+    // Hide exercises that are part of other collapsed groups (they're shown as ghosts)
+    if (isCollapsed && !isDraggedGroup) {
       return <View style={{ height: 0, overflow: 'hidden' }} />;
     }
 
@@ -3069,7 +3137,7 @@ const styles = StyleSheet.create({
   },
   exerciseCard__groupChild: {
     marginHorizontal: 0,
-    marginBottom: 6,
+    marginBottom: 0,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: COLORS.slate[200],
@@ -3880,10 +3948,10 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.indigo[100],
   },
   groupChildWrapper__last: {
-    borderBottomLeftRadius: 10,
-    borderBottomRightRadius: 10,
+    borderBottomLeftRadius: 4,
+    borderBottomRightRadius: 4,
     borderBottomWidth: 2,
-    marginBottom: 16,
+    marginBottom: 0, // Will be conditionally set to 16 in drag mode for unselected groups
   },
   groupChildWrapper__moveMode: {
     backgroundColor: COLORS.indigo[50],
@@ -4393,6 +4461,7 @@ const styles = StyleSheet.create({
   dragGroupFooter: {
     paddingHorizontal: 12,
     paddingVertical: 2,
+    marginTop: 0,
     marginBottom: 4,
     marginHorizontal: 0,
     borderWidth: 2,
@@ -4413,6 +4482,8 @@ const styles = StyleSheet.create({
   },
   dragExerciseCard__inGroup: {
     borderRadius: 0,
+    marginTop: 0,
+    marginBottom: 0,
     marginVertical: 0,
     borderWidth: 0,
     borderLeftWidth: 2,
@@ -4421,10 +4492,12 @@ const styles = StyleSheet.create({
   dragExerciseCard__firstInGroup: {
     borderTopLeftRadius: 0,
     borderTopRightRadius: 0,
+    marginTop: 0,
   },
   dragExerciseCard__lastInGroup: {
     borderBottomLeftRadius: 0,
     borderBottomRightRadius: 0,
+    marginBottom: 0,
   },
   dragItem__active: {
     backgroundColor: COLORS.white,
@@ -4446,6 +4519,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 12,
     paddingHorizontal: 16,
+  },
+  dragExerciseContent__lastInGroup: {
+    paddingBottom: 0,
+    marginBottom: 0,
   },
   dragExerciseName: {
     fontSize: 15,

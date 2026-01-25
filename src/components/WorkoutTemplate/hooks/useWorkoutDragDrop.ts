@@ -31,6 +31,7 @@ interface ExerciseDragItem extends DragItemBase {
 }
 
 export type WorkoutDragItem = GroupHeaderDragItem | GroupFooterDragItem | ExerciseDragItem;
+export type { ExerciseDragItem };
 
 interface UseWorkoutDragDropProps {
   currentWorkout: Workout;
