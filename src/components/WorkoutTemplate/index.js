@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Pressable, ScrollView, StyleSheet, Modal, Animated, Easing } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Swipeable } from 'react-native-gesture-handler';
 import { ChevronDown, ChevronLeft, ChevronRight, Calendar, Clock, FileText, Plus, Dumbbell, Layers, MoreVertical, CalendarDays, Trash2, RefreshCw, Scale, X, Flame, TrendingDown, Zap, Check, Timer, Pause, Play, Delete } from 'lucide-react-native';
 import { COLORS } from '../../constants/colors';
 import { defaultSupersetColorScheme, defaultHiitColorScheme } from '../../constants/defaultStyles';
@@ -11,200 +10,31 @@ import SavedNoteItem from '../SavedNoteItem';
 import ExercisePicker from './modals/ExercisePicker';
 import NewExercise from './modals/NewExercise';
 import { CATEGORIES } from '../../constants/data';
-
-const updateExercisesDeep = (list, instanceId, updateFn) => {
-  return list.map(item => {
-    if (item.instanceId === instanceId) return updateFn(item);
-    if (item.type === 'group' && item.children) {
-      return { ...item, children: updateExercisesDeep(item.children, instanceId, updateFn) };
-    }
-    return item;
-  });
-};
-
-const deleteExerciseDeep = (list, instanceId) => {
-  return list.reduce((acc, item) => {
-    if (item.instanceId === instanceId) return acc;
-    if (item.type === 'group' && item.children) {
-      const newChildren = deleteExerciseDeep(item.children, instanceId);
-      if (newChildren.length === 0) return acc; // Remove empty group
-      return [...acc, { ...item, children: newChildren }];
-    }
-    return [...acc, item];
-  }, []);
-};
-
-// --- Flatten / Reconstruct Helpers ---
-
-const flattenExercises = (exercises) => {
-  const rows = [];
-  exercises.forEach(item => {
-    if (item.type === 'group') {
-      rows.push({ type: 'group_header', id: item.instanceId, data: item, depth: 0 });
-      if (item.children) {
-        item.children.forEach(child => {
-          rows.push({ type: 'exercise', id: child.instanceId, data: child, depth: 1, groupId: item.instanceId });
-        });
-      }
-    } else {
-      rows.push({ type: 'exercise', id: item.instanceId, data: item, depth: 0, groupId: null });
-    }
-  });
-  return rows;
-};
-
-const reconstructExercises = (flatRows) => {
-  const newExercises = [];
-  let currentGroup = null;
-
-  flatRows.forEach(row => {
-    if (row.type === 'group_header') {
-      // Start new group
-      currentGroup = { ...row.data, children: [] };
-      newExercises.push(currentGroup);
-    } else if (row.type === 'exercise') {
-      // If we are "inside" a group (i.e. following a header), add to it.
-      // BUT: We need to respect the user's intent. 
-      // Simple heuristic: If the row has a groupId that matches the currentGroup, keep it there?
-      // No, the order in flatRows is the truth.
-      // The greedy approach: If currentGroup is active, add to it.
-      // To allow "breaking out", we would need explicit "end group" markers or depth changes.
-      // For this implementation, we'll assume:
-      // 1. If we hit a group header, we are in that group.
-      // 2. If we hit a standalone exercise (depth 0), we exit the group? 
-      //    But how do we know it's depth 0 if we just moved it?
-      //    We update the depth based on where it was dropped!
-      
-      if (row.depth === 1 && currentGroup) {
-        currentGroup.children.push(row.data);
-      } else {
-        // Standalone
-        newExercises.push(row.data);
-        currentGroup = null; // Reset current group
-      }
-    }
-  });
-  return newExercises;
-};
-
-const findExerciseDeep = (list, instanceId) => {
-  for (const item of list) {
-    if (item.instanceId === instanceId) return item;
-    if (item.type === 'group' && item.children) {
-      const found = findExerciseDeep(item.children, instanceId);
-      if (found) return found;
-    }
-  }
-  return null;
-};
-
-// Format seconds to MM:SS display
-const formatRestTime = (seconds) => {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
-};
-
-// Smart parse time input to seconds
-// - 1-2 digits: treat as seconds (e.g., "30" → 30s, "90" → 90s)
-// - 3+ digits with last 2 < 60: parse as MMSS (e.g., "110" → 1:10 = 70s)
-// - 3+ digits with last 2 >= 60: treat as total seconds (e.g., "165" → 165s)
-const parseRestTimeInput = (input) => {
-  const num = parseInt(input, 10);
-  if (isNaN(num) || num <= 0) return 0;
-  
-  if (num <= 99) {
-    // 1-2 digits: treat as seconds
-    return num;
-  } else {
-    // 3+ digits: check if last two digits are valid seconds (< 60)
-    const lastTwo = num % 100;
-    const rest = Math.floor(num / 100);
-    
-    if (lastTwo < 60) {
-      // Parse as MMSS format (e.g., 110 → 1 min 10 sec)
-      return rest * 60 + lastTwo;
-    } else {
-      // Last two digits >= 60, treat as total seconds
-      return num;
-    }
-  }
-};
-
-// Helper functions for superset detection
-const getAllSupersets = (exercises) => {
-  return exercises.filter(ex => ex.type === 'group' && ex.groupType === 'Superset');
-};
-
-const findExerciseSuperset = (exercises, exerciseInstanceId) => {
-  for (const item of exercises) {
-    if (item.type === 'group' && item.groupType === 'Superset' && item.children) {
-      const found = item.children.find(child => child.instanceId === exerciseInstanceId);
-      if (found) return item;
-    }
-  }
-  return null;
-};
-
-const isExerciseInSuperset = (exercises, exerciseInstanceId) => {
-  return !!findExerciseSuperset(exercises, exerciseInstanceId);
-};
-
-const getStandaloneExercises = (exercises) => {
-  const standalone = [];
-  exercises.forEach(item => {
-    if (item.type === 'exercise') {
-      standalone.push(item);
-    }
-  });
-  return standalone;
-};
+import {
+  updateExercisesDeep,
+  deleteExerciseDeep,
+  findExerciseDeep,
+  flattenExercises,
+  reconstructExercises,
+  formatRestTime,
+  parseRestTimeInput,
+  getAllSupersets,
+  findExerciseSuperset,
+  isExerciseInSuperset,
+  getStandaloneExercises
+} from '../../utils/workoutHelpers';
+import RestTimerBar from './components/RestTimerBar';
+import MoveModeBanner from './components/MoveModeBanner';
+import FinishWorkoutModal from './modals/FinishWorkoutModal';
+import CancelWorkoutModal from './modals/CancelWorkoutModal';
+import RestTimerInputModal from './modals/RestTimerInputModal';
+import ActiveRestTimerPopup from './modals/ActiveRestTimerPopup';
+import CustomNumberKeyboard from './modals/CustomNumberKeyboard';
 
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 
-// Swipe-to-delete action component for rest timers
-const RestTimerDeleteAction = ({ progress, dragX, onDelete, onSwipeComplete }) => {
-  const hasDeleted = React.useRef(false);
-  const onDeleteRef = React.useRef(onDelete);
-  
-  React.useEffect(() => {
-    onDeleteRef.current = onDelete;
-  }, [onDelete]);
-
-  React.useEffect(() => {
-    // Reset hasDeleted when component mounts (new swipe gesture)
-    hasDeleted.current = false;
-    
-    const id = dragX.addListener(({ value }) => {
-      // Trigger delete when swiped past ~120px (value is negative when swiping left)
-      if (value < -120 && !hasDeleted.current) {
-        hasDeleted.current = true;
-        if (onDeleteRef.current) {
-          onDeleteRef.current();
-        }
-      }
-    });
-    return () => dragX.removeListener(id);
-  }, [dragX]);
-
-  return (
-    <TouchableOpacity
-      style={{
-        backgroundColor: COLORS.red[500],
-        justifyContent: 'center',
-        alignItems: 'center',
-        width: 60,
-        height: '100%',
-      }}
-      onPress={onDelete}
-    >
-      <Trash2 size={20} color={COLORS.white} />
-    </TouchableOpacity>
-  );
-};
-
-const WorkoutTemplate = ({ 
-  navigation, 
+const WorkoutTemplate = ({
+  navigation,
   workout, // The workout object to display/edit
   mode = 'live', // 'live' | 'edit' | 'readonly'
   onUpdate, // Function to call when workout is updated
@@ -269,7 +99,7 @@ const WorkoutTemplate = ({
   // Rest Timer Countdown Effect
   useEffect(() => {
     if (!activeRestTimer || activeRestTimer.isPaused) return;
-    
+
     const interval = setInterval(() => {
       setActiveRestTimer(prev => {
         if (!prev || prev.isPaused) return prev;
@@ -277,7 +107,7 @@ const WorkoutTemplate = ({
         if (newRemaining <= 0) {
           // Timer finished - close popup if open and mark timer as completed
           setRestTimerPopupOpen(false);
-          
+
           // Mark this set's rest timer as completed
           handleWorkoutUpdate({
             ...currentWorkout,
@@ -286,13 +116,13 @@ const WorkoutTemplate = ({
               sets: ex.sets.map(s => s.id === prev.setId ? { ...s, restTimerCompleted: true } : s)
             }))
           });
-          
+
           return null;
         }
         return { ...prev, remainingSeconds: newRemaining };
       });
     }, 1000);
-    
+
     return () => clearInterval(interval);
   }, [activeRestTimer?.setId, activeRestTimer?.isPaused]);
 
@@ -352,33 +182,33 @@ const WorkoutTemplate = ({
     if (!newNote.trim()) return;
     const noteToAdd = { id: `note-${Date.now()}`, text: newNote, date: newNoteDate, pinned: false };
     handleWorkoutUpdate({ ...currentWorkout, sessionNotes: [noteToAdd, ...(currentWorkout.sessionNotes || [])] });
-    setNewNote(""); 
-    setNewNoteDate(new Date().toISOString().split('T')[0]); 
-    setIsNoteModalOpen(false); 
+    setNewNote("");
+    setNewNoteDate(new Date().toISOString().split('T')[0]);
+    setIsNoteModalOpen(false);
     setShowNotes(true);
   };
 
-  const handleRemoveNote = (noteId) => { 
-    handleWorkoutUpdate({ ...currentWorkout, sessionNotes: (currentWorkout.sessionNotes || []).filter(n => n.id !== noteId) }); 
+  const handleRemoveNote = (noteId) => {
+    handleWorkoutUpdate({ ...currentWorkout, sessionNotes: (currentWorkout.sessionNotes || []).filter(n => n.id !== noteId) });
   };
 
-  const handlePinNote = (noteId) => { 
-    handleWorkoutUpdate({ ...currentWorkout, sessionNotes: (currentWorkout.sessionNotes || []).map(n => n.id === noteId ? { ...n, pinned: !n.pinned } : n) }); 
+  const handlePinNote = (noteId) => {
+    handleWorkoutUpdate({ ...currentWorkout, sessionNotes: (currentWorkout.sessionNotes || []).map(n => n.id === noteId ? { ...n, pinned: !n.pinned } : n) });
   };
 
-  const sortedNotes = useMemo(() => { 
-    return [...(currentWorkout.sessionNotes || [])].sort((a, b) => { 
-      if (a.pinned && !b.pinned) return -1; 
-      if (!a.pinned && b.pinned) return 1; 
-      return 0; 
-    }); 
+  const sortedNotes = useMemo(() => {
+    return [...(currentWorkout.sessionNotes || [])].sort((a, b) => {
+      if (a.pinned && !b.pinned) return -1;
+      if (!a.pinned && b.pinned) return 1;
+      return 0;
+    });
   }, [currentWorkout.sessionNotes]);
 
   const createExerciseInstance = (ex, setCount = 1) => {
     // Get pinned notes from the library exercise
     const libraryExercise = exercisesLibrary.find(libEx => libEx.id === ex.id);
     const pinnedNotes = libraryExercise?.pinnedNotes || [];
-    
+
     // Create the specified number of sets
     const sets = Array.from({ length: setCount }, (_, i) => ({
       id: `s-${Date.now()}-${Math.random()}-${i}`,
@@ -389,7 +219,7 @@ const WorkoutTemplate = ({
       distance: "",
       completed: false
     }));
-    
+
     return {
       instanceId: `inst-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       exerciseId: ex.id,
@@ -412,7 +242,7 @@ const WorkoutTemplate = ({
         // Or maybe try to map old sets to new? The user said "replace", usually implies a swap.
         // Let's keep it simple: swap the exercise, keep the instanceId? No, new instanceId is safer.
         // But we need to replace in place.
-        
+
         handleWorkoutUpdate({
           ...currentWorkout,
           exercises: updateExercisesDeep(currentWorkout.exercises, replacingExerciseId, (oldEx) => ({
@@ -436,13 +266,13 @@ const WorkoutTemplate = ({
       const setCount = ex._setCount || 1; // Use _setCount if provided, otherwise default to 1
       return createExerciseInstance(ex, setCount);
     });
-    
+
     let itemsToAdd = [];
     if (groupType && newInstances.length > 1) {
       itemsToAdd = [{
         instanceId: `group-${Date.now()}`,
         type: 'group',
-        groupType: groupType, 
+        groupType: groupType,
         children: newInstances
       }];
     } else {
@@ -498,11 +328,11 @@ const WorkoutTemplate = ({
 
   const handleToggleComplete = (exInstanceId, set) => {
     const isBeingCompleted = !set.completed;
-    
+
     if (isBeingCompleted) {
       // Mark set as completed
       handleUpdateSet(exInstanceId, { ...set, completed: true });
-      
+
       // Start rest timer if this set has a rest period
       if (set.restPeriodSeconds) {
         setActiveRestTimer({
@@ -513,7 +343,7 @@ const WorkoutTemplate = ({
           isPaused: false
         });
       }
-      
+
       // Find and focus the next set's input
       const exercise = findExerciseDeep(currentWorkout.exercises, exInstanceId);
       if (exercise) {
@@ -545,7 +375,7 @@ const WorkoutTemplate = ({
       const updatedSet = { ...set, completed: false };
       delete updatedSet.restTimerCompleted;
       handleUpdateSet(exInstanceId, updatedSet);
-      
+
       // Also cancel any active timer for this set
       if (activeRestTimer?.setId === set.id) {
         setActiveRestTimer(null);
@@ -574,9 +404,9 @@ const WorkoutTemplate = ({
     } else {
       newValue = customKeyboardValue + key;
     }
-    
+
     setCustomKeyboardValue(newValue);
-    
+
     // Also update the set value in real-time
     if (customKeyboardTarget) {
       const { exerciseId, setId, field } = customKeyboardTarget;
@@ -604,19 +434,19 @@ const WorkoutTemplate = ({
   const handleCustomKeyboardNext = () => {
     if (!customKeyboardTarget) return;
     const { exerciseId, setId, field } = customKeyboardTarget;
-    
+
     const exercise = findExerciseDeep(currentWorkout.exercises, exerciseId);
     if (!exercise) {
       closeCustomKeyboard();
       return;
     }
-    
+
     const setIndex = exercise.sets.findIndex(s => s.id === setId);
     if (setIndex === -1) {
       closeCustomKeyboard();
       return;
     }
-    
+
     if (field === 'weight') {
       // Move to reps of the same set
       const set = exercise.sets[setIndex];
@@ -684,7 +514,7 @@ const WorkoutTemplate = ({
   const handleSetMenuAction = (action) => {
     if (!activeSetMenu) return;
     const { exerciseId, setId } = activeSetMenu;
-    
+
     if (action === 'warmup' || action === 'dropset' || action === 'failure') {
       handleWorkoutUpdate({
         ...currentWorkout,
@@ -693,18 +523,18 @@ const WorkoutTemplate = ({
             if (s.id === setId) {
               const key = action === 'warmup' ? 'isWarmup' : action === 'dropset' ? 'isDropset' : 'isFailure';
               const isCurrentlyActive = s[key];
-              
+
               // Create new set without any type flags
               const newSet = { ...s };
               delete newSet.isWarmup;
               delete newSet.isDropset;
               delete newSet.isFailure;
-              
+
               // If it wasn't active, set it. If it was active, leave it cleared (toggle off)
               if (!isCurrentlyActive) {
                 newSet[key] = true;
               }
-              
+
               return newSet;
             }
             return s;
@@ -717,18 +547,18 @@ const WorkoutTemplate = ({
       // Find the set and get all sets in its group (if any)
       const exercise = findExerciseDeep(currentWorkout.exercises, exerciseId);
       const set = exercise?.sets?.find(s => s.id === setId);
-      
+
       if (set?.dropSetId) {
         // Grouped set: Pre-populate selection with all sets in the group
         const groupSetIds = exercise.sets
           .filter(s => s.dropSetId === set.dropSetId)
           .map(s => s.id);
-        
+
         // Check if all sets in the group have the same type
         const groupSets = exercise.sets.filter(s => s.dropSetId === set.dropSetId);
         const allWarmup = groupSets.length > 0 && groupSets.every(s => s.isWarmup);
         const allFailure = groupSets.length > 0 && groupSets.every(s => s.isFailure);
-        
+
         // Initialize groupSetType with the current group type
         if (allWarmup) {
           setGroupSetType('warmup');
@@ -737,7 +567,7 @@ const WorkoutTemplate = ({
         } else {
           setGroupSetType(null);
         }
-        
+
         setSelectionMode({ exerciseId, type: 'drop_set', editingGroupId: set.dropSetId });
         setSelectedSetIds(new Set(groupSetIds));
       } else {
@@ -780,7 +610,7 @@ const WorkoutTemplate = ({
         exercises: updateExercisesDeep(currentWorkout.exercises, exerciseId, (ex) => {
           const currentSetIndex = ex.sets.findIndex(s => s.id === setId);
           if (currentSetIndex === -1) return ex;
-          
+
           const currentSet = ex.sets[currentSetIndex];
           const newSet = {
             id: `s-${Date.now()}-${Math.random()}`,
@@ -798,11 +628,11 @@ const WorkoutTemplate = ({
             // Copy rest timer if present
             ...(currentSet.restPeriodSeconds && { restPeriodSeconds: currentSet.restPeriodSeconds })
           };
-          
+
           // Insert the new set after the current set
           const newSets = [...ex.sets];
           newSets.splice(currentSetIndex + 1, 0, newSet);
-          
+
           return { ...ex, sets: newSets };
         })
       });
@@ -815,9 +645,9 @@ const WorkoutTemplate = ({
     if (!restPeriodSetInfo) return;
     const { exerciseId, setId } = restPeriodSetInfo;
     const seconds = parseRestTimeInput(restTimerInput);
-    
+
     if (seconds <= 0) return;
-    
+
     handleWorkoutUpdate({
       ...currentWorkout,
       exercises: updateExercisesDeep(currentWorkout.exercises, exerciseId, (ex) => ({
@@ -825,7 +655,7 @@ const WorkoutTemplate = ({
         sets: ex.sets.map(s => s.id === setId ? { ...s, restPeriodSeconds: seconds } : s)
       }))
     });
-    
+
     setRestPeriodModalOpen(false);
     setRestPeriodSetInfo(null);
     setRestTimerInput('');
@@ -836,11 +666,11 @@ const WorkoutTemplate = ({
     const { exerciseId, editingGroupId } = selectionMode;
     const exercise = findExerciseDeep(currentWorkout.exercises, exerciseId);
     const set = exercise?.sets?.find(s => s.id === setId);
-    
+
     // If this is an "add to group" action (clicking + icon)
     if (isAddToGroupAction && set?.dropSetId) {
       const targetGroupId = set.dropSetId;
-      
+
       if (!editingGroupId) {
         // Ungrouped set: Add the originally selected set to this group and move it to the end of the group
         handleWorkoutUpdate({
@@ -853,7 +683,7 @@ const WorkoutTemplate = ({
               }
               return s;
             });
-            
+
             // Then reorder: remove the newly added sets and insert them at the end of the target group
             const setsToMove = [];
             const setsWithoutMoved = updatedSets.filter(s => {
@@ -863,7 +693,7 @@ const WorkoutTemplate = ({
               }
               return true;
             });
-            
+
             // Find the last index of the target group
             let lastGroupIndex = -1;
             for (let i = setsWithoutMoved.length - 1; i >= 0; i--) {
@@ -872,16 +702,16 @@ const WorkoutTemplate = ({
                 break;
               }
             }
-            
+
             // Insert the moved sets after the last set in the target group
             if (lastGroupIndex !== -1) {
               setsWithoutMoved.splice(lastGroupIndex + 1, 0, ...setsToMove);
             }
-            
+
             return { ...ex, sets: setsWithoutMoved };
           })
         });
-        
+
         // Close selection mode
         setSelectionMode(null);
         setSelectedSetIds(new Set());
@@ -900,7 +730,7 @@ const WorkoutTemplate = ({
               }
               return s;
             });
-            
+
             // Then reorder: remove the moved sets and insert them at the end of the target group
             const setsToMove = [];
             const setsWithoutMoved = updatedSets.filter(s => {
@@ -910,7 +740,7 @@ const WorkoutTemplate = ({
               }
               return true;
             });
-            
+
             // Find the last index of the target group
             let lastGroupIndex = -1;
             for (let i = setsWithoutMoved.length - 1; i >= 0; i--) {
@@ -919,26 +749,26 @@ const WorkoutTemplate = ({
                 break;
               }
             }
-            
+
             // Insert the moved sets after the last set in the target group
             if (lastGroupIndex !== -1) {
               setsWithoutMoved.splice(lastGroupIndex + 1, 0, ...setsToMove);
             }
-            
+
             return { ...ex, sets: setsWithoutMoved };
           })
         });
-        
+
         // Close selection mode
         setSelectionMode(null);
         setSelectedSetIds(new Set());
         return;
       }
     }
-    
+
     // Regular checkbox toggle behavior
     const newSelectedIds = new Set(selectedSetIds);
-    
+
     if (editingGroupId) {
       // Editing a grouped set - can toggle sets in that group AND ungrouped sets
       if (set?.dropSetId === editingGroupId || !set?.dropSetId) {
@@ -958,7 +788,7 @@ const WorkoutTemplate = ({
         }
       }
     }
-    
+
     setSelectedSetIds(newSelectedIds);
   };
 
@@ -972,16 +802,16 @@ const WorkoutTemplate = ({
       const originalGroupSetIds = exercise.sets
         .filter(s => s.dropSetId === editingGroupId)
         .map(s => s.id);
-      
+
       // Find sets that were deselected from the group (need to be ungrouped)
       const deselectedSetIds = originalGroupSetIds.filter(id => !selectedSetIds.has(id));
-      
+
       // Find ungrouped sets that were selected (need to be added to the group)
       const selectedUngroupedSetIds = Array.from(selectedSetIds).filter(id => {
         const set = exercise.sets.find(s => s.id === id);
         return set && !set.dropSetId;
       });
-      
+
       handleWorkoutUpdate({
         ...currentWorkout,
         exercises: updateExercisesDeep(currentWorkout.exercises, exerciseId, (ex) => {
@@ -989,7 +819,7 @@ const WorkoutTemplate = ({
           let updatedSets = ex.sets.map(s => {
             let updatedSet = { ...s };
             let willBeInGroup = false;
-            
+
             if (s.dropSetId === editingGroupId && !selectedSetIds.has(s.id)) {
               // Remove from group (was deselected)
               delete updatedSet.dropSetId;
@@ -1002,7 +832,7 @@ const WorkoutTemplate = ({
               updatedSet.dropSetId = editingGroupId;
               willBeInGroup = true;
             }
-            
+
             // Apply or remove group set type for all sets that will be in the group
             if (willBeInGroup) {
               if (groupSetType) {
@@ -1019,10 +849,10 @@ const WorkoutTemplate = ({
                 delete updatedSet.isFailure;
               }
             }
-            
+
             return updatedSet;
           });
-          
+
           // Move newly added ungrouped sets to the end of the group
           if (selectedUngroupedSetIds.length > 0) {
             const setsToMove = [];
@@ -1033,7 +863,7 @@ const WorkoutTemplate = ({
               }
               return true;
             });
-            
+
             // Find the last index of the edited group
             let lastGroupIndex = -1;
             for (let i = setsWithoutMoved.length - 1; i >= 0; i--) {
@@ -1042,15 +872,15 @@ const WorkoutTemplate = ({
                 break;
               }
             }
-            
+
             // Insert the newly added sets at the end of the group
             if (lastGroupIndex !== -1) {
               setsWithoutMoved.splice(lastGroupIndex + 1, 0, ...setsToMove);
             }
-            
+
             updatedSets = setsWithoutMoved;
           }
-          
+
           // If there are deselected sets, reorder them to appear right after the group
           if (deselectedSetIds.length > 0) {
             // Find the last index of any set in the edited group
@@ -1061,7 +891,7 @@ const WorkoutTemplate = ({
                 break;
               }
             }
-            
+
             if (lastGroupIndex !== -1) {
               // Remove deselected sets from their current positions
               const deselectedSets = [];
@@ -1072,7 +902,7 @@ const WorkoutTemplate = ({
                 }
                 return true;
               });
-              
+
               // Find the new position to insert (after the group)
               let insertIndex = -1;
               for (let i = setsWithoutDeselected.length - 1; i >= 0; i--) {
@@ -1081,16 +911,16 @@ const WorkoutTemplate = ({
                   break;
                 }
               }
-              
+
               // Insert deselected sets after the group
               if (insertIndex !== -1) {
                 setsWithoutDeselected.splice(insertIndex, 0, ...deselectedSets);
               }
-              
+
               return { ...ex, sets: setsWithoutDeselected };
             }
           }
-          
+
           return { ...ex, sets: updatedSets };
         })
       });
@@ -1103,20 +933,20 @@ const WorkoutTemplate = ({
         setGroupSetType(null);
         return;
       }
-      
+
       const dropSetId = Date.now().toString();
-      
+
       handleWorkoutUpdate({
         ...currentWorkout,
         exercises: updateExercisesDeep(currentWorkout.exercises, exerciseId, (ex) => {
           // First, separate selected and non-selected sets
           const selectedSets = [];
           const nonSelectedSets = [];
-          
+
           ex.sets.forEach(s => {
             if (selectedSetIds.has(s.id)) {
               let newSet = { ...s, dropSetId };
-              
+
               // Apply group set type if selected
               if (groupSetType) {
                 delete newSet.isWarmup;
@@ -1125,25 +955,25 @@ const WorkoutTemplate = ({
                 const typeKey = groupSetType === 'warmup' ? 'isWarmup' : groupSetType === 'dropset' ? 'isDropset' : 'isFailure';
                 newSet[typeKey] = true;
               }
-              
+
               selectedSets.push(newSet);
             } else {
               nonSelectedSets.push(s);
             }
           });
-          
+
           // Find the position of the first selected set in the original array
           const firstSelectedIndex = ex.sets.findIndex(s => selectedSetIds.has(s.id));
-          
+
           // Insert all selected sets at the position of the first selected set
           const newSets = [...nonSelectedSets];
           newSets.splice(firstSelectedIndex, 0, ...selectedSets);
-          
+
           return { ...ex, sets: newSets };
         })
       });
     }
-    
+
     setSelectionMode(null);
     setSelectedSetIds(new Set());
     setGroupSetType(null);
@@ -1184,21 +1014,21 @@ const WorkoutTemplate = ({
   // Exercise Options Handlers
   const handleOpenOptions = (instanceId, event) => {
     const { pageY } = event.nativeEvent;
-    
+
     // Close set-level popup if open
     setActiveSetMenu(null);
-    
+
     // Get ScrollView position on screen
     scrollViewRef.current?.measure((x, y, scrollWidth, scrollHeight, pageX_scroll, pageY_scroll) => {
       // Calculate button position relative to ScrollView's visible viewport
       // pageY is absolute screen position, pageY_scroll is ScrollView's screen position
       // The difference gives us the position within the visible ScrollView area
       const visibleTop = pageY - pageY_scroll;
-      
+
       // Also calculate the position in the content (for scroll tracking)
       // This is the position if the ScrollView were at scroll position 0
       const contentTop = visibleTop + scrollOffset;
-      
+
       setDropdownPos({ top: visibleTop, right: 16, originalTop: contentTop });
       setOptionsModalExId(instanceId);
     });
@@ -1224,7 +1054,7 @@ const WorkoutTemplate = ({
       exercises: updateExercisesDeep(currentWorkout.exercises, instanceId, (ex) => {
         const isKg = ex.weightUnit === 'kg';
         const newUnit = isKg ? 'lbs' : 'kg';
-        
+
         const convert = (val) => {
           if (val === "" || val === null || val === undefined) return val;
           const num = parseFloat(val);
@@ -1250,7 +1080,7 @@ const WorkoutTemplate = ({
 
   const handleOpenExerciseNote = (instanceId) => {
     setCurrentExerciseNote("");
-    setReplacingExerciseId(instanceId); 
+    setReplacingExerciseId(instanceId);
     setExerciseNoteModalOpen(true);
     setOptionsModalExId(null);
   };
@@ -1278,22 +1108,22 @@ const WorkoutTemplate = ({
   const handlePinExerciseNote = (exId, noteId) => {
     const exercise = findExerciseDeep(currentWorkout.exercises, exId);
     if (!exercise) return;
-    
+
     // Update the workout
     handleWorkoutUpdate({
       ...currentWorkout,
       exercises: updateExercisesDeep(currentWorkout.exercises, exId, (ex) => {
-        const updatedNotes = (ex.notes || []).map(n => 
+        const updatedNotes = (ex.notes || []).map(n =>
           n.id === noteId ? { ...n, pinned: !n.pinned } : n
         );
-        
+
         // If pinning, also save to library
         const pinnedNote = updatedNotes.find(n => n.id === noteId);
         if (pinnedNote && pinnedNote.pinned && ex.exerciseId) {
           // Get current pinned notes from library
           const libraryExercise = exercisesLibrary.find(libEx => libEx.id === ex.exerciseId);
           const currentPinnedNotes = libraryExercise?.pinnedNotes || [];
-          
+
           // Add this note to library's pinned notes
           updateExerciseInLibrary(ex.exerciseId, {
             pinnedNotes: [...currentPinnedNotes, pinnedNote]
@@ -1302,12 +1132,12 @@ const WorkoutTemplate = ({
           // If unpinning, remove from library
           const libraryExercise = exercisesLibrary.find(libEx => libEx.id === ex.exerciseId);
           const currentPinnedNotes = libraryExercise?.pinnedNotes || [];
-          
+
           updateExerciseInLibrary(ex.exerciseId, {
             pinnedNotes: currentPinnedNotes.filter(n => n.id !== noteId)
           });
         }
-        
+
         return {
           ...ex,
           notes: updatedNotes
@@ -1345,7 +1175,7 @@ const WorkoutTemplate = ({
   const handleEditSuperset = (exerciseId) => {
     setOptionsModalExId(null);
     const superset = findExerciseSuperset(currentWorkout.exercises, exerciseId);
-    
+
     if (superset) {
       // Exercise is already in a superset - pre-select all exercises in that superset
       const selectedIds = new Set(superset.children.map(child => child.instanceId));
@@ -1375,15 +1205,15 @@ const WorkoutTemplate = ({
 
   const handleToggleSupersetSelection = (exerciseId) => {
     if (!supersetSelectionMode) return;
-    
+
     const newSelectedIds = new Set(selectedExerciseIds);
-    
+
     if (newSelectedIds.has(exerciseId)) {
       newSelectedIds.delete(exerciseId);
     } else {
       newSelectedIds.add(exerciseId);
     }
-    
+
     setSelectedExerciseIds(newSelectedIds);
   };
 
@@ -1401,7 +1231,7 @@ const WorkoutTemplate = ({
       const selectedExercises = Array.from(selectedExerciseIds)
         .map(id => findExerciseDeep(currentWorkout.exercises, id))
         .filter(ex => ex);
-      
+
       // Find exercises that were unselected (removed from superset)
       const unselectedExercises = originalExercises.filter(
         ex => !selectedExerciseIds.has(ex.instanceId)
@@ -1435,7 +1265,7 @@ const WorkoutTemplate = ({
             }
             return true;
           });
-        
+
         handleWorkoutUpdate({ ...currentWorkout, exercises: newExercises });
       }
     } else if (mode === 'create') {
@@ -1461,7 +1291,7 @@ const WorkoutTemplate = ({
       const newExercises = currentWorkout.exercises.filter(
         ex => !selectedExerciseIds.has(ex.instanceId)
       );
-      
+
       // Insert superset at the position of the first selected exercise
       const firstSelectedId = Array.from(selectedExerciseIds)[0];
       const insertIndex = currentWorkout.exercises.findIndex(ex => ex.instanceId === firstSelectedId);
@@ -1512,7 +1342,7 @@ const WorkoutTemplate = ({
     if (movingRowIndex === -1) return;
 
     const movingRow = flatRows[movingRowIndex];
-    
+
     // Calculate block size (1 for exercise, 1 + children for group)
     let blockSize = 1;
     if (movingRow.type === 'group_header') {
@@ -1528,12 +1358,12 @@ const WorkoutTemplate = ({
 
     // Remove from old position
     const newFlatRows = [...flatRows];
-    
+
     // Determine new depth based on drop location (using newFlatRows BEFORE removal for context? No, AFTER removal)
     // But we need context of where we are dropping.
     // If we remove first, indices shift.
     // Let's look at `newFlatRows` AFTER removal.
-    
+
     // Remove the block
     const rowsToMove = newFlatRows.splice(movingRowIndex, blockSize);
     const mainMovingRow = rowsToMove[0];
@@ -1546,11 +1376,11 @@ const WorkoutTemplate = ({
       const prevRow = newFlatRows[insertIndex - 1];
       if (forceInsideGroup) {
         if (prevRow.type === 'group_header') {
-           newDepth = 1;
-           newGroupId = prevRow.id;
+          newDepth = 1;
+          newGroupId = prevRow.id;
         } else if (prevRow.type === 'exercise' && prevRow.depth === 1) {
-           newDepth = 1;
-           newGroupId = prevRow.groupId;
+          newDepth = 1;
+          newGroupId = prevRow.groupId;
         }
       } else {
         if (prevRow.type === 'group_header') {
@@ -1562,34 +1392,34 @@ const WorkoutTemplate = ({
         }
       }
     }
-    
+
     if (!forceInsideGroup && insertIndex > 0) {
-       const prevRow = newFlatRows[insertIndex - 1];
-       if (prevRow.type === 'exercise' && prevRow.depth === 1) {
-          newDepth = 0;
-          newGroupId = null;
-       }
+      const prevRow = newFlatRows[insertIndex - 1];
+      if (prevRow.type === 'exercise' && prevRow.depth === 1) {
+        newDepth = 0;
+        newGroupId = null;
+      }
     }
-      
+
     // Update depth for moved rows
     rowsToMove.forEach(r => {
       if (r.type === 'group_header') {
-          r.depth = 0;
-          r.groupId = null;
+        r.depth = 0;
+        r.groupId = null;
       } else if (r.type === 'exercise') {
-          // If it's the main moving row (single exercise), update its depth
-          if (r === mainMovingRow) {
-             r.depth = newDepth;
-             r.groupId = newGroupId;
-          }
-          // If it's a child of a moving group, it keeps its relative depth (1)
-          // But wait, if we move a group, `mainMovingRow` is header.
-          // Children are subsequent rows.
-          // We don't need to update children depth/groupId if they are still children of the header.
-          // `reconstructExercises` handles hierarchy based on header + children sequence.
+        // If it's the main moving row (single exercise), update its depth
+        if (r === mainMovingRow) {
+          r.depth = newDepth;
+          r.groupId = newGroupId;
+        }
+        // If it's a child of a moving group, it keeps its relative depth (1)
+        // But wait, if we move a group, `mainMovingRow` is header.
+        // Children are subsequent rows.
+        // We don't need to update children depth/groupId if they are still children of the header.
+        // `reconstructExercises` handles hierarchy based on header + children sequence.
       }
     });
-      
+
     newFlatRows.splice(insertIndex, 0, ...rowsToMove);
 
     const newExercises = reconstructExercises(newFlatRows);
@@ -1600,7 +1430,7 @@ const WorkoutTemplate = ({
 
   const renderExerciseCard = (ex, isGroupChild = false, isLastChild = false, parentGroupType = null) => {
     const historyEntries = exerciseStats[ex.exerciseId]?.history || [];
-    const groupColorScheme = isGroupChild && parentGroupType 
+    const groupColorScheme = isGroupChild && parentGroupType
       ? (parentGroupType === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme)
       : null;
 
@@ -1611,12 +1441,12 @@ const WorkoutTemplate = ({
       let workingGroupNum = 0;
       const seenWarmupGroups = new Set();
       const seenWorkingGroups = new Set();
-      
+
       for (let i = 0; i < historicalSets.length; i++) {
         const s = historicalSets[i];
         let warmupIdx = null;
         let workingIdx = null;
-        
+
         if (s.isWarmup) {
           if (s.dropSetId) {
             if (!seenWarmupGroups.has(s.dropSetId)) {
@@ -1646,23 +1476,23 @@ const WorkoutTemplate = ({
             workingIdx = { group: workingGroupNum, subIndex: null };
           }
         }
-        
+
         indices.push({ set: s, warmupIndex: warmupIdx, workingIndex: workingIdx });
       }
-      
+
       return indices;
     };
-    
+
     // Smart lookup function to find matching previous set data
     const getPreviousSetData = (currentSet, currentWarmupIndex, currentWorkingIndex) => {
       // Iterate through all history entries (most recent first)
       for (let histIdx = 0; histIdx < historyEntries.length; histIdx++) {
         const histEntry = historyEntries[histIdx];
         const isFromOlderHistory = histIdx > 0;
-        
+
         // Compute indices for this history entry's sets
         const indexedSets = computeHistoricalIndices(histEntry.sets);
-        
+
         // Find a matching set based on whether current set is warmup or not
         if (currentWarmupIndex) {
           // Looking for a warmup set at the same warmup index
@@ -1676,7 +1506,7 @@ const WorkoutTemplate = ({
             // For individual warmup sets, match if both are individual (subIndex null)
             return indexed.warmupIndex.subIndex === null;
           });
-          
+
           if (match) {
             return { ...match.set, isFromOlderHistory };
           }
@@ -1685,7 +1515,7 @@ const WorkoutTemplate = ({
           const match = indexedSets.find(indexed => {
             if (!indexed.workingIndex) return false;
             if (indexed.workingIndex.group !== currentWorkingIndex.group) return false;
-            
+
             // For dropsets, match by subIndex
             if (currentWorkingIndex.subIndex !== null) {
               // First dropset set (subIndex 1) can match individual set (subIndex null) OR dropset first
@@ -1695,24 +1525,24 @@ const WorkoutTemplate = ({
               // Other subIndices must match exactly
               return indexed.workingIndex.subIndex === currentWorkingIndex.subIndex;
             }
-            
+
             // For individual working sets, can match individual OR first of dropset
             return indexed.workingIndex.subIndex === null || indexed.workingIndex.subIndex === 1;
           });
-          
+
           if (match) {
             return { ...match.set, isFromOlderHistory };
           }
         }
       }
-      
+
       return null;
     };
-    
+
     // Helper to convert weight units for previous set
     const convertPreviousSet = (prevSet) => {
       if (!prevSet) return null;
-      
+
       // If current unit is kg, convert previous (assumed lbs) to kg
       if (ex.weightUnit === 'kg' && ex.category === 'Lifts' && prevSet.weight) {
         const val = parseFloat(prevSet.weight);
@@ -1730,19 +1560,19 @@ const WorkoutTemplate = ({
     const isNotMoving = isMoveMode && !isMoving;
 
     const cardContent = (
-      <TouchableOpacity 
-        key={ex.instanceId} 
+      <TouchableOpacity
+        key={ex.instanceId}
         activeOpacity={1}
         onLongPress={() => handleStartMove(ex.instanceId)}
         onPress={() => {
           if (isMoveMode) {
-             const flatRows = flattenExercises(currentWorkout.exercises);
-             const idx = flatRows.findIndex(r => r.id === ex.instanceId);
-             if (idx !== -1) handleMoveItem(idx);
+            const flatRows = flattenExercises(currentWorkout.exercises);
+            const idx = flatRows.findIndex(r => r.id === ex.instanceId);
+            if (idx !== -1) handleMoveItem(idx);
           }
         }}
         style={[
-          styles.exerciseCard, 
+          styles.exerciseCard,
           !isMoveMode && styles.exerciseCard__notMoveMode,
           isMoveMode && styles.exerciseCard__moveMode,
           isMoveMode && isNotMoving && styles.exerciseCard__moveMode__notSelected,
@@ -1758,160 +1588,160 @@ const WorkoutTemplate = ({
           isLastChild && !isMoveMode && styles.exerciseCard__groupChild__lastChild
         ]}
       >
-         <View style={[
-           styles.exerciseHeader,
-           !isMoveMode && styles.exerciseHeader__notMoveMode,
-           isMoveMode && !isMoving && styles.exerciseHeader__moveMode__notSelected,
-           isMoveMode && isMoving && styles.exerciseHeader__moveMode__selected,
-           isGroupChild && styles.exerciseHeader__groupChild,
-           isGroupChild && isMoving && groupColorScheme && {
-             backgroundColor: groupColorScheme[100],
-           },
-           isGroupChild && !isMoving && groupColorScheme && {
-             backgroundColor: groupColorScheme[50],
-           }
-         ]}>
-            <View style={styles.exerciseHeaderContent}>
-              <View style={styles.exerciseHeaderRow}>
-                <View style={styles.exerciseHeaderLeft}>
-                  <View style={styles.exerciseNameRow}>
-                    <Text style={styles.exerciseName}>{ex.name}</Text>
-                    {!isMoveMode && (
-                      <View style={styles.exerciseHeaderIcons}>
-                        <TouchableOpacity 
-                          onPress={() => {
-                            if (!ex.notes || ex.notes.length === 0) {
-                              handleOpenExerciseNote(ex.instanceId);
-                            } else {
-                              toggleExerciseNotes(ex.instanceId);
-                            }
-                          }}
-                          style={styles.noteIconButton}
-                        >
-                          <FileText 
-                            size={16} 
-                            color={
-                              (!ex.notes || ex.notes.length === 0) 
-                                ? COLORS.slate[400] 
-                                : (ex.notes.some(n => n.pinned) ? COLORS.amber[500] : COLORS.blue[500])
-                            } 
-                            fill="transparent"
-                          />
-                        </TouchableOpacity>
-                        
-                        {expandedExerciseNotes[ex.instanceId] && (
-                          <TouchableOpacity 
-                            onPress={() => toggleExerciseNotes(ex.instanceId)}
-                            style={styles.addNewNoteButton}
-                          >
-                            <ChevronDown size={14} color={COLORS.slate[500]} style={{ transform: [{ rotate: '180deg' }] }} />
-                          </TouchableOpacity>
-                        )}
-                      </View>
-                    )}
-                  </View>
-                </View>
-
-                {!isMoveMode && !expandedExerciseNotes[ex.instanceId] && !readOnly && (
-                  <View style={styles.exerciseHeaderActions}>
-                      <TouchableOpacity 
-                        onPress={() => handleAddSet(ex.instanceId)}
-                        style={styles.addSetHeaderButton}
+        <View style={[
+          styles.exerciseHeader,
+          !isMoveMode && styles.exerciseHeader__notMoveMode,
+          isMoveMode && !isMoving && styles.exerciseHeader__moveMode__notSelected,
+          isMoveMode && isMoving && styles.exerciseHeader__moveMode__selected,
+          isGroupChild && styles.exerciseHeader__groupChild,
+          isGroupChild && isMoving && groupColorScheme && {
+            backgroundColor: groupColorScheme[100],
+          },
+          isGroupChild && !isMoving && groupColorScheme && {
+            backgroundColor: groupColorScheme[50],
+          }
+        ]}>
+          <View style={styles.exerciseHeaderContent}>
+            <View style={styles.exerciseHeaderRow}>
+              <View style={styles.exerciseHeaderLeft}>
+                <View style={styles.exerciseNameRow}>
+                  <Text style={styles.exerciseName}>{ex.name}</Text>
+                  {!isMoveMode && (
+                    <View style={styles.exerciseHeaderIcons}>
+                      <TouchableOpacity
+                        onPress={() => {
+                          if (!ex.notes || ex.notes.length === 0) {
+                            handleOpenExerciseNote(ex.instanceId);
+                          } else {
+                            toggleExerciseNotes(ex.instanceId);
+                          }
+                        }}
+                        style={styles.noteIconButton}
                       >
-                        <Text style={[
-                          styles.addSetHeaderText,
-                          isGroupChild && groupColorScheme && { color: groupColorScheme[600] }
-                        ]}>+ Set</Text>
+                        <FileText
+                          size={16}
+                          color={
+                            (!ex.notes || ex.notes.length === 0)
+                              ? COLORS.slate[400]
+                              : (ex.notes.some(n => n.pinned) ? COLORS.amber[500] : COLORS.blue[500])
+                          }
+                          fill="transparent"
+                        />
                       </TouchableOpacity>
 
-                      <TouchableOpacity onPress={(e) => handleOpenOptions(ex.instanceId, e)} style={styles.optionsButton}>
-                        <MoreVertical size={20} color={COLORS.slate[400]} />
-                      </TouchableOpacity>
-                  </View>
-                )}
+                      {expandedExerciseNotes[ex.instanceId] && (
+                        <TouchableOpacity
+                          onPress={() => toggleExerciseNotes(ex.instanceId)}
+                          style={styles.addNewNoteButton}
+                        >
+                          <ChevronDown size={14} color={COLORS.slate[500]} style={{ transform: [{ rotate: '180deg' }] }} />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  )}
+                </View>
               </View>
 
-              {!isMoveMode && expandedExerciseNotes[ex.instanceId] && ex.notes && ex.notes.length > 0 && (
-                <View style={styles.expandedNotesContainer}>
-                  {[...ex.notes].sort((a, b) => { 
-                    if (a.pinned && !b.pinned) return -1; 
-                    if (!a.pinned && b.pinned) return 1; 
-                    return 0; 
-                  }).map((note) => (
-                    <SavedNoteItem 
-                      key={note.id} 
-                      note={note} 
-                      onPin={(noteId) => handlePinExerciseNote(ex.instanceId, noteId)} 
-                      onRemove={(noteId) => handleRemoveExerciseNote(ex.instanceId, noteId)}
-                      onUpdate={(updatedNote) => handleUpdateExerciseNote(ex.instanceId, updatedNote)}
-                    />
-                  ))}
+              {!isMoveMode && !expandedExerciseNotes[ex.instanceId] && !readOnly && (
+                <View style={styles.exerciseHeaderActions}>
+                  <TouchableOpacity
+                    onPress={() => handleAddSet(ex.instanceId)}
+                    style={styles.addSetHeaderButton}
+                  >
+                    <Text style={[
+                      styles.addSetHeaderText,
+                      isGroupChild && groupColorScheme && { color: groupColorScheme[600] }
+                    ]}>+ Set</Text>
+                  </TouchableOpacity>
 
-                  <View style={styles.expandedNotesActions}>
-                      <View style={styles.expandedNotesLeftActions}>
-                        <TouchableOpacity 
-                          onPress={() => handleOpenExerciseNote(ex.instanceId)}
-                          style={styles.exerciseAddNoteButton}
-                        >
-                          <Text style={styles.exerciseAddNoteButtonText}>Add note</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity 
-                          onPress={() => toggleExerciseNotes(ex.instanceId)}
-                          style={styles.hideNotesButton}
-                        >
-                          <Text style={styles.hideNotesText}>Hide notes</Text>
-                        </TouchableOpacity>
-                      </View>
-
-                      <View style={styles.expandedNotesRightActions}>
-                        <TouchableOpacity 
-                          onPress={() => handleAddSet(ex.instanceId)}
-                          style={styles.addSetHeaderButton}
-                        >
-                          <Text style={[
-                            styles.addSetHeaderText,
-                            isGroupChild && groupColorScheme && { color: groupColorScheme[600] }
-                          ]}>+Set</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity onPress={(e) => handleOpenOptions(ex.instanceId, e)} style={styles.optionsButton}>
-                          <MoreVertical size={20} color={COLORS.slate[400]} />
-                        </TouchableOpacity>
-                      </View>
-                  </View>
+                  <TouchableOpacity onPress={(e) => handleOpenOptions(ex.instanceId, e)} style={styles.optionsButton}>
+                    <MoreVertical size={20} color={COLORS.slate[400]} />
+                  </TouchableOpacity>
                 </View>
               )}
             </View>
-         </View>
-         {!isMoveMode && (
-         <View style={styles.exerciseContent}>
+
+            {!isMoveMode && expandedExerciseNotes[ex.instanceId] && ex.notes && ex.notes.length > 0 && (
+              <View style={styles.expandedNotesContainer}>
+                {[...ex.notes].sort((a, b) => {
+                  if (a.pinned && !b.pinned) return -1;
+                  if (!a.pinned && b.pinned) return 1;
+                  return 0;
+                }).map((note) => (
+                  <SavedNoteItem
+                    key={note.id}
+                    note={note}
+                    onPin={(noteId) => handlePinExerciseNote(ex.instanceId, noteId)}
+                    onRemove={(noteId) => handleRemoveExerciseNote(ex.instanceId, noteId)}
+                    onUpdate={(updatedNote) => handleUpdateExerciseNote(ex.instanceId, updatedNote)}
+                  />
+                ))}
+
+                <View style={styles.expandedNotesActions}>
+                  <View style={styles.expandedNotesLeftActions}>
+                    <TouchableOpacity
+                      onPress={() => handleOpenExerciseNote(ex.instanceId)}
+                      style={styles.exerciseAddNoteButton}
+                    >
+                      <Text style={styles.exerciseAddNoteButtonText}>Add note</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={() => toggleExerciseNotes(ex.instanceId)}
+                      style={styles.hideNotesButton}
+                    >
+                      <Text style={styles.hideNotesText}>Hide notes</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.expandedNotesRightActions}>
+                    <TouchableOpacity
+                      onPress={() => handleAddSet(ex.instanceId)}
+                      style={styles.addSetHeaderButton}
+                    >
+                      <Text style={[
+                        styles.addSetHeaderText,
+                        isGroupChild && groupColorScheme && { color: groupColorScheme[600] }
+                      ]}>+Set</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity onPress={(e) => handleOpenOptions(ex.instanceId, e)} style={styles.optionsButton}>
+                      <MoreVertical size={20} color={COLORS.slate[400]} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            )}
+          </View>
+        </View>
+        {!isMoveMode && (
+          <View style={styles.exerciseContent}>
             <View style={styles.columnHeaders}>
-               <View style={styles.colIndex}><Text style={styles.colHeaderText}>Set</Text></View>
-               <View style={styles.colPrevious}><Text style={styles.colHeaderText}>Previous</Text></View>
-               <View style={styles.colInputs}>
-                  <Text style={styles.colHeaderText}>
-                    {ex.category === "Lifts" ? `Weight (${ex.weightUnit || 'lbs'})` : "Time"}
-                  </Text>
-                  <Text style={styles.colHeaderText}>{ex.category === "Lifts" ? "Reps" : "Dist/Reps"}</Text>
-               </View>
-               <View style={styles.colCheck}><Text style={styles.colHeaderText}>✓</Text></View>
+              <View style={styles.colIndex}><Text style={styles.colHeaderText}>Set</Text></View>
+              <View style={styles.colPrevious}><Text style={styles.colHeaderText}>Previous</Text></View>
+              <View style={styles.colInputs}>
+                <Text style={styles.colHeaderText}>
+                  {ex.category === "Lifts" ? `Weight (${ex.weightUnit || 'lbs'})` : "Time"}
+                </Text>
+                <Text style={styles.colHeaderText}>{ex.category === "Lifts" ? "Reps" : "Dist/Reps"}</Text>
+              </View>
+              <View style={styles.colCheck}><Text style={styles.colHeaderText}>✓</Text></View>
             </View>
             <View style={styles.setsContainer}>
               {ex.sets.map((set, idx) => {
                 // Calculate separate indices for warmup vs working sets
                 // Warmups are indexed separately: 1.1w, 1.2w, 2.1w, 2.2w, etc.
                 // Working sets are indexed separately: 1, 2, 3 or 1.1, 1.2 for dropsets
-                
+
                 let warmupIndex = null;  // { group: number, subIndex: number | null }
                 let workingIndex = null; // { group: number, subIndex: number | null }
-                
+
                 // Track seen groups for warmups and working sets separately
                 let warmupGroupNum = 0;
                 let workingGroupNum = 0;
                 const seenWarmupGroups = new Set();
                 const seenWorkingGroups = new Set();
-                
+
                 // First pass: count all groups/sets before this index
                 for (let i = 0; i < idx; i++) {
                   const s = ex.sets[i];
@@ -1935,7 +1765,7 @@ const WorkoutTemplate = ({
                     }
                   }
                 }
-                
+
                 // Now calculate the index for the current set
                 if (set.isWarmup) {
                   if (set.dropSetId) {
@@ -1964,13 +1794,13 @@ const WorkoutTemplate = ({
                     workingIndex = { group: workingGroupNum, subIndex: null };
                   }
                 }
-                
+
                 // Legacy values for backward compatibility (groupSetNumber, indexInGroup, overallSetNumber)
                 let overallSetNumber = 0;
                 let groupSetNumber = null;
                 let indexInGroup = null;
                 const seenGroupIds = new Set();
-                
+
                 for (let i = 0; i < idx; i++) {
                   if (ex.sets[i].dropSetId) {
                     if (!seenGroupIds.has(ex.sets[i].dropSetId)) {
@@ -1981,7 +1811,7 @@ const WorkoutTemplate = ({
                     overallSetNumber++;
                   }
                 }
-                
+
                 if (set.dropSetId) {
                   if (!seenGroupIds.has(set.dropSetId)) {
                     overallSetNumber++;
@@ -1992,7 +1822,7 @@ const WorkoutTemplate = ({
                 } else {
                   overallSetNumber++;
                 }
-                
+
                 // Determine the group bar color type
                 // If in selection mode editing this group, use the temporary groupSetType state
                 // Otherwise, check if ALL sets in the group have the SAME type (indicating group-level type)
@@ -2006,20 +1836,20 @@ const WorkoutTemplate = ({
                     const allWarmup = groupSetsForType.length > 0 && groupSetsForType.every(s => s.isWarmup);
                     const allDropset = groupSetsForType.length > 0 && groupSetsForType.every(s => s.isDropset);
                     const allFailure = groupSetsForType.length > 0 && groupSetsForType.every(s => s.isFailure);
-                    
+
                     if (allWarmup) displayGroupSetType = 'warmup';
                     else if (allDropset) displayGroupSetType = 'dropset';
                     else if (allFailure) displayGroupSetType = 'failure';
                   }
                 }
-                
+
                 // Get the previous set data with smart lookup
                 const previousData = getPreviousSetData(set, warmupIndex, workingIndex);
-                
+
                 // Determine if rest timer should show after this set
                 const showRestTimer = set.restPeriodSeconds && !readOnly;
                 const isRestTimerActive = activeRestTimer?.setId === set.id;
-                
+
                 return (
                   <React.Fragment key={set.id}>
                     <SetRow index={idx} set={set} category={ex.category}
@@ -2051,119 +1881,39 @@ const WorkoutTemplate = ({
                       customKeyboardActive={customKeyboardTarget?.exerciseId === ex.instanceId && customKeyboardTarget?.setId === set.id}
                       customKeyboardField={customKeyboardTarget?.exerciseId === ex.instanceId && customKeyboardTarget?.setId === set.id ? customKeyboardTarget.field : null}
                     />
-                    
+
                     {/* Rest Timer Bar */}
                     {showRestTimer && (() => {
                       // Determine if this rest timer is at the end of a dropset
                       const isRestTimerDropSetEnd = set.dropSetId && (idx === ex.sets.length - 1 || ex.sets[idx + 1]?.dropSetId !== set.dropSetId);
-                      
-                      const handleDeleteRestTimer = () => {
-                        handleWorkoutUpdate({
-                          ...currentWorkout,
-                          exercises: updateExercisesDeep(currentWorkout.exercises, ex.instanceId, (exercise) => ({
-                            ...exercise,
-                            sets: exercise.sets.map(s => {
-                              if (s.id === set.id) {
-                                const { restPeriodSeconds, restTimerCompleted, ...rest } = s;
-                                return rest;
-                              }
-                              return s;
-                            })
-                          }))
-                        });
-                        // Also cancel any active timer for this set
-                        if (activeRestTimer?.setId === set.id) {
-                          setActiveRestTimer(null);
-                        }
-                      };
-                      
+
                       return (
-                      <Swipeable
-                        renderRightActions={(progress, dragX) => (
-                          <RestTimerDeleteAction 
-                            progress={progress} 
-                            dragX={dragX} 
-                            onDelete={handleDeleteRestTimer} 
-                          />
-                        )}
-                        onSwipeableWillOpen={(direction) => {
-                          // If fully opened to the right (swiped left), trigger delete
-                          if (direction === 'right') {
-                            handleDeleteRestTimer();
-                          }
-                        }}
-                        overshootRight={false}
-                        friction={2}
-                        rightThreshold={120}
-                      >
-                      <View style={[
-                        styles.restTimerBar,
-                        set.completed && set.restTimerCompleted && styles.restTimerBar__completed
-                      ]}>
-                        {/* Dropset indicator for rest timer */}
-                        {set.dropSetId && (
-                          <View style={[
-                            styles.restTimerDropSetIndicator,
-                            isRestTimerDropSetEnd && styles.restTimerDropSetIndicator__end,
-                            displayGroupSetType === 'warmup' && styles.restTimerDropSetIndicator__warmup,
-                            displayGroupSetType === 'failure' && styles.restTimerDropSetIndicator__failure
-                          ]} />
-                        )}
-                        <View style={[
-                          styles.restTimerLine,
-                          set.restTimerCompleted && styles.restTimerLine__completed
-                        ]} />
-                        <TouchableOpacity 
-                          style={[
-                            styles.restTimerBadge,
-                            isRestTimerActive && styles.restTimerBadge__active,
-                            set.restTimerCompleted && !isRestTimerActive && styles.restTimerBadge__completed
-                          ]}
-                          onPress={() => {
-                            if (isRestTimerActive) {
-                              // Open the timer control popup
-                              setRestTimerPopupOpen(true);
-                            } else {
-                              // Open the duration picker to edit the timer
-                              setRestPeriodSetInfo({ exerciseId: ex.instanceId, setId: set.id });
-                              setRestTimerInput(String(set.restPeriodSeconds));
-                              setRestPeriodModalOpen(true);
-                            }
-                          }}
-                        >
-                          {isRestTimerActive ? (
-                            <Text style={styles.restTimerText__activeLarge}>
-                              {formatRestTime(activeRestTimer.remainingSeconds)}
-                            </Text>
-                          ) : (
-                            <>
-                              <Timer size={12} color={set.restTimerCompleted ? COLORS.green[600] : COLORS.slate[500]} />
-                              <Text style={[
-                                styles.restTimerText,
-                                set.restTimerCompleted && styles.restTimerText__completed
-                              ]}>
-                                {formatRestTime(set.restPeriodSeconds)}
-                              </Text>
-                            </>
-                          )}
-                        </TouchableOpacity>
-                        <View style={[
-                          styles.restTimerLine,
-                          set.restTimerCompleted && styles.restTimerLine__completed
-                        ]} />
-                      </View>
-                      </Swipeable>
+                        <RestTimerBar
+                          set={set}
+                          exerciseId={ex.instanceId}
+                          currentWorkout={currentWorkout}
+                          handleWorkoutUpdate={handleWorkoutUpdate}
+                          activeRestTimer={activeRestTimer}
+                          setActiveRestTimer={setActiveRestTimer}
+                          setRestPeriodSetInfo={setRestPeriodSetInfo}
+                          setRestTimerInput={setRestTimerInput}
+                          setRestPeriodModalOpen={setRestPeriodModalOpen}
+                          setRestTimerPopupOpen={setRestTimerPopupOpen}
+                          isRestTimerDropSetEnd={isRestTimerDropSetEnd}
+                          displayGroupSetType={displayGroupSetType}
+                          styles={styles}
+                        />
                       );
                     })()}
                   </React.Fragment>
                 );
               })}
             </View>
-            
+
             {selectionMode?.exerciseId === ex.instanceId && (
               <View style={styles.selectionModeFooter}>
                 <View style={styles.groupTypeDropdownContainer}>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     onPress={() => setGroupSetType(groupSetType === 'warmup' ? null : 'warmup')}
                     style={[
                       styles.groupTypeOption,
@@ -2176,7 +1926,7 @@ const WorkoutTemplate = ({
                       groupSetType === 'warmup' && styles.groupTypeOptionText__selected
                     ]}>Warmup</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     onPress={() => setGroupSetType(groupSetType === 'failure' ? null : 'failure')}
                     style={[
                       styles.groupTypeOption,
@@ -2190,12 +1940,12 @@ const WorkoutTemplate = ({
                     ]}>Failure</Text>
                   </TouchableOpacity>
                 </View>
-                
+
                 <View style={styles.selectionModeActions}>
                   <TouchableOpacity onPress={handleCancelDropSet} style={styles.selectionCancelButton}>
                     <Text style={styles.selectionCancelText}>Cancel</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     onPress={handleSubmitDropSet}
                     style={styles.selectionSubmitButton}
                   >
@@ -2204,28 +1954,28 @@ const WorkoutTemplate = ({
                 </View>
               </View>
             )}
-         </View>
-         )}
-         
-         {isMoving && (
-           <Animated.View 
-             pointerEvents="none"
-             style={[
-               StyleSheet.absoluteFillObject,
-               styles.movingItemOverlay,
-               isGroupChild && groupColorScheme ? {
-                 borderColor: groupColorScheme[500],
-               } : styles.movingItemOverlay__regular,
-               { opacity: fadeAnim }
-             ]}
-           />
-         )}
+          </View>
+        )}
+
+        {isMoving && (
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              StyleSheet.absoluteFillObject,
+              styles.movingItemOverlay,
+              isGroupChild && groupColorScheme ? {
+                borderColor: groupColorScheme[500],
+              } : styles.movingItemOverlay__regular,
+              { opacity: fadeAnim }
+            ]}
+          />
+        )}
       </TouchableOpacity>
     );
 
     if (isGroupChild) {
       return (
-        <View 
+        <View
           key={ex.instanceId}
           style={[
             styles.groupChildWrapper,
@@ -2239,7 +1989,7 @@ const WorkoutTemplate = ({
             }
           ]}
         >
-           {cardContent}
+          {cardContent}
         </View>
       );
     }
@@ -2255,65 +2005,65 @@ const WorkoutTemplate = ({
     let groupColorScheme = null;
 
     if (isGroupChild) {
-       // We need to find which group we are in.
-       // Since we are rendering flat list, we can look backwards from index to find the header.
-       // The index passed here is the insertion index.
-       // So the item at index-1 might be the previous item in the group.
-       // We can traverse back until we find a group_header.
-       for (let i = index - 1; i >= 0; i--) {
-          if (flatRows[i].type === 'group_header') {
-             groupType = flatRows[i].data.groupType;
-             dropZoneGroupId = flatRows[i].id;
-             groupColorScheme = groupType === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme;
-             break;
-          }
-       }
+      // We need to find which group we are in.
+      // Since we are rendering flat list, we can look backwards from index to find the header.
+      // The index passed here is the insertion index.
+      // So the item at index-1 might be the previous item in the group.
+      // We can traverse back until we find a group_header.
+      for (let i = index - 1; i >= 0; i--) {
+        if (flatRows[i].type === 'group_header') {
+          groupType = flatRows[i].data.groupType;
+          dropZoneGroupId = flatRows[i].id;
+          groupColorScheme = groupType === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme;
+          break;
+        }
+      }
     }
 
     let isAlreadyInGroup = false;
     if (isGroupChild && movingItemId) {
-        const movingRow = flatRows.find(r => r.id === movingItemId);
-        if (movingRow && movingRow.groupId === dropZoneGroupId) {
-            isAlreadyInGroup = true;
-        }
+      const movingRow = flatRows.find(r => r.id === movingItemId);
+      if (movingRow && movingRow.groupId === dropZoneGroupId) {
+        isAlreadyInGroup = true;
+      }
     }
 
     return (
-    <TouchableOpacity 
-      key={`drop-${index}-${isGroupChild ? 'in' : 'out'}`} 
-      style={[
-        styles.dropZone,
-        isLastInGroup && styles.dropZone__lastInGroup,
-        isGroupChild && groupColorScheme ? {
-          borderColor: groupColorScheme[100],
-          backgroundColor: groupColorScheme[50],
-        } : styles.dropZone__regular,
-        isGroupChild && isLastInGroup && groupColorScheme && {
-          borderColor: groupColorScheme[100],
-          backgroundColor: groupColorScheme[50],
-        }
-      ]}
-      onPress={() => handleMoveItem(index, isGroupChild)}
-    >
-      <View style={styles.dropZoneLineContainer}>
-        <View style={[
-          styles.dropZoneLine,
-          isGroupChild && groupColorScheme && {
-            backgroundColor: groupColorScheme[300],
+      <TouchableOpacity
+        key={`drop-${index}-${isGroupChild ? 'in' : 'out'}`}
+        style={[
+          styles.dropZone,
+          isLastInGroup && styles.dropZone__lastInGroup,
+          isGroupChild && groupColorScheme ? {
+            borderColor: groupColorScheme[100],
+            backgroundColor: groupColorScheme[50],
+          } : styles.dropZone__regular,
+          isGroupChild && isLastInGroup && groupColorScheme && {
+            borderColor: groupColorScheme[100],
+            backgroundColor: groupColorScheme[50],
           }
-        ]} />
-      </View>
-      <Text style={[
-        styles.dropZoneText,
-        isGroupChild && groupColorScheme ? {
-          backgroundColor: groupColorScheme[50],
-          color: groupColorScheme[600],
-        } : styles.dropZoneText__regular
-      ]}>
-        {isGroupChild && !isAlreadyInGroup ? `Add to ${groupType}` : "Move here"}
-      </Text>
-    </TouchableOpacity>
-  );
+        ]}
+        onPress={() => handleMoveItem(index, isGroupChild)}
+      >
+        <View style={styles.dropZoneLineContainer}>
+          <View style={[
+            styles.dropZoneLine,
+            isGroupChild && groupColorScheme && {
+              backgroundColor: groupColorScheme[300],
+            }
+          ]} />
+        </View>
+        <Text style={[
+          styles.dropZoneText,
+          isGroupChild && groupColorScheme ? {
+            backgroundColor: groupColorScheme[50],
+            color: groupColorScheme[600],
+          } : styles.dropZoneText__regular
+        ]}>
+          {isGroupChild && !isAlreadyInGroup ? `Add to ${groupType}` : "Move here"}
+        </Text>
+      </TouchableOpacity>
+    );
   };
 
   const renderSpacer = (index, isGroupChild = false, isLastInGroup = false) => {
@@ -2332,7 +2082,7 @@ const WorkoutTemplate = ({
     }
 
     return (
-      <View 
+      <View
         key={`spacer-${index}-${isGroupChild ? 'in' : 'out'}`}
         style={[
           styles.spacer,
@@ -2372,10 +2122,10 @@ const WorkoutTemplate = ({
     flatRows.forEach((row, index) => {
       // Skip processing for children of the moving group
       if (isMoveMode && movingItemId) {
-          const movingRow = flatRows.find(r => r.id === movingItemId);
-          if (movingRow && movingRow.type === 'group_header' && row.groupId === movingItemId) {
-             return;
-          }
+        const movingRow = flatRows.find(r => r.id === movingItemId);
+        if (movingRow && movingRow.type === 'group_header' && row.groupId === movingItemId) {
+          return;
+        }
       }
 
       // Drop Zone before item
@@ -2385,96 +2135,96 @@ const WorkoutTemplate = ({
         let isEndOfGroup = false;
 
         if (index > 0) {
-            const prevRow = flatRows[index - 1];
-            // If previous item is a group header OR a group child, then we are inside.
-            if (prevRow.type === 'group_header' || (prevRow.type === 'exercise' && prevRow.depth === 1)) {
-              isInsideGroup = true;
+          const prevRow = flatRows[index - 1];
+          // If previous item is a group header OR a group child, then we are inside.
+          if (prevRow.type === 'group_header' || (prevRow.type === 'exercise' && prevRow.depth === 1)) {
+            isInsideGroup = true;
+          }
+
+          // Check if we are at the END of a group (transition from Inside to Outside)
+          if (isInsideGroup) {
+            if (row.depth === 0 || (row.depth === 1 && row.groupId !== prevRow.groupId && row.groupId !== prevRow.id)) {
+              isEndOfGroup = true;
             }
-            
-            // Check if we are at the END of a group (transition from Inside to Outside)
-            if (isInsideGroup) {
-              if (row.depth === 0 || (row.depth === 1 && row.groupId !== prevRow.groupId && row.groupId !== prevRow.id)) {
-                  isEndOfGroup = true;
-              }
-            }
+          }
         }
 
         // Skip drop zones within the moving block or immediately before/after it
         // Range to skip: [movingIndex, movingEndIndex]
-        
+
         let shouldSkip = false;
         if (movingIndex !== -1) {
-           if (index >= movingIndex && index < movingEndIndex) {
-             shouldSkip = true;
-           }
+          if (index >= movingIndex && index < movingEndIndex) {
+            shouldSkip = true;
+          }
         }
 
         if (!shouldSkip) {
           if (isEndOfGroup) {
-             // Render TWO drop zones:
-             // 1. Inside (to place at end of group)
-             let skipInside = false;
-             let skipOutside = false;
-             let hideInside = false;
+            // Render TWO drop zones:
+            // 1. Inside (to place at end of group)
+            let skipInside = false;
+            let skipOutside = false;
+            let hideInside = false;
 
-             if (index === movingEndIndex) {
-                const movingRow = flatRows[movingIndex];
-                if (movingRow.depth === 1) skipInside = true;
-                if (movingRow.depth === 0) skipOutside = true;
+            if (index === movingEndIndex) {
+              const movingRow = flatRows[movingIndex];
+              if (movingRow.depth === 1) skipInside = true;
+              if (movingRow.depth === 0) skipOutside = true;
 
-                // If moving a group, and we are at the end of it, hide the "Inside" drop zone completely (no spacer)
-                if (movingRow.type === 'group_header' && flatRows[index - 1].groupId === movingRow.id) {
-                    hideInside = true;
-                }
-             }
+              // If moving a group, and we are at the end of it, hide the "Inside" drop zone completely (no spacer)
+              if (movingRow.type === 'group_header' && flatRows[index - 1].groupId === movingRow.id) {
+                hideInside = true;
+              }
+            }
 
-             if (!hideInside) {
-                if (!skipInside) renderedItems.push(renderDropZone(index, true, true));
-                else renderedItems.push(renderSpacer(index, true, true));
-             }
+            if (!hideInside) {
+              if (!skipInside) renderedItems.push(renderDropZone(index, true, true));
+              else renderedItems.push(renderSpacer(index, true, true));
+            }
 
-             if (!skipOutside) renderedItems.push(renderDropZone(index, false, false));
-             else renderedItems.push(renderSpacer(index, false, false));
+            if (!skipOutside) renderedItems.push(renderDropZone(index, false, false));
+            else renderedItems.push(renderSpacer(index, false, false));
           } else {
-             // Normal single drop zone
-             let skip = false;
-             if (index === movingEndIndex) {
-                const movingRow = flatRows[movingIndex];
-                if (isInsideGroup && movingRow.depth === 1) skip = true;
-                if (!isInsideGroup && movingRow.depth === 0) skip = true;
-             }
-             
-             if (!skip) renderedItems.push(renderDropZone(index, isInsideGroup, false));
-             else renderedItems.push(renderSpacer(index, isInsideGroup, false));
+            // Normal single drop zone
+            let skip = false;
+            if (index === movingEndIndex) {
+              const movingRow = flatRows[movingIndex];
+              if (isInsideGroup && movingRow.depth === 1) skip = true;
+              if (!isInsideGroup && movingRow.depth === 0) skip = true;
+            }
+
+            if (!skip) renderedItems.push(renderDropZone(index, isInsideGroup, false));
+            else renderedItems.push(renderSpacer(index, isInsideGroup, false));
           }
         } else {
-            // Render spacer instead of skipped drop zone
-            // We need to know if we should render an "Inside" spacer or "Outside" spacer.
-            // If we are inside a moving group, we are likely "Inside".
-            
-            // If isEndOfGroup is true, we normally render TWO drop zones.
-            // But if we are skipping, we are likely inside the moving block.
-            // If the moving block *contains* an end-of-group transition?
-            // A moving block is either a single exercise or a whole group.
-            // If it's a whole group, it contains Header + Children.
-            // The transition from Header to Child is "Inside".
-            // The transition from Child to Child is "Inside".
-            // The transition from Last Child to Next Item (outside block) is handled by the Next Item's drop zone logic (index = movingEndIndex).
-            
-            // So within the moving block:
-            // Index = movingIndex (Header). Prev is whatever was before. 
-            // If Prev was Inside, then Header is Inside? No, Header is depth 0.
-            // So Header is never Inside.
-            // So drop zone before Header is Outside.
-            
-            // Index = movingIndex + 1 (Child 1). Prev is Header.
-            // Header is group_header. So isInsideGroup = true.
-            // Child 1 is depth 1. isEndOfGroup = false.
-            // So drop zone is Inside.
-            
-            // So we can use `isInsideGroup` to style the spacer.
-            
-            renderedItems.push(renderSpacer(index, isInsideGroup));
+          // Render spacer instead of skipped drop zone
+          // We need to know if we should render an "Inside" spacer or "Outside" spacer.
+          // If we are inside a moving group, we are likely "Inside".
+
+          // If isEndOfGroup is true, we normally render TWO drop zones.
+          // But if we are skipping, we are likely inside the moving block.
+          // If the moving block *contains* an end-of-group transition?
+          // A moving block is either a single exercise or a whole group.
+          // If it's a whole group, it contains Header + Children.
+          // The transition from Header to Child is "Inside".
+          // The transition from Child to Child is "Inside".
+          // The transition from Last Child to Next Item (outside block) is handled by the Next Item's drop zone logic (index = movingEndIndex).
+
+          // So within the moving block:
+          // Index = movingIndex (Header). Prev is whatever was before. 
+          // If Prev was Inside, then Header is Inside? No, Header is depth 0.
+          // So Header is never Inside.
+          // So drop zone before Header is Outside.
+
+          // Index = movingIndex + 1 (Child 1). Prev is Header.
+          // Header is group_header. So isInsideGroup = true.
+          // Child 1 is depth 1. isEndOfGroup = false.
+          // So drop zone is Inside.
+
+          // So we can use `isInsideGroup` to style the spacer.
+
+          renderedItems.push(renderSpacer(index, isInsideGroup));
         }
       }
 
@@ -2482,97 +2232,97 @@ const WorkoutTemplate = ({
         const isMoving = isMoveMode && movingItemId === row.id;
         const isNotMoving = isMoveMode && !isMoving;
         const groupColorScheme = row.data.groupType === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme;
-        
+
         // If moving, we want to render a collapsed version that looks like a single item
         if (isMoving) {
-           renderedItems.push(
-             <View key={row.id} style={styles.movingGroupWrapper}>
-                <Animated.View 
-                  style={[
-                    styles.movingGroupContainer,
-                    {
-                      backgroundColor: groupColorScheme[50],
-                      borderColor: groupColorScheme[400],
-                      opacity: fadeAnim
-                    }
-                  ]}
-                >
-                  <View style={styles.movingGroupContent}>
-                    <Layers size={16} color={groupColorScheme[600]} />
-                    <Text style={[styles.movingGroupText, { color: groupColorScheme[700] }]}>
-                      {row.data.groupType} ({row.data.children ? row.data.children.length : 0})
-                    </Text>
-                  </View>
-                </Animated.View>
-             </View>
-           );
-           // We also need to skip rendering the children of this group in the main loop
-           // The main loop iterates over flatRows.
-           // If we are moving a group, the children are subsequent rows.
-           // We need to ensure we don't render them.
-           // But wait, the `renderFlatList` iterates all rows.
-           // We can check if a row is a child of the moving group and skip it.
-        } else {
-            renderedItems.push(
-              <TouchableOpacity 
-                key={row.id} 
-                activeOpacity={1}
-                onLongPress={() => handleStartMove(row.id)}
-                onPress={() => {
-                  if (isMoveMode) {
-                     const idx = flatRows.findIndex(r => r.id === row.id);
-                     if (idx !== -1) handleMoveItem(idx);
-                  }
-                }}
+          renderedItems.push(
+            <View key={row.id} style={styles.movingGroupWrapper}>
+              <Animated.View
                 style={[
-                  styles.groupContainer, 
-                  styles.groupContainer__notMoving,
+                  styles.movingGroupContainer,
                   {
-                    borderColor: groupColorScheme[100],
-                    backgroundColor: groupColorScheme[100],
+                    backgroundColor: groupColorScheme[50],
+                    borderColor: groupColorScheme[400],
+                    opacity: fadeAnim
                   }
                 ]}
               >
-                <View style={[
-                  styles.groupHeader,
-                  isNotMoving && styles.groupHeader__notMoving
-                ]}>
-                  <Layers size={14} color={groupColorScheme[600]} />
-                  <Text style={[styles.groupTitle, { color: groupColorScheme[600] }]}>{row.data.groupType}</Text>
+                <View style={styles.movingGroupContent}>
+                  <Layers size={16} color={groupColorScheme[600]} />
+                  <Text style={[styles.movingGroupText, { color: groupColorScheme[700] }]}>
+                    {row.data.groupType} ({row.data.children ? row.data.children.length : 0})
+                  </Text>
                 </View>
-              </TouchableOpacity>
-            );
+              </Animated.View>
+            </View>
+          );
+          // We also need to skip rendering the children of this group in the main loop
+          // The main loop iterates over flatRows.
+          // If we are moving a group, the children are subsequent rows.
+          // We need to ensure we don't render them.
+          // But wait, the `renderFlatList` iterates all rows.
+          // We can check if a row is a child of the moving group and skip it.
+        } else {
+          renderedItems.push(
+            <TouchableOpacity
+              key={row.id}
+              activeOpacity={1}
+              onLongPress={() => handleStartMove(row.id)}
+              onPress={() => {
+                if (isMoveMode) {
+                  const idx = flatRows.findIndex(r => r.id === row.id);
+                  if (idx !== -1) handleMoveItem(idx);
+                }
+              }}
+              style={[
+                styles.groupContainer,
+                styles.groupContainer__notMoving,
+                {
+                  borderColor: groupColorScheme[100],
+                  backgroundColor: groupColorScheme[100],
+                }
+              ]}
+            >
+              <View style={[
+                styles.groupHeader,
+                isNotMoving && styles.groupHeader__notMoving
+              ]}>
+                <Layers size={14} color={groupColorScheme[600]} />
+                <Text style={[styles.groupTitle, { color: groupColorScheme[600] }]}>{row.data.groupType}</Text>
+              </View>
+            </TouchableOpacity>
+          );
         }
       } else {
         // Exercise
         // Check if it's in a group to apply styling
         const isGroupChild = row.depth === 1;
-        
+
         // If this exercise is a child of the currently moving group, skip rendering it
         if (isMoveMode && movingItemId) {
-           const movingRow = flatRows.find(r => r.id === movingItemId);
-           if (movingRow && movingRow.type === 'group_header' && row.groupId === movingItemId) {
-              return; // Skip rendering child of moving group
-           }
+          const movingRow = flatRows.find(r => r.id === movingItemId);
+          if (movingRow && movingRow.type === 'group_header' && row.groupId === movingItemId) {
+            return; // Skip rendering child of moving group
+          }
         }
 
         // Check if it's the last child of the group
         let isLastChild = false;
         let parentGroupType = null;
         if (isGroupChild) {
-           const nextRow = flatRows[index + 1];
-           if (!nextRow || nextRow.type === 'group_header' || nextRow.depth === 0) {
-             isLastChild = true;
-           }
-           // Find parent group to get group type
-           for (let i = index - 1; i >= 0; i--) {
-             if (flatRows[i].type === 'group_header') {
-               parentGroupType = flatRows[i].data.groupType;
-               break;
-             }
-           }
+          const nextRow = flatRows[index + 1];
+          if (!nextRow || nextRow.type === 'group_header' || nextRow.depth === 0) {
+            isLastChild = true;
+          }
+          // Find parent group to get group type
+          for (let i = index - 1; i >= 0; i--) {
+            if (flatRows[i].type === 'group_header') {
+              parentGroupType = flatRows[i].data.groupType;
+              break;
+            }
+          }
         }
-        
+
         renderedItems.push(renderExerciseCard(row.data, isGroupChild, isLastChild, parentGroupType));
       }
     });
@@ -2582,46 +2332,46 @@ const WorkoutTemplate = ({
       const finalIndex = flatRows.length;
       let shouldSkip = false;
       if (movingIndex !== -1) {
-         // If moving block is at the end of the list, movingEndIndex === finalIndex.
-         // We handle the "skip if matches" logic below.
-         // But if movingEndIndex > finalIndex (impossible) or < finalIndex.
-         // If movingEndIndex === finalIndex, we are immediately after the block.
-         // If movingIndex === finalIndex (impossible).
+        // If moving block is at the end of the list, movingEndIndex === finalIndex.
+        // We handle the "skip if matches" logic below.
+        // But if movingEndIndex > finalIndex (impossible) or < finalIndex.
+        // If movingEndIndex === finalIndex, we are immediately after the block.
+        // If movingIndex === finalIndex (impossible).
       }
 
       let isInsideGroup = false;
       if (flatRows.length > 0) {
-         const lastRow = flatRows[flatRows.length - 1];
-         if (lastRow.type === 'group_header' || (lastRow.type === 'exercise' && lastRow.depth === 1)) {
-           isInsideGroup = true;
-         }
+        const lastRow = flatRows[flatRows.length - 1];
+        if (lastRow.type === 'group_header' || (lastRow.type === 'exercise' && lastRow.depth === 1)) {
+          isInsideGroup = true;
+        }
       }
-      
-      if (isInsideGroup) {
-         // If the list ends while inside a group, we need TWO drop zones:
-         // 1. Inside (End of Group)
-         let skipInside = false;
-         let skipOutside = false;
-         
-         if (finalIndex === movingEndIndex) {
-            const movingRow = flatRows[movingIndex];
-            if (movingRow.depth === 1) skipInside = true;
-            if (movingRow.depth === 0) skipOutside = true;
-         }
 
-         if (!skipInside) renderedItems.push(renderDropZone(finalIndex, true, true));
-         // 2. Outside (After Group)
-         if (!skipOutside) renderedItems.push(renderDropZone(finalIndex, false, false));
+      if (isInsideGroup) {
+        // If the list ends while inside a group, we need TWO drop zones:
+        // 1. Inside (End of Group)
+        let skipInside = false;
+        let skipOutside = false;
+
+        if (finalIndex === movingEndIndex) {
+          const movingRow = flatRows[movingIndex];
+          if (movingRow.depth === 1) skipInside = true;
+          if (movingRow.depth === 0) skipOutside = true;
+        }
+
+        if (!skipInside) renderedItems.push(renderDropZone(finalIndex, true, true));
+        // 2. Outside (After Group)
+        if (!skipOutside) renderedItems.push(renderDropZone(finalIndex, false, false));
       } else {
-         let skip = false;
-         if (finalIndex === movingEndIndex) {
-            const movingRow = flatRows[movingIndex];
-            if (!isInsideGroup && movingRow.depth === 0) skip = true;
-            // If isInsideGroup is false, we can't be depth 1 unless we moved out?
-            // But here isInsideGroup refers to the drop zone context (end of list).
-            // If end of list is NOT inside a group, then drop zone is depth 0.
-         }
-         if (!skip) renderedItems.push(renderDropZone(finalIndex, false, false));
+        let skip = false;
+        if (finalIndex === movingEndIndex) {
+          const movingRow = flatRows[movingIndex];
+          if (!isInsideGroup && movingRow.depth === 0) skip = true;
+          // If isInsideGroup is false, we can't be depth 1 unless we moved out?
+          // But here isInsideGroup refers to the drop zone context (end of list).
+          // If end of list is NOT inside a group, then drop zone is depth 0.
+        }
+        if (!skip) renderedItems.push(renderDropZone(finalIndex, false, false));
       }
     }
 
@@ -2631,18 +2381,11 @@ const WorkoutTemplate = ({
   return (
     <SafeAreaView style={styles.container}>
       {isMoveMode && (
-        <View style={styles.moveModeBanner}>
-          <TouchableOpacity onPress={handleCancelMove}>
-            <Text style={styles.moveModeBannerButtonText}>Cancel</Text>
-          </TouchableOpacity>
-          <View style={styles.moveModeBannerCenter}>
-            <Text style={styles.moveModeBannerTitle}>Move Item</Text>
-            <Text style={styles.moveModeBannerSubtitle}>Press and hold on an exercise or group to move it</Text>
-          </View>
-          <TouchableOpacity onPress={handleDoneMove}>
-            <Text style={styles.moveModeBannerButtonText}>Done</Text>
-          </TouchableOpacity>
-        </View>
+        <MoveModeBanner
+          onCancel={handleCancelMove}
+          onDone={handleDoneMove}
+          styles={styles}
+        />
       )}
 
       {customHeader ? customHeader : (
@@ -2651,15 +2394,15 @@ const WorkoutTemplate = ({
             <ChevronDown size={24} color={COLORS.slate[400]} />
           </TouchableOpacity>
           <View style={styles.headerCenter}>
-            <TextInput 
-              value={currentWorkout.name} 
-              onChangeText={(text) => handleWorkoutUpdate({...currentWorkout, name: text})} 
+            <TextInput
+              value={currentWorkout.name}
+              onChangeText={(text) => handleWorkoutUpdate({ ...currentWorkout, name: text })}
               style={styles.workoutNameInput}
             />
             <View style={styles.headerMeta}>
               <View style={styles.metaItem}>
                 <Calendar size={12} color={COLORS.slate[400]} />
-                <Text style={styles.metaText}>{new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric'})}</Text>
+                <Text style={styles.metaText}>{new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</Text>
               </View>
               <View style={styles.metaItem}>
                 <Clock size={12} color={COLORS.slate[400]} />
@@ -2668,15 +2411,15 @@ const WorkoutTemplate = ({
             </View>
           </View>
           {isMoveMode ? (
-            <TouchableOpacity 
-              onPress={handleCancelMove} 
+            <TouchableOpacity
+              onPress={handleCancelMove}
               style={[styles.finishButton, styles.finishButton__cancelMode]}
             >
               <Text style={styles.finishButtonText}>CANCEL</Text>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity 
-              onPress={handleCancel} 
+            <TouchableOpacity
+              onPress={handleCancel}
               style={[styles.finishButton, styles.finishButton__cancelWorkout]}
             >
               <Text style={styles.finishButtonText}>CANCEL</Text>
@@ -2685,7 +2428,7 @@ const WorkoutTemplate = ({
         </View>
       )}
 
-      <Pressable 
+      <Pressable
         style={styles.mainPressableWrapper}
         onPress={() => {
           // Close any open popup when clicking outside
@@ -2713,7 +2456,7 @@ const WorkoutTemplate = ({
                   top: newTop
                 }));
               }
-              
+
               // Update 3-dot popup position if one is open
               if (optionsModalExId && dropdownPos.originalTop !== undefined) {
                 const newTop = dropdownPos.originalTop - currentOffset;
@@ -2726,53 +2469,53 @@ const WorkoutTemplate = ({
             scrollEventThrottle={16}
           >
             {!isMoveMode && (
-            <View style={styles.notesSection}>
-              <View style={styles.notesHeader}>
-                <TouchableOpacity onPress={() => setShowNotes(!showNotes)} style={styles.notesToggle}>
-                  <FileText size={16} color={COLORS.slate[500]} />
-                  <Text style={styles.notesTitle}>Workout Notes</Text>
-                  {(currentWorkout.sessionNotes && currentWorkout.sessionNotes.length > 0) && (
-                    <View style={styles.notesBadge}>
-                      <Text style={styles.notesBadgeText}>{currentWorkout.sessionNotes.length}</Text>
-                    </View>
-                  )}
-                  <ChevronDown size={14} color={COLORS.slate[500]} style={{ transform: [{ rotate: showNotes ? '180deg' : '0deg' }] }} />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => setIsNoteModalOpen(true)} style={styles.addNoteButton}>
-                  <Plus size={14} color={COLORS.blue[600]} strokeWidth={3} />
-                  <Text style={styles.addNoteText} numberOfLines={1}>Add Note</Text>
-                </TouchableOpacity>
-              </View>
-              {showNotes && (
-                <View style={styles.notesList}>
-                  {sortedNotes.length > 0 ? (
-                    sortedNotes.map((note) => <SavedNoteItem key={note.id} note={note} onPin={handlePinNote} onRemove={handleRemoveNote} />)
-                  ) : (
-                    <Text style={styles.emptyNotesText}>No notes added yet.</Text>
-                  )}
+              <View style={styles.notesSection}>
+                <View style={styles.notesHeader}>
+                  <TouchableOpacity onPress={() => setShowNotes(!showNotes)} style={styles.notesToggle}>
+                    <FileText size={16} color={COLORS.slate[500]} />
+                    <Text style={styles.notesTitle}>Workout Notes</Text>
+                    {(currentWorkout.sessionNotes && currentWorkout.sessionNotes.length > 0) && (
+                      <View style={styles.notesBadge}>
+                        <Text style={styles.notesBadgeText}>{currentWorkout.sessionNotes.length}</Text>
+                      </View>
+                    )}
+                    <ChevronDown size={14} color={COLORS.slate[500]} style={{ transform: [{ rotate: showNotes ? '180deg' : '0deg' }] }} />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setIsNoteModalOpen(true)} style={styles.addNoteButton}>
+                    <Plus size={14} color={COLORS.blue[600]} strokeWidth={3} />
+                    <Text style={styles.addNoteText} numberOfLines={1}>Add Note</Text>
+                  </TouchableOpacity>
                 </View>
-              )}
-            </View>
+                {showNotes && (
+                  <View style={styles.notesList}>
+                    {sortedNotes.length > 0 ? (
+                      sortedNotes.map((note) => <SavedNoteItem key={note.id} note={note} onPin={handlePinNote} onRemove={handleRemoveNote} />)
+                    ) : (
+                      <Text style={styles.emptyNotesText}>No notes added yet.</Text>
+                    )}
+                  </View>
+                )}
+              </View>
             )}
 
             <View style={styles.exercisesContainer}>
               {currentWorkout.exercises.length === 0 && (
-                 <View style={styles.emptyState}>
-                    <Dumbbell size={48} color={COLORS.slate[300]} style={{ marginBottom: 16 }} />
-                    <Text style={styles.emptyStateText}>No exercises added yet</Text>
-                    <TouchableOpacity onPress={() => setShowPicker(true)} style={styles.emptyStateButton}>
-                      <Text style={styles.emptyStateButtonText}>Add an Exercise</Text>
-                    </TouchableOpacity>
-                 </View>
+                <View style={styles.emptyState}>
+                  <Dumbbell size={48} color={COLORS.slate[300]} style={{ marginBottom: 16 }} />
+                  <Text style={styles.emptyStateText}>No exercises added yet</Text>
+                  <TouchableOpacity onPress={() => setShowPicker(true)} style={styles.emptyStateButton}>
+                    <Text style={styles.emptyStateButtonText}>Add an Exercise</Text>
+                  </TouchableOpacity>
+                </View>
               )}
 
               {renderFlatList()}
 
               {!isMoveMode && !readOnly && (
-              <TouchableOpacity onPress={() => setShowPicker(true)} style={styles.addExerciseButton}>
-                <Plus size={20} color={COLORS.slate[500]} />
-                <Text style={styles.addExerciseButtonText}>ADD EXERCISE</Text>
-              </TouchableOpacity>
+                <TouchableOpacity onPress={() => setShowPicker(true)} style={styles.addExerciseButton}>
+                  <Plus size={20} color={COLORS.slate[500]} />
+                  <Text style={styles.addExerciseButtonText}>ADD EXERCISE</Text>
+                </TouchableOpacity>
               )}
 
               {hasExercises && !isMoveMode && (
@@ -2829,13 +2572,13 @@ const WorkoutTemplate = ({
                 const set = exercise?.sets?.find(s => s.id === activeSetMenu?.setId);
                 const setIdx = exercise?.sets?.findIndex(s => s.id === activeSetMenu?.setId) ?? -1;
                 const isGrouped = !!set?.dropSetId;
-                
+
                 const hasRestPeriod = !!set?.restPeriodSeconds;
-                
+
                 return (
                   <>
-                    <TouchableOpacity 
-                      style={styles.setPopupOptionItem} 
+                    <TouchableOpacity
+                      style={styles.setPopupOptionItem}
                       onPress={() => handleSetMenuAction('warmup')}
                     >
                       <Flame size={18} color={COLORS.orange[500]} />
@@ -2845,8 +2588,8 @@ const WorkoutTemplate = ({
                       ]}>Warmup</Text>
                       {set?.isWarmup && <Check size={16} color={COLORS.orange[500]} strokeWidth={3} />}
                     </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={styles.setPopupOptionItem} 
+                    <TouchableOpacity
+                      style={styles.setPopupOptionItem}
                       onPress={() => handleSetMenuAction('failure')}
                     >
                       <Zap size={18} color={COLORS.red[500]} />
@@ -2856,14 +2599,14 @@ const WorkoutTemplate = ({
                       ]}>Failure</Text>
                       {set?.isFailure && <Check size={16} color={COLORS.red[500]} strokeWidth={3} />}
                     </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={styles.setPopupOptionItem} 
+                    <TouchableOpacity
+                      style={styles.setPopupOptionItem}
                       onPress={() => handleSetMenuAction('edit_group')}
                     >
                       <Layers size={18} color={COLORS.indigo[600]} />
                       <Text style={styles.setPopupOptionText}>{isGrouped ? 'Edit dropset(s)' : 'Edit dropset'}</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={[
                         styles.setPopupOptionItem,
                         hasRestPeriod && styles.setPopupOptionItem__activeRest
@@ -2877,7 +2620,7 @@ const WorkoutTemplate = ({
                       ]}>{hasRestPeriod ? `Rest: ${formatRestTime(set.restPeriodSeconds)}` : 'Add rest timer'}</Text>
                       {hasRestPeriod && <Check size={16} color={COLORS.white} strokeWidth={3} />}
                     </TouchableOpacity>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={[styles.setPopupOptionItem, { borderBottomWidth: 0 }]}
                       onPress={() => handleSetMenuAction('insert_set')}
                     >
@@ -2892,66 +2635,66 @@ const WorkoutTemplate = ({
 
           {/* Render the exercise options menu outside the Modal, using conditional rendering */}
           {optionsModalExId && (
-          <Pressable
-            onPress={(e) => {
-              // Capture press to prevent closing
-              e.stopPropagation();
-            }}
-            style={[
-              styles.setPopupMenuContainer,
-              {
-                position: 'absolute',
-                top: dropdownPos.top,
-                right: dropdownPos.right,
-                zIndex: 100, // Important for iOS
-                elevation: 10, // Important for Android
-              }
-            ]}
-          >
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setOptionsModalExId(null)}
+            <Pressable
+              onPress={(e) => {
+                // Capture press to prevent closing
+                e.stopPropagation();
+              }}
+              style={[
+                styles.setPopupMenuContainer,
+                {
+                  position: 'absolute',
+                  top: dropdownPos.top,
+                  right: dropdownPos.right,
+                  zIndex: 100, // Important for iOS
+                  elevation: 10, // Important for Android
+                }
+              ]}
             >
-              <X size={16} color={COLORS.white} />
-            </TouchableOpacity>
-            
-            {(() => {
-              const currentExercise = findExerciseDeep(currentWorkout.exercises, optionsModalExId);
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setOptionsModalExId(null)}
+              >
+                <X size={16} color={COLORS.white} />
+              </TouchableOpacity>
 
-              return (
-                <>
-                  <TouchableOpacity style={styles.setPopupOptionItem} onPress={() => handleToggleUnit(optionsModalExId)}>
-                    <Scale size={18} color={COLORS.slate[600]} />
-                    <Text style={styles.setPopupOptionText}>
-                      {currentExercise?.weightUnit === 'kg' ? 'Switch to lbs' : 'Switch to kg'}
-                    </Text>
-                  </TouchableOpacity>
+              {(() => {
+                const currentExercise = findExerciseDeep(currentWorkout.exercises, optionsModalExId);
 
-                  <TouchableOpacity style={styles.setPopupOptionItem} onPress={() => handleReplaceExercise(optionsModalExId)}>
-                    <RefreshCw size={18} color={COLORS.slate[600]} />
-                    <Text style={styles.setPopupOptionText}>Replace Exercise</Text>
-                  </TouchableOpacity>
+                return (
+                  <>
+                    <TouchableOpacity style={styles.setPopupOptionItem} onPress={() => handleToggleUnit(optionsModalExId)}>
+                      <Scale size={18} color={COLORS.slate[600]} />
+                      <Text style={styles.setPopupOptionText}>
+                        {currentExercise?.weightUnit === 'kg' ? 'Switch to lbs' : 'Switch to kg'}
+                      </Text>
+                    </TouchableOpacity>
 
-                  {/* Superset Options */}
-                  <TouchableOpacity style={styles.setPopupOptionItem} onPress={() => handleEditSuperset(optionsModalExId)}>
-                    <Layers size={18} color={COLORS.indigo[600]} />
-                    <Text style={styles.setPopupOptionText}>Edit superset</Text>
-                  </TouchableOpacity>
+                    <TouchableOpacity style={styles.setPopupOptionItem} onPress={() => handleReplaceExercise(optionsModalExId)}>
+                      <RefreshCw size={18} color={COLORS.slate[600]} />
+                      <Text style={styles.setPopupOptionText}>Replace Exercise</Text>
+                    </TouchableOpacity>
 
-                  <TouchableOpacity style={[styles.setPopupOptionItem, { borderBottomWidth: 0 }]} onPress={() => handleDeleteExercise(optionsModalExId)}>
-                    <Trash2 size={18} color={COLORS.red[500]} />
-                    <Text style={[styles.setPopupOptionText, styles.optionDestructive]}>Delete Exercise</Text>
-                  </TouchableOpacity>
-                </>
-              );
-            })()}
-          </Pressable>
+                    {/* Superset Options */}
+                    <TouchableOpacity style={styles.setPopupOptionItem} onPress={() => handleEditSuperset(optionsModalExId)}>
+                      <Layers size={18} color={COLORS.indigo[600]} />
+                      <Text style={styles.setPopupOptionText}>Edit superset</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={[styles.setPopupOptionItem, { borderBottomWidth: 0 }]} onPress={() => handleDeleteExercise(optionsModalExId)}>
+                      <Trash2 size={18} color={COLORS.red[500]} />
+                      <Text style={[styles.setPopupOptionText, styles.optionDestructive]}>Delete Exercise</Text>
+                    </TouchableOpacity>
+                  </>
+                );
+              })()}
+            </Pressable>
           )}
         </View>
       </Pressable>
 
-      <ExercisePicker 
-        isOpen={showPicker} 
+      <ExercisePicker
+        isOpen={showPicker}
         onClose={() => {
           setShowPicker(false);
           setNewlyCreatedExerciseId(null); // Clear the newly created ID when picker closes
@@ -2971,7 +2714,7 @@ const WorkoutTemplate = ({
         newlyCreatedId={newlyCreatedExerciseId}
       />
 
-      <NewExercise 
+      <NewExercise
         isOpen={isCreateModalOpen}
         onClose={() => {
           setIsCreateModalOpen(false);
@@ -2991,7 +2734,7 @@ const WorkoutTemplate = ({
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Add Note</Text>
-            <TextInput 
+            <TextInput
               style={styles.noteInput}
               placeholder="Write your note here..."
               placeholderTextColor={COLORS.slate[400]}
@@ -3002,22 +2745,22 @@ const WorkoutTemplate = ({
               autoFocus
             />
             <View style={styles.dateInputContainer}>
-               {/* Native Date Picker would be better, but for parity with web code using text input type='date' logic or similar */}
-               <TextInput 
-                 style={styles.dateInput}
-                 value={newNoteDate}
-                 onChangeText={setNewNoteDate}
-                 placeholder="YYYY-MM-DD"
-               />
-               <CalendarDays size={18} color={COLORS.slate[400]} style={styles.dateIcon} />
+              {/* Native Date Picker would be better, but for parity with web code using text input type='date' logic or similar */}
+              <TextInput
+                style={styles.dateInput}
+                value={newNoteDate}
+                onChangeText={setNewNoteDate}
+                placeholder="YYYY-MM-DD"
+              />
+              <CalendarDays size={18} color={COLORS.slate[400]} style={styles.dateIcon} />
             </View>
             <View style={styles.modalActions}>
               <TouchableOpacity onPress={() => setIsNoteModalOpen(false)} style={styles.modalCancel}>
                 <Text style={styles.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
-                onPress={handleAddNote} 
-                disabled={!newNote.trim()} 
+              <TouchableOpacity
+                onPress={handleAddNote}
+                disabled={!newNote.trim()}
                 style={[styles.modalAdd, !newNote.trim() && styles.modalAddDisabled]}
               >
                 <Text style={styles.modalAddText}>Add Note</Text>
@@ -3031,7 +2774,7 @@ const WorkoutTemplate = ({
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Exercise Note</Text>
-            <TextInput 
+            <TextInput
               style={styles.noteInput}
               placeholder="Add a note for this exercise..."
               placeholderTextColor={COLORS.slate[400]}
@@ -3045,8 +2788,8 @@ const WorkoutTemplate = ({
               <TouchableOpacity onPress={() => setExerciseNoteModalOpen(false)} style={styles.modalCancel}>
                 <Text style={styles.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
-                onPress={handleSaveExerciseNote} 
+              <TouchableOpacity
+                onPress={handleSaveExerciseNote}
                 style={styles.modalAdd}
               >
                 <Text style={styles.modalAddText}>Save Note</Text>
@@ -3056,335 +2799,47 @@ const WorkoutTemplate = ({
         </View>
       </Modal>
 
-      <Modal visible={finishModalOpen} transparent animationType="fade" onRequestClose={() => setFinishModalOpen(false)}>
-         <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-               <Text style={styles.modalTitle}>Finish Workout?</Text>
-               <Text style={styles.modalSubtitle}>All sets will be saved to your history.</Text>
-               <View style={styles.modalActions}>
-                 <TouchableOpacity onPress={() => setFinishModalOpen(false)} style={styles.modalCancel}>
-                   <Text style={styles.modalCancelText}>Cancel</Text>
-                 </TouchableOpacity>
-                 <TouchableOpacity onPress={handleFinish} style={styles.modalFinish}>
-                   <Text style={styles.modalFinishText}>Finish</Text>
-                 </TouchableOpacity>
-               </View>
-            </View>
-         </View>
-      </Modal>
+      <FinishWorkoutModal
+        visible={finishModalOpen}
+        onClose={() => setFinishModalOpen(false)}
+        onFinish={handleFinish}
+        styles={styles}
+      />
 
-      <Modal visible={cancelModalOpen} transparent animationType="fade" onRequestClose={() => setCancelModalOpen(false)}>
-         <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-               <Text style={styles.modalTitle}>Cancel Workout?</Text>
-               <Text style={styles.modalSubtitle}>Are you sure you want to cancel? All progress will be lost.</Text>
-               <View style={styles.modalActions}>
-                 <TouchableOpacity onPress={() => setCancelModalOpen(false)} style={styles.modalCancel}>
-                   <Text style={styles.modalCancelText}>No, Keep Going</Text>
-                 </TouchableOpacity>
-                 <TouchableOpacity onPress={confirmCancel} style={[styles.modalFinish, { backgroundColor: COLORS.red[600] }]}>
-                   <Text style={styles.modalFinishText}>Yes, Cancel</Text>
-                 </TouchableOpacity>
-               </View>
-            </View>
-         </View>
-      </Modal>
+      <CancelWorkoutModal
+        visible={cancelModalOpen}
+        onClose={() => setCancelModalOpen(false)}
+        onConfirm={confirmCancel}
+        styles={styles}
+      />
 
-      {/* Rest Timer Input Modal */}
-      <Modal visible={restPeriodModalOpen} transparent animationType="fade" onRequestClose={() => setRestPeriodModalOpen(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Set Rest Timer</Text>
-            
-            {/* Live Preview */}
-            <View style={styles.restTimerPreview}>
-              <Timer size={28} color={parseRestTimeInput(restTimerInput) > 0 ? COLORS.blue[500] : COLORS.slate[300]} />
-              <Text style={[
-                styles.restTimerPreviewText,
-                parseRestTimeInput(restTimerInput) > 0 && styles.restTimerPreviewText__active
-              ]}>
-                {parseRestTimeInput(restTimerInput) > 0 
-                  ? formatRestTime(parseRestTimeInput(restTimerInput))
-                  : '0:00'}
-              </Text>
-            </View>
-            
-            {/* Quick Select Buttons - Row 1: 0:30 -> 1:30 */}
-            <View style={styles.restPeriodQuickOptions}>
-              {[30, 45, 60, 75, 90].map(seconds => (
-                <TouchableOpacity
-                  key={seconds}
-                  style={[
-                    styles.restPeriodQuickOption,
-                    parseRestTimeInput(restTimerInput) === seconds && styles.restPeriodQuickOption__selected
-                  ]}
-                  onPress={() => setRestTimerInput(String(seconds))}
-                >
-                  <Text style={[
-                    styles.restPeriodQuickOptionText,
-                    parseRestTimeInput(restTimerInput) === seconds && styles.restPeriodQuickOptionText__selected
-                  ]}>{formatRestTime(seconds)}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            
-            {/* Quick Select Buttons - Row 2: 1:45 -> 3:30 */}
-            <View style={[styles.restPeriodQuickOptions, { marginBottom: 16 }]}>
-              {[105, 120, 150, 180, 210].map(seconds => (
-                <TouchableOpacity
-                  key={seconds}
-                  style={[
-                    styles.restPeriodQuickOption,
-                    parseRestTimeInput(restTimerInput) === seconds && styles.restPeriodQuickOption__selected
-                  ]}
-                  onPress={() => setRestTimerInput(String(seconds))}
-                >
-                  <Text style={[
-                    styles.restPeriodQuickOptionText,
-                    parseRestTimeInput(restTimerInput) === seconds && styles.restPeriodQuickOptionText__selected
-                  ]}>{formatRestTime(seconds)}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            
-            {/* Phone Dialpad */}
-            <View style={styles.dialpad}>
-              <View style={styles.dialpadRow}>
-                {[1, 2, 3].map(num => (
-                  <TouchableOpacity
-                    key={num}
-                    style={styles.dialpadButton}
-                    onPress={() => setRestTimerInput(prev => prev + String(num))}
-                  >
-                    <Text style={styles.dialpadButtonText}>{num}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              <View style={styles.dialpadRow}>
-                {[4, 5, 6].map(num => (
-                  <TouchableOpacity
-                    key={num}
-                    style={styles.dialpadButton}
-                    onPress={() => setRestTimerInput(prev => prev + String(num))}
-                  >
-                    <Text style={styles.dialpadButtonText}>{num}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              <View style={styles.dialpadRow}>
-                {[7, 8, 9].map(num => (
-                  <TouchableOpacity
-                    key={num}
-                    style={styles.dialpadButton}
-                    onPress={() => setRestTimerInput(prev => prev + String(num))}
-                  >
-                    <Text style={styles.dialpadButtonText}>{num}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              <View style={styles.dialpadRow}>
-                <TouchableOpacity
-                  style={styles.dialpadButtonSecondary}
-                  onPress={() => setRestTimerInput('')}
-                >
-                  <Text style={styles.dialpadButtonTextSecondary}>C</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.dialpadButton}
-                  onPress={() => setRestTimerInput(prev => prev + '0')}
-                >
-                  <Text style={styles.dialpadButtonText}>0</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.dialpadButtonSecondary}
-                  onPress={() => setRestTimerInput(prev => prev.slice(0, -1))}
-                >
-                  <Text style={styles.dialpadButtonTextSecondary}>⌫</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-            
-            <View style={styles.modalActions}>
-              <TouchableOpacity 
-                onPress={() => {
-                  setRestPeriodModalOpen(false);
-                  setRestPeriodSetInfo(null);
-                  setRestTimerInput('');
-                }} 
-                style={styles.modalCancel}
-              >
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                onPress={handleAddRestPeriod}
-                style={[
-                  styles.modalFinish,
-                  parseRestTimeInput(restTimerInput) <= 0 && { opacity: 0.5 }
-                ]}
-                disabled={parseRestTimeInput(restTimerInput) <= 0}
-              >
-                <Text style={styles.modalFinishText}>Save</Text>
-              </TouchableOpacity>
-            </View>
-            
-            {/* Start Timer Button - always visible, disabled when no valid input */}
-            <TouchableOpacity 
-              onPress={() => {
-                const seconds = parseRestTimeInput(restTimerInput);
-                if (seconds <= 0 || !restPeriodSetInfo) return;
-                
-                const { exerciseId, setId } = restPeriodSetInfo;
-                
-                // Update the set's rest period
-                handleWorkoutUpdate({
-                  ...currentWorkout,
-                  exercises: updateExercisesDeep(currentWorkout.exercises, exerciseId, (ex) => ({
-                    ...ex,
-                    sets: ex.sets.map(s => s.id === setId ? { ...s, restPeriodSeconds: seconds, restTimerCompleted: false } : s)
-                  }))
-                });
-                
-                // Start the timer
-                setActiveRestTimer({
-                  exerciseId,
-                  setId,
-                  remainingSeconds: seconds,
-                  totalSeconds: seconds,
-                  isPaused: false
-                });
-                
-                setRestPeriodModalOpen(false);
-                setRestPeriodSetInfo(null);
-                setRestTimerInput('');
-                setRestTimerPopupOpen(true);
-              }}
-              style={[
-                styles.startTimerButton,
-                parseRestTimeInput(restTimerInput) <= 0 && styles.startTimerButton__disabled
-              ]}
-              disabled={parseRestTimeInput(restTimerInput) <= 0}
-            >
-              <Play size={16} color={COLORS.white} />
-              <Text style={styles.startTimerButtonText}>Start Timer</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+      <RestTimerInputModal
+        visible={restPeriodModalOpen}
+        onClose={() => {
+          setRestPeriodModalOpen(false);
+          setRestPeriodSetInfo(null);
+          setRestTimerInput('');
+        }}
+        restTimerInput={restTimerInput}
+        setRestTimerInput={setRestTimerInput}
+        restPeriodSetInfo={restPeriodSetInfo}
+        currentWorkout={currentWorkout}
+        handleWorkoutUpdate={handleWorkoutUpdate}
+        setActiveRestTimer={setActiveRestTimer}
+        setRestTimerPopupOpen={setRestTimerPopupOpen}
+        onAddRestPeriod={handleAddRestPeriod}
+        styles={styles}
+      />
 
-      {/* Active Rest Timer Popup */}
-      <Modal 
-        visible={restTimerPopupOpen && activeRestTimer !== null} 
-        transparent 
-        animationType="fade" 
-        onRequestClose={() => setRestTimerPopupOpen(false)}
-      >
-        <Pressable 
-          style={styles.timerPopupOverlay} 
-          onPress={() => setRestTimerPopupOpen(false)}
-        >
-          <Pressable style={styles.timerPopupContent} onPress={(e) => e.stopPropagation()}>
-            {/* Circular Timer Display */}
-            <View style={styles.timerCircleContainer}>
-              {/* Background Circle */}
-              <View style={styles.timerCircleBg} />
-              {/* Progress Circle - using a simple approach with opacity */}
-              <View style={[
-                styles.timerCircleProgress,
-                {
-                  opacity: activeRestTimer ? (activeRestTimer.remainingSeconds / activeRestTimer.totalSeconds) : 0
-                }
-              ]} />
-              {/* Timer Text */}
-              <View style={styles.timerCircleTextContainer}>
-                <Text style={styles.timerCircleText}>
-                  {activeRestTimer ? formatRestTime(activeRestTimer.remainingSeconds) : '0:00'}
-                </Text>
-                <Text style={styles.timerCircleSubtext}>
-                  {activeRestTimer?.isPaused ? 'PAUSED' : 'remaining'}
-                </Text>
-              </View>
-            </View>
-            
-            {/* Pause/Resume Button */}
-            <TouchableOpacity 
-              style={[
-                styles.timerPopupMainButton,
-                activeRestTimer?.isPaused && styles.timerPopupMainButton__paused
-              ]}
-              onPress={() => setActiveRestTimer(prev => prev ? { ...prev, isPaused: !prev.isPaused } : null)}
-            >
-              {activeRestTimer?.isPaused ? (
-                <>
-                  <Play size={20} color={COLORS.white} />
-                  <Text style={styles.timerPopupMainButtonText}>Resume</Text>
-                </>
-              ) : (
-                <>
-                  <Pause size={20} color={COLORS.white} />
-                  <Text style={styles.timerPopupMainButtonText}>Pause</Text>
-                </>
-              )}
-            </TouchableOpacity>
-            
-            {/* Time Adjustment Buttons */}
-            <View style={styles.timerAdjustContainer}>
-              {[5, 10, 15, 30].map(seconds => (
-                <View key={seconds} style={styles.timerAdjustColumn}>
-                  <TouchableOpacity 
-                    style={styles.timerAdjustButton}
-                    onPress={() => setActiveRestTimer(prev => prev ? { 
-                      ...prev, 
-                      remainingSeconds: prev.remainingSeconds + seconds,
-                      totalSeconds: prev.totalSeconds + seconds
-                    } : null)}
-                  >
-                    <Text style={styles.timerAdjustButtonText}>+{seconds}s</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={styles.timerAdjustButton}
-                    onPress={() => setActiveRestTimer(prev => {
-                      if (!prev) return null;
-                      const newRemaining = Math.max(1, prev.remainingSeconds - seconds);
-                      return { ...prev, remainingSeconds: newRemaining };
-                    })}
-                  >
-                    <Text style={styles.timerAdjustButtonText}>-{seconds}s</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </View>
-            
-            {/* Bottom Buttons */}
-            <View style={styles.timerPopupBottomButtons}>
-              <TouchableOpacity 
-                style={styles.timerPopupCloseButton}
-                onPress={() => setRestTimerPopupOpen(false)}
-              >
-                <Text style={styles.timerPopupCloseButtonText}>Close</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.timerPopupCompleteButton}
-                onPress={() => {
-                  if (activeRestTimer) {
-                    // Mark timer as completed
-                    handleWorkoutUpdate({
-                      ...currentWorkout,
-                      exercises: updateExercisesDeep(currentWorkout.exercises, activeRestTimer.exerciseId, (ex) => ({
-                        ...ex,
-                        sets: ex.sets.map(s => s.id === activeRestTimer.setId ? { ...s, restTimerCompleted: true } : s)
-                      }))
-                    });
-                  }
-                  setActiveRestTimer(null);
-                  setRestTimerPopupOpen(false);
-                }}
-              >
-                <Text style={styles.timerPopupCompleteButtonText}>Completed</Text>
-              </TouchableOpacity>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <ActiveRestTimerPopup
+        visible={restTimerPopupOpen}
+        activeRestTimer={activeRestTimer}
+        onClose={() => setRestTimerPopupOpen(false)}
+        setActiveRestTimer={setActiveRestTimer}
+        currentWorkout={currentWorkout}
+        handleWorkoutUpdate={handleWorkoutUpdate}
+        styles={styles}
+      />
 
       {/* Superset Selection Mode Overlay */}
       {supersetSelectionMode && (() => {
@@ -3397,7 +2852,7 @@ const WorkoutTemplate = ({
           }
         }
         const bannerColorScheme = groupType === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme;
-        
+
         return (
           <Modal visible={true} transparent animationType="fade" onRequestClose={handleCancelSupersetSelection}>
             <View style={styles.supersetSelectionOverlay}>
@@ -3412,8 +2867,8 @@ const WorkoutTemplate = ({
                   <TouchableOpacity onPress={handleCancelSupersetSelection} style={[styles.supersetCancelButton, { backgroundColor: bannerColorScheme[500] }]}>
                     <Text style={styles.supersetCancelButtonText}>Cancel</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity 
-                    onPress={handleConfirmSupersetSelection} 
+                  <TouchableOpacity
+                    onPress={handleConfirmSupersetSelection}
                     style={[
                       styles.supersetConfirmButton,
                       // Only disable for create mode if less than 2 selected
@@ -3427,248 +2882,160 @@ const WorkoutTemplate = ({
                   </TouchableOpacity>
                 </View>
               </View>
-            
-            <ScrollView style={styles.supersetSelectionList} contentContainerStyle={styles.supersetSelectionListContent}>
-              {currentWorkout.exercises.map(exercise => {
-                if (exercise.type === 'group') {
-                  // Determine if this is the superset being edited
-                  const isEditingThisSuperset = supersetSelectionMode?.mode === 'edit' && 
-                                                supersetSelectionMode?.supersetId === exercise.instanceId;
-                  
-                  // If NOT in a superset (creating new), allow clicking the group to add to it
-                  const canClickGroup = supersetSelectionMode?.mode === 'create';
 
-                  const groupColorScheme = exercise.groupType === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme;
-                  return (
-                    <View key={exercise.instanceId}>
-                      {canClickGroup ? (
-                        // Clickable superset group (for adding to existing superset)
-                        <TouchableOpacity
-                          style={[
-                            styles.supersetGroupLabelClickable,
-                            {
-                              backgroundColor: groupColorScheme[100],
-                              borderColor: groupColorScheme[300],
-                            }
-                          ]}
-                          onPress={() => handleAddToSpecificSuperset(supersetSelectionMode.exerciseId, exercise.instanceId)}
-                        >
-                          <View style={styles.supersetGroupLabelContent}>
-                            <Layers size={14} color={groupColorScheme[600]} />
-                            <Text style={[styles.supersetGroupLabelText, { color: groupColorScheme[600] }]}>{exercise.groupType}</Text>
-                            <Text style={[styles.supersetGroupLabelSubtext, { color: groupColorScheme[500] }]}>
-                              ({exercise.children?.length || 0} exercises)
-                            </Text>
-                          </View>
-                          <ChevronLeft 
-                            size={16} 
-                            color={groupColorScheme[600]} 
-                            style={{ transform: [{ rotate: '180deg' }] }}
-                          />
-                        </TouchableOpacity>
-                      ) : (
-                        // Non-clickable group header (when editing that superset)
-                        <View style={[
-                          styles.supersetGroupLabel,
-                          {
-                            backgroundColor: groupColorScheme[50],
-                          }
-                        ]}>
-                          <Layers size={14} color={groupColorScheme[600]} />
-                          <Text style={[styles.supersetGroupLabelText, { color: groupColorScheme[600] }]}>{exercise.groupType}</Text>
-                        </View>
-                      )}
-                      
-                      {/* Show individual exercises within groups */}
-                      {isEditingThisSuperset ? (
-                        // If editing this superset, show checkboxes for its exercises
-                        exercise.children?.map((child, index, array) => (
+              <ScrollView style={styles.supersetSelectionList} contentContainerStyle={styles.supersetSelectionListContent}>
+                {currentWorkout.exercises.map(exercise => {
+                  if (exercise.type === 'group') {
+                    // Determine if this is the superset being edited
+                    const isEditingThisSuperset = supersetSelectionMode?.mode === 'edit' &&
+                      supersetSelectionMode?.supersetId === exercise.instanceId;
+
+                    // If NOT in a superset (creating new), allow clicking the group to add to it
+                    const canClickGroup = supersetSelectionMode?.mode === 'create';
+
+                    const groupColorScheme = exercise.groupType === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme;
+                    return (
+                      <View key={exercise.instanceId}>
+                        {canClickGroup ? (
+                          // Clickable superset group (for adding to existing superset)
                           <TouchableOpacity
-                            key={child.instanceId}
                             style={[
-                              styles.supersetExerciseItem,
+                              styles.supersetGroupLabelClickable,
                               {
-                                backgroundColor: groupColorScheme[50],
-                                marginLeft: 16,
-                              },
-                              selectedExerciseIds.has(child.instanceId) && {
                                 backgroundColor: groupColorScheme[100],
                                 borderColor: groupColorScheme[300],
-                              },
-                              index === array.length - 1 && { marginBottom: 8 } // Add extra margin to last item
-                            ]}
-                            onPress={() => handleToggleSupersetSelection(child.instanceId)}
-                          >
-                            <View style={[
-                              styles.supersetCheckbox,
-                              selectedExerciseIds.has(child.instanceId) && {
-                                backgroundColor: groupColorScheme[600],
-                                borderColor: groupColorScheme[600],
                               }
-                            ]}>
-                              {selectedExerciseIds.has(child.instanceId) && (
-                                <Text style={styles.supersetCheckmark}>✓</Text>
-                              )}
-                            </View>
-                            <Text style={styles.supersetExerciseName}>{child.name}</Text>
-                          </TouchableOpacity>
-                        ))
-                      ) : (
-                        // Otherwise, show as disabled/non-selectable
-                        exercise.children?.map((child, index, array) => (
-                          <View
-                            key={child.instanceId}
-                            style={[
-                              styles.supersetExerciseItem,
-                              {
-                                backgroundColor: groupColorScheme[50],
-                                marginLeft: 16,
-                              },
-                              styles.supersetExerciseItemDisabled,
-                              index === array.length - 1 && { marginBottom: 12 } // Add extra margin to last item
                             ]}
+                            onPress={() => handleAddToSpecificSuperset(supersetSelectionMode.exerciseId, exercise.instanceId)}
                           >
-                            <Text style={[styles.supersetExerciseName, styles.supersetExerciseNameDisabled]}>
-                              {child.name}
-                            </Text>
+                            <View style={styles.supersetGroupLabelContent}>
+                              <Layers size={14} color={groupColorScheme[600]} />
+                              <Text style={[styles.supersetGroupLabelText, { color: groupColorScheme[600] }]}>{exercise.groupType}</Text>
+                              <Text style={[styles.supersetGroupLabelSubtext, { color: groupColorScheme[500] }]}>
+                                ({exercise.children?.length || 0} exercises)
+                              </Text>
+                            </View>
+                            <ChevronLeft
+                              size={16}
+                              color={groupColorScheme[600]}
+                              style={{ transform: [{ rotate: '180deg' }] }}
+                            />
+                          </TouchableOpacity>
+                        ) : (
+                          // Non-clickable group header (when editing that superset)
+                          <View style={[
+                            styles.supersetGroupLabel,
+                            {
+                              backgroundColor: groupColorScheme[50],
+                            }
+                          ]}>
+                            <Layers size={14} color={groupColorScheme[600]} />
+                            <Text style={[styles.supersetGroupLabelText, { color: groupColorScheme[600] }]}>{exercise.groupType}</Text>
                           </View>
-                        ))
-                      )}
-                    </View>
-                  );
-                } else {
-                  // Standalone exercise
-                  return (
-                    <TouchableOpacity
-                      key={exercise.instanceId}
-                      style={[
-                        styles.supersetExerciseItem,
-                        selectedExerciseIds.has(exercise.instanceId) && {
-                          backgroundColor: bannerColorScheme[100],
-                          borderColor: bannerColorScheme[300],
-                        }
-                      ]}
-                      onPress={() => handleToggleSupersetSelection(exercise.instanceId)}
-                    >
-                      <View style={[
-                        styles.supersetCheckbox,
-                        selectedExerciseIds.has(exercise.instanceId) && {
-                          backgroundColor: bannerColorScheme[600],
-                          borderColor: bannerColorScheme[600],
-                        }
-                      ]}>
-                        {selectedExerciseIds.has(exercise.instanceId) && (
-                          <Text style={styles.supersetCheckmark}>✓</Text>
+                        )}
+
+                        {/* Show individual exercises within groups */}
+                        {isEditingThisSuperset ? (
+                          // If editing this superset, show checkboxes for its exercises
+                          exercise.children?.map((child, index, array) => (
+                            <TouchableOpacity
+                              key={child.instanceId}
+                              style={[
+                                styles.supersetExerciseItem,
+                                {
+                                  backgroundColor: groupColorScheme[50],
+                                  marginLeft: 16,
+                                },
+                                selectedExerciseIds.has(child.instanceId) && {
+                                  backgroundColor: groupColorScheme[100],
+                                  borderColor: groupColorScheme[300],
+                                },
+                                index === array.length - 1 && { marginBottom: 8 } // Add extra margin to last item
+                              ]}
+                              onPress={() => handleToggleSupersetSelection(child.instanceId)}
+                            >
+                              <View style={[
+                                styles.supersetCheckbox,
+                                selectedExerciseIds.has(child.instanceId) && {
+                                  backgroundColor: groupColorScheme[600],
+                                  borderColor: groupColorScheme[600],
+                                }
+                              ]}>
+                                {selectedExerciseIds.has(child.instanceId) && (
+                                  <Text style={styles.supersetCheckmark}>✓</Text>
+                                )}
+                              </View>
+                              <Text style={styles.supersetExerciseName}>{child.name}</Text>
+                            </TouchableOpacity>
+                          ))
+                        ) : (
+                          // Otherwise, show as disabled/non-selectable
+                          exercise.children?.map((child, index, array) => (
+                            <View
+                              key={child.instanceId}
+                              style={[
+                                styles.supersetExerciseItem,
+                                {
+                                  backgroundColor: groupColorScheme[50],
+                                  marginLeft: 16,
+                                },
+                                styles.supersetExerciseItemDisabled,
+                                index === array.length - 1 && { marginBottom: 12 } // Add extra margin to last item
+                              ]}
+                            >
+                              <Text style={[styles.supersetExerciseName, styles.supersetExerciseNameDisabled]}>
+                                {child.name}
+                              </Text>
+                            </View>
+                          ))
                         )}
                       </View>
-                      <Text style={styles.supersetExerciseName}>{exercise.name}</Text>
-                    </TouchableOpacity>
-                  );
-                }
-              })}
-            </ScrollView>
-          </View>
-        </Modal>
+                    );
+                  } else {
+                    // Standalone exercise
+                    return (
+                      <TouchableOpacity
+                        key={exercise.instanceId}
+                        style={[
+                          styles.supersetExerciseItem,
+                          selectedExerciseIds.has(exercise.instanceId) && {
+                            backgroundColor: bannerColorScheme[100],
+                            borderColor: bannerColorScheme[300],
+                          }
+                        ]}
+                        onPress={() => handleToggleSupersetSelection(exercise.instanceId)}
+                      >
+                        <View style={[
+                          styles.supersetCheckbox,
+                          selectedExerciseIds.has(exercise.instanceId) && {
+                            backgroundColor: bannerColorScheme[600],
+                            borderColor: bannerColorScheme[600],
+                          }
+                        ]}>
+                          {selectedExerciseIds.has(exercise.instanceId) && (
+                            <Text style={styles.supersetCheckmark}>✓</Text>
+                          )}
+                        </View>
+                        <Text style={styles.supersetExerciseName}>{exercise.name}</Text>
+                      </TouchableOpacity>
+                    );
+                  }
+                })}
+              </ScrollView>
+            </View>
+          </Modal>
         );
       })()}
 
-      {/* Custom Number Keyboard */}
-      {customKeyboardVisible && (
-        <View style={styles.customKeyboardContainer}>
-          {/* Display Current Value */}
-          <View style={styles.customKeyboardHeader}>
-            <View style={styles.customKeyboardValueContainer}>
-              <Text style={styles.customKeyboardLabel}>
-                {customKeyboardTarget?.field === 'weight' ? 'Weight' : 'Reps'}
-              </Text>
-              <Text style={styles.customKeyboardValue}>
-                {customKeyboardValue || '0'}
-              </Text>
-            </View>
-            <TouchableOpacity 
-              style={styles.customKeyboardCloseButton}
-              onPress={handleCustomKeyboardClose}
-            >
-              <X size={20} color={COLORS.slate[600]} />
-            </TouchableOpacity>
-          </View>
-          
-          {/* Keyboard Grid */}
-          <View style={styles.customKeyboardGrid}>
-            <View style={styles.customKeyboardRow}>
-              {['1', '2', '3'].map(key => (
-                <TouchableOpacity 
-                  key={key}
-                  style={styles.customKeyboardKey}
-                  onPress={() => handleCustomKeyboardInput(key)}
-                >
-                  <Text style={styles.customKeyboardKeyText}>{key}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <View style={styles.customKeyboardRow}>
-              {['4', '5', '6'].map(key => (
-                <TouchableOpacity 
-                  key={key}
-                  style={styles.customKeyboardKey}
-                  onPress={() => handleCustomKeyboardInput(key)}
-                >
-                  <Text style={styles.customKeyboardKeyText}>{key}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <View style={styles.customKeyboardRow}>
-              {['7', '8', '9'].map(key => (
-                <TouchableOpacity 
-                  key={key}
-                  style={styles.customKeyboardKey}
-                  onPress={() => handleCustomKeyboardInput(key)}
-                >
-                  <Text style={styles.customKeyboardKeyText}>{key}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <View style={styles.customKeyboardRow}>
-              <TouchableOpacity 
-                style={styles.customKeyboardKey}
-                onPress={() => handleCustomKeyboardInput('.')}
-              >
-                <Text style={styles.customKeyboardKeyText}>.</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.customKeyboardKey}
-                onPress={() => handleCustomKeyboardInput('0')}
-              >
-                <Text style={styles.customKeyboardKeyText}>0</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.customKeyboardKey}
-                onPress={() => handleCustomKeyboardInput('backspace')}
-              >
-                <Delete size={24} color={COLORS.slate[700]} />
-              </TouchableOpacity>
-            </View>
-          </View>
-          
-          {/* Bottom Action Row */}
-          <View style={styles.customKeyboardActions}>
-            <TouchableOpacity 
-              style={styles.customKeyboardNextButton}
-              onPress={handleCustomKeyboardNext}
-            >
-              <Text style={styles.customKeyboardNextButtonText}>Next</Text>
-              <ChevronRight size={18} color={COLORS.white} />
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.customKeyboardSubmitButton}
-              onPress={handleCustomKeyboardClose}
-            >
-              <Text style={styles.customKeyboardSubmitButtonText}>Done</Text>
-              <Check size={18} color={COLORS.white} />
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
+      <CustomNumberKeyboard
+        visible={customKeyboardVisible}
+        customKeyboardTarget={customKeyboardTarget}
+        customKeyboardValue={customKeyboardValue}
+        onInput={handleCustomKeyboardInput}
+        onNext={handleCustomKeyboardNext}
+        onClose={handleCustomKeyboardClose}
+        styles={styles}
+      />
     </SafeAreaView>
   );
 };
@@ -3823,7 +3190,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   emptyStateButton: {
-    
+
   },
   emptyStateButtonText: {
     color: COLORS.blue[600],
@@ -3876,7 +3243,7 @@ const styles = StyleSheet.create({
   },
   exerciseCard__moveMode__notSelected: {
     borderRadius: 8,
-    borderColor:  COLORS.slate[200],
+    borderColor: COLORS.slate[200],
   },
   exerciseCard__moveMode__selected: {
     borderWidth: 0,
@@ -4505,7 +3872,7 @@ const styles = StyleSheet.create({
   optionDestructive: {
     color: COLORS.red[500],
   },
-  
+
   // Exercise header content
   exerciseHeaderContent: {
     flex: 1,
@@ -4600,7 +3967,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.slate[400],
   },
-  
+
   // Selection mode footer
   selectionModeFooter: {
     flexDirection: 'row',
@@ -4673,7 +4040,7 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontWeight: 'bold',
   },
-  
+
   // Moving item overlay
   movingItemOverlay: {
     borderWidth: 2,
@@ -4686,7 +4053,7 @@ const styles = StyleSheet.create({
   movingItemOverlay__regular: {
     borderColor: COLORS.blue[500],
   },
-  
+
   // Group child wrapper
   groupChildWrapper: {
     marginHorizontal: -2,
@@ -4705,7 +4072,7 @@ const styles = StyleSheet.create({
   groupChildWrapper__moveMode: {
     backgroundColor: COLORS.indigo[50],
   },
-  
+
   // Drop zone styles
   dropZone: {
     height: 30,
@@ -4760,7 +4127,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.slate[50],
     color: COLORS.blue[600],
   },
-  
+
   // Spacer styles
   spacer: {
     height: 8,
@@ -4785,7 +4152,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     marginBottom: 16,
   },
-  
+
   // Moving group styles
   movingGroupWrapper: {
     position: 'relative',
@@ -4809,7 +4176,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.indigo[900],
   },
-  
+
   // Group container variants
   groupContainer__notMoving: {
     marginBottom: 0,
@@ -4821,7 +4188,7 @@ const styles = StyleSheet.create({
   groupHeader__notMoving: {
     opacity: 0.4,
   },
-  
+
   // Move mode banner
   moveModeBanner: {
     position: 'absolute',
@@ -4857,7 +4224,7 @@ const styles = StyleSheet.create({
     color: COLORS.blue[100],
     fontSize: 12,
   },
-  
+
   // Finish button variants
   finishButton__cancelMode: {
     backgroundColor: COLORS.slate[500],
@@ -4865,7 +4232,7 @@ const styles = StyleSheet.create({
   finishButton__cancelWorkout: {
     backgroundColor: COLORS.red[500],
   },
-  
+
   // Main wrapper styles
   mainPressableWrapper: {
     flex: 1,
