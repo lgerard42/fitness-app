@@ -79,8 +79,8 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
     if (filterMuscle.length === 0) return [];
     const secondarySet = new Set<string>();
     filterMuscle.forEach(primary => {
-      const secondaries = PRIMARY_TO_SECONDARY_MAP[primary] || [];
-      secondaries.forEach(sec => secondarySet.add(sec));
+      const secondaries = (PRIMARY_TO_SECONDARY_MAP as Record<string, string[]>)[primary] || [];
+      secondaries.forEach((sec: string) => secondarySet.add(sec));
     });
     return Array.from(secondarySet).sort();
   };

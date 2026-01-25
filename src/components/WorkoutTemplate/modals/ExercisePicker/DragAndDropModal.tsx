@@ -2,6 +2,7 @@ import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { View, Text, Modal, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DraggableFlatList from 'react-native-draggable-flatlist';
+import { Layers } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { defaultSupersetColorScheme, defaultHiitColorScheme } from '@/constants/defaultStyles';
 import type { ExerciseLibraryItem, GroupType } from '@/types/workout';
@@ -168,6 +169,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
   const [reorderedItems, setReorderedItems] = useState<DragItem[]>(dragItems);
   const [collapsedGroupId, setCollapsedGroupId] = useState<string | null>(null);
   const [showGroupTypeModal, setShowGroupTypeModal] = useState(false);
+  const [exerciseToGroup, setExerciseToGroup] = useState<ExerciseItem | null>(null);
   const prevVisibleRef = useRef(visible);
   const pendingDragRef = useRef<(() => void) | null>(null);
 
@@ -184,32 +186,53 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
     return Math.max(...groupsOfType.map(g => g.number), 0) + 1;
   }, [reorderedItems]);
 
-  const addEmptyGroup = useCallback((type: GroupType) => {
+  const addExerciseToGroup = useCallback((exerciseItem: ExerciseItem, type: GroupType) => {
     const nextNumber = getNextGroupNumber(type);
     const newGroup: ExerciseGroup = {
-      id: `empty-group-${Date.now()}-${Math.random()}`,
+      id: `group-${Date.now()}-${Math.random()}`,
       type: type,
       number: nextNumber,
       exerciseIndices: [],
     };
 
-    const newItems: DragItem[] = [
-      {
-        id: `header-${newGroup.id}`,
-        type: 'GroupHeader',
-        group: newGroup,
-        groupId: newGroup.id,
-        groupExercises: [],
-      },
-      {
-        id: `footer-${newGroup.id}`,
-        type: 'GroupFooter',
-        group: newGroup,
-        groupId: newGroup.id,
-      }
-    ];
+    setReorderedItems(prev => {
+      const exerciseIndex = prev.findIndex(item => item.id === exerciseItem.id);
+      if (exerciseIndex === -1) return prev;
 
-    setReorderedItems(prev => [...prev, ...newItems]);
+      const newItems: DragItem[] = [
+        {
+          id: `header-${newGroup.id}`,
+          type: 'GroupHeader',
+          group: newGroup,
+          groupId: newGroup.id,
+          groupExercises: [{
+            exercise: exerciseItem.exercise,
+            orderIndex: exerciseItem.orderIndex,
+            count: exerciseItem.count,
+          }],
+        },
+        {
+          type: 'Item',
+          id: exerciseItem.id,
+          exercise: exerciseItem.exercise,
+          orderIndex: exerciseItem.orderIndex,
+          count: exerciseItem.count,
+          groupId: newGroup.id,
+          isFirstInGroup: true,
+          isLastInGroup: true,
+        } as ExerciseItem,
+        {
+          id: `footer-${newGroup.id}`,
+          type: 'GroupFooter',
+          group: newGroup,
+          groupId: newGroup.id,
+        }
+      ];
+
+      const result = [...prev];
+      result.splice(exerciseIndex, 1, ...newItems);
+      return result;
+    });
   }, [getNextGroupNumber]);
 
   useEffect(() => {
@@ -220,6 +243,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
       setReorderedItems(dragItems);
       setCollapsedGroupId(null);
       setShowGroupTypeModal(false);
+      setExerciseToGroup(null);
       pendingDragRef.current = null;
     }
 
@@ -487,8 +511,11 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
     });
 
     if (currentGroup && currentGroupIndices.length > 0) {
+      const group = currentGroup as ExerciseGroup;
       updatedGroups.push({
-        ...currentGroup,
+        id: group.id,
+        type: group.type,
+        number: group.number,
         exerciseIndices: currentGroupIndices,
       });
     }
@@ -557,7 +584,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
     isActive: boolean
   ) => {
     const primaryMuscles = (item.exercise.primaryMuscles as string[]) || [];
-    
+
     return (
       <View
         key={item.id}
@@ -644,8 +671,8 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
     );
   };
 
-  const renderItem = useCallback(({ item, drag, isActive, getIndex }: { item: DragItem; drag: () => void; isActive: boolean; getIndex?: () => number }) => {
-    const itemIndex = getIndex ? getIndex() : 0;
+  const renderItem = useCallback(({ item, drag, isActive, getIndex }: { item: DragItem; drag: () => void; isActive: boolean; getIndex?: () => number | undefined }) => {
+    const itemIndex = getIndex ? (getIndex() ?? 0) : 0;
 
     if (item.type === 'GroupHeader') {
       const groupColorScheme = item.group.type === 'HIIT'
@@ -812,6 +839,17 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
                 <Text style={styles.countBadgeText}>×{item.count}</Text>
               </View>
             )}
+            <TouchableOpacity
+              onPress={() => {
+                setExerciseToGroup(item);
+                setShowGroupTypeModal(true);
+              }}
+              disabled={isActive}
+              style={styles.groupIconButton}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Layers size={18} color={COLORS.blue[600]} />
+            </TouchableOpacity>
           </View>
         </View>
       </TouchableOpacity>
@@ -840,12 +878,6 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           <Text style={styles.instructionsText}>
             Press and hold to drag • Drag headers to move entire groups
           </Text>
-          <TouchableOpacity
-            onPress={() => setShowGroupTypeModal(true)}
-            style={styles.addGroupButton}
-          >
-            <Text style={styles.addGroupButtonText}>+ Group</Text>
-          </TouchableOpacity>
         </View>
 
         {reorderedItems.length > 0 ? (
@@ -871,12 +903,18 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           visible={showGroupTypeModal}
           transparent={true}
           animationType="fade"
-          onRequestClose={() => setShowGroupTypeModal(false)}
+          onRequestClose={() => {
+            setShowGroupTypeModal(false);
+            setExerciseToGroup(null);
+          }}
         >
           <TouchableOpacity
             style={styles.modalOverlay}
             activeOpacity={1}
-            onPress={() => setShowGroupTypeModal(false)}
+            onPress={() => {
+              setShowGroupTypeModal(false);
+              setExerciseToGroup(null);
+            }}
           >
             <View style={styles.groupTypeModal} onStartShouldSetResponder={() => true}>
               <Text style={styles.groupTypeModalTitle}>Select Group Type</Text>
@@ -887,8 +925,11 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
                     styles.groupTypeButtonSuperset,
                   ]}
                   onPress={() => {
-                    addEmptyGroup('Superset');
+                    if (exerciseToGroup) {
+                      addExerciseToGroup(exerciseToGroup, 'Superset');
+                    }
                     setShowGroupTypeModal(false);
+                    setExerciseToGroup(null);
                   }}
                 >
                   <Text style={styles.groupTypeButtonText}>Superset</Text>
@@ -899,8 +940,11 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
                     styles.groupTypeButtonHiit,
                   ]}
                   onPress={() => {
-                    addEmptyGroup('HIIT');
+                    if (exerciseToGroup) {
+                      addExerciseToGroup(exerciseToGroup, 'HIIT');
+                    }
                     setShowGroupTypeModal(false);
+                    setExerciseToGroup(null);
                   }}
                 >
                   <Text style={styles.groupTypeButtonText}>HIIT</Text>
@@ -908,7 +952,10 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
               </View>
               <TouchableOpacity
                 style={styles.groupTypeCancelButton}
-                onPress={() => setShowGroupTypeModal(false)}
+                onPress={() => {
+                  setShowGroupTypeModal(false);
+                  setExerciseToGroup(null);
+                }}
               >
                 <Text style={styles.groupTypeCancelButtonText}>Cancel</Text>
               </TouchableOpacity>
@@ -932,7 +979,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingBottom: 12,
-    paddingTop: 60,
+    paddingTop: 12,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.slate[200],
     backgroundColor: COLORS.white,
@@ -967,26 +1014,12 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.blue[50],
     borderBottomWidth: 1,
     borderBottomColor: COLORS.blue[100],
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
   },
   instructionsText: {
     fontSize: 12,
     color: COLORS.blue[700],
     textAlign: 'center',
-    flex: 1,
-  },
-  addGroupButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: COLORS.blue[500],
-    borderRadius: 6,
-  },
-  addGroupButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.white,
   },
   listContent: {
     paddingHorizontal: 8,
@@ -1127,10 +1160,9 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   exerciseCardContent__groupChild: {
-    marginHorizontal: 0,
+    marginHorizontal: 4,
     borderRadius: 0,
     marginVertical: 0,
-    marginHorizontal: 4,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.red[500],
   },
@@ -1194,6 +1226,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
     color: COLORS.blue[700],
+  },
+  groupIconButton: {
+    padding: 4,
+    marginLeft: 4,
   },
   emptyGroupPlaceholder: {
     paddingVertical: 24,
