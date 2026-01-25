@@ -77,16 +77,16 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
 
   const filtered = exercises.filter(ex => {
     const matchesSearch = ex.name.toLowerCase().includes(search.toLowerCase());
-    
+
     const matchesCategory = filterCategory.length === 0 || filterCategory.includes(ex.category);
-    
-    const matchesPrimaryMuscle = filterMuscle.length === 0 || 
+
+    const matchesPrimaryMuscle = filterMuscle.length === 0 ||
       filterMuscle.some(muscle => ex.primaryMuscles.includes(muscle));
-    
-    const matchesSecondaryMuscle = filterSecondaryMuscle.length === 0 || 
+
+    const matchesSecondaryMuscle = filterSecondaryMuscle.length === 0 ||
       (ex.secondaryMuscles && filterSecondaryMuscle.some(muscle => ex.secondaryMuscles.includes(muscle)));
-    
-    const matchesEquip = filterEquip.length === 0 || 
+
+    const matchesEquip = filterEquip.length === 0 ||
       (ex.weightEquipTags && filterEquip.some(equip => ex.weightEquipTags.includes(equip)));
 
     return matchesSearch && matchesCategory && matchesPrimaryMuscle && matchesSecondaryMuscle && matchesEquip;
@@ -96,7 +96,7 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
   const getGroupedExercises = useMemo(() => {
     const groups = [];
     let currentGroup = null;
-    
+
     selectedOrder.forEach((id, index) => {
       if (currentGroup === null || currentGroup.id !== id) {
         // Start a new group
@@ -117,13 +117,13 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
         currentGroup.orderIndices.push(index);
       }
     });
-    
+
     return groups;
   }, [selectedOrder, filtered]);
 
   // Separate selected and unselected exercises (now grouped)
   const selectedExercises = getGroupedExercises.map(group => group.exercise);
-  
+
   // All filtered exercises sorted alphabetically (includes selected ones for +1 feature)
   const allFilteredExercises = [...filtered].sort((a, b) => a.name.localeCompare(b.name));
 
@@ -137,7 +137,7 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
             const newOrder = [...prevOrder];
             newOrder.splice(lastIndex, 1);
             const remainingCount = newOrder.filter(i => i === id).length;
-            
+
             // Remove this exercise index from any groups
             setExerciseGroups(prevGroups => {
               let updatedGroups = prevGroups.map(group => ({
@@ -147,7 +147,7 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
                   .map(idx => idx > lastIndex ? idx - 1 : idx) // Adjust indices after removal
                   .sort((a, b) => a - b)
               })).filter(group => group.exerciseIndices.length >= 2); // Remove groups with < 2 exercises
-              
+
               // Renumber groups of each type after cleanup
               const types = ['Superset', 'HIIT'];
               types.forEach(type => {
@@ -160,10 +160,10 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
                   return group;
                 });
               });
-              
+
               return updatedGroups;
             });
-            
+
             // Update selectedIds if no occurrences remain
             if (remainingCount === 0) {
               setSelectedIds(prevIds => prevIds.filter(i => i !== id));
@@ -179,30 +179,30 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
         setSelectedOrder(prevOrder => {
           const newIndex = prevOrder.length;
           const newOrder = [...prevOrder, id];
-          
+
           // Check if last exercise (before adding) is the same and in a group
           if (prevOrder.length > 0 && prevOrder[prevOrder.length - 1] === id) {
             const lastIndex = prevOrder.length - 1;
-            
+
             // Use state updater to access current groups
             setExerciseGroups(prevGroups => {
-              const lastExerciseGroup = prevGroups.find(group => 
+              const lastExerciseGroup = prevGroups.find(group =>
                 group.exerciseIndices.includes(lastIndex)
               );
-              
+
               if (lastExerciseGroup) {
                 // Automatically add new exercise to the same group
-                return prevGroups.map(group => 
+                return prevGroups.map(group =>
                   group.id === lastExerciseGroup.id
                     ? { ...group, exerciseIndices: [...group.exerciseIndices, newIndex].sort((a, b) => a - b) }
                     : group
                 );
               }
-              
+
               return prevGroups;
             });
           }
-          
+
           return newOrder;
         });
         return [...prev, id];
@@ -287,30 +287,30 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
       setSelectedOrder(prevOrder => {
         const newIndex = prevOrder.length;
         const newOrder = [...prevOrder, id];
-        
+
         // Check if last exercise (before adding) is the same and in a group
         if (prevOrder.length > 0 && prevOrder[prevOrder.length - 1] === id) {
           const lastIndex = prevOrder.length - 1;
-          
+
           // Use state updater to access current groups
           setExerciseGroups(prevGroups => {
-            const lastExerciseGroup = prevGroups.find(group => 
+            const lastExerciseGroup = prevGroups.find(group =>
               group.exerciseIndices.includes(lastIndex)
             );
-            
+
             if (lastExerciseGroup) {
               // Automatically add new exercise to the same group
-              return prevGroups.map(group => 
+              return prevGroups.map(group =>
                 group.id === lastExerciseGroup.id
                   ? { ...group, exerciseIndices: [...group.exerciseIndices, newIndex].sort((a, b) => a - b) }
                   : group
               );
             }
-            
+
             return prevGroups;
           });
         }
-        
+
         return newOrder;
       });
       setSelectedIds(prevIds => prevIds.includes(id) ? prevIds : [...prevIds, id]);
@@ -329,7 +329,7 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
           setSelectedOrder(prevOrder => {
             const newOrder = [...prevOrder];
             newOrder.splice(indexToRemove, 1);
-            
+
             // Remove this exercise index from the group and clean up
             setExerciseGroups(prevGroups => {
               let updatedGroups = prevGroups.map(group => {
@@ -349,7 +349,7 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
                   };
                 }
               }).filter(group => group.exerciseIndices.length >= 2); // Remove groups with < 2 exercises
-              
+
               // Renumber groups of each type after cleanup
               const types = ['Superset', 'HIIT'];
               types.forEach(type => {
@@ -362,10 +362,10 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
                   return group;
                 });
               });
-              
+
               return updatedGroups;
             });
-            
+
             // If this was the last occurrence, also remove from selectedIds
             const remainingCount = newOrder.filter(i => i === id).length;
             if (remainingCount === 0) {
@@ -382,7 +382,7 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
         if (lastIndex !== -1) {
           const newOrder = [...prevOrder];
           newOrder.splice(lastIndex, 1);
-          
+
           // Remove this exercise index from any groups
           setExerciseGroups(prevGroups => {
             let updatedGroups = prevGroups.map(group => ({
@@ -392,7 +392,7 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
                 .map(idx => idx > lastIndex ? idx - 1 : idx) // Adjust indices after removal
                 .sort((a, b) => a - b)
             })).filter(group => group.exerciseIndices.length >= 2); // Remove groups with < 2 exercises
-            
+
             // Renumber groups of each type after cleanup
             const types = ['Superset', 'HIIT'];
             types.forEach(type => {
@@ -405,10 +405,10 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
                 return group;
               });
             });
-            
+
             return updatedGroups;
           });
-          
+
           // If this was the last occurrence, also remove from selectedIds
           const remainingCount = newOrder.filter(i => i === id).length;
           if (remainingCount === 0) {
@@ -426,24 +426,24 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
     const sortedIndices = [...selectedIndices].sort((a, b) => a - b);
     const firstIndex = sortedIndices[0];
     const nextNumber = getNextGroupNumber(type);
-    
+
     setSelectedOrder(prevOrder => {
       const newOrder = [...prevOrder];
       const groupExerciseIds = sortedIndices.map(idx => newOrder[idx]);
-      
+
       // Remove grouped items from their current positions (remove from highest to lowest to avoid index shifting)
       const indicesToRemove = [...sortedIndices].sort((a, b) => b - a);
       indicesToRemove.forEach(idx => {
         newOrder.splice(idx, 1);
       });
-      
+
       // Insert grouped items at the first index position
       const insertPosition = firstIndex;
       newOrder.splice(insertPosition, 0, ...groupExerciseIds);
-      
+
       // Calculate new consecutive indices for the new group
       const newGroupIndices = groupExerciseIds.map((_, idx) => insertPosition + idx);
-      
+
       // Update all existing group indices to account for the reordering
       setExerciseGroups(prevGroups => {
         const updatedGroups = prevGroups.map(group => ({
@@ -451,7 +451,7 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
           exerciseIndices: group.exerciseIndices.map(oldIdx => {
             // Count how many grouped items were removed before this index
             const removedBefore = sortedIndices.filter(idx => idx < oldIdx).length;
-            
+
             if (sortedIndices.includes(oldIdx)) {
               // This index was part of the new group - it's now at insertPosition + offset
               const offset = sortedIndices.indexOf(oldIdx);
@@ -465,7 +465,7 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
             }
           }).sort((a, b) => a - b)
         }));
-        
+
         // Add the new group
         const newGroup = {
           id: `group-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -473,13 +473,13 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
           number: nextNumber,
           exerciseIndices: newGroupIndices
         };
-        
+
         return [...updatedGroups, newGroup];
       });
-      
+
       return newOrder;
     });
-    
+
     // Don't close group mode - let handleSaveGroup handle clearing selection state
   }, [getNextGroupNumber]);
 
@@ -514,7 +514,7 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
           // Remove the group and adjust indices for other groups
           setExerciseGroups(prev => {
             const filtered = prev.filter(g => g.id !== editingGroupId);
-            
+
             // Renumber groups of the deleted group's type
             const deletedType = groupToDelete.type;
             const groupsOfType = filtered.filter(g => g.type === deletedType)
@@ -523,12 +523,12 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
               ...group,
               number: index + 1
             }));
-            
+
             const otherGroups = filtered.filter(g => g.type !== deletedType);
             return [...otherGroups, ...renumbered];
           });
         }
-        
+
         // Clear selection but keep group mode open
         setGroupSelectionMode(null);
         setEditingGroupId(null);
@@ -536,43 +536,43 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
         setSelectedGroupType('Superset');
         return;
       }
-      
+
       // Handle 1 or more items
       const sortedIndices = [...groupSelectionIndices].sort((a, b) => a - b);
       const firstIndex = sortedIndices[0];
-      
+
       setSelectedOrder(prevOrder => {
         const newOrder = [...prevOrder];
         const groupExerciseIds = sortedIndices.map(idx => newOrder[idx]);
-        
+
         // Remove grouped items from their current positions (remove from highest to lowest to avoid index shifting)
         const indicesToRemove = [...sortedIndices].sort((a, b) => b - a);
         indicesToRemove.forEach(idx => {
           newOrder.splice(idx, 1);
         });
-        
+
         // Insert grouped items at the first index position
         const insertPosition = firstIndex;
         newOrder.splice(insertPosition, 0, ...groupExerciseIds);
-        
+
         // Calculate new consecutive indices for the updated group
         const newGroupIndices = groupExerciseIds.map((_, idx) => insertPosition + idx);
-        
+
         // Update exercise groups
         setExerciseGroups(prev => {
           const groupToEdit = prev.find(g => g.id === editingGroupId);
           if (!groupToEdit) return prev;
-          
+
           const oldType = groupToEdit.type;
           const newType = selectedGroupType;
-          
+
           // Update all existing group indices (except the one being edited) to account for the reordering
           const updatedGroups = prev.filter(g => g.id !== editingGroupId).map(group => ({
             ...group,
             exerciseIndices: group.exerciseIndices.map(oldIdx => {
               // Count how many grouped items were removed before this index
               const removedBefore = sortedIndices.filter(idx => idx < oldIdx).length;
-              
+
               if (sortedIndices.includes(oldIdx)) {
                 // This index was part of the edited group - it's now at insertPosition + offset
                 const offset = sortedIndices.indexOf(oldIdx);
@@ -586,22 +586,22 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
               }
             }).sort((a, b) => a - b)
           }));
-          
+
           // Create updated group
           let updatedGroup = {
             ...groupToEdit,
             type: newType,
             exerciseIndices: newGroupIndices
           };
-          
+
           if (oldType !== newType) {
             // Get next available number for new type
             const groupsOfNewType = updatedGroups.filter(g => g.type === newType);
-            const nextNumber = groupsOfNewType.length === 0 
-              ? 1 
+            const nextNumber = groupsOfNewType.length === 0
+              ? 1
               : Math.max(...groupsOfNewType.map(g => g.number)) + 1;
             updatedGroup.number = nextNumber;
-            
+
             // Renumber old type groups
             const groupsOfOldType = updatedGroups.filter(g => g.type === oldType)
               .sort((a, b) => a.number - b.number);
@@ -609,7 +609,7 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
               ...group,
               number: index + 1
             }));
-            
+
             const otherGroups = updatedGroups.filter(g => g.type !== oldType && g.type !== newType);
             return [...otherGroups, ...renumberedOldType, ...groupsOfNewType, updatedGroup];
           } else {
@@ -617,10 +617,10 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
             return [...updatedGroups, updatedGroup];
           }
         });
-        
+
         return newOrder;
       });
-      
+
       // Clear selection but keep group mode open
       setGroupSelectionMode(null);
       setEditingGroupId(null);
@@ -664,7 +664,7 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
       ...group.exercise,
       _setCount: group.count // Pass the set count as metadata
     }));
-    
+
     // Include group metadata for workout creation
     const groupsMetadata = exerciseGroups.length > 0 ? exerciseGroups.map(group => ({
       id: group.id,
@@ -672,7 +672,7 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
       number: group.number,
       exerciseIndices: group.exerciseIndices
     })) : null;
-    
+
     onAdd(exercisesToAdd, groupType || null, groupsMetadata);
     setSelectedIds([]);
     setSelectedOrder([]);
@@ -710,119 +710,115 @@ const ExercisePicker = ({ isOpen, onClose, onAdd, onCreate, exercises, newlyCrea
   // Gesture to block modal swipe-to-dismiss on the list area
   // This captures vertical pan gestures to prevent them from triggering modal dismiss
   // while still allowing ScrollView/SectionList to handle scrolling via native gesture
-  const blockDismissGesture = useMemo(() => 
+  const blockDismissGesture = useMemo(() =>
     Gesture.Pan()
       .withRef(blockDismissGestureRef)
       .activeOffsetY([-10, 10]) // Activate after 10px vertical movement
-      .onStart(() => {})
-      .onUpdate(() => {})
-      .onEnd(() => {}),
+      .onStart(() => { })
+      .onUpdate(() => { })
+      .onEnd(() => { }),
     []
   );
 
   return (
-    <Modal visible={isOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={handleClose}>
-      <SafeAreaView style={styles.container}>
-        {/* Backdrop to close dropdown when clicking outside */}
-        {openFilter && (
-          <TouchableOpacity 
-            style={styles.dropdownBackdrop}
-            activeOpacity={1}
-            onPress={() => setOpenFilter(null)}
-          />
-        )}
-        <View style={styles.header}>
-          <HeaderTopRow
-            onClose={handleClose}
-            onCreate={onCreate}
-            groupType={groupType}
-            setGroupType={setGroupType}
-            isGroupDropdownOpen={isGroupDropdownOpen}
-            setIsGroupDropdownOpen={setIsGroupDropdownOpen}
-            selectedIds={selectedIds}
-            onAdd={handleAddAction}
-            groupOptions={groupOptions}
-          />
-          <SearchBar search={search} setSearch={setSearch} />
-          <Filters
-            filterCategory={filterCategory}
-            filterMuscle={filterMuscle}
-            filterEquip={filterEquip}
-            filterSecondaryMuscle={filterSecondaryMuscle}
-            setFilterCategory={setFilterCategory}
-            setFilterMuscle={setFilterMuscle}
-            setFilterEquip={setFilterEquip}
-            setFilterSecondaryMuscle={setFilterSecondaryMuscle}
-            openFilter={openFilter}
-            setOpenFilter={setOpenFilter}
-            getAvailableSecondaryMuscles={getAvailableSecondaryMuscles}
-          />
-        </View>
-        
-        <GestureDetector gesture={blockDismissGesture}>
-          <View style={styles.listContainer}>
-            {/* Selected Exercises - separate section at top */}
-            <SelectedReview
-              selectedExercises={selectedExercises}
-              selectedOrder={selectedOrder}
-              groupedExercises={getGroupedExercises}
-              exerciseGroups={exerciseGroups}
-              isCollapsed={isSelectedSectionCollapsed}
-              setIsCollapsed={setIsSelectedSectionCollapsed}
-              onToggleSelect={handleToggleSelect}
-              onReorder={handleReorder}
-              onAddSet={handleAddSet}
-              onRemoveSet={handleRemoveSet}
-              isGroupMode={isGroupMode}
-              groupSelectionMode={groupSelectionMode}
-              selectedGroupType={selectedGroupType}
-              groupSelectionIndices={groupSelectionIndices}
-              setGroupSelectionIndices={setGroupSelectionIndices}
-              setSelectedGroupType={setSelectedGroupType}
-              setIsGroupMode={setIsGroupMode}
-              setGroupSelectionMode={setGroupSelectionMode}
-              handleStartGroupingMode={handleStartGroupingMode}
-              handleToggleGroupType={handleToggleGroupType}
-              handleSaveGroup={handleSaveGroup}
-              handleCancelGroup={handleCancelGroup}
-              handleEditGroup={handleEditGroup}
-              getExerciseGroup={getExerciseGroup}
-              isExerciseInGroup={isExerciseInGroup}
-              editingGroupId={editingGroupId}
-              filtered={filtered}
-              setExerciseGroups={setExerciseGroups}
-              setSelectedOrder={setSelectedOrder}
-            />
-            
-            {/* All Exercises with integrated A-Z scrollbar - only show when selected section is collapsed */}
-            {isSelectedSectionCollapsed && (
-              <SelectedInGlossary
-                exercises={allFilteredExercises}
-                onToggleSelect={handleToggleSelect}
-                highlightedLetter={highlightedLetter}
-                setHighlightedLetter={setHighlightedLetter}
-                selectedIds={selectedIds}
-                selectedOrder={selectedOrder}
-                onAddSet={handleAddSet}
-                onRemoveSet={handleRemoveSet}
-                blockDismissGestureRef={blockDismissGestureRef}
+    <Modal visible={isOpen} animationType="slide" presentationStyle="overFullScreen" transparent={true} onRequestClose={handleClose}>
+      <View style={styles.modalOverlay}>
+        <View style={styles.sheetContainer}>
+          <SafeAreaView style={styles.container}>
+            {/* Backdrop to close dropdown when clicking outside */}
+            {openFilter && (
+              <TouchableOpacity
+                style={styles.dropdownBackdrop}
+                activeOpacity={1}
+                onPress={() => setOpenFilter(null)}
               />
             )}
-          </View>
-        </GestureDetector>
-      </SafeAreaView>
+            <View style={styles.header}>
+              <HeaderTopRow
+                onClose={handleClose}
+                onCreate={onCreate}
+                groupType={groupType}
+                setGroupType={setGroupType}
+                isGroupDropdownOpen={isGroupDropdownOpen}
+                setIsGroupDropdownOpen={setIsGroupDropdownOpen}
+                selectedIds={selectedIds}
+                onAdd={handleAddAction}
+                groupOptions={groupOptions}
+              />
+              <SearchBar search={search} setSearch={setSearch} />
+              <Filters
+                filterCategory={filterCategory}
+                filterMuscle={filterMuscle}
+                filterEquip={filterEquip}
+                filterSecondaryMuscle={filterSecondaryMuscle}
+                setFilterCategory={setFilterCategory}
+                setFilterMuscle={setFilterMuscle}
+                setFilterEquip={setFilterEquip}
+                setFilterSecondaryMuscle={setFilterSecondaryMuscle}
+                openFilter={openFilter}
+                setOpenFilter={setOpenFilter}
+                getAvailableSecondaryMuscles={getAvailableSecondaryMuscles}
+              />
+            </View>
+
+            <GestureDetector gesture={blockDismissGesture}>
+              <View style={styles.listContainer}>
+                {/* Selected Exercises - separate section at top */}
+                <SelectedReview
+                  selectedExercises={selectedExercises}
+                  selectedOrder={selectedOrder}
+                  groupedExercises={getGroupedExercises}
+                  exerciseGroups={exerciseGroups}
+                  getExerciseGroup={getExerciseGroup}
+                  filtered={filtered}
+                  setExerciseGroups={setExerciseGroups}
+                  setSelectedOrder={setSelectedOrder}
+                />
+
+                {/* All Exercises with integrated A-Z scrollbar - only show when selected section is collapsed */}
+                {isSelectedSectionCollapsed && (
+                  <SelectedInGlossary
+                    exercises={allFilteredExercises}
+                    onToggleSelect={handleToggleSelect}
+                    highlightedLetter={highlightedLetter}
+                    setHighlightedLetter={setHighlightedLetter}
+                    selectedIds={selectedIds}
+                    selectedOrder={selectedOrder}
+                    onAddSet={handleAddSet}
+                    onRemoveSet={handleRemoveSet}
+                    blockDismissGestureRef={blockDismissGestureRef}
+                  />
+                )}
+              </View>
+            </GestureDetector>
+          </SafeAreaView>
+        </View>
+      </View>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  sheetContainer: {
+    flex: 0.95,
+    backgroundColor: COLORS.white,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: 'hidden',
+    marginTop: 10,
+  },
   container: {
     flex: 1,
     backgroundColor: COLORS.white,
   },
   header: {
     paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingTop: 8,
     paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.slate[200],
