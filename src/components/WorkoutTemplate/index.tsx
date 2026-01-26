@@ -37,7 +37,7 @@ import CancelWorkoutModal from './modals/CancelWorkoutModal';
 import RestTimerInputModal from './modals/RestTimerInputModal';
 import ActiveRestTimerPopup from './modals/ActiveRestTimerPopup';
 import CustomNumberKeyboard from './modals/CustomNumberKeyboard';
-import type { Workout, WorkoutMode, ExerciseLibraryItem, ExerciseStatsMap, ExerciseItem, Exercise, Set, RestPeriodSetInfo, FocusNextSet, GroupType } from '@/types/workout';
+import type { Workout, WorkoutMode, ExerciseLibraryItem, ExerciseStatsMap, ExerciseItem, Exercise, Set, RestPeriodSetInfo, FocusNextSet, GroupType, SetType, ExerciseCategory, ExerciseGroup, Note, GroupSetType } from '@/types/workout';
 
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 
@@ -143,6 +143,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     selectionMode,
     setSelectionMode,
     selectedSetIds,
+    setSelectedSetIds,
     groupSetType,
     setGroupSetType,
     handleToggleSetSelection,
@@ -306,9 +307,9 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     const dropSetId = isDropset ? `dropset-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` : undefined;
 
     // Create the specified number of sets
-    const sets = Array.from({ length: setCount }, (_, i) => ({
+    const sets: Set[] = Array.from({ length: setCount }, (_, i) => ({
       id: `s-${Date.now()}-${Math.random()}-${i}`,
-      type: "Working",
+      type: "Working" as SetType,
       weight: "",
       reps: "",
       duration: "",
@@ -346,12 +347,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
           ...currentWorkout,
           exercises: updateExercisesDeep(currentWorkout.exercises, replacingExerciseId, (oldEx) => ({
             ...newEx,
-            instanceId: oldEx.instanceId, // Keep same ID to avoid re-render jumps? Or new ID?
-            // If we keep ID, we must ensure all other props are updated.
-            // Actually, let's use the new ID but put it in the same spot.
-            // updateExercisesDeep expects to return the *updated* item.
-            // So we return newEx.
-            ...newEx
+            instanceId: oldEx.instanceId // Keep same ID to avoid re-render jumps
           }))
         });
       }
@@ -376,7 +372,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
       const exercisesInGroups = new Set<number>();
 
       groupsMetadata.forEach((group) => {
-        group.exerciseIndices.forEach((idx) => {
+        group.exerciseIndices.forEach((idx: number) => {
           if (idx < newInstances.length) {
             exerciseToGroup.set(idx, group);
             exercisesInGroups.add(idx);
@@ -393,9 +389,9 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
           if (group && !processedGroups.has(group.id)) {
             // Collect all exercises in this group, sorted by their indices
             const groupExercises = group.exerciseIndices
-              .filter(idx => idx < newInstances.length)
-              .sort((a, b) => a - b)
-              .map(idx => newInstances[idx]);
+              .filter((idx: number) => idx < newInstances.length)
+              .sort((a: number, b: number) => a - b)
+              .map((idx: number) => newInstances[idx]);
 
             if (groupExercises.length > 0) {
               itemsToAdd.push({
@@ -451,9 +447,12 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
   const handleUpdateSet = (exInstanceId: string, updatedSet: Set) => {
     handleWorkoutUpdate({
       ...currentWorkout,
-      exercises: updateExercisesDeep(currentWorkout.exercises, exInstanceId, (ex) => ({
-        ...ex, sets: ex.sets.map(s => s.id === updatedSet.id ? updatedSet : s)
-      }))
+      exercises: updateExercisesDeep(currentWorkout.exercises, exInstanceId, (ex) => {
+        if (ex.type === 'group') return ex;
+        return {
+          ...ex, sets: ex.sets.map((s: Set) => s.id === updatedSet.id ? updatedSet : s)
+        };
+      })
     });
   };
 
@@ -461,9 +460,10 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     handleWorkoutUpdate({
       ...currentWorkout,
       exercises: updateExercisesDeep(currentWorkout.exercises, exInstanceId, (ex) => {
+        if (ex.type === 'group') return ex;
         const lastSet = ex.sets[ex.sets.length - 1];
-        const newSet = {
-          id: `s-${Date.now()}-${Math.random()}`, type: "Working",
+        const newSet: Set = {
+          id: `s-${Date.now()}-${Math.random()}`, type: "Working" as SetType,
           weight: lastSet ? lastSet.weight : "", reps: lastSet ? lastSet.reps : "", duration: lastSet ? lastSet.duration : "", distance: lastSet ? lastSet.distance : "",
           completed: false
         };
@@ -489,7 +489,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
         if (setIndex !== -1 && setIndex < exercise.sets.length - 1) {
           const nextSet = exercise.sets[setIndex + 1];
           // Determine which field to focus: first empty one, or reps if both filled
-          let fieldToFocus = 'reps';
+          let fieldToFocus: 'weight' | 'reps' | 'duration' | 'distance' = 'reps';
           if (exercise.category === 'Lifts') {
             if (!nextSet.weight || nextSet.weight === '') {
               fieldToFocus = 'weight';
@@ -604,10 +604,13 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
   const handleDeleteSet = (exInstanceId: string, setId: string) => {
     handleWorkoutUpdate({
       ...currentWorkout,
-      exercises: updateExercisesDeep(currentWorkout.exercises, exInstanceId, (ex) => ({
-        ...ex,
-        sets: ex.sets.filter(s => s.id !== setId)
-      }))
+      exercises: updateExercisesDeep(currentWorkout.exercises, exInstanceId, (ex) => {
+        if (ex.type === 'group') return ex;
+        return {
+          ...ex,
+          sets: ex.sets.filter((s: Set) => s.id !== setId)
+        };
+      })
     });
   };
 
@@ -620,29 +623,20 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     // Close exercise-level popup if open
     setOptionsModalExId(null);
 
-    // Get ScrollView position on screen
-    scrollViewRef.current?.measure((x, y, scrollWidth, scrollHeight, pageX_scroll, pageY_scroll) => {
-      // Calculate indexContainer position relative to ScrollView's visible viewport
-      // pageY is absolute screen position, pageY_scroll is ScrollView's screen position
-      // The difference gives us the position within the visible ScrollView area
-      const visibleTop = pageY - pageY_scroll - 15;
+    // Calculate position using event coordinates directly
+    // Note: ScrollView doesn't have measure, so we use approximate positioning
+    const visibleTop = pageY - 100; // Approximate offset
+    const contentTop = visibleTop + scrollOffset;
+    const popupLeft = pageX + width / 2 + 14;
 
-      // Also calculate the position in the content (for scroll tracking)
-      // This is the position if the ScrollView were at scroll position 0
-      const contentTop = visibleTop + scrollOffset;
-
-      // Position horizontally centered on indexContainer
-      const popupLeft = (pageX - pageX_scroll) + width / 2 + 14;
-
-      // Force popup re-mount and position it correctly
-      setPopupKey(prev => prev + 1);
-      setActiveSetMenu({
-        exerciseId,
-        setId,
-        top: visibleTop,
-        left: popupLeft,
-        originalTop: contentTop
-      });
+    // Force popup re-mount and position it correctly
+    setPopupKey(prev => prev + 1);
+    setActiveSetMenu({
+      exerciseId,
+      setId,
+      top: visibleTop,
+      left: popupLeft,
+      originalTop: contentTop
     });
   };
 
@@ -654,7 +648,8 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
       handleWorkoutUpdate({
         ...currentWorkout,
         exercises: updateExercisesDeep(currentWorkout.exercises, exerciseId, (ex) => {
-          const newSets = ex.sets.map(s => {
+          if (ex.type === 'group') return ex;
+          const newSets = ex.sets.map((s: Set) => {
             if (s.id === setId) {
               const key = action === 'warmup' ? 'isWarmup' : action === 'dropset' ? 'isDropset' : 'isFailure';
               const isCurrentlyActive = s[key];
@@ -681,18 +676,22 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     } else if (action === 'edit_group') {
       // Find the set and get all sets in its group (if any)
       const exercise = findExerciseDeep(currentWorkout.exercises, exerciseId);
-      const set = exercise?.sets?.find(s => s.id === setId);
+      if (!exercise) {
+        setActiveSetMenu(null);
+        return;
+      }
+      const set = exercise.sets.find((s: Set) => s.id === setId);
 
       if (set?.dropSetId) {
         // Grouped set: Pre-populate selection with all sets in the group
         const groupSetIds = exercise.sets
-          .filter(s => s.dropSetId === set.dropSetId)
-          .map(s => s.id);
+          .filter((s: Set) => s.dropSetId === set.dropSetId)
+          .map((s: Set) => s.id);
 
         // Check if all sets in the group have the same type
-        const groupSets = exercise.sets.filter(s => s.dropSetId === set.dropSetId);
-        const allWarmup = groupSets.length > 0 && groupSets.every(s => s.isWarmup);
-        const allFailure = groupSets.length > 0 && groupSets.every(s => s.isFailure);
+        const groupSets = exercise.sets.filter((s: Set) => s.dropSetId === set.dropSetId);
+        const allWarmup = groupSets.length > 0 && groupSets.every((s: Set) => s.isWarmup);
+        const allFailure = groupSets.length > 0 && groupSets.every((s: Set) => s.isFailure);
 
         // Initialize groupSetType with the current group type
         if (allWarmup) {
@@ -707,9 +706,8 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
         setSelectedSetIds(new Set(groupSetIds));
       } else {
         // Ungrouped set: Pre-select just this set
-        setSelectionMode({ exerciseId, type: 'drop_set', editingGroupId: null });
+        setSelectionMode({ exerciseId, type: 'drop_set', editingGroupId: undefined });
         setSelectedSetIds(new Set([setId]));
-        setGroupSetType(null);
       }
       setActiveSetMenu(null);
     } else if (action === 'add_rest') {
@@ -722,16 +720,19 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
       // Remove rest period from this set
       handleWorkoutUpdate({
         ...currentWorkout,
-        exercises: updateExercisesDeep(currentWorkout.exercises, exerciseId, (ex) => ({
-          ...ex,
-          sets: ex.sets.map(s => {
-            if (s.id === setId) {
-              const { restPeriodSeconds, ...rest } = s;
-              return rest;
-            }
-            return s;
-          })
-        }))
+        exercises: updateExercisesDeep(currentWorkout.exercises, exerciseId, (ex) => {
+          if (ex.type === 'group') return ex;
+          return {
+            ...ex,
+            sets: ex.sets.map((s: Set) => {
+              if (s.id === setId) {
+                const { restPeriodSeconds, ...rest } = s;
+                return rest;
+              }
+              return s;
+            })
+          };
+        })
       });
       // Also cancel any active timer for this set
       if (activeRestTimer?.setId === setId) {
@@ -743,13 +744,14 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
       handleWorkoutUpdate({
         ...currentWorkout,
         exercises: updateExercisesDeep(currentWorkout.exercises, exerciseId, (ex) => {
-          const currentSetIndex = ex.sets.findIndex(s => s.id === setId);
+          if (ex.type === 'group') return ex;
+          const currentSetIndex = ex.sets.findIndex((s: Set) => s.id === setId);
           if (currentSetIndex === -1) return ex;
 
           const currentSet = ex.sets[currentSetIndex];
-          const newSet = {
+          const newSet: Set = {
             id: `s-${Date.now()}-${Math.random()}`,
-            type: "Working",
+            type: "Working" as SetType,
             weight: currentSet.weight || "",
             reps: currentSet.reps || "",
             duration: currentSet.duration || "",
@@ -825,20 +827,12 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     // Close set-level popup if open
     setActiveSetMenu(null);
 
-    // Get ScrollView position on screen
-    scrollViewRef.current?.measure((x, y, scrollWidth, scrollHeight, pageX_scroll, pageY_scroll) => {
-      // Calculate button position relative to ScrollView's visible viewport
-      // pageY is absolute screen position, pageY_scroll is ScrollView's screen position
-      // The difference gives us the position within the visible ScrollView area
-      const visibleTop = pageY - pageY_scroll;
-
-      // Also calculate the position in the content (for scroll tracking)
-      // This is the position if the ScrollView were at scroll position 0
-      const contentTop = visibleTop + scrollOffset;
-
-      setDropdownPos({ top: visibleTop, right: 16, originalTop: contentTop });
-      setOptionsModalExId(instanceId);
-    });
+    // Calculate position using event coordinates directly
+    // Note: ScrollView doesn't have measure, so we use approximate positioning
+    const visibleTop = pageY - 100; // Approximate offset
+    const contentTop = visibleTop + scrollOffset;
+    setDropdownPos({ top: visibleTop, right: 16, originalTop: contentTop });
+    setOptionsModalExId(instanceId);
   };
 
   const handleDeleteExercise = (instanceId: string) => {
@@ -859,6 +853,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     handleWorkoutUpdate({
       ...currentWorkout,
       exercises: updateExercisesDeep(currentWorkout.exercises, instanceId, (ex) => {
+        if (ex.type === 'group') return ex;
         return convertWorkoutUnits(ex);
       })
     });
@@ -876,13 +871,16 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     if (replacingExerciseId && currentExerciseNote.trim()) {
       handleWorkoutUpdate({
         ...currentWorkout,
-        exercises: updateExercisesDeep(currentWorkout.exercises, replacingExerciseId, (ex) => ({
-          ...ex,
-          notes: [
-            { id: `note-${Date.now()}`, text: currentExerciseNote, date: new Date().toISOString().split('T')[0], pinned: false },
-            ...(ex.notes || [])
-          ]
-        }))
+        exercises: updateExercisesDeep(currentWorkout.exercises, replacingExerciseId, (ex) => {
+          if (ex.type === 'group') return ex;
+          return {
+            ...ex,
+            notes: [
+              { id: `note-${Date.now()}`, text: currentExerciseNote, date: new Date().toISOString().split('T')[0], pinned: false },
+              ...(ex.notes || [])
+            ]
+          };
+        })
       });
       // Auto-expand notes for this exercise
       setExpandedExerciseNotes(prev => ({ ...prev, [replacingExerciseId]: true }));
@@ -900,12 +898,13 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     handleWorkoutUpdate({
       ...currentWorkout,
       exercises: updateExercisesDeep(currentWorkout.exercises, exId, (ex) => {
-        const updatedNotes = (ex.notes || []).map(n =>
+        if (ex.type === 'group') return ex;
+        const updatedNotes = (ex.notes || []).map((n: Note) =>
           n.id === noteId ? { ...n, pinned: !n.pinned } : n
         );
 
         // If pinning, also save to library
-        const pinnedNote = updatedNotes.find(n => n.id === noteId);
+        const pinnedNote = updatedNotes.find((n: Note) => n.id === noteId);
         if (pinnedNote && pinnedNote.pinned && ex.exerciseId) {
           // Get current pinned notes from library
           const libraryExercise = exercisesLibrary.find(libEx => libEx.id === ex.exerciseId);
@@ -921,7 +920,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
           const currentPinnedNotes = libraryExercise?.pinnedNotes || [];
 
           updateExerciseInLibrary(ex.exerciseId, {
-            pinnedNotes: currentPinnedNotes.filter(n => n.id !== noteId)
+            pinnedNotes: currentPinnedNotes.filter((n: Note) => n.id !== noteId)
           });
         }
 
@@ -936,20 +935,26 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
   const handleRemoveExerciseNote = (exId: string, noteId: string) => {
     handleWorkoutUpdate({
       ...currentWorkout,
-      exercises: updateExercisesDeep(currentWorkout.exercises, exId, (ex) => ({
-        ...ex,
-        notes: (ex.notes || []).filter(n => n.id !== noteId)
-      }))
+      exercises: updateExercisesDeep(currentWorkout.exercises, exId, (ex) => {
+        if (ex.type === 'group') return ex;
+        return {
+          ...ex,
+          notes: (ex.notes || []).filter((n: Note) => n.id !== noteId)
+        };
+      })
     });
   };
 
-  const handleUpdateExerciseNote = (exId: string, updatedNote: any) => {
+  const handleUpdateExerciseNote = (exId: string, updatedNote: Note) => {
     handleWorkoutUpdate({
       ...currentWorkout,
-      exercises: updateExercisesDeep(currentWorkout.exercises, exId, (ex) => ({
-        ...ex,
-        notes: (ex.notes || []).map(n => n.id === updatedNote.id ? updatedNote : n)
-      }))
+      exercises: updateExercisesDeep(currentWorkout.exercises, exId, (ex) => {
+        if (ex.type === 'group') return ex;
+        return {
+          ...ex,
+          notes: (ex.notes || []).map((n: Note) => n.id === updatedNote.id ? updatedNote : n)
+        };
+      })
     });
   };
 
@@ -1003,7 +1008,8 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     // Calculate block size (1 for exercise, 1 + children for group)
     let blockSize = 1;
     if (movingRow.type === 'group_header') {
-      blockSize += (movingRow.data.children ? movingRow.data.children.length : 0);
+      const groupData = movingRow.data as ExerciseGroup;
+      blockSize += (groupData.children ? groupData.children.length : 0);
     }
 
     // Adjust targetIndex if we are moving forward in the list
@@ -1092,7 +1098,15 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
       : null;
 
     // Helper function to compute indices for historical sets
-    const computeHistoricalIndices = (historicalSets) => {
+    const computeHistoricalIndices = (historicalSets: Array<{
+      weight: string;
+      reps: string;
+      duration: string;
+      distance: string;
+      isWarmup: boolean;
+      isFailure: boolean;
+      dropSetId: string | null;
+    }>) => {
       const indices = [];
       let warmupGroupNum = 0;
       let workingGroupNum = 0;
@@ -1101,8 +1115,8 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
 
       for (let i = 0; i < historicalSets.length; i++) {
         const s = historicalSets[i];
-        let warmupIdx = null;
-        let workingIdx = null;
+        let warmupIdx: { group: number; subIndex: number | null } | null = null;
+        let workingIdx: { group: number; subIndex: number | null } | null = null;
 
         if (s.isWarmup) {
           if (s.dropSetId) {
@@ -1111,8 +1125,8 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
               warmupGroupNum++;
             }
             // Find sub-index within warmup dropset
-            const warmupGroupSets = historicalSets.filter(hs => hs.dropSetId === s.dropSetId && hs.isWarmup);
-            const subIdx = warmupGroupSets.findIndex(hs => hs === s) + 1;
+            const warmupGroupSets = historicalSets.filter((hs: typeof s) => hs.dropSetId === s.dropSetId && hs.isWarmup);
+            const subIdx = warmupGroupSets.findIndex((hs: typeof s) => hs === s) + 1;
             warmupIdx = { group: warmupGroupNum, subIndex: subIdx };
           } else {
             warmupGroupNum++;
@@ -1125,8 +1139,8 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
               workingGroupNum++;
             }
             // Find sub-index within working dropset
-            const workingGroupSets = historicalSets.filter(hs => hs.dropSetId === s.dropSetId && !hs.isWarmup);
-            const subIdx = workingGroupSets.findIndex(hs => hs === s) + 1;
+            const workingGroupSets = historicalSets.filter((hs: typeof s) => hs.dropSetId === s.dropSetId && !hs.isWarmup);
+            const subIdx = workingGroupSets.findIndex((hs: typeof s) => hs === s) + 1;
             workingIdx = { group: workingGroupNum, subIndex: subIdx };
           } else {
             workingGroupNum++;
@@ -1141,7 +1155,11 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     };
 
     // Smart lookup function to find matching previous set data
-    const getPreviousSetData = (currentSet, currentWarmupIndex, currentWorkingIndex) => {
+    const getPreviousSetData = (
+      currentSet: Set,
+      currentWarmupIndex: { group: number; subIndex: number | null } | null,
+      currentWorkingIndex: { group: number; subIndex: number | null } | null
+    ) => {
       // Iterate through all history entries (most recent first)
       for (let histIdx = 0; histIdx < historyEntries.length; histIdx++) {
         const histEntry = historyEntries[histIdx];
@@ -1197,20 +1215,40 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     };
 
     // Helper to convert weight units for previous set
-    const convertPreviousSet = (prevSet) => {
+    const convertPreviousSet = (prevSet: {
+      weight: string;
+      reps: string;
+      duration: string;
+      distance: string;
+      isWarmup: boolean;
+      isFailure: boolean;
+      dropSetId: string | null;
+      isFromOlderHistory?: boolean;
+    } | null): Set | null => {
       if (!prevSet) return null;
 
+      // Create a Set object from the previous set data
+      const convertedSet: Set = {
+        id: `prev-${Date.now()}`,
+        type: prevSet.isWarmup ? 'Warmup' as SetType : prevSet.isFailure ? 'Failure' as SetType : 'Working' as SetType,
+        weight: prevSet.weight,
+        reps: prevSet.reps,
+        duration: prevSet.duration,
+        distance: prevSet.distance,
+        completed: false,
+        isWarmup: prevSet.isWarmup,
+        isFailure: prevSet.isFailure,
+        dropSetId: prevSet.dropSetId || undefined
+      };
+
       // If current unit is kg, convert previous (assumed lbs) to kg
-      if (ex.weightUnit === 'kg' && ex.category === 'Lifts' && prevSet.weight) {
-        const val = parseFloat(prevSet.weight);
+      if (ex.weightUnit === 'kg' && ex.category === 'Lifts' && convertedSet.weight) {
+        const val = parseFloat(convertedSet.weight);
         if (!isNaN(val)) {
-          return {
-            ...prevSet,
-            weight: (val / 2.20462).toFixed(1)
-          };
+          convertedSet.weight = (val / 2.20462).toFixed(1);
         }
       }
-      return prevSet;
+      return convertedSet;
     };
 
     const isMoving = isMoveMode && movingItemId === ex.instanceId;
@@ -1233,7 +1271,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
           isMoveMode && isGroupChild && isMoving && groupColorScheme && {
             backgroundColor: groupColorScheme[100],
           },
-          isLastChild && !isMoveMode && styles.exerciseCard__groupChild__lastChild
+          isLastChild && !isMoveMode && styles.groupChildWrapper__last
         ]}
       >
         <View style={[
@@ -1513,27 +1551,27 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                       isSelected={selectedSetIds.has(set.id)}
                       onToggleSelection={(isAddToGroupAction) => handleToggleSetSelection(set.id, isAddToGroupAction)}
                       dropSetId={set.dropSetId}
-                      isDropSetStart={set.dropSetId && (idx === 0 || ex.sets[idx - 1].dropSetId !== set.dropSetId)}
-                      isDropSetEnd={set.dropSetId && (idx === ex.sets.length - 1 || ex.sets[idx + 1]?.dropSetId !== set.dropSetId) && !set.restPeriodSeconds}
-                      groupSetNumber={groupSetNumber}
-                      indexInGroup={indexInGroup}
+                      isDropSetStart={!!(set.dropSetId && (idx === 0 || ex.sets[idx - 1].dropSetId !== set.dropSetId))}
+                      isDropSetEnd={!!(set.dropSetId && (idx === ex.sets.length - 1 || ex.sets[idx + 1]?.dropSetId !== set.dropSetId) && !set.restPeriodSeconds)}
+                      groupSetNumber={groupSetNumber ?? 0}
+                      indexInGroup={indexInGroup ?? 0}
                       overallSetNumber={overallSetNumber}
                       warmupIndex={warmupIndex}
                       workingIndex={workingIndex}
                       editingGroupId={selectionMode?.editingGroupId}
-                      groupSetType={displayGroupSetType}
+                      groupSetType={displayGroupSetType as GroupSetType}
                       readOnly={readOnly}
-                      shouldFocus={focusNextSet?.setId === set.id ? focusNextSet.field : null}
+                      shouldFocus={focusNextSet?.setId === set.id ? (focusNextSet.field === 'weight' || focusNextSet.field === 'reps' ? focusNextSet.field : null) : null}
                       onFocusHandled={() => setFocusNextSet(null)}
                       onCustomKeyboardOpen={!readOnly && ex.category === 'Lifts' ? ({ field, value }) => handleCustomKeyboardOpen(ex.instanceId, set.id, field, value) : null}
                       customKeyboardActive={customKeyboardTarget?.exerciseId === ex.instanceId && customKeyboardTarget?.setId === set.id}
-                      customKeyboardField={customKeyboardTarget?.exerciseId === ex.instanceId && customKeyboardTarget?.setId === set.id ? customKeyboardTarget.field : null}
+                      customKeyboardField={customKeyboardTarget?.exerciseId === ex.instanceId && customKeyboardTarget?.setId === set.id ? (customKeyboardTarget.field === 'weight' || customKeyboardTarget.field === 'reps' ? customKeyboardTarget.field : null) : null}
                     />
 
                     {/* Rest Timer Bar */}
                     {showRestTimer && (() => {
                       // Determine if this rest timer is at the end of a dropset
-                      const isRestTimerDropSetEnd = set.dropSetId && (idx === ex.sets.length - 1 || ex.sets[idx + 1]?.dropSetId !== set.dropSetId);
+                      const isRestTimerDropSetEnd = !!(set.dropSetId && (idx === ex.sets.length - 1 || ex.sets[idx + 1]?.dropSetId !== set.dropSetId));
 
                       return (
                         <RestTimerBar
@@ -1548,7 +1586,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                           setRestPeriodModalOpen={setRestPeriodModalOpen}
                           setRestTimerPopupOpen={setRestTimerPopupOpen}
                           isRestTimerDropSetEnd={isRestTimerDropSetEnd}
-                          displayGroupSetType={displayGroupSetType}
+                          displayGroupSetType={displayGroupSetType as GroupSetType}
                           styles={styles}
                         />
                       );
@@ -1665,7 +1703,8 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
       // We can traverse back until we find a group_header.
       for (let i = index - 1; i >= 0; i--) {
         if (flatRows[i].type === 'group_header') {
-          groupType = flatRows[i].data.groupType;
+          const groupData = flatRows[i].data as ExerciseGroup;
+          groupType = groupData.groupType;
           dropZoneGroupId = flatRows[i].id;
           groupColorScheme = groupType === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme;
           break;
@@ -1727,7 +1766,8 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
       // Find the group type
       for (let i = index - 1; i >= 0; i--) {
         if (flatRows[i]?.type === 'group_header') {
-          const groupType = flatRows[i].data.groupType;
+          const groupData = flatRows[i].data as ExerciseGroup;
+          const groupType = groupData.groupType;
           groupColorScheme = groupType === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme;
           break;
         }
@@ -1766,7 +1806,8 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
       if (movingIndex !== -1) {
         const movingRow = flatRows[movingIndex];
         if (movingRow.type === 'group_header') {
-          movingSize = movingRow.data.children ? movingRow.data.children.length : 0;
+          const groupData = movingRow.data as ExerciseGroup;
+          movingSize = groupData.children ? groupData.children.length : 0;
         }
         movingEndIndex = movingIndex + 1 + movingSize;
       }
@@ -1884,7 +1925,8 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
       if (row.type === 'group_header') {
         const isMoving = isMoveMode && movingItemId === row.id;
         const isNotMoving = isMoveMode && !isMoving;
-        const groupColorScheme = row.data.groupType === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme;
+        const groupData = row.data as ExerciseGroup;
+        const groupColorScheme = groupData.groupType === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme;
 
         // If moving, we want to render a collapsed version that looks like a single item
         if (isMoving) {
@@ -1903,7 +1945,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                 <View style={styles.movingGroupContent}>
                   <Layers size={16} color={groupColorScheme[600]} />
                   <Text style={[styles.movingGroupText, { color: groupColorScheme[700] }]}>
-                    {row.data.groupType} ({row.data.children ? row.data.children.length : 0})
+                    {groupData.groupType} ({groupData.children ? groupData.children.length : 0})
                   </Text>
                 </View>
               </Animated.View>
@@ -1941,7 +1983,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                 isNotMoving && styles.groupHeader__notMoving
               ]}>
                 <Layers size={14} color={groupColorScheme[600]} />
-                <Text style={[styles.groupTitle, { color: groupColorScheme[600] }]}>{row.data.groupType}</Text>
+                <Text style={[styles.groupTitle, { color: groupColorScheme[600] }]}>{groupData.groupType}</Text>
               </View>
             </TouchableOpacity>
           );
@@ -1971,14 +2013,16 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
           // Find parent group to get group type and id
           for (let i = index - 1; i >= 0; i--) {
             if (flatRows[i].type === 'group_header') {
-              parentGroupType = flatRows[i].data.groupType;
+              const parentGroupData = flatRows[i].data as ExerciseGroup;
+              parentGroupType = parentGroupData.groupType;
               parentGroupId = flatRows[i].id;
               break;
             }
           }
         }
 
-        renderedItems.push(renderExerciseCard(row.data, isGroupChild, isLastChild, parentGroupType, parentGroupId));
+        const exerciseData = row.data as Exercise;
+        renderedItems.push(renderExerciseCard(exerciseData, isGroupChild, isLastChild, parentGroupType, parentGroupId));
       }
     });
 
@@ -2283,7 +2327,12 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
         {showNotes && (
           <View style={styles.notesList}>
             {sortedNotes.length > 0 ? (
-              sortedNotes.map((note) => <SavedNoteItem key={note.id} note={note} onPin={handlePinNote} onRemove={handleRemoveNote} />)
+              sortedNotes.map((note) => <SavedNoteItem key={note.id} note={note} onPin={handlePinNote} onRemove={handleRemoveNote} onUpdate={(updatedNote) => {
+                handleWorkoutUpdate({
+                  ...currentWorkout,
+                  sessionNotes: (currentWorkout.sessionNotes || []).map(n => n.id === updatedNote.id ? updatedNote : n)
+                });
+              }} />)
             ) : (
               <Text style={styles.emptyNotesText}>No notes added yet.</Text>
             )}
@@ -2355,7 +2404,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
 
       {customHeader ? customHeader : (
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
+          <TouchableOpacity onPress={() => navigation?.goBack()} style={styles.headerButton}>
             <ChevronDown size={24} color={COLORS.slate[400]} />
           </TouchableOpacity>
           <View style={styles.headerCenter}>
@@ -2501,7 +2550,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                       <Text style={[
                         styles.setPopupOptionText,
                         hasRestPeriod && styles.setPopupOptionText__active
-                      ]}>{hasRestPeriod ? `Rest: ${formatRestTime(set.restPeriodSeconds)}` : 'Add rest timer'}</Text>
+                      ]}>{hasRestPeriod ? `Rest: ${formatRestTime(set.restPeriodSeconds!)}` : 'Add rest timer'}</Text>
                       {hasRestPeriod && <Check size={16} color={COLORS.white} strokeWidth={3} />}
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -2611,7 +2660,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
           });
         }}
         onSave={handleCreateExerciseSave}
-        categories={CATEGORIES}
+        categories={CATEGORIES as ExerciseCategory[]}
       />
 
       <Modal visible={isNoteModalOpen} transparent animationType="fade" onRequestClose={() => setIsNoteModalOpen(false)}>
@@ -2728,10 +2777,10 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
       {/* Superset Selection Mode Overlay */}
       {supersetSelectionMode && (() => {
         // Determine group type: if editing, get from the group; if creating, default to Superset
-        let groupType = 'Superset';
+        let groupType: GroupType = 'Superset';
         if (supersetSelectionMode.mode === 'edit' && supersetSelectionMode.supersetId) {
           const group = currentWorkout.exercises.find(ex => ex.instanceId === supersetSelectionMode.supersetId);
-          if (group && group.groupType) {
+          if (group && group.type === 'group') {
             groupType = group.groupType;
           }
         }
@@ -2913,7 +2962,11 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
 
       <CustomNumberKeyboard
         visible={customKeyboardVisible}
-        customKeyboardTarget={customKeyboardTarget}
+        customKeyboardTarget={customKeyboardTarget && (customKeyboardTarget.field === 'weight' || customKeyboardTarget.field === 'reps') ? {
+          exerciseId: customKeyboardTarget.exerciseId,
+          setId: customKeyboardTarget.setId,
+          field: customKeyboardTarget.field as 'weight' | 'reps'
+        } : null}
         customKeyboardValue={customKeyboardValue}
         onInput={handleCustomKeyboardInput}
         onNext={handleCustomKeyboardNext}
@@ -3572,6 +3625,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 2,
     marginBottom: 6,
+    marginHorizontal: -4,
   },
   groupTitle: {
     fontSize: 12,

@@ -6,6 +6,7 @@ interface UseWorkoutGroupsReturn {
   selectionMode: GroupSelectionMode | null;
   setSelectionMode: React.Dispatch<React.SetStateAction<GroupSelectionMode | null>>;
   selectedSetIds: Set<string>;
+  setSelectedSetIds: React.Dispatch<React.SetStateAction<Set<string>>>;
   groupSetType: GroupSetType;
   setGroupSetType: React.Dispatch<React.SetStateAction<GroupSetType>>;
   handleToggleSetSelection: (setId: string, isAddToGroupAction?: boolean) => void;
@@ -306,6 +307,7 @@ export const useWorkoutGroups = (
     selectionMode,
     setSelectionMode,
     selectedSetIds,
+    setSelectedSetIds,
     groupSetType,
     setGroupSetType,
     handleToggleSetSelection,
