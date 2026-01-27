@@ -322,12 +322,12 @@ const SetRow: React.FC<SetRowProps> = ({
                         // Subsequent sets: show only subIndex with "."
                         <Text style={[
                           styles.indexText__groupSub,
-                          set.isWarmup && { color: COLORS.orange[400] },
-                          set.isFailure && { color: COLORS.red[400] },
+                          set.isWarmup && { color: COLORS.orange[350] },
+                              set.isFailure && { color: COLORS.red[350] },
                           !set.isWarmup && !set.isFailure && (
-                            groupColorScheme ? { color: groupColorScheme[400] } : { color: COLORS.slate[400] }
+                            groupColorScheme ? { color: groupColorScheme[350] } : { color: COLORS.slate[350] }
                           )
-                        ]}>.{warmupIndex.subIndex}</Text>
+                        ]}>d{warmupIndex.subIndex}</Text>
                       )
                     ) : (
                       <Text style={[
@@ -349,12 +349,12 @@ const SetRow: React.FC<SetRowProps> = ({
                         // Subsequent sets: show only subIndex with "."
                         <Text style={[
                           styles.indexText__groupSub,
-                          set.isWarmup && { color: COLORS.orange[400] },
-                          set.isFailure && { color: COLORS.red[400] },
+                                set.isWarmup && { color: COLORS.orange[350] },
+                                set.isFailure && { color: COLORS.red[350] },
                           !set.isWarmup && !set.isFailure && (
-                            { color: COLORS.slate[400] }
+                            { color: COLORS.slate[350] }
                           )
-                        ]}>.{workingIndex.subIndex}</Text>
+                        ]}>d{workingIndex.subIndex}</Text>
                       )
                     ) : (
                       <Text style={[
@@ -376,12 +376,12 @@ const SetRow: React.FC<SetRowProps> = ({
                         // Subsequent sets: show only subIndex with "."
                         <Text style={[
                           styles.indexText__groupSub,
-                          set.isWarmup && { color: COLORS.orange[400] },
-                          set.isFailure && { color: COLORS.red[400] },
+                                  set.isWarmup && { color: COLORS.orange[350] },
+                                  set.isFailure && { color: COLORS.red[350] },
                           !set.isWarmup && !set.isFailure && (
-                            { color: COLORS.slate[400] }
+                            { color: COLORS.slate[350] }
                           )
-                        ]}>.{indexInGroup}</Text>
+                        ]}>d{indexInGroup}</Text>
                       )
                     ) : (
                       <Text style={[
