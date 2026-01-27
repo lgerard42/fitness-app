@@ -2518,7 +2518,6 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
         onInput={handleCustomKeyboardInput}
         onNext={handleCustomKeyboardNext}
         onClose={handleCustomKeyboardClose}
-        styles={styles}
       />
     </SafeAreaView>
   );
@@ -3585,112 +3584,6 @@ const styles = StyleSheet.create({
   },
 
   // Custom Number Keyboard
-  customKeyboardContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: COLORS.slate[100],
-    borderTopWidth: 1,
-    borderTopColor: COLORS.slate[300],
-    paddingBottom: 20,
-  },
-  customKeyboardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: COLORS.white,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.slate[200],
-  },
-  customKeyboardValueContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  customKeyboardLabel: {
-    fontSize: 14,
-    color: COLORS.slate[500],
-    fontWeight: '500',
-  },
-  customKeyboardValue: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: COLORS.slate[900],
-    minWidth: 80,
-  },
-  customKeyboardCloseButton: {
-    padding: 8,
-    borderRadius: 20,
-    backgroundColor: COLORS.slate[100],
-  },
-  customKeyboardGrid: {
-    paddingHorizontal: 8,
-    paddingTop: 8,
-  },
-  customKeyboardRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-    marginBottom: 8,
-  },
-  customKeyboardKey: {
-    width: 100,
-    height: 52,
-    backgroundColor: COLORS.white,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  customKeyboardKeyText: {
-    fontSize: 24,
-    fontWeight: '500',
-    color: COLORS.slate[900],
-  },
-  customKeyboardActions: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-  },
-  customKeyboardNextButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: COLORS.blue[500],
-    paddingVertical: 14,
-    borderRadius: 10,
-  },
-  customKeyboardNextButtonText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.white,
-  },
-  customKeyboardSubmitButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: COLORS.green[500],
-    paddingVertical: 14,
-    borderRadius: 10,
-    marginLeft: 8,
-  },
-  customKeyboardSubmitButtonText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.white,
-  },
-
   // Drag Mode Styles
   dragListContent: {
     paddingHorizontal: 6,

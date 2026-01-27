@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
-import { X, ChevronRight, Check, Delete } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { X, ChevronRight, Delete, Plus, Minus } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 
 interface CustomNumberKeyboardProps {
@@ -10,7 +10,6 @@ interface CustomNumberKeyboardProps {
   onInput: (key: string) => void;
   onNext: () => void;
   onClose: () => void;
-  styles: any;
 }
 
 const CustomNumberKeyboard: React.FC<CustomNumberKeyboardProps> = ({
@@ -20,7 +19,6 @@ const CustomNumberKeyboard: React.FC<CustomNumberKeyboardProps> = ({
   onInput,
   onNext,
   onClose,
-  styles,
 }) => {
   if (!visible) return null;
 
@@ -28,99 +26,218 @@ const CustomNumberKeyboard: React.FC<CustomNumberKeyboardProps> = ({
     onInput(key);
   };
 
+  const handleIncrement = () => {
+    const currentValue = parseFloat(customKeyboardValue || '0');
+    const newValue = (currentValue + 1).toString();
+    onInput(newValue);
+  };
+
+  const handleDecrement = () => {
+    const currentValue = parseFloat(customKeyboardValue || '0');
+    const newValue = Math.max(0, currentValue - 1).toString();
+    onInput(newValue);
+  };
+
   return (
-    <View style={styles.customKeyboardContainer}>
-      <View style={styles.customKeyboardHeader}>
-        <View style={styles.customKeyboardValueContainer}>
-          <Text style={styles.customKeyboardLabel}>
-            {customKeyboardTarget?.field === 'weight' ? 'Weight' : 'Reps'}
-          </Text>
-          <Text style={styles.customKeyboardValue}>
-            {customKeyboardValue || '0'}
-          </Text>
-        </View>
-        <TouchableOpacity 
-          style={styles.customKeyboardCloseButton}
-          onPress={onClose}
-        >
-          <X size={20} color={COLORS.slate[600]} />
-        </TouchableOpacity>
-      </View>
-      
-      <View style={styles.customKeyboardGrid}>
-        <View style={styles.customKeyboardRow}>
+    <View style={localStyles.customKeyboardContainer}>
+      <View style={localStyles.customKeyboardGrid}>
+        <View style={localStyles.customKeyboardRow}>
           {['1', '2', '3'].map(key => (
-            <TouchableOpacity 
+            <TouchableOpacity
               key={key}
-              style={styles.customKeyboardKey}
+              style={localStyles.customKeyboardKey}
               onPress={() => handleInput(key)}
             >
-              <Text style={styles.customKeyboardKeyText}>{key}</Text>
+              <Text style={localStyles.customKeyboardKeyText}>{key}</Text>
             </TouchableOpacity>
           ))}
+          <TouchableOpacity
+            style={localStyles.customKeyboardCloseButton}
+            onPress={onClose}
+          >
+            <X size={20} color={COLORS.white} />
+          </TouchableOpacity>
         </View>
-        <View style={styles.customKeyboardRow}>
+        <View style={localStyles.customKeyboardRow}>
           {['4', '5', '6'].map(key => (
-            <TouchableOpacity 
+            <TouchableOpacity
               key={key}
-              style={styles.customKeyboardKey}
+              style={localStyles.customKeyboardKey}
               onPress={() => handleInput(key)}
             >
-              <Text style={styles.customKeyboardKeyText}>{key}</Text>
+              <Text style={localStyles.customKeyboardKeyText}>{key}</Text>
             </TouchableOpacity>
           ))}
+          <TouchableOpacity
+            style={localStyles.customKeyboardIncrementButton}
+            onPress={handleIncrement}
+          >
+            <Plus size={24} color={COLORS.white} />
+          </TouchableOpacity>
         </View>
-        <View style={styles.customKeyboardRow}>
+        <View style={localStyles.customKeyboardRow}>
           {['7', '8', '9'].map(key => (
-            <TouchableOpacity 
+            <TouchableOpacity
               key={key}
-              style={styles.customKeyboardKey}
+              style={localStyles.customKeyboardKey}
               onPress={() => handleInput(key)}
             >
-              <Text style={styles.customKeyboardKeyText}>{key}</Text>
+              <Text style={localStyles.customKeyboardKeyText}>{key}</Text>
             </TouchableOpacity>
           ))}
+          <TouchableOpacity
+            style={localStyles.customKeyboardDecrementButton}
+            onPress={handleDecrement}
+          >
+            <Minus size={24} color={COLORS.white} />
+          </TouchableOpacity>
         </View>
-        <View style={styles.customKeyboardRow}>
-          <TouchableOpacity 
-            style={styles.customKeyboardKey}
+        <View style={localStyles.customKeyboardRow}>
+          <TouchableOpacity
+            style={localStyles.customKeyboardKey}
             onPress={() => handleInput('.')}
           >
-            <Text style={styles.customKeyboardKeyText}>.</Text>
+            <Text style={localStyles.customKeyboardKeyText}>.</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.customKeyboardKey}
+          <TouchableOpacity
+            style={localStyles.customKeyboardKey}
             onPress={() => handleInput('0')}
           >
-            <Text style={styles.customKeyboardKeyText}>0</Text>
+            <Text style={localStyles.customKeyboardKeyText}>0</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.customKeyboardKey}
+          <TouchableOpacity
+            style={localStyles.customKeyboardKey}
             onPress={() => handleInput('backspace')}
           >
-            <Delete size={24} color={COLORS.slate[700]} />
+            <Delete size={24} color={COLORS.slate[400]} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={localStyles.customKeyboardNextButton}
+            onPress={onNext}
+          >
+            <Text style={localStyles.customKeyboardNextButtonText}>Next</Text>
           </TouchableOpacity>
         </View>
-      </View>
-      
-      <View style={styles.customKeyboardActions}>
-        <TouchableOpacity 
-          style={styles.customKeyboardNextButton}
-          onPress={onNext}
-        >
-          <Text style={styles.customKeyboardNextButtonText}>Next</Text>
-          <ChevronRight size={18} color={COLORS.white} />
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.customKeyboardSubmitButton}
-          onPress={onClose}
-        >
-          <Text style={styles.customKeyboardSubmitButtonText}>Done</Text>
-          <Check size={18} color={COLORS.white} />
-        </TouchableOpacity>
       </View>
     </View>
   );
 };
+
+const localStyles = StyleSheet.create({
+  customKeyboardContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: COLORS.slate[800],
+    borderTopWidth: 1,
+    borderTopColor: COLORS.slate[800],
+    paddingBottom: 30,
+    paddingHorizontal: 20,
+  },
+  customKeyboardGrid: {
+    paddingTop: 8,
+  },
+  customKeyboardRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 8,
+  },
+  customKeyboardKey: {
+    flex: 1,
+    flexBasis: 0,
+    minWidth: 0,
+    maxWidth: '100%',
+    height: 52,
+    backgroundColor: COLORS.slate[600],
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  customKeyboardKeyText: {
+    fontSize: 24,
+    fontWeight: '500',
+    color: COLORS.white,
+  },
+  customKeyboardCloseButton: {
+    flex: 1,
+    flexBasis: 0,
+    minWidth: 0,
+    maxWidth: '100%',
+    height: 52,
+    backgroundColor: COLORS.slate[800],
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  customKeyboardIncrementButton: {
+    flex: 1,
+    flexBasis: 0,
+    minWidth: 0,
+    maxWidth: '100%',
+    height: 52,
+    backgroundColor: COLORS.slate[750],
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  customKeyboardDecrementButton: {
+    flex: 1,
+    flexBasis: 0,
+    minWidth: 0,
+    maxWidth: '100%',
+    height: 52,
+    backgroundColor: COLORS.slate[750],
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  customKeyboardNextButton: {
+    flex: 1,
+    flexBasis: 0,
+    minWidth: 0,
+    maxWidth: '100%',
+    height: 52,
+    backgroundColor: COLORS.blue[600],
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  customKeyboardNextButtonText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.white,
+  },
+});
 
 export default CustomNumberKeyboard;

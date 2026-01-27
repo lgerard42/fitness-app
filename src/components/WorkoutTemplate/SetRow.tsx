@@ -338,7 +338,7 @@ const SetRow: React.FC<SetRowProps> = ({
                           !set.isWarmup && !set.isFailure && (
                             groupColorScheme ? { color: groupColorScheme[350] } : { color: COLORS.slate[350] }
                           )
-                        ]}>d{warmupIndex.subIndex}</Text>
+                        ]}>.{warmupIndex.subIndex}</Text>
                       )
                     ) : (
                       <Text style={[
@@ -365,7 +365,7 @@ const SetRow: React.FC<SetRowProps> = ({
                           !set.isWarmup && !set.isFailure && (
                             { color: COLORS.slate[350] }
                           )
-                        ]}>d{workingIndex.subIndex}</Text>
+                        ]}>.{workingIndex.subIndex}</Text>
                       )
                     ) : (
                       <Text style={[
@@ -392,7 +392,7 @@ const SetRow: React.FC<SetRowProps> = ({
                           !set.isWarmup && !set.isFailure && (
                             { color: COLORS.slate[350] }
                           )
-                        ]}>d{indexInGroup}</Text>
+                        ]}>.{indexInGroup}</Text>
                       )
                     ) : (
                       <Text style={[
@@ -615,11 +615,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
     color: COLORS.slate[500],
-  },
-  indexText__groupMain: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: COLORS.slate[500], // Default color when not in a group
   },
   indexText__groupSub: {
     fontSize: 10,
