@@ -2822,6 +2822,7 @@ const styles = StyleSheet.create({
   exerciseContent: {
     paddingTop: 8,
     paddingHorizontal: 0,
+    paddingBottom: 4,
   },
   columnHeaders: {
     flexDirection: 'row',
