@@ -1091,7 +1091,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
 
   const hasExercises = currentWorkout.exercises.length > 0;
 
-  const renderExerciseCard = (ex: Exercise, isGroupChild: boolean = false, isLastChild: boolean = false, parentGroupType: GroupType | null = null, parentGroupId: string | null = null) => {
+  const renderExerciseCard = (ex: Exercise, isGroupChild: boolean = false, isLastChild: boolean = false, parentGroupType: GroupType | null = null, parentGroupId: string | null = null, isFirstChild: boolean = false) => {
     const historyEntries = exerciseStats[ex.exerciseId]?.history || [];
     const groupColorScheme = isGroupChild && parentGroupType
       ? (parentGroupType === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme)
@@ -1264,6 +1264,8 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
           isMoveMode && isNotMoving && styles.exerciseCard__moveMode__notSelected,
           isMoveMode && isMoving && styles.exerciseCard__moveMode__selected,
           isGroupChild && styles.exerciseCard__groupChild,
+          isGroupChild && isFirstChild && styles.exerciseCard__groupChild__first,
+          isGroupChild && isLastChild && styles.exerciseCard__groupChild__last,
           isGroupChild && !isMoveMode && groupColorScheme && {
             borderColor: groupColorScheme[100],
           },
@@ -1676,6 +1678,9 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
               backgroundColor: groupColorScheme[100],
             },
             isLastChild && !isMoveMode && styles.groupChildWrapper__last,
+            isLastChild && !isMoveMode && groupColorScheme && {
+              borderBottomColor: groupColorScheme[200],
+            },
             isLastChild && !isMoveMode && shouldHaveMargin && { marginBottom: 16 },
             isLastChild && !isMoveMode && !shouldHaveMargin && { marginBottom: 0 },
             isMoveMode && groupColorScheme && {
@@ -1900,7 +1905,9 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
       item.isLastInGroup,
       item.groupId
         ? (dragItems.find(d => d.type === 'GroupHeader' && d.groupId === item.groupId) as any)?.groupType || null
-        : null
+        : null,
+      item.groupId || null,
+      item.isFirstInGroup
     );
 
     // Wrap with TouchableOpacity that triggers two-phase drag
@@ -2810,6 +2817,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
   },
+  exerciseCard__groupChild__first: {
+    marginTop: 0,
+  },
+  exerciseCard__groupChild__last: {
+    marginBottom: 0,
+  },
 
   exerciseHeader: {
     flexDirection: 'row',
@@ -3496,8 +3509,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   groupChildWrapper__last: {
-    borderBottomWidth: 0,
+    borderBottomWidth: 2,
     marginBottom: 0, // Will be conditionally set to 16 in drag mode for unselected groups
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
   },
 
   // Move mode banner
@@ -3875,7 +3890,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 0,
     borderBottomLeftRadius: 12,
     borderBottomRightRadius: 12,
-    minHeight: 12, // Or set explicit height
+    minHeight: 8, // Or set explicit height
   },
   dragExerciseCard: {
     backgroundColor: COLORS.white,
