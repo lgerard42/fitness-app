@@ -128,6 +128,17 @@ const SetRow: React.FC<SetRowProps> = ({
     ? (parentGroupType === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme)
     : null;
 
+  // Check if required values are missing (individually)
+  const isMissingWeight = isLift
+    ? (!set.weight || set.weight.trim() === '')
+    : (!set.duration || set.duration.trim() === '');
+
+  const isMissingReps = isLift || !isCardio
+    ? (!set.reps || set.reps.trim() === '')
+    : (!set.distance || set.distance.trim() === '');
+
+  const isMissingValue = isMissingWeight || isMissingReps;
+
   const {
     focusedInput,
     firstInputRef,
@@ -323,7 +334,7 @@ const SetRow: React.FC<SetRowProps> = ({
                         <Text style={[
                           styles.indexText__groupSub,
                           set.isWarmup && { color: COLORS.orange[350] },
-                              set.isFailure && { color: COLORS.red[350] },
+                          set.isFailure && { color: COLORS.red[350] },
                           !set.isWarmup && !set.isFailure && (
                             groupColorScheme ? { color: groupColorScheme[350] } : { color: COLORS.slate[350] }
                           )
@@ -349,8 +360,8 @@ const SetRow: React.FC<SetRowProps> = ({
                         // Subsequent sets: show only subIndex with "."
                         <Text style={[
                           styles.indexText__groupSub,
-                                set.isWarmup && { color: COLORS.orange[350] },
-                                set.isFailure && { color: COLORS.red[350] },
+                          set.isWarmup && { color: COLORS.orange[350] },
+                          set.isFailure && { color: COLORS.red[350] },
                           !set.isWarmup && !set.isFailure && (
                             { color: COLORS.slate[350] }
                           )
@@ -376,8 +387,8 @@ const SetRow: React.FC<SetRowProps> = ({
                         // Subsequent sets: show only subIndex with "."
                         <Text style={[
                           styles.indexText__groupSub,
-                                  set.isWarmup && { color: COLORS.orange[350] },
-                                  set.isFailure && { color: COLORS.red[350] },
+                          set.isWarmup && { color: COLORS.orange[350] },
+                          set.isFailure && { color: COLORS.red[350] },
                           !set.isWarmup && !set.isFailure && (
                             { color: COLORS.slate[350] }
                           )
@@ -406,7 +417,8 @@ const SetRow: React.FC<SetRowProps> = ({
                     style={[
                       styles.weightInput,
                       getInputStyle(isLift ? set.weight : set.duration),
-                      (focusedInput === 'first' || (customKeyboardActive && customKeyboardField === 'weight')) && styles.inputFocused
+                      (focusedInput === 'first' || (customKeyboardActive && customKeyboardField === 'weight')) && styles.inputFocused,
+                      isMissingWeight && styles.inputCompletedEmpty
                     ]}
                     selectTextOnFocus={true}
                     showSoftInputOnFocus={!onCustomKeyboardOpen || !isLift}
@@ -427,7 +439,7 @@ const SetRow: React.FC<SetRowProps> = ({
                         }
                       }
                     }}
-                    placeholder={isLift ? "-" : "min:sec"}
+                    placeholder={isLift ? "" : "min:sec"}
                     placeholderTextColor={COLORS.slate[400]}
                     keyboardType={isLift ? "decimal-pad" : "default"}
                     value={isLift ? (set.weight || "") : (set.duration || "")}
@@ -445,7 +457,8 @@ const SetRow: React.FC<SetRowProps> = ({
                     style={[
                       styles.repsInput,
                       getInputStyle(isLift ? set.reps : isCardio ? set.distance : set.reps),
-                      (focusedInput === 'second' || (customKeyboardActive && customKeyboardField === 'reps')) && styles.inputFocused
+                      (focusedInput === 'second' || (customKeyboardActive && customKeyboardField === 'reps')) && styles.inputFocused,
+                      isMissingReps && styles.inputCompletedEmpty
                     ]}
                     selectTextOnFocus={true}
                     showSoftInputOnFocus={!onCustomKeyboardOpen || !isLift}
@@ -466,7 +479,7 @@ const SetRow: React.FC<SetRowProps> = ({
                         }
                       }
                     }}
-                    placeholder={isLift ? "-" : isCardio ? "km" : "-"}
+                    placeholder={isLift ? "" : isCardio ? "km" : ""}
                     placeholderTextColor={COLORS.slate[400]}
                     keyboardType="decimal-pad"
                     value={isLift ? (set.reps || "") : isCardio ? (set.distance || "") : (set.reps || "")}
@@ -478,10 +491,13 @@ const SetRow: React.FC<SetRowProps> = ({
 
               <TouchableOpacity
                 onPress={readOnly ? undefined : onToggle}
-                disabled={readOnly}
-                style={[styles.checkButton, set.completed ? styles.checkButtonCompleted : styles.checkButtonIncomplete]}
+                disabled={readOnly || isMissingValue}
+                style={[
+                  styles.checkButton,
+                  (readOnly || isMissingValue) ? styles.checkButtonDisabled : (set.completed ? styles.checkButtonCompleted : styles.checkButtonIncomplete)
+                ]}
               >
-                <Check size={16} color={set.completed ? COLORS.white : COLORS.slate[400]} strokeWidth={3} />
+                <Check size={16} color={(readOnly || isMissingValue) ? COLORS.slate[300] : (set.completed ? COLORS.white : COLORS.slate[400])} strokeWidth={3} />
               </TouchableOpacity>
             </View>
           </View>
@@ -686,8 +702,8 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   inputCompletedEmpty: {
-    backgroundColor: COLORS.red[50],
-    borderColor: COLORS.red[300],
+    backgroundColor: COLORS.red[100],
+    borderColor: COLORS.red[100],
     borderWidth: 2,
   },
   inputCompletedFilled: {
@@ -712,6 +728,11 @@ const styles = StyleSheet.create({
   checkButtonIncomplete: {
     backgroundColor: COLORS.slate[200],
     borderColor: COLORS.slate[200],
+  },
+  checkButtonDisabled: {
+    backgroundColor: COLORS.slate[100],
+    borderColor: COLORS.slate[100],
+    opacity: 0.5,
   },
   deleteButton: {
     backgroundColor: COLORS.red[500],
