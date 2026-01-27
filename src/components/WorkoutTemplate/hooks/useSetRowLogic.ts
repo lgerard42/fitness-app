@@ -7,9 +7,9 @@ interface UseSetRowLogicProps {
   category: ExerciseCategory;
   shouldFocus: 'weight' | 'reps' | 'duration' | 'distance' | null;
   onFocusHandled: () => void;
-  onCustomKeyboardOpen: ((params: { field: 'weight' | 'reps'; value: string }) => void) | null;
+  onCustomKeyboardOpen: ((params: { field: 'weight' | 'reps' | 'duration' | 'distance'; value: string }) => void) | null;
   customKeyboardActive: boolean;
-  customKeyboardField: 'weight' | 'reps' | null;
+  customKeyboardField: 'weight' | 'reps' | 'duration' | 'distance' | null;
   readOnly: boolean;
 }
 
@@ -62,10 +62,10 @@ export const useSetRowLogic = ({
   useEffect(() => {
     if (customKeyboardActive && customKeyboardField && !readOnly) {
       const focusInput = () => {
-        if (customKeyboardField === 'weight' && firstInputRef.current) {
+        if ((customKeyboardField === 'weight' || customKeyboardField === 'duration') && firstInputRef.current) {
           firstInputRef.current.focus();
           setFocusedInput('first');
-        } else if (customKeyboardField === 'reps' && secondInputRef.current) {
+        } else if ((customKeyboardField === 'reps' || customKeyboardField === 'distance') && secondInputRef.current) {
           secondInputRef.current.focus();
           setFocusedInput('second');
         }

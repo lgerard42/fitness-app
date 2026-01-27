@@ -82,9 +82,9 @@ interface SetRowProps {
   readOnly?: boolean;
   shouldFocus?: 'weight' | 'reps' | 'duration' | 'distance' | null;
   onFocusHandled?: () => void;
-  onCustomKeyboardOpen?: ((params: { field: 'weight' | 'reps'; value: string }) => void) | null;
+  onCustomKeyboardOpen?: ((params: { field: 'weight' | 'reps' | 'duration' | 'distance'; value: string }) => void) | null;
   customKeyboardActive?: boolean;
-  customKeyboardField?: 'weight' | 'reps' | null;
+  customKeyboardField?: 'weight' | 'reps' | 'duration' | 'distance' | null;
   customKeyboardShouldSelectAll?: boolean;
 }
 
@@ -169,7 +169,8 @@ const SetRow: React.FC<SetRowProps> = ({
   // Set cursor position or selection when value changes from custom keyboard
   // Only update selection when explicitly needed (after +/- or after user input), not on initial focus
   useEffect(() => {
-    if (customKeyboardActive && customKeyboardField === 'weight') {
+    const expectedField = isLift ? 'weight' : (isCardio ? 'duration' : null);
+    if (customKeyboardActive && customKeyboardField === expectedField) {
       const value = isLift ? (set.weight || "") : (set.duration || "");
       const length = value.length;
       const initialValue = firstInputInitialValueRef.current;
@@ -195,10 +196,11 @@ const SetRow: React.FC<SetRowProps> = ({
       firstInputInitialFocusRef.current = false;
       firstInputInitialValueRef.current = null;
     }
-  }, [set.weight, set.duration, customKeyboardActive, customKeyboardField, customKeyboardShouldSelectAll, isLift]);
+  }, [set.weight, set.duration, customKeyboardActive, customKeyboardField, customKeyboardShouldSelectAll, isLift, isCardio]);
 
   useEffect(() => {
-    if (customKeyboardActive && customKeyboardField === 'reps') {
+    const expectedField = isLift ? 'reps' : (isCardio ? 'distance' : null);
+    if (customKeyboardActive && customKeyboardField === expectedField) {
       const value = isLift ? (set.reps || "") : isCardio ? (set.distance || "") : (set.reps || "");
       const length = value.length;
       const initialValue = secondInputInitialValueRef.current;
@@ -487,16 +489,20 @@ const SetRow: React.FC<SetRowProps> = ({
                     style={[
                       styles.weightInput,
                       getInputStyle(isLift ? set.weight : set.duration),
-                      (focusedInput === 'first' || (customKeyboardActive && customKeyboardField === 'weight')) && styles.inputFocused,
+                      (focusedInput === 'first' || (customKeyboardActive && (customKeyboardField === 'weight' || customKeyboardField === 'duration'))) && styles.inputFocused,
                       isMissingWeight && styles.inputCompletedEmpty
                     ]}
                     selectTextOnFocus={true}
-                    showSoftInputOnFocus={!onCustomKeyboardOpen || !isLift}
+                    showSoftInputOnFocus={!onCustomKeyboardOpen}
                     onFocus={() => {
                       if (!readOnly) {
                         const val = isLift ? (set.weight || "") : (set.duration || "");
-                        if (onCustomKeyboardOpen && isLift) {
-                          onCustomKeyboardOpen({ field: 'weight', value: val });
+                        if (onCustomKeyboardOpen) {
+                          if (isLift) {
+                            onCustomKeyboardOpen({ field: 'weight', value: val });
+                          } else if (isCardio) {
+                            onCustomKeyboardOpen({ field: 'duration', value: val });
+                          }
                           // On initial focus, ref should be false - don't override selection yet
                           // Text will be selected by selectTextOnFocus
                           firstInputInitialFocusRef.current = false;
@@ -510,8 +516,9 @@ const SetRow: React.FC<SetRowProps> = ({
                       }
                     }}
                     onBlur={() => {
-                      if (!customKeyboardActive || customKeyboardField !== 'weight') {
-                        if (!onCustomKeyboardOpen || !isLift) {
+                      const expectedField = isLift ? 'weight' : (isCardio ? 'duration' : null);
+                      if (!customKeyboardActive || customKeyboardField !== expectedField) {
+                        if (!onCustomKeyboardOpen || (!isLift && !isCardio)) {
                           // Focus cleared by hook
                         }
                       }
@@ -523,19 +530,24 @@ const SetRow: React.FC<SetRowProps> = ({
                     selection={firstInputSelection || undefined}
                     onSelectionChange={(e) => {
                       // Only update selection if not from custom keyboard
-                      if (!customKeyboardActive || customKeyboardField !== 'weight') {
+                      const expectedField = isLift ? 'weight' : (isCardio ? 'duration' : null);
+                      if (!customKeyboardActive || customKeyboardField !== expectedField) {
                         setFirstInputSelection(e.nativeEvent.selection);
                       }
                     }}
                     onChangeText={(text) => {
                       if (!readOnly) {
                         // Clear selection when user types normally
-                        if (!customKeyboardActive || customKeyboardField !== 'weight') {
+                        const expectedField = isLift ? 'weight' : (isCardio ? 'duration' : null);
+                        if (!customKeyboardActive || customKeyboardField !== expectedField) {
                           setFirstInputSelection(null);
                         } else {
-                          // User has typed, so mark that initial focus is done
+                          // User has typed via custom keyboard, mark that initial focus is done
                           // This will allow useEffect to position cursor at end on next value change
                           firstInputInitialFocusRef.current = true;
+                          // Immediately position cursor at end after typing
+                          const length = text.length;
+                          setFirstInputSelection({ start: length, end: length });
                         }
                         onUpdate({ ...set, [isLift ? 'weight' : 'duration']: text });
                       }
@@ -557,12 +569,16 @@ const SetRow: React.FC<SetRowProps> = ({
                       isMissingReps && styles.inputCompletedEmpty
                     ]}
                     selectTextOnFocus={true}
-                    showSoftInputOnFocus={!onCustomKeyboardOpen || !isLift}
+                    showSoftInputOnFocus={!onCustomKeyboardOpen}
                     onFocus={() => {
                       if (!readOnly) {
                         const val = isLift ? (set.reps || "") : isCardio ? (set.distance || "") : (set.reps || "");
-                        if (onCustomKeyboardOpen && isLift) {
-                          onCustomKeyboardOpen({ field: 'reps', value: val });
+                        if (onCustomKeyboardOpen) {
+                          if (isLift) {
+                            onCustomKeyboardOpen({ field: 'reps', value: val });
+                          } else if (isCardio) {
+                            onCustomKeyboardOpen({ field: 'distance', value: val });
+                          }
                           // On initial focus, ref should be false - don't override selection yet
                           // Text will be selected by selectTextOnFocus
                           secondInputInitialFocusRef.current = false;
@@ -576,8 +592,9 @@ const SetRow: React.FC<SetRowProps> = ({
                       }
                     }}
                     onBlur={() => {
-                      if (!customKeyboardActive || customKeyboardField !== 'reps') {
-                        if (!onCustomKeyboardOpen || !isLift) {
+                      const expectedField = isLift ? 'reps' : (isCardio ? 'distance' : null);
+                      if (!customKeyboardActive || customKeyboardField !== expectedField) {
+                        if (!onCustomKeyboardOpen || (!isLift && !isCardio)) {
                           // Focus cleared by hook
                         }
                       }
@@ -589,19 +606,24 @@ const SetRow: React.FC<SetRowProps> = ({
                     selection={secondInputSelection || undefined}
                     onSelectionChange={(e) => {
                       // Only update selection if not from custom keyboard
-                      if (!customKeyboardActive || customKeyboardField !== 'reps') {
+                      const expectedField = isLift ? 'reps' : (isCardio ? 'distance' : null);
+                      if (!customKeyboardActive || customKeyboardField !== expectedField) {
                         setSecondInputSelection(e.nativeEvent.selection);
                       }
                     }}
                     onChangeText={(text) => {
                       if (!readOnly) {
                         // Clear selection when user types normally
-                        if (!customKeyboardActive || customKeyboardField !== 'reps') {
+                        const expectedField = isLift ? 'reps' : (isCardio ? 'distance' : null);
+                        if (!customKeyboardActive || customKeyboardField !== expectedField) {
                           setSecondInputSelection(null);
                         } else {
-                          // User has typed, so mark that initial focus is done
+                          // User has typed via custom keyboard, mark that initial focus is done
                           // This will allow useEffect to position cursor at end on next value change
                           secondInputInitialFocusRef.current = true;
+                          // Immediately position cursor at end after typing
+                          const length = text.length;
+                          setSecondInputSelection({ start: length, end: length });
                         }
                         onUpdate({ ...set, [isLift || !isCardio ? 'reps' : 'distance']: text });
                       }

@@ -5,7 +5,7 @@ import { COLORS } from '@/constants/colors';
 
 interface CustomNumberKeyboardProps {
   visible: boolean;
-  customKeyboardTarget: { field: 'weight' | 'reps'; exerciseId: string; setId: string } | null;
+  customKeyboardTarget: { field: 'weight' | 'reps' | 'duration' | 'distance'; exerciseId: string; setId: string } | null;
   customKeyboardValue: string;
   onInput: (key: string) => void;
   onSetValue?: (value: string, shouldSelectAll?: boolean) => void;

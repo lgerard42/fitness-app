@@ -1494,9 +1494,9 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                     readOnly={readOnly}
                     shouldFocus={focusNextSet?.setId === set.id ? (focusNextSet.field === 'weight' || focusNextSet.field === 'reps' ? focusNextSet.field : null) : null}
                     onFocusHandled={() => setFocusNextSet(null)}
-                    onCustomKeyboardOpen={!readOnly && ex.category === 'Lifts' ? ({ field, value }) => handleCustomKeyboardOpen(ex.instanceId, set.id, field, value) : null}
+                    onCustomKeyboardOpen={!readOnly && (ex.category === 'Lifts' || ex.category === 'Cardio') ? ({ field, value }) => handleCustomKeyboardOpen(ex.instanceId, set.id, field, value) : null}
                     customKeyboardActive={customKeyboardTarget?.exerciseId === ex.instanceId && customKeyboardTarget?.setId === set.id}
-                    customKeyboardField={customKeyboardTarget?.exerciseId === ex.instanceId && customKeyboardTarget?.setId === set.id ? (customKeyboardTarget.field === 'weight' || customKeyboardTarget.field === 'reps' ? customKeyboardTarget.field : null) : null}
+                    customKeyboardField={customKeyboardTarget?.exerciseId === ex.instanceId && customKeyboardTarget?.setId === set.id ? (customKeyboardTarget.field === 'weight' || customKeyboardTarget.field === 'reps' || customKeyboardTarget.field === 'duration' || customKeyboardTarget.field === 'distance' ? customKeyboardTarget.field : null) : null}
                     customKeyboardShouldSelectAll={customKeyboardTarget?.exerciseId === ex.instanceId && customKeyboardTarget?.setId === set.id ? customKeyboardShouldSelectAll : false}
                   />
 
@@ -2562,10 +2562,10 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
 
       <CustomNumberKeyboard
         visible={customKeyboardVisible}
-        customKeyboardTarget={customKeyboardTarget && (customKeyboardTarget.field === 'weight' || customKeyboardTarget.field === 'reps') ? {
+        customKeyboardTarget={customKeyboardTarget && (customKeyboardTarget.field === 'weight' || customKeyboardTarget.field === 'reps' || customKeyboardTarget.field === 'duration' || customKeyboardTarget.field === 'distance') ? {
           exerciseId: customKeyboardTarget.exerciseId,
           setId: customKeyboardTarget.setId,
-          field: customKeyboardTarget.field as 'weight' | 'reps'
+          field: customKeyboardTarget.field as 'weight' | 'reps' | 'duration' | 'distance'
         } : null}
         customKeyboardValue={customKeyboardValue}
         onInput={handleCustomKeyboardInput}
