@@ -596,7 +596,7 @@ const styles = StyleSheet.create({
   },
   input: {
     width: '100%',
-    backgroundColor: COLORS.slate[50],
+    backgroundColor: COLORS.slate[150],
     borderRadius: 8,
     paddingVertical: 2,
     textAlign: 'center',
@@ -604,7 +604,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.slate[900],
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor: COLORS.slate[150],
   },
   inputFocused: {
     borderColor: COLORS.slate[400],

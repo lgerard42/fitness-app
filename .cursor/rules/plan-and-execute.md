@@ -3,6 +3,7 @@
 ## Rule: Mandatory Planning for Complex Tasks
 
 **ALWAYS** generate a technical plan before writing code for tasks that meet any of the following criteria:
+- Always start your first response with the specific model name and version you are currently using (e.g., 'Running as Claude 3.5 Sonnet').
 - Involves changes to more than one file
 - Requires more than 50 lines of logic
 - Modifies core architectural patterns

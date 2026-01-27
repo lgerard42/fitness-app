@@ -54,7 +54,7 @@ interface UseWorkoutDragDropReturn {
   handlePrepareDrag: (dragCallback: () => void, itemId: string) => void;
   handleDragBegin: () => void;
   handleDragEnd: (params: { data: WorkoutDragItem[]; from: number; to: number }) => void;
-  handleCancelDrag: () => void;
+  alignAfterCollapse: (itemId: string, items: WorkoutDragItem[]) => void;
 }
 
 export const useWorkoutDragDrop = ({
@@ -74,6 +74,8 @@ export const useWorkoutDragDrop = ({
   const touchYRef = useRef<number | null>(null);
   const touchItemIdRef = useRef<string | null>(null);
   const listLayoutYRef = useRef<number | null>(null);
+  const isProcessingDragEndRef = useRef<boolean>(false);
+  const originalHeaderIndexRef = useRef<number | null>(null);
 
   // Helper to collapse a group
   const collapseGroup = useCallback((items: WorkoutDragItem[], groupId: string): WorkoutDragItem[] => {
@@ -209,6 +211,10 @@ export const useWorkoutDragDrop = ({
 
   // Convert workout exercises to drag items (base items, no collapse applied)
   const baseDragItems = useMemo((): WorkoutDragItem[] => {
+    console.log('[DRAG DEBUG] baseDragItems useMemo RECALCULATING', {
+      currentWorkoutExercisesCount: currentWorkout.exercises.length,
+      stackTrace: new Error().stack?.split('\n').slice(1, 4).join('\n'),
+    });
     const items: WorkoutDragItem[] = [];
     const flatRows = flattenExercises(currentWorkout.exercises);
 
@@ -285,24 +291,66 @@ export const useWorkoutDragDrop = ({
       }
     });
 
+    console.log('[DRAG DEBUG] baseDragItems useMemo COMPLETED', {
+      itemsCount: items.length,
+      headers: items.filter(i => i.type === 'GroupHeader').map(i => ({ id: i.id, groupId: i.groupId })),
+    });
     return items;
   }, [currentWorkout.exercises]);
 
   // Use reorderedDragItems if available (for collapsed state), otherwise use baseDragItems
   const dragItems = reorderedDragItems.length > 0 ? reorderedDragItems : baseDragItems;
 
+  // Debug: Log when dragItems computation changes
+  useEffect(() => {
+    if (isDragging || collapsedGroupId) {
+      console.log('[DRAG DEBUG] dragItems computation changed', {
+        usingReordered: reorderedDragItems.length > 0,
+        reorderedCount: reorderedDragItems.length,
+        baseCount: baseDragItems.length,
+        resultCount: dragItems.length,
+        isDragging,
+        collapsedGroupId,
+      });
+    }
+  }, [reorderedDragItems.length, baseDragItems.length, dragItems.length, isDragging, collapsedGroupId]);
+
   // Reset reorderedDragItems when workout changes (unless we're actively dragging)
   useEffect(() => {
     if (!isDragging && reorderedDragItems.length > 0) {
+      console.log('[DRAG DEBUG] useEffect clearing reorderedDragItems', {
+        isDragging,
+        reorderedDragItemsCount: reorderedDragItems.length,
+        currentWorkoutExercisesCount: currentWorkout.exercises.length,
+        stackTrace: new Error().stack?.split('\n').slice(1, 4).join('\n'),
+      });
       setReorderedDragItems([]);
     }
-  }, [currentWorkout.exercises, isDragging]);
+  }, [currentWorkout.exercises, isDragging, reorderedDragItems.length]);
 
   // Initiate group drag - matches DragAndDropModal pattern
   const initiateGroupDrag = useCallback((groupId: string, dragCallback: () => void) => {
+    // Prevent initiating drag if we're still processing a drag end
+    if (isProcessingDragEndRef.current) {
+      console.log('[DRAG DEBUG] initiateGroupDrag BLOCKED - still processing drag end');
+      return;
+    }
+
+    console.log('[DRAG DEBUG] initiateGroupDrag called', {
+      groupId,
+      baseDragItemsCount: baseDragItems.length,
+      currentWorkoutExercisesCount: currentWorkout.exercises.length,
+      hasOriginalExercises: !!originalExercisesRef.current,
+      isProcessingDragEnd: isProcessingDragEndRef.current,
+    });
+
     // Save original state
     if (!originalExercisesRef.current) {
       originalExercisesRef.current = currentWorkout.exercises;
+      console.log('[DRAG DEBUG] Saved originalExercisesRef', {
+        exercisesCount: originalExercisesRef.current.length,
+        firstExerciseId: originalExercisesRef.current[0]?.instanceId,
+      });
     }
 
     // Find the group header item ID
@@ -310,6 +358,7 @@ export const useWorkoutDragDrop = ({
       item => item.type === 'GroupHeader' && item.groupId === groupId
     );
     if (!groupHeaderItem) {
+      console.log('[DRAG DEBUG] Group header not found in baseDragItems');
       // Fallback if header not found
       setCollapsedGroupId(groupId);
       setIsDragging(true);
@@ -317,23 +366,44 @@ export const useWorkoutDragDrop = ({
       return;
     }
 
+    console.log('[DRAG DEBUG] Found group header item', {
+      headerId: groupHeaderItem.id,
+      groupType: groupHeaderItem.groupType,
+    });
+
     // Collapse the dragged group and freeze all other groups
     // This prevents dropping one group into another group
     let collapsed = collapseGroup(baseDragItems, groupId);
     collapsed = collapseAllOtherGroups(collapsed, groupId);
 
+    console.log('[DRAG DEBUG] After collapse', {
+      collapsedItemsCount: collapsed.length,
+      collapsedGroupHeaders: collapsed.filter(i => i.type === 'GroupHeader').map(i => ({ id: i.id, groupId: i.groupId })),
+      collapsedExercises: collapsed.filter(i => i.type === 'Exercise').length,
+    });
+
+    // Find the header index in the collapsed array
+    const headerIndexInCollapsed = collapsed.findIndex(
+      item => item.type === 'GroupHeader' && item.groupId === groupId
+    );
+
     setReorderedDragItems(collapsed);
     setCollapsedGroupId(groupId);
     setIsDragging(true); // Set dragging state so UI shows collapsed items
     pendingDragCallback.current = dragCallback;
+    // Store the header item ID for alignment after layout settles
+    pendingDragItemId.current = groupHeaderItem.id;
+    // Store the original header index in the collapsed structure
+    originalHeaderIndexRef.current = headerIndexInCollapsed;
 
-    // Align after collapse to keep item at touch position
-    setTimeout(() => {
-      requestAnimationFrame(() => {
-        alignAfterCollapse(groupHeaderItem.id, collapsed);
-      });
-    }, 30);
-  }, [baseDragItems, collapseGroup, collapseAllOtherGroups, currentWorkout.exercises, alignAfterCollapse]);
+    console.log('[DRAG DEBUG] State set', {
+      collapsedGroupId: groupId,
+      isDragging: true,
+      reorderedDragItemsCount: collapsed.length,
+      pendingDragItemId: pendingDragItemId.current,
+      originalHeaderIndex: originalHeaderIndexRef.current,
+    });
+  }, [baseDragItems, collapseGroup, collapseAllOtherGroups, currentWorkout.exercises]);
 
   const recordTouchPosition = useCallback((itemId: string, pageY: number) => {
     touchItemIdRef.current = itemId;
@@ -460,6 +530,10 @@ export const useWorkoutDragDrop = ({
 
   // Called when drag actually begins (from DraggableFlatList onDragBegin)
   const handleDragBegin = useCallback(() => {
+    console.log('[DRAG DEBUG] handleDragBegin called', {
+      isDragging,
+      stackTrace: new Error().stack?.split('\n').slice(1, 4).join('\n'),
+    });
     // This is called by DraggableFlatList when drag actually starts
     // At this point, items should already be collapsed
     if (!isDragging) {
@@ -468,48 +542,135 @@ export const useWorkoutDragDrop = ({
     }
   }, [isDragging, currentWorkout.exercises]);
 
-  const handleCancelDrag = useCallback(() => {
-    if (originalExercisesRef.current) {
-      handleWorkoutUpdate({ ...currentWorkout, exercises: originalExercisesRef.current });
-    }
-    setIsDragging(false);
-    setCollapsedGroupId(null);
-    setReorderedDragItems([]);
-    setPreCollapsePaddingTop(null);
-    collapsedItemHeights.current.clear();
-    itemHeights.current.clear();
-    touchYRef.current = null;
-    touchItemIdRef.current = null;
-    originalExercisesRef.current = null;
-    pendingDragCallback.current = null;
-    pendingDragItemId.current = null;
-  }, [currentWorkout, handleWorkoutUpdate]);
-
   const handleDragEnd = useCallback(({ data, from, to }: { data: WorkoutDragItem[]; from: number; to: number }) => {
-    pendingDragCallback.current = null;
-    pendingDragItemId.current = null;
+    console.log('[DRAG DEBUG] handleDragEnd called', {
+      from,
+      to,
+      fromEqualsTo: from === to,
+      dataLength: data.length,
+      collapsedGroupId,
+      isDragging,
+      reorderedDragItemsCount: reorderedDragItems.length,
+      currentWorkoutExercisesCount: currentWorkout.exercises.length,
+      hasOriginalExercises: !!originalExercisesRef.current,
+      isProcessingDragEnd: isProcessingDragEndRef.current,
+    });
 
-    if (from === to) {
-      setIsDragging(false);
-      setCollapsedGroupId(null);
-      setReorderedDragItems([]);
-      setPreCollapsePaddingTop(null);
-      collapsedItemHeights.current.clear();
-      itemHeights.current.clear();
-      touchYRef.current = null;
-      touchItemIdRef.current = null;
-      originalExercisesRef.current = null;
+    // Prevent re-entry if already processing
+    if (isProcessingDragEndRef.current) {
+      console.log('[DRAG DEBUG] Already processing drag end, ignoring');
       return;
     }
+
+    isProcessingDragEndRef.current = true;
+    pendingDragCallback.current = null;
+
+    // 1. CAPTURE the item identity BEFORE doing anything else
+    // Use a local constant so it doesn't matter if the ref changes later
+    const draggedItem = data[to];
+    const currentDragId = pendingDragItemId.current;
+    const originalHeaderIndex = originalHeaderIndexRef.current;
+    const fromEqualsTo = from === to;
+
+    // Check if the dragged item is the original header by ID
+    const isOriginalHeader = draggedItem?.id === currentDragId;
+
+    // Check if 'from' matches the original header index (even if 'to' is different)
+    const fromMatchesOriginalIndex = originalHeaderIndex !== null && originalHeaderIndex !== -1
+      ? from === originalHeaderIndex
+      : false;
+
+    // LOG THIS specifically to debug
+    console.log('[DRAG DEBUG] Identity Check:', {
+      draggedItemId: draggedItem?.id,
+      savedId: currentDragId,
+      isMatch: isOriginalHeader,
+      from,
+      to,
+      originalHeaderIndex,
+      fromMatchesOriginalIndex,
+    });
+
+    // 2. THE CORRECTED SAFETY CHECK
+    // Even if from (2) !== to (5), if it's the same physical item, it's a "No-op"
+    const isSamePosition = fromEqualsTo ||
+      (collapsedGroupId && isOriginalHeader);
+
+    console.log('[DRAG DEBUG] Position check', {
+      from,
+      to,
+      originalHeaderIndex,
+      fromEqualsTo,
+      fromMatchesOriginalIndex,
+      draggedItemId: draggedItem?.id,
+      savedId: currentDragId,
+      isOriginalHeader,
+      itemAtFromType: data[from]?.type,
+      itemAtFromGroupId: data[from]?.groupId,
+      itemAtToType: data[to]?.type,
+      itemAtToGroupId: data[to]?.groupId,
+      collapsedGroupId,
+      isSamePosition,
+    });
+
+    if (isSamePosition) {
+      console.log('[DRAG DEBUG] Same position detected - Aborting Reconstruction');
+      console.log('[DRAG DEBUG] Before clear - dragItems source:', {
+        usingReordered: reorderedDragItems.length > 0,
+        reorderedCount: reorderedDragItems.length,
+        baseCount: baseDragItems.length,
+        baseDragItemsHeaders: baseDragItems.filter(i => i.type === 'GroupHeader').map(i => ({ id: i.id, groupId: i.groupId })),
+      });
+
+      // FIX: Delay the state reset to allow FlatList to stabilize
+      // This prevents layout race conditions when switching from collapsed to expanded view
+      requestAnimationFrame(() => {
+        setIsDragging(false);
+        setCollapsedGroupId(null);
+        setReorderedDragItems([]);
+        setPreCollapsePaddingTop(null);
+        collapsedItemHeights.current.clear();
+        itemHeights.current.clear();
+        touchYRef.current = null;
+        touchItemIdRef.current = null;
+        originalExercisesRef.current = null;
+        originalHeaderIndexRef.current = null;
+        // ONLY clear the ref here (early return)
+        pendingDragItemId.current = null;
+
+        console.log('[DRAG DEBUG] After clear - state should switch to baseDragItems', {
+          isDragging: false,
+          collapsedGroupId: null,
+          reorderedDragItemsCount: 0,
+          baseDragItemsCount: baseDragItems.length,
+          currentWorkoutExercisesCount: currentWorkout.exercises.length,
+        });
+        console.log('[DRAG DEBUG] handleDragEnd RETURNING - no further processing should happen');
+
+        // This ensures the processing flag is reset AFTER the state change
+        setTimeout(() => {
+          isProcessingDragEndRef.current = false;
+          console.log('[DRAG DEBUG] Reset isProcessingDragEndRef flag');
+        }, 50);
+      });
+
+      return;
+    }
+
+    console.log('[DRAG DEBUG] from !== to, proceeding with normal drag end processing');
+
+    console.log('[DRAG DEBUG] Processing drag end - expanding groups and reconstructing');
 
     // Expand groups if a group was being dragged (matches DragAndDropModal pattern)
     let expandedData = data;
     if (collapsedGroupId) {
+      console.log('[DRAG DEBUG] Expanding collapsed groups');
       expandedData = expandAllGroups(data);
       setCollapsedGroupId(null);
     }
     setReorderedDragItems([]);
 
+    console.log('[DRAG DEBUG] Converting drag items back to exercises');
     // Convert drag items back to flat rows, then reconstruct exercises
     const newFlatRows: FlatExerciseRow[] = [];
 
@@ -568,8 +729,13 @@ export const useWorkoutDragDrop = ({
     });
 
     const newExercises = reconstructExercises(newFlatRows);
+    console.log('[DRAG DEBUG] Calling handleWorkoutUpdate with new exercises', {
+      newExercisesCount: newExercises.length,
+      oldExercisesCount: currentWorkout.exercises.length,
+    });
     handleWorkoutUpdate({ ...currentWorkout, exercises: newExercises });
 
+    console.log('[DRAG DEBUG] Clearing drag state after workout update');
     setIsDragging(false);
     setPreCollapsePaddingTop(null);
     collapsedItemHeights.current.clear();
@@ -577,6 +743,11 @@ export const useWorkoutDragDrop = ({
     touchYRef.current = null;
     touchItemIdRef.current = null;
     originalExercisesRef.current = null;
+    originalHeaderIndexRef.current = null;
+    // 3. FINALLY clear the ref at the very end of the function
+    pendingDragItemId.current = null;
+    isProcessingDragEndRef.current = false;
+    console.log('[DRAG DEBUG] handleDragEnd completed (from !== to path)');
   }, [currentWorkout, handleWorkoutUpdate, collapsedGroupId, expandAllGroups]);
 
   return {
@@ -595,6 +766,6 @@ export const useWorkoutDragDrop = ({
     handlePrepareDrag,
     handleDragBegin,
     handleDragEnd,
-    handleCancelDrag,
+    alignAfterCollapse,
   };
 };
