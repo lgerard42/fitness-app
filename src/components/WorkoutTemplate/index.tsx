@@ -1264,6 +1264,9 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
           isMoveMode && isNotMoving && styles.exerciseCard__moveMode__notSelected,
           isMoveMode && isMoving && styles.exerciseCard__moveMode__selected,
           isGroupChild && styles.exerciseCard__groupChild,
+          isGroupChild && !isMoveMode && groupColorScheme && {
+            borderColor: groupColorScheme[100],
+          },
           isMoveMode && isGroupChild && isNotMoving && groupColorScheme && {
             borderColor: groupColorScheme[200],
             backgroundColor: groupColorScheme[50],
@@ -1669,7 +1672,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
           style={[
             styles.groupChildWrapper,
             groupColorScheme && {
-              borderColor: groupColorScheme[100],
+              borderColor: groupColorScheme[200],
               backgroundColor: groupColorScheme[100],
             },
             isLastChild && !isMoveMode && styles.groupChildWrapper__last,
@@ -2147,7 +2150,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                       style={styles.setPopupOptionItem}
                       onPress={() => handleSetMenuAction('edit_group')}
                     >
-                      <Layers size={18} color={COLORS.indigo[600]} />
+                      <Layers size={18} color={defaultSupersetColorScheme[600]} />
                       <Text style={styles.setPopupOptionText}>{isGrouped ? 'Edit dropset(s)' : 'Edit dropset'}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -2221,7 +2224,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
 
                     {/* Superset Options */}
                     <TouchableOpacity style={styles.setPopupOptionItem} onPress={() => handleEditSupersetWrapper(optionsModalExId)}>
-                      <Layers size={18} color={COLORS.indigo[600]} />
+                      <Layers size={18} color={defaultSupersetColorScheme[600]} />
                       <Text style={styles.setPopupOptionText}>Edit superset</Text>
                     </TouchableOpacity>
 
@@ -2779,6 +2782,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.slate[100],
     overflow: 'hidden',
+    marginTop: 4,
     marginBottom: 8,
     marginHorizontal: 0,
   },
@@ -2802,31 +2806,9 @@ const styles = StyleSheet.create({
   exerciseCard__groupChild: {
     marginHorizontal: 0,
     marginBottom: 0,
+    marginTop: 0,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: COLORS.slate[200],
-  },
-  exerciseCard__groupChild__moveMode__notSelected: {
-    marginHorizontal: 6,
-    marginTop: 0,
-    marginBottom: 0,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderTopWidth: 1,
-    borderColor: COLORS.indigo[200],
-    borderTopColor: COLORS.indigo[200],
-    paddingBottom: 0,
-    backgroundColor: COLORS.indigo[50],
-    overflow: 'hidden',
-  },
-  exerciseCard__groupChild__moveMode__selected: {
-    marginHorizontal: 6,
-    marginTop: 0,
-    marginBottom: 0,
-    borderRadius: 8,
-    borderWidth: 0,
-    paddingBottom: 8,
-    backgroundColor: COLORS.indigo[100],
   },
 
   exerciseHeader: {
@@ -2856,12 +2838,6 @@ const styles = StyleSheet.create({
   },
   exerciseHeader__groupChild: {
     paddingBottom: 8,
-  },
-  exerciseHeader__groupChild__moving: {
-    backgroundColor: COLORS.indigo[100],
-  },
-  exerciseHeader__groupChild__notMoving: {
-    backgroundColor: COLORS.indigo[50],
   },
   exerciseName: {
     fontSize: 16,
@@ -2922,7 +2898,7 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     width: 5,
-    backgroundColor: COLORS.indigo[500],
+    backgroundColor: defaultSupersetColorScheme[500],
   },
   restTimerDropSetIndicator__end: {
     bottom: 8,
@@ -3208,45 +3184,6 @@ const styles = StyleSheet.create({
   restPeriodQuickOptionText__selected: {
     color: COLORS.white,
   },
-  addSetButton: {
-    marginTop: 8,
-    paddingVertical: 8,
-    alignItems: 'center',
-    backgroundColor: COLORS.transparent,
-  },
-  addSetButtonText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: COLORS.blue[600],
-  },
-  groupContainer: {
-    borderWidth: 2,
-    borderColor: COLORS.indigo[100],
-    borderRadius: 10,
-    paddingVertical: 5,
-    paddingHorizontal: 0,
-    marginHorizontal: -2,
-    marginTop: 16,
-    backgroundColor: COLORS.indigo[100], // Darker than previous rgba(224, 231, 255, 0.3)
-  },
-  groupHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    marginBottom: 60,
-    marginHorizontal: -4,
-  },
-  groupTitle: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: COLORS.indigo[600],
-    textTransform: 'uppercase',
-  },
-  groupContent: {
-    gap: 0,
-  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.6)',
@@ -3268,11 +3205,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.slate[900],
     marginBottom: 16,
-  },
-  modalSubtitle: {
-    fontSize: 14,
-    color: COLORS.slate[500],
-    marginBottom: 24,
   },
   noteInput: {
     backgroundColor: COLORS.slate[50],
@@ -3334,24 +3266,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.white,
   },
-  modalFinish: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderRadius: 12,
-    backgroundColor: COLORS.blue[600],
-  },
-  modalFinishText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: COLORS.white,
-  },
-  exerciseNote: {
-    fontSize: 12,
-    color: COLORS.slate[500],
-    fontStyle: 'italic',
-    marginTop: 2,
-  },
   setPopupMenuContainer: {
     position: 'absolute',
     width: 200,
@@ -3384,18 +3298,6 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 10,
     paddingHorizontal: 8,
-  },
-  setPopupOptionItem__active: {
-    backgroundColor: COLORS.orange[500],
-    borderRadius: 4,
-  },
-  setPopupOptionItem__activeDropset: {
-    backgroundColor: COLORS.blue[500],
-    borderRadius: 4,
-  },
-  setPopupOptionItem__activeFailure: {
-    backgroundColor: COLORS.red[500],
-    borderRadius: 4,
   },
   setPopupOptionItem__activeRest: {
     backgroundColor: COLORS.blue[500],
@@ -3452,11 +3354,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     paddingVertical: 2,
   },
-  addNewNoteText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.blue[600],
-  },
   exerciseHeaderActions: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -3470,9 +3367,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
     color: COLORS.blue[600],
-  },
-  addSetHeaderText__groupChild: {
-    color: COLORS.indigo[600],
   },
   optionsButton: {
     padding: 4,
@@ -3544,17 +3438,9 @@ const styles = StyleSheet.create({
     borderColor: COLORS.slate[300],
     backgroundColor: COLORS.white,
   },
-  groupTypeOption__selected: {
-    backgroundColor: COLORS.slate[600],
-    borderColor: COLORS.slate[600],
-  },
   groupTypeOption__warmup: {
     backgroundColor: COLORS.orange[500],
     borderColor: COLORS.orange[500],
-  },
-  groupTypeOption__dropset: {
-    backgroundColor: COLORS.blue[500],
-    borderColor: COLORS.blue[500],
   },
   groupTypeOption__failure: {
     backgroundColor: COLORS.red[500],
@@ -3596,9 +3482,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     zIndex: 20,
   },
-  movingItemOverlay__groupChild: {
-    borderColor: COLORS.indigo[500],
-  },
   movingItemOverlay__regular: {
     borderColor: COLORS.blue[500],
   },
@@ -3609,53 +3492,12 @@ const styles = StyleSheet.create({
     borderLeftWidth: 2,
     borderRightWidth: 2,
     paddingHorizontal: 1,
-    borderColor: COLORS.indigo[100],
-    backgroundColor: COLORS.indigo[100],
+    borderColor: 'transparent',
+    backgroundColor: 'transparent',
   },
   groupChildWrapper__last: {
-    borderBottomLeftRadius: 4,
-    borderBottomRightRadius: 4,
-    borderBottomWidth: 2,
-    marginBottom: 0, // Will be conditionally set to 16 in drag mode for unselected groups
-  },
-  groupChildWrapper__moveMode: {
-    backgroundColor: COLORS.indigo[50],
-  },
-
-  // Moving group styles
-  movingGroupWrapper: {
-    position: 'relative',
-    zIndex: 10,
-  },
-  movingGroupContainer: {
-    backgroundColor: COLORS.indigo[50],
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: COLORS.indigo[400],
-    padding: 16,
-    marginBottom: 16,
-  },
-  movingGroupContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  movingGroupText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: COLORS.indigo[900],
-  },
-
-  // Group container variants
-  groupContainer__notMoving: {
-    marginBottom: 0,
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
     borderBottomWidth: 0,
-    paddingBottom: 0,
-  },
-  groupHeader__notMoving: {
-    opacity: 0.4,
+    marginBottom: 0, // Will be conditionally set to 16 in drag mode for unselected groups
   },
 
   // Move mode banner
@@ -3716,7 +3558,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.7)',
   },
   supersetSelectionBanner: {
-    backgroundColor: COLORS.indigo[600],
     padding: 20,
     paddingTop: 60,
   },
@@ -3728,7 +3569,6 @@ const styles = StyleSheet.create({
   },
   supersetSelectionSubtitle: {
     fontSize: 14,
-    color: COLORS.indigo[100],
     marginBottom: 16,
   },
   supersetSelectionActions: {
@@ -3740,7 +3580,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     alignItems: 'center',
     borderRadius: 8,
-    backgroundColor: COLORS.indigo[500],
   },
   supersetCancelButtonText: {
     fontSize: 16,
@@ -3760,7 +3599,6 @@ const styles = StyleSheet.create({
   supersetConfirmButtonText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: COLORS.indigo[600],
   },
   supersetSelectionList: {
     flex: 1,
@@ -3776,7 +3614,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     marginTop: 8,
     marginBottom: 4, // Add space between header and first exercise
-    backgroundColor: COLORS.indigo[50],
     borderRadius: 8,
   },
   supersetGroupLabelClickable: {
@@ -3787,10 +3624,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     marginTop: 8,
     marginBottom: 4, // Add more space for clickable groups
-    backgroundColor: COLORS.indigo[100],
     borderRadius: 8,
     borderWidth: 2,
-    borderColor: COLORS.indigo[300],
   },
   supersetGroupLabelContent: {
     flexDirection: 'row',
@@ -3801,12 +3636,10 @@ const styles = StyleSheet.create({
   supersetGroupLabelText: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: COLORS.indigo[600],
     textTransform: 'uppercase',
   },
   supersetGroupLabelSubtext: {
     fontSize: 11,
-    color: COLORS.indigo[500],
   },
   supersetExerciseItem: {
     flexDirection: 'row',
@@ -3819,15 +3652,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'transparent', // Transparent border to prevent height change when selected
   },
-  supersetExerciseItemGrouped: {
-    marginLeft: 16,
-    backgroundColor: COLORS.indigo[50],
-    marginTop: 0, // Add space after group header
-  },
-  supersetExerciseItemSelected: {
-    backgroundColor: COLORS.indigo[100],
-    borderColor: COLORS.indigo[300], // Only change color, not width
-  },
   supersetCheckbox: {
     width: 24,
     height: 24,
@@ -3836,10 +3660,6 @@ const styles = StyleSheet.create({
     borderColor: COLORS.slate[300],
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  supersetCheckboxSelected: {
-    backgroundColor: COLORS.indigo[600],
-    borderColor: COLORS.indigo[600],
   },
   supersetCheckmark: {
     color: COLORS.white,
@@ -4008,6 +3828,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
     marginBottom: 0,
     position: 'relative',
+    marginHorizontal: -2,
   },
   dragGroupHeader: {
     flexDirection: 'row',
@@ -4045,16 +3866,16 @@ const styles = StyleSheet.create({
   },
   dragGroupFooter: {
     paddingHorizontal: 12,
-    paddingVertical: 2,
-    marginTop: 0,
-    marginBottom: 4,
-    marginHorizontal: 0,
+    paddingVertical: 0, // Increase from 2 to 8 (or more)
+    marginBottom: 0,
+    marginHorizontal: -2,
     borderWidth: 2,
     borderTopWidth: 0,
     borderTopLeftRadius: 0,
     borderTopRightRadius: 0,
-    borderBottomLeftRadius: 10,
-    borderBottomRightRadius: 10,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+    minHeight: 12, // Or set explicit height
   },
   dragExerciseCard: {
     backgroundColor: COLORS.white,
@@ -4104,10 +3925,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 12,
     paddingHorizontal: 16,
-  },
-  dragExerciseContent__lastInGroup: {
-    paddingBottom: 0,
-    marginBottom: 0,
   },
   dragExerciseName: {
     fontSize: 15,
