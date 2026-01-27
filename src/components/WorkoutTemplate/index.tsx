@@ -195,8 +195,8 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
             pendingDragCallback.current();
             pendingDragCallback.current = null;
           }
-        }, 50);
-      }, 100);
+        }, 25);
+      }, 25);
       return () => clearTimeout(timer);
     }
   }, [isDragging, pendingDragCallback, pendingDragItemId, dragItems, listRef, collapsedGroupId]);
@@ -231,8 +231,8 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
             console.log('[DRAG DEBUG] Skipping pendingDragCallback - no longer dragging');
             pendingDragCallback.current = null;
           }
-        }, 50);
-      }, 150); // Wait for layout to fully settle
+        }, 25);
+      }, 25); // Wait for layout to fully settle
       return () => clearTimeout(timeoutId);
     }
   }, [collapsedGroupId, dragItems, alignAfterCollapse, pendingDragItemId, isDragging]);
