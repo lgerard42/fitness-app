@@ -299,15 +299,24 @@ const SetRow: React.FC<SetRowProps> = ({
                   disabled={readOnly}
                   style={[
                     styles.indexBadge,
-                    set.completed && styles.indexBadge__completed,
-                    set.isWarmup && styles.indexBadge__warmup,
-                    set.isFailure && styles.indexBadge__failure
+                    set.completed && styles.indexBadge__completed
                   ]}
                 >
+                  {(set.isWarmup || set.isFailure) && (
+                    <View style={[
+                      styles.indexBadge__border,
+                      set.isWarmup && styles.indexBadge__border__warmup,
+                      set.isFailure && styles.indexBadge__border__failure
+                    ]} />
+                  )}
                   {warmupIndex ? (
                     warmupIndex.subIndex !== null ? (
                       <Text style={styles.indexText}>
-                        <Text style={styles.indexText__groupMain}>{warmupIndex.group}</Text>
+                        <Text style={[
+                          styles.indexText__groupMain,
+                          set.isWarmup && { color: COLORS.orange[500] },
+                          set.isFailure && { color: COLORS.red[500] }
+                        ]}>{warmupIndex.group}</Text>
                         <Text style={[
                           styles.indexText__groupSub,
                           set.isWarmup && { color: COLORS.orange[400] },
@@ -318,39 +327,59 @@ const SetRow: React.FC<SetRowProps> = ({
                         ]}>.{warmupIndex.subIndex}</Text>
                       </Text>
                     ) : (
-                      <Text style={styles.indexText}>{warmupIndex.group}</Text>
+                      <Text style={[
+                        styles.indexText,
+                        ...(set.isWarmup ? [{ color: COLORS.orange[550] }] : []),
+                        ...(set.isFailure ? [{ color: COLORS.red[550] }] : [])
+                      ]}>{warmupIndex.group}</Text>
                     )
                   ) : workingIndex ? (
                     workingIndex.subIndex !== null ? (
                       <Text style={styles.indexText}>
-                        <Text style={styles.indexText__groupMain}>{workingIndex.group}</Text>
+                        <Text style={[
+                          styles.indexText__groupMain,
+                          set.isWarmup && { color: COLORS.orange[550] },
+                          set.isFailure && { color: COLORS.red[550] }
+                        ]}>{workingIndex.group}</Text>
                         <Text style={[
                           styles.indexText__groupSub,
                           set.isWarmup && { color: COLORS.orange[400] },
                           set.isFailure && { color: COLORS.red[400] },
                           !set.isWarmup && !set.isFailure && (
-                            groupColorScheme ? { color: groupColorScheme[400] } : { color: COLORS.slate[400] }
+                            { color: COLORS.slate[400] }
                           )
                         ]}>.{workingIndex.subIndex}</Text>
                       </Text>
                     ) : (
-                      <Text style={styles.indexText}>{workingIndex.group}</Text>
+                      <Text style={[
+                        styles.indexText,
+                        ...(set.isWarmup ? [{ color: COLORS.orange[550] }] : []),
+                        ...(set.isFailure ? [{ color: COLORS.red[550] }] : [])
+                      ]}>{workingIndex.group}</Text>
                     )
                   ) : (
                     dropSetId ? (
                       <Text style={styles.indexText}>
-                        <Text style={styles.indexText__groupMain}>{groupSetNumber}</Text>
+                        <Text style={[
+                          styles.indexText__groupMain,
+                          set.isWarmup && { color: COLORS.orange[550] },
+                          set.isFailure && { color: COLORS.red[550] }
+                        ]}>{groupSetNumber}</Text>
                         <Text style={[
                           styles.indexText__groupSub,
                           set.isWarmup && { color: COLORS.orange[400] },
                           set.isFailure && { color: COLORS.red[400] },
                           !set.isWarmup && !set.isFailure && (
-                            groupColorScheme ? { color: groupColorScheme[400] } : { color: COLORS.slate[400] }
+                            { color: COLORS.slate[400] }
                           )
                         ]}>.{indexInGroup}</Text>
                       </Text>
                     ) : (
-                      <Text style={styles.indexText}>{overallSetNumber}</Text>
+                      <Text style={[
+                        styles.indexText,
+                        ...(set.isWarmup ? [{ color: COLORS.orange[550] }] : []),
+                        ...(set.isFailure ? [{ color: COLORS.red[550] }] : [])
+                      ]}>{overallSetNumber}</Text>
                     )
                   )}
                 </TouchableOpacity>
@@ -544,17 +573,18 @@ const styles = StyleSheet.create({
   indexBadge__completed: {
     backgroundColor: COLORS.green[50],
   },
-  indexBadge__warmup: {
-    borderLeftWidth: 2,
-    borderLeftColor: COLORS.orange[500],
-    borderTopLeftRadius: 0,
-    borderBottomLeftRadius: 0,
+  indexBadge__border: {
+    position: 'absolute',
+    left: 0,
+    top: 6, // Start after top border radius
+    bottom: 6, // End before bottom border radius
+    width: 2,
   },
-  indexBadge__failure: {
-    borderLeftWidth: 2,
-    borderLeftColor: COLORS.red[500],
-    borderTopLeftRadius: 0,
-    borderBottomLeftRadius: 0,
+  indexBadge__border__warmup: {
+    backgroundColor: COLORS.orange[500],
+  },
+  indexBadge__border__failure: {
+    backgroundColor: COLORS.red[500],
   },
   indexText: {
     fontSize: 12,
