@@ -622,36 +622,37 @@ export const useWorkoutDragDrop = ({
         baseDragItemsHeaders: baseDragItems.filter(i => i.type === 'GroupHeader').map(i => ({ id: i.id, groupId: i.groupId })),
       });
 
-      // FIX: Delay the state reset to allow FlatList to stabilize
-      // This prevents layout race conditions when switching from collapsed to expanded view
+      // FIX: Delay the state reset to allow FlatList's drop animation to complete
+      // Double requestAnimationFrame ensures we wait for the next paint cycle (~16-33ms on 60fps)
+      // This is the minimum delay needed while still allowing the animation to finish
       requestAnimationFrame(() => {
-        setIsDragging(false);
-        setCollapsedGroupId(null);
-        setReorderedDragItems([]);
-        setPreCollapsePaddingTop(null);
-        collapsedItemHeights.current.clear();
-        itemHeights.current.clear();
-        touchYRef.current = null;
-        touchItemIdRef.current = null;
-        originalExercisesRef.current = null;
-        originalHeaderIndexRef.current = null;
-        // ONLY clear the ref here (early return)
-        pendingDragItemId.current = null;
+        requestAnimationFrame(() => {
+          setIsDragging(false);
+          setCollapsedGroupId(null);
+          setReorderedDragItems([]);
+          setPreCollapsePaddingTop(null);
+          collapsedItemHeights.current.clear();
+          itemHeights.current.clear();
+          touchYRef.current = null;
+          touchItemIdRef.current = null;
+          originalExercisesRef.current = null;
+          originalHeaderIndexRef.current = null;
+          // ONLY clear the ref here (early return)
+          pendingDragItemId.current = null;
 
-        console.log('[DRAG DEBUG] After clear - state should switch to baseDragItems', {
-          isDragging: false,
-          collapsedGroupId: null,
-          reorderedDragItemsCount: 0,
-          baseDragItemsCount: baseDragItems.length,
-          currentWorkoutExercisesCount: currentWorkout.exercises.length,
-        });
-        console.log('[DRAG DEBUG] handleDragEnd RETURNING - no further processing should happen');
+          console.log('[DRAG DEBUG] After clear - state should switch to baseDragItems', {
+            isDragging: false,
+            collapsedGroupId: null,
+            reorderedDragItemsCount: 0,
+            baseDragItemsCount: baseDragItems.length,
+            currentWorkoutExercisesCount: currentWorkout.exercises.length,
+          });
+          console.log('[DRAG DEBUG] handleDragEnd RETURNING - no further processing should happen');
 
-        // This ensures the processing flag is reset AFTER the state change
-        setTimeout(() => {
+          // Reset processing flag immediately after state change (no additional delay needed)
           isProcessingDragEndRef.current = false;
           console.log('[DRAG DEBUG] Reset isProcessingDragEndRef flag');
-        }, 50);
+        });
       });
 
       return;
