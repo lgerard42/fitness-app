@@ -2439,7 +2439,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                                 }
                               ]}>
                                 {selectedExerciseIds.has(child.instanceId) && (
-                                  <Text style={styles.supersetCheckmark}>Î“Â£Ã´</Text>
+                                  <Check size={16} color="#fff" strokeWidth={3} />
                                 )}
                               </View>
                               <Text style={styles.supersetExerciseName}>{child.name}</Text>
@@ -2490,7 +2490,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                           }
                         ]}>
                           {selectedExerciseIds.has(exercise.instanceId) && (
-                            <Text style={styles.supersetCheckmark}>Î“Â£Ã´</Text>
+                            <Check size={16} color="#fff" strokeWidth={3} />
                           )}
                         </View>
                         <Text style={styles.supersetExerciseName}>{exercise.name}</Text>

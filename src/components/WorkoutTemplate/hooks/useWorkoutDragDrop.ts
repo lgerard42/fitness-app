@@ -44,7 +44,7 @@ interface UseWorkoutDragDropReturn {
   collapsedGroupId: string | null;
   pendingDragCallback: React.MutableRefObject<(() => void) | null>;
   pendingDragItemId: React.MutableRefObject<string | null>;
-  listRef: React.RefObject<React.ComponentRef<typeof DraggableFlatList<WorkoutDragItem>>>;
+  listRef: React.RefObject<React.ComponentRef<typeof DraggableFlatList<WorkoutDragItem>> | null>;
   itemHeights: React.MutableRefObject<Map<string, number>>;
   collapsedItemHeights: React.MutableRefObject<Map<string, number>>;
   preCollapsePaddingTop: number | null;
@@ -360,6 +360,15 @@ export const useWorkoutDragDrop = ({
     if (!groupHeaderItem) {
       console.log('[DRAG DEBUG] Group header not found in baseDragItems');
       // Fallback if header not found
+      setCollapsedGroupId(groupId);
+      setIsDragging(true);
+      pendingDragCallback.current = dragCallback;
+      return;
+    }
+
+    // Type guard: we know it's a GroupHeaderDragItem because of the find condition
+    if (groupHeaderItem.type !== 'GroupHeader') {
+      console.log('[DRAG DEBUG] Group header item is not a GroupHeader type');
       setCollapsedGroupId(groupId);
       setIsDragging(true);
       pendingDragCallback.current = dragCallback;
@@ -729,7 +738,57 @@ export const useWorkoutDragDrop = ({
       // Skip GroupFooter items - they're just visual markers
     });
 
-    const newExercises = reconstructExercises(newFlatRows);
+    // Remove empty groups (groups with headers but no exercises)
+    // First, identify which groups are empty
+    const emptyGroupIds = new Set<string>();
+    for (let i = 0; i < newFlatRows.length; i++) {
+      const row = newFlatRows[i];
+
+      if (row.type === 'group_header') {
+        // Check if this group has any exercises before the next group header
+        let hasExercises = false;
+        for (let j = i + 1; j < newFlatRows.length; j++) {
+          const nextRow = newFlatRows[j];
+          // If we hit another group header, this group is empty
+          if (nextRow.type === 'group_header') {
+            break;
+          }
+          // If we find an exercise in this group, it's not empty
+          if (nextRow.type === 'exercise' && nextRow.groupId === row.id) {
+            hasExercises = true;
+            break;
+          }
+        }
+
+        if (!hasExercises) {
+          emptyGroupIds.add(row.id);
+          console.log('[DRAG DEBUG] Removing empty group', { groupId: row.id });
+        }
+      }
+    }
+
+    // Filter out empty group headers and remove groupId from exercises in removed groups
+    const filteredFlatRows = newFlatRows
+      .filter(row => {
+        // Remove empty group headers
+        if (row.type === 'group_header' && emptyGroupIds.has(row.id)) {
+          return false;
+        }
+        return true;
+      })
+      .map(row => {
+        // Remove groupId from exercises that belonged to empty groups
+        if (row.type === 'exercise' && row.groupId && emptyGroupIds.has(row.groupId)) {
+          return {
+            ...row,
+            groupId: null,
+            depth: 0,
+          };
+        }
+        return row;
+      });
+
+    const newExercises = reconstructExercises(filteredFlatRows);
     console.log('[DRAG DEBUG] Calling handleWorkoutUpdate with new exercises', {
       newExercisesCount: newExercises.length,
       oldExercisesCount: currentWorkout.exercises.length,

@@ -621,18 +621,22 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   checkButton: {
-    width: 32,
-    height: 24,
+    width: 26,
+    height: 26,
     borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',
+    borderWidth: 2,
+    borderColor:'transparent',
   },
   checkButtonCompleted: {
     backgroundColor: COLORS.green[500],
+    borderColor: COLORS.green[700],
   },
   checkButtonIncomplete: {
     backgroundColor: COLORS.slate[200],
+    borderColor: COLORS.slate[200],
   },
   deleteButton: {
     backgroundColor: COLORS.red[500],
