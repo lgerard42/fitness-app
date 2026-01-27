@@ -21,14 +21,14 @@ interface DeleteActionProps {
 const DeleteAction: React.FC<DeleteActionProps> = ({ progress, dragX, onDelete, buttonStyle }) => {
   const hasDeleted = React.useRef(false);
   const onDeleteRef = React.useRef(onDelete);
-  
+
   React.useEffect(() => {
     onDeleteRef.current = onDelete;
   }, [onDelete]);
 
   React.useEffect(() => {
     hasDeleted.current = false;
-    
+
     const id = dragX.addListener(({ value }) => {
       if (value < -120 && !hasDeleted.current) {
         hasDeleted.current = true;
@@ -112,7 +112,7 @@ const SetRow: React.FC<SetRowProps> = ({
   groupSetType,
   readOnly = false,
   shouldFocus = null,
-  onFocusHandled = () => {},
+  onFocusHandled = () => { },
   onCustomKeyboardOpen = null,
   customKeyboardActive = false,
   customKeyboardField = null
@@ -149,12 +149,12 @@ const SetRow: React.FC<SetRowProps> = ({
 
   const renderPrevious = () => {
     if (!previousSet) return <Text style={styles.previousText}>-</Text>;
-    
+
     const textStyle = [
       styles.previousText,
       previousSetIsFromOlderHistory && styles.previousText__italic
     ];
-    
+
     if (isLift) {
       return (
         <Text style={textStyle}>
@@ -174,7 +174,7 @@ const SetRow: React.FC<SetRowProps> = ({
 
   return (
     <View style={styles.rowWrapper}>
-      <Swipeable 
+      <Swipeable
         renderRightActions={renderRightActions}
         onSwipeableWillOpen={(direction) => {
           if (direction === 'right') {
@@ -197,14 +197,14 @@ const SetRow: React.FC<SetRowProps> = ({
             ]} />
           )}
           <View style={[
-            styles.container, 
+            styles.container,
             set.completed && styles.completedContainer,
             dropSetId && isDropSetStart && styles.container__dropSetStart,
             dropSetId && isDropSetEnd && styles.container__dropSetEnd,
             dropSetId ? styles.container__dropSet__flex : styles.container__nonDropSet__flex
           ]}>
             <View style={[
-              styles.contentRow, 
+              styles.contentRow,
               dropSetId && styles.contentRow__dropSet,
               dropSetId && isDropSetStart && styles.contentRow__dropSet__start,
               dropSetId && isDropSetEnd && styles.contentRow__dropSet__end
@@ -214,10 +214,10 @@ const SetRow: React.FC<SetRowProps> = ({
                   if (dropSetId) {
                     if (indexInGroup === 1) {
                       const isDifferentGroup = !editingGroupId || dropSetId !== editingGroupId;
-                      
+
                       if (isDifferentGroup) {
                         return (
-                          <TouchableOpacity 
+                          <TouchableOpacity
                             onPress={() => onToggleSelection(true)}
                             style={styles.selectionPlusButton}
                           >
@@ -226,7 +226,7 @@ const SetRow: React.FC<SetRowProps> = ({
                         );
                       } else {
                         return (
-                          <TouchableOpacity 
+                          <TouchableOpacity
                             onPress={() => onToggleSelection(false)}
                             style={[
                               styles.selectionCheckbox,
@@ -243,7 +243,7 @@ const SetRow: React.FC<SetRowProps> = ({
                     } else {
                       if (editingGroupId && dropSetId === editingGroupId) {
                         return (
-                          <TouchableOpacity 
+                          <TouchableOpacity
                             onPress={() => onToggleSelection(false)}
                             style={[
                               styles.selectionCheckbox,
@@ -262,7 +262,7 @@ const SetRow: React.FC<SetRowProps> = ({
                     }
                   } else {
                     return (
-                      <TouchableOpacity 
+                      <TouchableOpacity
                         onPress={() => onToggleSelection(false)}
                         style={[
                           styles.selectionCheckbox,
@@ -290,7 +290,9 @@ const SetRow: React.FC<SetRowProps> = ({
                   disabled={readOnly}
                   style={[
                     styles.indexBadge,
-                    set.completed && styles.indexBadge__completed
+                    set.completed && styles.indexBadge__completed,
+                    set.isWarmup && styles.indexBadge__warmup,
+                    set.isFailure && styles.indexBadge__failure
                   ]}
                 >
                   {warmupIndex ? (
@@ -321,107 +323,100 @@ const SetRow: React.FC<SetRowProps> = ({
                       <Text style={styles.indexText}>{overallSetNumber}</Text>
                     )
                   )}
-                  
-                  {set.isWarmup && (
-                    <View style={styles.setTypeBadge}>
-                      <Text style={[styles.setTypeBadgeText, styles.setTypeBadgeText__warmup]}>W</Text>
-                    </View>
-                  )}
-                  {set.isFailure && (
-                    <View style={styles.setTypeBadge}>
-                      <Text style={[styles.setTypeBadgeText, styles.setTypeBadgeText__failure]}>F</Text>
-                    </View>
-                  )}
                 </TouchableOpacity>
               )}
 
-            <View style={styles.previousContainer}>
-            {renderPrevious()}
-          </View>
+              <View style={styles.previousContainer}>
+                {renderPrevious()}
+              </View>
 
-          <View style={styles.inputsContainer}>
-            <View style={styles.inputWrapper}>
-              <TextInput
-                ref={firstInputRef}
-                style={[
-                  styles.input, 
-                  getInputStyle(isLift ? set.weight : set.duration),
-                  (focusedInput === 'first' || (customKeyboardActive && customKeyboardField === 'weight')) && styles.inputFocused
-                ]}
-                selectTextOnFocus={true}
-                showSoftInputOnFocus={!onCustomKeyboardOpen || !isLift}
-                onFocus={() => {
-                  if (!readOnly) {
-                    const val = isLift ? (set.weight || "") : (set.duration || "");
-                    if (onCustomKeyboardOpen && isLift) {
-                      onCustomKeyboardOpen({ field: 'weight', value: val });
-                    } else {
-                      handleFocus(firstInputRef, val, 'first');
-                    }
-                  }
-                }}
-                onBlur={() => {
-                  if (!customKeyboardActive || customKeyboardField !== 'weight') {
-                    if (!onCustomKeyboardOpen || !isLift) {
-                      // Focus cleared by hook
-                    }
-                  }
-                }}
-                placeholder={isLift ? "-" : "min:sec"}
-                placeholderTextColor={COLORS.slate[400]}
-                keyboardType={isLift ? "decimal-pad" : "default"} 
-                value={isLift ? (set.weight || "") : (set.duration || "")}
-                onChangeText={(text) => !readOnly && onUpdate({ ...set, [isLift ? 'weight' : 'duration']: text })}
-                editable={!readOnly}
-              />
+              <View style={styles.weightContainer}>
+                <View style={styles.weightInputWrapper}>
+                  <TextInput
+                    numberOfLines={1}
+                    ref={firstInputRef}
+                    style={[
+                      styles.weightInput,
+                      getInputStyle(isLift ? set.weight : set.duration),
+                      (focusedInput === 'first' || (customKeyboardActive && customKeyboardField === 'weight')) && styles.inputFocused
+                    ]}
+                    selectTextOnFocus={true}
+                    showSoftInputOnFocus={!onCustomKeyboardOpen || !isLift}
+                    onFocus={() => {
+                      if (!readOnly) {
+                        const val = isLift ? (set.weight || "") : (set.duration || "");
+                        if (onCustomKeyboardOpen && isLift) {
+                          onCustomKeyboardOpen({ field: 'weight', value: val });
+                        } else {
+                          handleFocus(firstInputRef, val, 'first');
+                        }
+                      }
+                    }}
+                    onBlur={() => {
+                      if (!customKeyboardActive || customKeyboardField !== 'weight') {
+                        if (!onCustomKeyboardOpen || !isLift) {
+                          // Focus cleared by hook
+                        }
+                      }
+                    }}
+                    placeholder={isLift ? "-" : "min:sec"}
+                    placeholderTextColor={COLORS.slate[400]}
+                    keyboardType={isLift ? "decimal-pad" : "default"}
+                    value={isLift ? (set.weight || "") : (set.duration || "")}
+                    onChangeText={(text) => !readOnly && onUpdate({ ...set, [isLift ? 'weight' : 'duration']: text })}
+                    editable={!readOnly}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.repsContainer}>
+                <View style={styles.repsInputWrapper}>
+                  <TextInput
+                    numberOfLines={1}
+                    ref={secondInputRef}
+                    style={[
+                      styles.repsInput,
+                      getInputStyle(isLift ? set.reps : isCardio ? set.distance : set.reps),
+                      (focusedInput === 'second' || (customKeyboardActive && customKeyboardField === 'reps')) && styles.inputFocused
+                    ]}
+                    selectTextOnFocus={true}
+                    showSoftInputOnFocus={!onCustomKeyboardOpen || !isLift}
+                    onFocus={() => {
+                      if (!readOnly) {
+                        const val = isLift ? (set.reps || "") : isCardio ? (set.distance || "") : (set.reps || "");
+                        if (onCustomKeyboardOpen && isLift) {
+                          onCustomKeyboardOpen({ field: 'reps', value: val });
+                        } else {
+                          handleFocus(secondInputRef, val, 'second');
+                        }
+                      }
+                    }}
+                    onBlur={() => {
+                      if (!customKeyboardActive || customKeyboardField !== 'reps') {
+                        if (!onCustomKeyboardOpen || !isLift) {
+                          // Focus cleared by hook
+                        }
+                      }
+                    }}
+                    placeholder={isLift ? "-" : isCardio ? "km" : "-"}
+                    placeholderTextColor={COLORS.slate[400]}
+                    keyboardType="decimal-pad"
+                    value={isLift ? (set.reps || "") : isCardio ? (set.distance || "") : (set.reps || "")}
+                    onChangeText={(text) => !readOnly && onUpdate({ ...set, [isLift || !isCardio ? 'reps' : 'distance']: text })}
+                    editable={!readOnly}
+                  />
+                </View>
+              </View>
+
+              <TouchableOpacity
+                onPress={readOnly ? undefined : onToggle}
+                disabled={readOnly}
+                style={[styles.checkButton, set.completed ? styles.checkButtonCompleted : styles.checkButtonIncomplete]}
+              >
+                <Check size={16} color={set.completed ? COLORS.white : COLORS.slate[400]} strokeWidth={3} />
+              </TouchableOpacity>
             </View>
-
-            <View style={styles.inputWrapper}>
-              <TextInput
-                ref={secondInputRef}
-                style={[
-                  styles.input, 
-                  getInputStyle(isLift ? set.reps : isCardio ? set.distance : set.reps),
-                  (focusedInput === 'second' || (customKeyboardActive && customKeyboardField === 'reps')) && styles.inputFocused
-                ]}
-                selectTextOnFocus={true}
-                showSoftInputOnFocus={!onCustomKeyboardOpen || !isLift}
-                onFocus={() => {
-                  if (!readOnly) {
-                    const val = isLift ? (set.reps || "") : isCardio ? (set.distance || "") : (set.reps || "");
-                    if (onCustomKeyboardOpen && isLift) {
-                      onCustomKeyboardOpen({ field: 'reps', value: val });
-                    } else {
-                      handleFocus(secondInputRef, val, 'second');
-                    }
-                  }
-                }}
-                onBlur={() => {
-                  if (!customKeyboardActive || customKeyboardField !== 'reps') {
-                    if (!onCustomKeyboardOpen || !isLift) {
-                      // Focus cleared by hook
-                    }
-                  }
-                }}
-                placeholder={isLift ? "-" : isCardio ? "km" : "-"}
-                placeholderTextColor={COLORS.slate[400]}
-                keyboardType="decimal-pad"
-                value={isLift ? (set.reps || "") : isCardio ? (set.distance || "") : (set.reps || "")}
-                onChangeText={(text) => !readOnly && onUpdate({ ...set, [isLift || !isCardio ? 'reps' : 'distance']: text })}
-                editable={!readOnly}
-              />
-            </View>
           </View>
-
-          <TouchableOpacity 
-            onPress={readOnly ? undefined : onToggle}
-            disabled={readOnly}
-            style={[styles.checkButton, set.completed ? styles.checkButtonCompleted : styles.checkButtonIncomplete]}
-          >
-            <Check size={16} color={set.completed ? COLORS.white : COLORS.slate[400]} strokeWidth={3} />
-          </TouchableOpacity>
-        </View>
-      </View>
         </View>
       </Swipeable>
     </View>
@@ -442,6 +437,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 8,
     overflow: 'visible',
+    gap: 8,
   },
   divider: {
     height: 1,
@@ -508,24 +504,36 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   selectionMode__emptySpace: {
-    width: 32,
-    marginRight: 4,
+    width: 36, // Match colIndex width (32 + 4 margin)
+    alignSelf: 'flex-start', // Left align
   },
   indexBadge: {
-    width: 32,
-    height: 22,
+    width: 30,
+    height: 26,
     minHeight: 22,
     borderRadius: 6,
     backgroundColor: COLORS.slate[100],
     alignItems: 'center',
     justifyContent: 'center',
-    alignSelf: 'center',
+    alignSelf: 'flex-start', // Left align
     marginRight: 4,
     paddingVertical: 0,
     overflow: 'visible',
   },
   indexBadge__completed: {
     backgroundColor: COLORS.green[50],
+  },
+  indexBadge__warmup: {
+    borderLeftWidth: 2,
+    borderLeftColor: COLORS.orange[500],
+    borderTopLeftRadius: 0,
+    borderBottomLeftRadius: 0,
+  },
+  indexBadge__failure: {
+    borderLeftWidth: 2,
+    borderLeftColor: COLORS.red[500],
+    borderTopLeftRadius: 0,
+    borderBottomLeftRadius: 0,
   },
   indexText: {
     fontSize: 12,
@@ -545,31 +553,64 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.indigo[400],
   },
-  setTypeBadge: {
-    position: 'absolute',
-    top: -3,
-    left: 0,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'transparent',
-  },
-  setTypeBadgeText: {
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  setTypeBadgeText__warmup: {
-    color: COLORS.orange[500],
-  },
-  setTypeBadgeText__failure: {
-    color: COLORS.red[500],
-  },
   previousContainer: {
-    width: 70,
+    flex: 1,
+    flexBasis: 0, // Force equal width distribution
     alignItems: 'center',
     justifyContent: 'center',
+    minWidth: 0,
+  },
+  weightContainer: {
+    flex: 1,
+    flexBasis: 0, // Force equal width distribution
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 0,
+  },
+  weightInputWrapper: {
+    width: '100%',
+    position: 'relative',
+    maxWidth: '100%',
+  },
+  weightInput: {
+    width: '100%',
+    maxWidth: '100%',
+    backgroundColor: COLORS.slate[150],
+    borderRadius: 8,
+    paddingVertical: 2,
+    paddingHorizontal: 4,
+    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: COLORS.slate[900],
+    borderWidth: 2,
+    borderColor: COLORS.slate[150],
+  },
+  repsContainer: {
+    flex: 1,
+    flexBasis: 0, // Force equal width distribution
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 0,
+  },
+  repsInputWrapper: {
+    width: '100%',
+    position: 'relative',
+    maxWidth: '100%',
+  },
+  repsInput: {
+    width: '100%',
+    maxWidth: '100%',
+    backgroundColor: COLORS.slate[150],
+    borderRadius: 8,
+    paddingVertical: 2,
+    paddingHorizontal: 4,
+    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: COLORS.slate[900],
+    borderWidth: 2,
+    borderColor: COLORS.slate[150],
   },
   previousText: {
     fontSize: 12,
@@ -582,29 +623,6 @@ const styles = StyleSheet.create({
   previousUnitText: {
     fontSize: 12,
     color: COLORS.slate[300],
-  },
-  inputsContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginHorizontal: 12,
-  },
-  inputWrapper: {
-    flex: 1,
-    position: 'relative',
-  },
-  input: {
-    width: '100%',
-    backgroundColor: COLORS.slate[150],
-    borderRadius: 8,
-    paddingVertical: 2,
-    textAlign: 'center',
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: COLORS.slate[900],
-    borderWidth: 2,
-    borderColor: COLORS.slate[150],
   },
   inputFocused: {
     borderColor: COLORS.slate[400],
@@ -621,14 +639,14 @@ const styles = StyleSheet.create({
     borderColor: COLORS.green[50],
   },
   checkButton: {
-    width: 26,
-    height: 26,
+    width: 25,
+    height: 25,
     borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
-    alignSelf: 'center',
+    alignSelf: 'flex-end', // Right align
     borderWidth: 2,
-    borderColor:'transparent',
+    borderColor: 'transparent',
   },
   checkButtonCompleted: {
     backgroundColor: COLORS.green[500],
@@ -659,7 +677,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     alignItems: 'center',
     justifyContent: 'center',
-    alignSelf: 'stretch',
+    alignSelf: 'flex-start', // Left align
     marginRight: 4,
   },
   selectionCheckboxSelected: {
@@ -691,7 +709,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.indigo[50],
     alignItems: 'center',
     justifyContent: 'center',
-    alignSelf: 'stretch',
+    alignSelf: 'flex-start', // Left align
     marginRight: 4,
   },
 });

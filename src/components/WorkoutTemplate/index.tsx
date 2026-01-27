@@ -1281,10 +1281,12 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
           <View style={styles.columnHeaders}>
             <View style={styles.colIndex}><Text style={styles.colHeaderText}>Set</Text></View>
             <View style={styles.colPrevious}><Text style={styles.colHeaderText}>Previous</Text></View>
-            <View style={styles.colInputs}>
+            <View style={styles.colWeight}>
               <Text style={styles.colHeaderText}>
                 {ex.category === "Lifts" ? `Weight (${ex.weightUnit || 'lbs'})` : "Time"}
               </Text>
+            </View>
+            <View style={styles.colReps}>
               <Text style={styles.colHeaderText}>{ex.category === "Lifts" ? "Reps" : "Dist/Reps"}</Text>
             </View>
             <View style={styles.colCheck}><Text style={styles.colHeaderText}>-</Text></View>
@@ -2772,25 +2774,38 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     marginBottom: 0,
     paddingBottom: 4,
+    gap: 8,
   },
   colIndex: {
-    width: 32,
-    alignItems: 'center',
-  },
-  colPrevious: {
-    width: 70,
-    alignItems: 'center',
+    width: 36, // 32px indexBadge + 4px marginRight
+    alignItems: 'flex-start', // Left align
     justifyContent: 'center',
   },
-  colInputs: {
+  colPrevious: {
     flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginHorizontal: 12,
+    flexBasis: 0, // Force equal width distribution
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 0,
+  },
+  colWeight: {
+    flex: 1,
+    flexBasis: 0, // Force equal width distribution
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 0,
+  },
+  colReps: {
+    flex: 1,
+    flexBasis: 0, // Force equal width distribution
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 0,
   },
   colCheck: {
-    width: 32,
-    alignItems: 'center',
+    width: 26, // Match checkButton width
+    alignItems: 'flex-end', // Right align
+    justifyContent: 'center',
   },
   colHeaderText: {
     fontSize: 10,
