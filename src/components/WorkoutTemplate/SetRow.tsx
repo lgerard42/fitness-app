@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { Check, Trash2, Plus } from 'lucide-react-native';
 import { Swipeable } from 'react-native-gesture-handler';
@@ -85,6 +85,7 @@ interface SetRowProps {
   onCustomKeyboardOpen?: ((params: { field: 'weight' | 'reps'; value: string }) => void) | null;
   customKeyboardActive?: boolean;
   customKeyboardField?: 'weight' | 'reps' | null;
+  customKeyboardShouldSelectAll?: boolean;
 }
 
 const SetRow: React.FC<SetRowProps> = ({
@@ -118,7 +119,8 @@ const SetRow: React.FC<SetRowProps> = ({
   onFocusHandled = () => { },
   onCustomKeyboardOpen = null,
   customKeyboardActive = false,
-  customKeyboardField = null
+  customKeyboardField = null,
+  customKeyboardShouldSelectAll = false
 }) => {
   const isLift = category === 'Lifts';
   const isCardio = category === 'Cardio';
@@ -139,6 +141,14 @@ const SetRow: React.FC<SetRowProps> = ({
 
   const isMissingValue = isMissingWeight || isMissingReps;
 
+  // Track selection for cursor positioning after custom keyboard updates
+  const [firstInputSelection, setFirstInputSelection] = useState<{ start: number; end: number } | null>(null);
+  const [secondInputSelection, setSecondInputSelection] = useState<{ start: number; end: number } | null>(null);
+  const firstInputInitialFocusRef = useRef<boolean>(false);
+  const secondInputInitialFocusRef = useRef<boolean>(false);
+  const firstInputInitialValueRef = useRef<string | null>(null);
+  const secondInputInitialValueRef = useRef<string | null>(null);
+
   const {
     focusedInput,
     firstInputRef,
@@ -155,6 +165,66 @@ const SetRow: React.FC<SetRowProps> = ({
     customKeyboardField: customKeyboardField || null,
     readOnly
   });
+
+  // Set cursor position or selection when value changes from custom keyboard
+  // Only update selection when explicitly needed (after +/- or after user input), not on initial focus
+  useEffect(() => {
+    if (customKeyboardActive && customKeyboardField === 'weight') {
+      const value = isLift ? (set.weight || "") : (set.duration || "");
+      const length = value.length;
+      const initialValue = firstInputInitialValueRef.current;
+
+      // If shouldSelectAll is true (from +/- operations), select entire value
+      if (customKeyboardShouldSelectAll && length > 0) {
+        setFirstInputSelection({ start: 0, end: length });
+        firstInputInitialFocusRef.current = false;
+        firstInputInitialValueRef.current = value;
+      }
+      // If value has changed from initial value, user has typed - position cursor at end
+      else if (value !== initialValue) {
+        // Value changed, so position cursor at end
+        setFirstInputSelection({ start: length, end: length });
+        // Mark that user has interacted (so future updates position cursor at end)
+        firstInputInitialFocusRef.current = true;
+        // Update the initial value ref to current value
+        firstInputInitialValueRef.current = value;
+      }
+      // If value hasn't changed and ref is false, this is initial focus - don't override selection
+    } else {
+      // Reset when keyboard becomes inactive
+      firstInputInitialFocusRef.current = false;
+      firstInputInitialValueRef.current = null;
+    }
+  }, [set.weight, set.duration, customKeyboardActive, customKeyboardField, customKeyboardShouldSelectAll, isLift]);
+
+  useEffect(() => {
+    if (customKeyboardActive && customKeyboardField === 'reps') {
+      const value = isLift ? (set.reps || "") : isCardio ? (set.distance || "") : (set.reps || "");
+      const length = value.length;
+      const initialValue = secondInputInitialValueRef.current;
+
+      // If shouldSelectAll is true (from +/- operations), select entire value
+      if (customKeyboardShouldSelectAll && length > 0) {
+        setSecondInputSelection({ start: 0, end: length });
+        secondInputInitialFocusRef.current = false;
+        secondInputInitialValueRef.current = value;
+      }
+      // If value has changed from initial value, user has typed - position cursor at end
+      else if (value !== initialValue) {
+        // Value changed, so position cursor at end
+        setSecondInputSelection({ start: length, end: length });
+        // Mark that user has interacted (so future updates position cursor at end)
+        secondInputInitialFocusRef.current = true;
+        // Update the initial value ref to current value
+        secondInputInitialValueRef.current = value;
+      }
+      // If value hasn't changed and ref is false, this is initial focus - don't override selection
+    } else {
+      // Reset when keyboard becomes inactive
+      secondInputInitialFocusRef.current = false;
+      secondInputInitialValueRef.current = null;
+    }
+  }, [set.reps, set.distance, customKeyboardActive, customKeyboardField, customKeyboardShouldSelectAll, isLift, isCardio]);
 
   const getInputStyle = (value: string | null | undefined) => {
     if (!set.completed) return null;
@@ -427,6 +497,13 @@ const SetRow: React.FC<SetRowProps> = ({
                         const val = isLift ? (set.weight || "") : (set.duration || "");
                         if (onCustomKeyboardOpen && isLift) {
                           onCustomKeyboardOpen({ field: 'weight', value: val });
+                          // On initial focus, ref should be false - don't override selection yet
+                          // Text will be selected by selectTextOnFocus
+                          firstInputInitialFocusRef.current = false;
+                          // Store the initial value to detect when it changes
+                          firstInputInitialValueRef.current = val;
+                          // Clear any existing selection state to let selectTextOnFocus work
+                          setFirstInputSelection(null);
                         } else {
                           handleFocus(firstInputRef, val, 'first');
                         }
@@ -443,7 +520,26 @@ const SetRow: React.FC<SetRowProps> = ({
                     placeholderTextColor={COLORS.slate[400]}
                     keyboardType={isLift ? "decimal-pad" : "default"}
                     value={isLift ? (set.weight || "") : (set.duration || "")}
-                    onChangeText={(text) => !readOnly && onUpdate({ ...set, [isLift ? 'weight' : 'duration']: text })}
+                    selection={firstInputSelection || undefined}
+                    onSelectionChange={(e) => {
+                      // Only update selection if not from custom keyboard
+                      if (!customKeyboardActive || customKeyboardField !== 'weight') {
+                        setFirstInputSelection(e.nativeEvent.selection);
+                      }
+                    }}
+                    onChangeText={(text) => {
+                      if (!readOnly) {
+                        // Clear selection when user types normally
+                        if (!customKeyboardActive || customKeyboardField !== 'weight') {
+                          setFirstInputSelection(null);
+                        } else {
+                          // User has typed, so mark that initial focus is done
+                          // This will allow useEffect to position cursor at end on next value change
+                          firstInputInitialFocusRef.current = true;
+                        }
+                        onUpdate({ ...set, [isLift ? 'weight' : 'duration']: text });
+                      }
+                    }}
                     editable={!readOnly}
                   />
                 </View>
@@ -467,6 +563,13 @@ const SetRow: React.FC<SetRowProps> = ({
                         const val = isLift ? (set.reps || "") : isCardio ? (set.distance || "") : (set.reps || "");
                         if (onCustomKeyboardOpen && isLift) {
                           onCustomKeyboardOpen({ field: 'reps', value: val });
+                          // On initial focus, ref should be false - don't override selection yet
+                          // Text will be selected by selectTextOnFocus
+                          secondInputInitialFocusRef.current = false;
+                          // Store the initial value to detect when it changes
+                          secondInputInitialValueRef.current = val;
+                          // Clear any existing selection state to let selectTextOnFocus work
+                          setSecondInputSelection(null);
                         } else {
                           handleFocus(secondInputRef, val, 'second');
                         }
@@ -483,7 +586,26 @@ const SetRow: React.FC<SetRowProps> = ({
                     placeholderTextColor={COLORS.slate[400]}
                     keyboardType="decimal-pad"
                     value={isLift ? (set.reps || "") : isCardio ? (set.distance || "") : (set.reps || "")}
-                    onChangeText={(text) => !readOnly && onUpdate({ ...set, [isLift || !isCardio ? 'reps' : 'distance']: text })}
+                    selection={secondInputSelection || undefined}
+                    onSelectionChange={(e) => {
+                      // Only update selection if not from custom keyboard
+                      if (!customKeyboardActive || customKeyboardField !== 'reps') {
+                        setSecondInputSelection(e.nativeEvent.selection);
+                      }
+                    }}
+                    onChangeText={(text) => {
+                      if (!readOnly) {
+                        // Clear selection when user types normally
+                        if (!customKeyboardActive || customKeyboardField !== 'reps') {
+                          setSecondInputSelection(null);
+                        } else {
+                          // User has typed, so mark that initial focus is done
+                          // This will allow useEffect to position cursor at end on next value change
+                          secondInputInitialFocusRef.current = true;
+                        }
+                        onUpdate({ ...set, [isLift || !isCardio ? 'reps' : 'distance']: text });
+                      }
+                    }}
                     editable={!readOnly}
                   />
                 </View>

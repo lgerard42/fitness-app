@@ -255,6 +255,8 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
   const [customKeyboardVisible, setCustomKeyboardVisible] = useState(false);
   const [customKeyboardTarget, setCustomKeyboardTarget] = useState<{ exerciseId: string; setId: string; field: 'weight' | 'reps' | 'duration' | 'distance' } | null>(null);
   const [customKeyboardValue, setCustomKeyboardValue] = useState('');
+  const [customKeyboardShouldSelectAll, setCustomKeyboardShouldSelectAll] = useState(false);
+  const customKeyboardTextSelectedRef = useRef<boolean>(false);
 
   // Rest Timer countdown is now handled in useWorkoutRestTimer hook
 
@@ -533,22 +535,52 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
   const handleCustomKeyboardOpen = (exerciseId: string, setId: string, field: 'weight' | 'reps' | 'duration' | 'distance', value: string) => {
     setCustomKeyboardTarget({ exerciseId, setId, field });
     setCustomKeyboardValue(value || '');
+    // If there's an existing value, text will be selected due to selectTextOnFocus={true}
+    const hasValue = !!(value && value.trim() !== '');
+    customKeyboardTextSelectedRef.current = hasValue;
+    setCustomKeyboardShouldSelectAll(false);
     setCustomKeyboardVisible(true);
   };
 
   const handleCustomKeyboardInput = (key: string) => {
     let newValue;
+    const isTextSelected = customKeyboardTextSelectedRef.current;
+
     if (key === 'backspace') {
-      newValue = customKeyboardValue.slice(0, -1);
+      // If entire value is selected, clear it completely; otherwise remove last character
+      if (isTextSelected) {
+        newValue = '';
+        setCustomKeyboardShouldSelectAll(false);
+      } else {
+        newValue = customKeyboardValue.slice(0, -1);
+      }
     } else if (key === '.') {
-      // Only add decimal if there isn't one already
-      if (!customKeyboardValue.includes('.')) {
+      // If text is selected, replace with '.'; otherwise append if no decimal exists
+      if (isTextSelected) {
+        newValue = '.';
+        // After replacing, cursor should be at end (not selecting all)
+        setCustomKeyboardShouldSelectAll(false);
+      } else if (!customKeyboardValue.includes('.')) {
         newValue = customKeyboardValue + '.';
       } else {
         return; // Don't add another decimal
       }
     } else {
-      newValue = customKeyboardValue + key;
+      // If text is selected, replace with the key; otherwise append
+      if (isTextSelected) {
+        newValue = key;
+        // After first number replaces selection, cursor should be at end for subsequent numbers
+        setCustomKeyboardShouldSelectAll(false);
+        // Mark that user has typed so cursor positions at end
+        customKeyboardTextSelectedRef.current = false; // Clear selection flag
+      } else {
+        newValue = customKeyboardValue + key;
+      }
+    }
+
+    // Reset selection flag after first input (unless we want to select all for +/-)
+    if (!customKeyboardShouldSelectAll) {
+      customKeyboardTextSelectedRef.current = false;
     }
 
     setCustomKeyboardValue(newValue);
@@ -566,10 +598,30 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     }
   };
 
+  const handleCustomKeyboardSetValue = (value: string, shouldSelectAll: boolean = false) => {
+    setCustomKeyboardValue(value);
+    setCustomKeyboardShouldSelectAll(shouldSelectAll);
+    customKeyboardTextSelectedRef.current = shouldSelectAll;
+
+    // Also update the set value in real-time
+    if (customKeyboardTarget) {
+      const { exerciseId, setId, field } = customKeyboardTarget;
+      const exercise = findExerciseDeep(currentWorkout.exercises, exerciseId);
+      if (exercise) {
+        const set = exercise.sets.find(s => s.id === setId);
+        if (set) {
+          handleUpdateSet(exerciseId, { ...set, [field]: value });
+        }
+      }
+    }
+  };
+
   const closeCustomKeyboard = () => {
     setCustomKeyboardVisible(false);
     setCustomKeyboardTarget(null);
     setCustomKeyboardValue('');
+    customKeyboardTextSelectedRef.current = false;
+    setCustomKeyboardShouldSelectAll(false);
   };
 
   const handleCustomKeyboardClose = () => {
@@ -1445,6 +1497,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                     onCustomKeyboardOpen={!readOnly && ex.category === 'Lifts' ? ({ field, value }) => handleCustomKeyboardOpen(ex.instanceId, set.id, field, value) : null}
                     customKeyboardActive={customKeyboardTarget?.exerciseId === ex.instanceId && customKeyboardTarget?.setId === set.id}
                     customKeyboardField={customKeyboardTarget?.exerciseId === ex.instanceId && customKeyboardTarget?.setId === set.id ? (customKeyboardTarget.field === 'weight' || customKeyboardTarget.field === 'reps' ? customKeyboardTarget.field : null) : null}
+                    customKeyboardShouldSelectAll={customKeyboardTarget?.exerciseId === ex.instanceId && customKeyboardTarget?.setId === set.id ? customKeyboardShouldSelectAll : false}
                   />
 
                   {/* Rest Timer Bar */}
@@ -2516,6 +2569,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
         } : null}
         customKeyboardValue={customKeyboardValue}
         onInput={handleCustomKeyboardInput}
+        onSetValue={handleCustomKeyboardSetValue}
         onNext={handleCustomKeyboardNext}
         onClose={handleCustomKeyboardClose}
       />

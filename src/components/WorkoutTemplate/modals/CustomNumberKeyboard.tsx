@@ -8,6 +8,7 @@ interface CustomNumberKeyboardProps {
   customKeyboardTarget: { field: 'weight' | 'reps'; exerciseId: string; setId: string } | null;
   customKeyboardValue: string;
   onInput: (key: string) => void;
+  onSetValue?: (value: string, shouldSelectAll?: boolean) => void;
   onNext: () => void;
   onClose: () => void;
 }
@@ -17,6 +18,7 @@ const CustomNumberKeyboard: React.FC<CustomNumberKeyboardProps> = ({
   customKeyboardTarget,
   customKeyboardValue,
   onInput,
+  onSetValue,
   onNext,
   onClose,
 }) => {
@@ -29,13 +31,23 @@ const CustomNumberKeyboard: React.FC<CustomNumberKeyboardProps> = ({
   const handleIncrement = () => {
     const currentValue = parseFloat(customKeyboardValue || '0');
     const newValue = (currentValue + 1).toString();
-    onInput(newValue);
+    if (onSetValue) {
+      // Select entire value after +/- operation
+      onSetValue(newValue, true);
+    } else {
+      onInput(newValue);
+    }
   };
 
   const handleDecrement = () => {
     const currentValue = parseFloat(customKeyboardValue || '0');
     const newValue = Math.max(0, currentValue - 1).toString();
-    onInput(newValue);
+    if (onSetValue) {
+      // Select entire value after +/- operation
+      onSetValue(newValue, true);
+    } else {
+      onInput(newValue);
+    }
   };
 
   return (
