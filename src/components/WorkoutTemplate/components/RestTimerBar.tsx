@@ -64,6 +64,7 @@ interface RestTimerBarProps {
   setRestTimerPopupOpen: (open: boolean) => void;
   isRestTimerDropSetEnd: boolean;
   displayGroupSetType: GroupSetType;
+  isBeingEdited: boolean;
   styles: any;
 }
 
@@ -80,6 +81,7 @@ const RestTimerBar: React.FC<RestTimerBarProps> = ({
   setRestTimerPopupOpen,
   isRestTimerDropSetEnd,
   displayGroupSetType,
+  isBeingEdited,
   styles
 }) => {
   const isRestTimerActive = activeRestTimer?.setId === set.id;
@@ -123,7 +125,8 @@ const RestTimerBar: React.FC<RestTimerBarProps> = ({
     >
       <View style={[
         styles.restTimerBar,
-        set.completed && set.restTimerCompleted && styles.restTimerBar__completed
+        set.completed && set.restTimerCompleted && styles.restTimerBar__completed,
+        isBeingEdited && styles.restTimerBar__editing
       ]}>
         {set.dropSetId && (
           <View style={[
@@ -141,7 +144,8 @@ const RestTimerBar: React.FC<RestTimerBarProps> = ({
           style={[
             styles.restTimerBadge,
             isRestTimerActive && styles.restTimerBadge__active,
-            set.restTimerCompleted && !isRestTimerActive && styles.restTimerBadge__completed
+            set.restTimerCompleted && !isRestTimerActive && styles.restTimerBadge__completed,
+            isBeingEdited && styles.restTimerBadge__editing
           ]}
           onPress={() => {
             if (isRestTimerActive) {
@@ -159,10 +163,14 @@ const RestTimerBar: React.FC<RestTimerBarProps> = ({
             </Text>
           ) : (
             <>
-              <Timer size={12} color={set.restTimerCompleted ? COLORS.green[600] : COLORS.slate[500]} />
+              <Timer size={12} color={
+                isBeingEdited ? COLORS.white :
+                set.restTimerCompleted ? COLORS.green[600] : COLORS.slate[500]
+              } />
               <Text style={[
                 styles.restTimerText,
-                set.restTimerCompleted && styles.restTimerText__completed
+                set.restTimerCompleted && styles.restTimerText__completed,
+                isBeingEdited && styles.restTimerText__editing
               ]}>
                 {formatRestTime(set.restPeriodSeconds || 0)}
               </Text>

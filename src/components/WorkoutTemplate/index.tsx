@@ -533,6 +533,12 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
 
   // Custom keyboard handler
   const handleCustomKeyboardOpen = (exerciseId: string, setId: string, field: 'weight' | 'reps' | 'duration' | 'distance', value: string) => {
+    // Close rest timer modal if open
+    if (restPeriodModalOpen) {
+      setRestPeriodModalOpen(false);
+      setRestPeriodSetInfo(null);
+      setRestTimerInput('');
+    }
     setCustomKeyboardTarget({ exerciseId, setId, field });
     setCustomKeyboardValue(value || '');
     // If there's an existing value, text will be selected due to selectTextOnFocus={true}
@@ -543,6 +549,11 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
   };
 
   const handleCustomKeyboardInput = (key: string) => {
+    // Only process input if custom keyboard is the active target (not timer modal)
+    if (!customKeyboardTarget || restPeriodModalOpen) {
+      return;
+    }
+
     let newValue;
     const isTextSelected = customKeyboardTextSelectedRef.current;
 
@@ -586,32 +597,33 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     setCustomKeyboardValue(newValue);
 
     // Also update the set value in real-time
-    if (customKeyboardTarget) {
-      const { exerciseId, setId, field } = customKeyboardTarget;
-      const exercise = findExerciseDeep(currentWorkout.exercises, exerciseId);
-      if (exercise) {
-        const set = exercise.sets.find(s => s.id === setId);
-        if (set) {
-          handleUpdateSet(exerciseId, { ...set, [field]: newValue });
-        }
+    const { exerciseId, setId, field } = customKeyboardTarget;
+    const exercise = findExerciseDeep(currentWorkout.exercises, exerciseId);
+    if (exercise) {
+      const set = exercise.sets.find(s => s.id === setId);
+      if (set) {
+        handleUpdateSet(exerciseId, { ...set, [field]: newValue });
       }
     }
   };
 
   const handleCustomKeyboardSetValue = (value: string, shouldSelectAll: boolean = false) => {
+    // Only process set value if custom keyboard is the active target (not timer modal)
+    if (!customKeyboardTarget || restPeriodModalOpen) {
+      return;
+    }
+
     setCustomKeyboardValue(value);
     setCustomKeyboardShouldSelectAll(shouldSelectAll);
     customKeyboardTextSelectedRef.current = shouldSelectAll;
 
     // Also update the set value in real-time
-    if (customKeyboardTarget) {
-      const { exerciseId, setId, field } = customKeyboardTarget;
-      const exercise = findExerciseDeep(currentWorkout.exercises, exerciseId);
-      if (exercise) {
-        const set = exercise.sets.find(s => s.id === setId);
-        if (set) {
-          handleUpdateSet(exerciseId, { ...set, [field]: value });
-        }
+    const { exerciseId, setId, field } = customKeyboardTarget;
+    const exercise = findExerciseDeep(currentWorkout.exercises, exerciseId);
+    if (exercise) {
+      const set = exercise.sets.find(s => s.id === setId);
+      if (set) {
+        handleUpdateSet(exerciseId, { ...set, [field]: value });
       }
     }
   };
@@ -622,6 +634,8 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     setCustomKeyboardValue('');
     customKeyboardTextSelectedRef.current = false;
     setCustomKeyboardShouldSelectAll(false);
+    // Clear any input focus state
+    setFocusNextSet(null);
   };
 
   const handleCustomKeyboardClose = () => {
@@ -648,12 +662,24 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     if (field === 'weight') {
       // Move to reps of the same set
       const set = exercise.sets[setIndex];
+      // Close rest timer modal if open
+      if (restPeriodModalOpen) {
+        setRestPeriodModalOpen(false);
+        setRestPeriodSetInfo(null);
+        setRestTimerInput('');
+      }
       setCustomKeyboardTarget({ exerciseId, setId, field: 'reps' });
       setCustomKeyboardValue(set.reps || '');
     } else if (field === 'reps') {
       // Move to weight of the next set
       if (setIndex < exercise.sets.length - 1) {
         const nextSet = exercise.sets[setIndex + 1];
+        // Close rest timer modal if open
+        if (restPeriodModalOpen) {
+          setRestPeriodModalOpen(false);
+          setRestPeriodSetInfo(null);
+          setRestTimerInput('');
+        }
         setCustomKeyboardTarget({ exerciseId, setId: nextSet.id, field: 'weight' });
         setCustomKeyboardValue(nextSet.weight || '');
       } else {
@@ -774,6 +800,15 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
       setActiveSetMenu(null);
     } else if (action === 'add_rest') {
       // Open rest timer input modal
+      // Close custom keyboard if open and clear all input state
+      if (customKeyboardTarget || customKeyboardVisible) {
+        closeCustomKeyboard();
+      }
+      // Ensure all custom keyboard state is cleared
+      setCustomKeyboardTarget(null);
+      setCustomKeyboardValue('');
+      setCustomKeyboardVisible(false);
+      setFocusNextSet(null);
       setRestPeriodSetInfo({ exerciseId, setId });
       setRestTimerInput('');
       setRestPeriodModalOpen(true);
@@ -1519,6 +1554,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                         setRestTimerPopupOpen={setRestTimerPopupOpen}
                         isRestTimerDropSetEnd={isRestTimerDropSetEnd}
                         displayGroupSetType={displayGroupSetType as GroupSetType}
+                        isBeingEdited={restPeriodSetInfo?.setId === set.id && restPeriodModalOpen}
                         styles={styles}
                       />
                     );
@@ -2361,7 +2397,6 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
         setActiveRestTimer={setActiveRestTimer}
         setRestTimerPopupOpen={setRestTimerPopupOpen}
         onAddRestPeriod={handleAddRestPeriod}
-        styles={styles}
       />
 
       <ActiveRestTimerPopup
@@ -2561,7 +2596,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
       })()}
 
       <CustomNumberKeyboard
-        visible={customKeyboardVisible}
+        visible={customKeyboardVisible && !restPeriodModalOpen}
         customKeyboardTarget={customKeyboardTarget && (customKeyboardTarget.field === 'weight' || customKeyboardTarget.field === 'reps' || customKeyboardTarget.field === 'duration' || customKeyboardTarget.field === 'distance') ? {
           exerciseId: customKeyboardTarget.exerciseId,
           setId: customKeyboardTarget.setId,
@@ -2881,6 +2916,13 @@ const styles = StyleSheet.create({
   restTimerBar__completed: {
     backgroundColor: COLORS.green[50],
   },
+  restTimerBar__editing: {
+    backgroundColor: COLORS.blue[50],
+    borderWidth: 2,
+    borderColor: COLORS.blue[400],
+    borderRadius: 8,
+    marginVertical: 2,
+  },
   restTimerDropSetIndicator: {
     position: 'absolute',
     left: 0,
@@ -2921,6 +2963,10 @@ const styles = StyleSheet.create({
   restTimerBadge__completed: {
     // No background for completed state
   },
+  restTimerBadge__editing: {
+    backgroundColor: COLORS.blue[500],
+    borderRadius: 6,
+  },
   restTimerLine__completed: {
     backgroundColor: COLORS.green[500],
     height: 1,
@@ -2942,6 +2988,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: COLORS.blue[600],
+  },
+  restTimerText__editing: {
+    color: COLORS.white,
+    fontWeight: '700',
   },
   timerPopupOverlay: {
     flex: 1,
