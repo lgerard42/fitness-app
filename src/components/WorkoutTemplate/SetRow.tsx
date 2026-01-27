@@ -618,7 +618,7 @@ const styles = StyleSheet.create({
   inputCompletedFilled: {
     backgroundColor: COLORS.green[50],
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor: COLORS.green[50],
   },
   checkButton: {
     width: 26,
@@ -632,7 +632,7 @@ const styles = StyleSheet.create({
   },
   checkButtonCompleted: {
     backgroundColor: COLORS.green[500],
-    borderColor: COLORS.green[700],
+    borderColor: COLORS.green[500],
   },
   checkButtonIncomplete: {
     backgroundColor: COLORS.slate[200],
