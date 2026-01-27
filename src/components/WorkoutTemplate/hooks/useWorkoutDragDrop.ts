@@ -400,10 +400,10 @@ export const useWorkoutDragDrop = ({
     setCollapsedGroupId(groupId);
     setIsDragging(true); // Set dragging state so UI shows collapsed items
     pendingDragCallback.current = dragCallback;
-    // Store the header item ID for alignment after layout settles
-    pendingDragItemId.current = groupHeaderItem.id;
     // Store the original header index in the collapsed structure
     originalHeaderIndexRef.current = headerIndexInCollapsed;
+    // Store the header item ID for alignment after layout settles
+    pendingDragItemId.current = groupHeaderItem.id;
 
     console.log('[DRAG DEBUG] State set', {
       collapsedGroupId: groupId,
@@ -534,7 +534,7 @@ export const useWorkoutDragDrop = ({
       requestAnimationFrame(() => {
         alignAfterCollapse(itemId, baseDragItems);
       });
-    }, 30);
+    }, 150);
   }, [isDragging, currentWorkout.exercises, baseDragItems, alignAfterCollapse]);
 
   // Called when drag actually begins (from DraggableFlatList onDragBegin)
@@ -552,262 +552,74 @@ export const useWorkoutDragDrop = ({
   }, [isDragging, currentWorkout.exercises]);
 
   const handleDragEnd = useCallback(({ data, from, to }: { data: WorkoutDragItem[]; from: number; to: number }) => {
-    console.log('[DRAG DEBUG] handleDragEnd called', {
-      from,
-      to,
-      fromEqualsTo: from === to,
-      dataLength: data.length,
-      collapsedGroupId,
-      isDragging,
-      reorderedDragItemsCount: reorderedDragItems.length,
-      currentWorkoutExercisesCount: currentWorkout.exercises.length,
-      hasOriginalExercises: !!originalExercisesRef.current,
-      isProcessingDragEnd: isProcessingDragEndRef.current,
-    });
-
-    // Prevent re-entry if already processing
-    if (isProcessingDragEndRef.current) {
-      console.log('[DRAG DEBUG] Already processing drag end, ignoring');
-      return;
-    }
-
+    if (isProcessingDragEndRef.current) return;
     isProcessingDragEndRef.current = true;
-    pendingDragCallback.current = null;
 
-    // 1. CAPTURE the item identity BEFORE doing anything else
-    // Use a local constant so it doesn't matter if the ref changes later
-    const draggedItem = data[to];
-    const currentDragId = pendingDragItemId.current;
-    const originalHeaderIndex = originalHeaderIndexRef.current;
-    const fromEqualsTo = from === to;
-
-    // Check if the dragged item is the original header by ID
-    const isOriginalHeader = draggedItem?.id === currentDragId;
-
-    // Check if 'from' matches the original header index (even if 'to' is different)
-    const fromMatchesOriginalIndex = originalHeaderIndex !== null && originalHeaderIndex !== -1
-      ? from === originalHeaderIndex
-      : false;
-
-    // LOG THIS specifically to debug
-    console.log('[DRAG DEBUG] Identity Check:', {
-      draggedItemId: draggedItem?.id,
-      savedId: currentDragId,
-      isMatch: isOriginalHeader,
-      from,
-      to,
-      originalHeaderIndex,
-      fromMatchesOriginalIndex,
-    });
-
-    // 2. THE CORRECTED SAFETY CHECK
-    // Even if from (2) !== to (5), if it's the same physical item, it's a "No-op"
-    const isSamePosition = fromEqualsTo ||
-      (collapsedGroupId && isOriginalHeader);
-
-    console.log('[DRAG DEBUG] Position check', {
-      from,
-      to,
-      originalHeaderIndex,
-      fromEqualsTo,
-      fromMatchesOriginalIndex,
-      draggedItemId: draggedItem?.id,
-      savedId: currentDragId,
-      isOriginalHeader,
-      itemAtFromType: data[from]?.type,
-      itemAtFromGroupId: data[from]?.groupId,
-      itemAtToType: data[to]?.type,
-      itemAtToGroupId: data[to]?.groupId,
-      collapsedGroupId,
-      isSamePosition,
-    });
-
-    if (isSamePosition) {
-      console.log('[DRAG DEBUG] Same position detected - Aborting Reconstruction');
-      console.log('[DRAG DEBUG] Before clear - dragItems source:', {
-        usingReordered: reorderedDragItems.length > 0,
-        reorderedCount: reorderedDragItems.length,
-        baseCount: baseDragItems.length,
-        baseDragItemsHeaders: baseDragItems.filter(i => i.type === 'GroupHeader').map(i => ({ id: i.id, groupId: i.groupId })),
-      });
-
-      // FIX: Delay the state reset to allow FlatList's drop animation to complete
-      // Double requestAnimationFrame ensures we wait for the next paint cycle (~16-33ms on 60fps)
-      // This is the minimum delay needed while still allowing the animation to finish
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          setIsDragging(false);
-          setCollapsedGroupId(null);
-          setReorderedDragItems([]);
-          setPreCollapsePaddingTop(null);
-          collapsedItemHeights.current.clear();
-          itemHeights.current.clear();
-          touchYRef.current = null;
-          touchItemIdRef.current = null;
-          originalExercisesRef.current = null;
-          originalHeaderIndexRef.current = null;
-          // ONLY clear the ref here (early return)
-          pendingDragItemId.current = null;
-
-          console.log('[DRAG DEBUG] After clear - state should switch to baseDragItems', {
-            isDragging: false,
-            collapsedGroupId: null,
-            reorderedDragItemsCount: 0,
-            baseDragItemsCount: baseDragItems.length,
-            currentWorkoutExercisesCount: currentWorkout.exercises.length,
-          });
-          console.log('[DRAG DEBUG] handleDragEnd RETURNING - no further processing should happen');
-
-          // Reset processing flag immediately after state change (no additional delay needed)
-          isProcessingDragEndRef.current = false;
-          console.log('[DRAG DEBUG] Reset isProcessingDragEndRef flag');
-        });
-      });
-
-      return;
-    }
-
-    console.log('[DRAG DEBUG] from !== to, proceeding with normal drag end processing');
-
-    console.log('[DRAG DEBUG] Processing drag end - expanding groups and reconstructing');
-
-    // Expand groups if a group was being dragged (matches DragAndDropModal pattern)
+    // 1. ALWAYS expand the groups immediately. 
+    // This puts the exercises back behind their headers based on the current drag position.
     let expandedData = data;
     if (collapsedGroupId) {
-      console.log('[DRAG DEBUG] Expanding collapsed groups');
       expandedData = expandAllGroups(data);
-      setCollapsedGroupId(null);
     }
-    setReorderedDragItems([]);
 
-    console.log('[DRAG DEBUG] Converting drag items back to exercises');
-    // Convert drag items back to flat rows, then reconstruct exercises
+    // 2. Map the expanded drag items back to FlatRows
+    // This is the EXACT logic used for successful moves
     const newFlatRows: FlatExerciseRow[] = [];
-
     expandedData.forEach((item, itemIndex) => {
       if (item.type === 'GroupHeader') {
         newFlatRows.push({
-          type: 'group_header',
-          id: item.groupId!,
-          data: item.data,
-          depth: 0,
-          groupId: null,
+          type: 'group_header', id: item.groupId!, data: item.data, depth: 0, groupId: null,
         });
       } else if (item.type === 'Exercise') {
-        // Determine depth based on whether item is between a header and footer
         let depth = 0;
         let exerciseGroupId: string | null = null;
-
-        // Look backwards for a group header (that hasn't been closed by a footer)
-        let foundGroupId: string | null = null;
+        // Logic to detect if this exercise is currently inside a group based on neighborhood
         for (let i = itemIndex - 1; i >= 0; i--) {
-          const prevItem = expandedData[i];
-          if (prevItem.type === 'GroupFooter') {
-            break;
-          }
-          if (prevItem.type === 'GroupHeader') {
-            foundGroupId = prevItem.groupId;
+          if (expandedData[i].type === 'GroupFooter') break;
+          if (expandedData[i].type === 'GroupHeader') {
+            depth = 1;
+            exerciseGroupId = expandedData[i].groupId;
             break;
           }
         }
-
-        // Check if there's a corresponding footer after this item
-        if (foundGroupId) {
-          for (let i = itemIndex + 1; i < expandedData.length; i++) {
-            const nextItem = expandedData[i];
-            if (nextItem.type === 'GroupHeader') {
-              foundGroupId = null;
-              break;
-            }
-            if (nextItem.type === 'GroupFooter' && nextItem.groupId === foundGroupId) {
-              depth = 1;
-              exerciseGroupId = foundGroupId;
-              break;
-            }
-          }
-        }
-
         newFlatRows.push({
-          type: 'exercise',
-          id: item.id,
-          data: item.exercise,
-          depth,
-          groupId: exerciseGroupId,
+          type: 'exercise', id: item.id, data: item.exercise, depth, groupId: exerciseGroupId,
         });
       }
-      // Skip GroupFooter items - they're just visual markers
     });
 
-    // Remove empty groups (groups with headers but no exercises)
-    // First, identify which groups are empty
-    const emptyGroupIds = new Set<string>();
-    for (let i = 0; i < newFlatRows.length; i++) {
-      const row = newFlatRows[i];
+    // 3. Compare the new structure to the original structure
+    const newExercises = reconstructExercises(newFlatRows);
+    const originalExercises = originalExercisesRef.current;
 
-      if (row.type === 'group_header') {
-        // Check if this group has any exercises before the next group header
-        let hasExercises = false;
-        for (let j = i + 1; j < newFlatRows.length; j++) {
-          const nextRow = newFlatRows[j];
-          // If we hit another group header, this group is empty
-          if (nextRow.type === 'group_header') {
-            break;
-          }
-          // If we find an exercise in this group, it's not empty
-          if (nextRow.type === 'exercise' && nextRow.groupId === row.id) {
-            hasExercises = true;
-            break;
-          }
-        }
+    // JSON comparison is the only way to be 100% sure nothing logically changed
+    const hasChanged = JSON.stringify(newExercises) !== JSON.stringify(originalExercises);
 
-        if (!hasExercises) {
-          emptyGroupIds.add(row.id);
-          console.log('[DRAG DEBUG] Removing empty group', { groupId: row.id });
-        }
-      }
+    if (!hasChanged) {
+      console.log('[DRAG DEBUG] Logical equality detected - Aborting update to prevent glitch');
+      requestAnimationFrame(() => {
+        setIsDragging(false);
+        setCollapsedGroupId(null);
+        setReorderedDragItems([]);
+        setPreCollapsePaddingTop(null);
+        originalExercisesRef.current = null;
+        pendingDragItemId.current = null;
+        isProcessingDragEndRef.current = false;
+      });
+      return;
     }
 
-    // Filter out empty group headers and remove groupId from exercises in removed groups
-    const filteredFlatRows = newFlatRows
-      .filter(row => {
-        // Remove empty group headers
-        if (row.type === 'group_header' && emptyGroupIds.has(row.id)) {
-          return false;
-        }
-        return true;
-      })
-      .map(row => {
-        // Remove groupId from exercises that belonged to empty groups
-        if (row.type === 'exercise' && row.groupId && emptyGroupIds.has(row.groupId)) {
-          return {
-            ...row,
-            groupId: null,
-            depth: 0,
-          };
-        }
-        return row;
-      });
-
-    const newExercises = reconstructExercises(filteredFlatRows);
-    console.log('[DRAG DEBUG] Calling handleWorkoutUpdate with new exercises', {
-      newExercisesCount: newExercises.length,
-      oldExercisesCount: currentWorkout.exercises.length,
-    });
+    // 4. If it actually changed, update the workout
     handleWorkoutUpdate({ ...currentWorkout, exercises: newExercises });
 
-    console.log('[DRAG DEBUG] Clearing drag state after workout update');
+    // Cleanup
     setIsDragging(false);
+    setCollapsedGroupId(null);
+    setReorderedDragItems([]);
     setPreCollapsePaddingTop(null);
-    collapsedItemHeights.current.clear();
-    itemHeights.current.clear();
-    touchYRef.current = null;
-    touchItemIdRef.current = null;
     originalExercisesRef.current = null;
-    originalHeaderIndexRef.current = null;
-    // 3. FINALLY clear the ref at the very end of the function
     pendingDragItemId.current = null;
     isProcessingDragEndRef.current = false;
-    console.log('[DRAG DEBUG] handleDragEnd completed (from !== to path)');
   }, [currentWorkout, handleWorkoutUpdate, collapsedGroupId, expandAllGroups]);
 
   return {
