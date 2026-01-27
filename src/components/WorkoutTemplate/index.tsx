@@ -31,7 +31,6 @@ import { useWorkoutSupersets } from './hooks/useWorkoutSupersets';
 import { useWorkoutGroups } from './hooks/useWorkoutGroups';
 import { useWorkoutDragDrop, WorkoutDragItem, ExerciseDragItem } from './hooks/useWorkoutDragDrop';
 import RestTimerBar from './components/RestTimerBar';
-import MoveModeBanner from './components/MoveModeBanner';
 import FinishWorkoutModal from './modals/FinishWorkoutModal';
 import CancelWorkoutModal from './modals/CancelWorkoutModal';
 import RestTimerInputModal from './modals/RestTimerInputModal';
@@ -92,11 +91,6 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
   const [currentExerciseNote, setCurrentExerciseNote] = useState("");
   const [expandedExerciseNotes, setExpandedExerciseNotes] = useState<Record<string, boolean>>({});
 
-  // Move Mode State
-  const [isMoveMode, setIsMoveMode] = useState(false);
-  const [movingItemId, setMovingItemId] = useState<string | null>(null);
-  const [originalExercisesSnapshot, setOriginalExercisesSnapshot] = useState<ExerciseItem[] | null>(null);
-  const fadeAnim = useRef(new Animated.Value(1)).current;
   const scrollViewRef = useRef<ScrollView | null>(null);
 
   // Rest Period Modal State
@@ -224,30 +218,6 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
 
   // Rest Timer countdown is now handled in useWorkoutRestTimer hook
 
-  useEffect(() => {
-    if (isMoveMode && movingItemId) {
-      fadeAnim.setValue(1);
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(fadeAnim, {
-            toValue: 0.5,
-            duration: 1000,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-          }),
-          Animated.timing(fadeAnim, {
-            toValue: 1,
-            duration: 1000,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-    } else {
-      fadeAnim.stopAnimation();
-      fadeAnim.setValue(1);
-    }
-  }, [isMoveMode, movingItemId]);
 
   // Notes State
   const [showNotes, setShowNotes] = useState(false);
@@ -971,123 +941,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     handleEditSuperset(exerciseId);
   };
 
-  // --- Move Mode Handlers ---
 
-  const handleStartMove = (itemId: string) => {
-    if (!isMoveMode) {
-      setOriginalExercisesSnapshot(currentWorkout.exercises);
-      setIsMoveMode(true);
-    }
-    setMovingItemId(itemId);
-  };
-
-  const handleCancelMove = () => {
-    if (originalExercisesSnapshot) {
-      handleWorkoutUpdate({ ...currentWorkout, exercises: originalExercisesSnapshot });
-    }
-    setIsMoveMode(false);
-    setMovingItemId(null);
-    setOriginalExercisesSnapshot(null);
-  };
-
-  const handleDoneMove = () => {
-    setIsMoveMode(false);
-    setMovingItemId(null);
-    setOriginalExercisesSnapshot(null);
-  };
-
-  const handleMoveItem = (targetIndex: number, forceInsideGroup: boolean = false) => {
-    if (!movingItemId) return;
-
-    const flatRows = flattenExercises(currentWorkout.exercises);
-    const movingRowIndex = flatRows.findIndex(r => r.id === movingItemId);
-    if (movingRowIndex === -1) return;
-
-    const movingRow = flatRows[movingRowIndex];
-
-    // Calculate block size (1 for exercise, 1 + children for group)
-    let blockSize = 1;
-    if (movingRow.type === 'group_header') {
-      const groupData = movingRow.data as ExerciseGroup;
-      blockSize += (groupData.children ? groupData.children.length : 0);
-    }
-
-    // Adjust targetIndex if we are moving forward in the list
-    // Because removing the item will shift subsequent indices down
-    let insertIndex = targetIndex;
-    if (insertIndex > movingRowIndex) {
-      insertIndex -= blockSize;
-    }
-
-    // Remove from old position
-    const newFlatRows = [...flatRows];
-
-    // Determine new depth based on drop location (using newFlatRows BEFORE removal for context? No, AFTER removal)
-    // But we need context of where we are dropping.
-    // If we remove first, indices shift.
-    // Let's look at `newFlatRows` AFTER removal.
-
-    // Remove the block
-    const rowsToMove = newFlatRows.splice(movingRowIndex, blockSize);
-    const mainMovingRow = rowsToMove[0];
-
-    // Determine new depth based on drop location in the NEW list
-    let newDepth = 0;
-    let newGroupId = null;
-
-    if (insertIndex > 0) {
-      const prevRow = newFlatRows[insertIndex - 1];
-      if (forceInsideGroup) {
-        if (prevRow.type === 'group_header') {
-          newDepth = 1;
-          newGroupId = prevRow.id;
-        } else if (prevRow.type === 'exercise' && prevRow.depth === 1) {
-          newDepth = 1;
-          newGroupId = prevRow.groupId;
-        }
-      } else {
-        if (prevRow.type === 'group_header') {
-          newDepth = 1;
-          newGroupId = prevRow.id;
-        } else if (prevRow.type === 'exercise' && prevRow.depth === 1) {
-          newDepth = 1;
-          newGroupId = prevRow.groupId;
-        }
-      }
-    }
-
-    if (!forceInsideGroup && insertIndex > 0) {
-      const prevRow = newFlatRows[insertIndex - 1];
-      if (prevRow.type === 'exercise' && prevRow.depth === 1) {
-        newDepth = 0;
-        newGroupId = null;
-      }
-    }
-
-    // Update depth for moved rows
-    rowsToMove.forEach(r => {
-      if (r.type === 'group_header') {
-        r.depth = 0;
-        r.groupId = null;
-      } else if (r.type === 'exercise') {
-        // If it's the main moving row (single exercise), update its depth
-        if (r === mainMovingRow) {
-          r.depth = newDepth;
-          r.groupId = newGroupId;
-        }
-        // If it's a child of a moving group, it keeps its relative depth (1)
-        // But wait, if we move a group, `mainMovingRow` is header.
-        // Children are subsequent rows.
-        // We don't need to update children depth/groupId if they are still children of the header.
-        // `reconstructExercises` handles hierarchy based on header + children sequence.
-      }
-    });
-
-    newFlatRows.splice(insertIndex, 0, ...rowsToMove);
-
-    const newExercises = reconstructExercises(newFlatRows);
-    handleWorkoutUpdate({ ...currentWorkout, exercises: newExercises });
-  };
 
   const hasExercises = currentWorkout.exercises.length > 0;
 
@@ -1251,44 +1105,24 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
       return convertedSet;
     };
 
-    const isMoving = isMoveMode && movingItemId === ex.instanceId;
-    const isNotMoving = isMoveMode && !isMoving;
-
     const cardContent = (
       <View
         key={ex.instanceId}
         style={[
           styles.exerciseCard,
-          !isMoveMode && styles.exerciseCard__notMoveMode,
-          isMoveMode && styles.exerciseCard__moveMode,
-          isMoveMode && isNotMoving && styles.exerciseCard__moveMode__notSelected,
-          isMoveMode && isMoving && styles.exerciseCard__moveMode__selected,
           isGroupChild && styles.exerciseCard__groupChild,
           isGroupChild && isFirstChild && styles.exerciseCard__groupChild__first,
           isGroupChild && isLastChild && styles.exerciseCard__groupChild__last,
-          isGroupChild && !isMoveMode && groupColorScheme && {
+          isGroupChild && groupColorScheme && {
             borderColor: groupColorScheme[100],
           },
-          isMoveMode && isGroupChild && isNotMoving && groupColorScheme && {
-            borderColor: groupColorScheme[200],
-            backgroundColor: groupColorScheme[50],
-          },
-          isMoveMode && isGroupChild && isMoving && groupColorScheme && {
-            backgroundColor: groupColorScheme[100],
-          },
-          isLastChild && !isMoveMode && styles.groupChildWrapper__last
+          isLastChild && styles.groupChildWrapper__last
         ]}
       >
         <View style={[
           styles.exerciseHeader,
-          !isMoveMode && styles.exerciseHeader__notMoveMode,
-          isMoveMode && !isMoving && styles.exerciseHeader__moveMode__notSelected,
-          isMoveMode && isMoving && styles.exerciseHeader__moveMode__selected,
           isGroupChild && styles.exerciseHeader__groupChild,
-          isGroupChild && isMoving && groupColorScheme && {
-            backgroundColor: groupColorScheme[100],
-          },
-          isGroupChild && !isMoving && groupColorScheme && {
+          isGroupChild && groupColorScheme && {
             backgroundColor: groupColorScheme[50],
           }
         ]}>
@@ -1297,43 +1131,41 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
               <View style={styles.exerciseHeaderLeft}>
                 <View style={styles.exerciseNameRow}>
                   <Text style={styles.exerciseName}>{ex.name}</Text>
-                  {!isMoveMode && (
-                    <View style={styles.exerciseHeaderIcons}>
-                      <TouchableOpacity
-                        onPress={() => {
-                          if (!ex.notes || ex.notes.length === 0) {
-                            handleOpenExerciseNote(ex.instanceId);
-                          } else {
-                            toggleExerciseNotes(ex.instanceId);
-                          }
-                        }}
-                        style={styles.noteIconButton}
-                      >
-                        <FileText
-                          size={16}
-                          color={
-                            (!ex.notes || ex.notes.length === 0)
-                              ? COLORS.slate[400]
-                              : (ex.notes.some(n => n.pinned) ? COLORS.amber[500] : COLORS.blue[500])
-                          }
-                          fill="transparent"
-                        />
-                      </TouchableOpacity>
+                  <View style={styles.exerciseHeaderIcons}>
+                    <TouchableOpacity
+                      onPress={() => {
+                        if (!ex.notes || ex.notes.length === 0) {
+                          handleOpenExerciseNote(ex.instanceId);
+                        } else {
+                          toggleExerciseNotes(ex.instanceId);
+                        }
+                      }}
+                      style={styles.noteIconButton}
+                    >
+                      <FileText
+                        size={16}
+                        color={
+                          (!ex.notes || ex.notes.length === 0)
+                            ? COLORS.slate[400]
+                            : (ex.notes.some(n => n.pinned) ? COLORS.amber[500] : COLORS.blue[500])
+                        }
+                        fill="transparent"
+                      />
+                    </TouchableOpacity>
 
-                      {expandedExerciseNotes[ex.instanceId] && (
-                        <TouchableOpacity
-                          onPress={() => toggleExerciseNotes(ex.instanceId)}
-                          style={styles.addNewNoteButton}
-                        >
-                          <ChevronDown size={14} color={COLORS.slate[500]} style={{ transform: [{ rotate: '180deg' }] }} />
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  )}
+                    {expandedExerciseNotes[ex.instanceId] && (
+                      <TouchableOpacity
+                        onPress={() => toggleExerciseNotes(ex.instanceId)}
+                        style={styles.addNewNoteButton}
+                      >
+                        <ChevronDown size={14} color={COLORS.slate[500]} style={{ transform: [{ rotate: '180deg' }] }} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 </View>
               </View>
 
-              {!isMoveMode && !expandedExerciseNotes[ex.instanceId] && !readOnly && (
+              {!expandedExerciseNotes[ex.instanceId] && !readOnly && (
                 <View style={styles.exerciseHeaderActions}>
                   <TouchableOpacity
                     onPress={() => handleAddSet(ex.instanceId)}
@@ -1352,7 +1184,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
               )}
             </View>
 
-            {!isMoveMode && expandedExerciseNotes[ex.instanceId] && ex.notes && ex.notes.length > 0 && (
+            {expandedExerciseNotes[ex.instanceId] && ex.notes && ex.notes.length > 0 && (
               <View style={styles.expandedNotesContainer}>
                 {[...ex.notes].sort((a, b) => {
                   if (a.pinned && !b.pinned) return -1;
@@ -1405,262 +1237,253 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
             )}
           </View>
         </View>
-        {!isMoveMode && (
-          <View style={styles.exerciseContent}>
-            <View style={styles.columnHeaders}>
-              <View style={styles.colIndex}><Text style={styles.colHeaderText}>Set</Text></View>
-              <View style={styles.colPrevious}><Text style={styles.colHeaderText}>Previous</Text></View>
-              <View style={styles.colInputs}>
-                <Text style={styles.colHeaderText}>
-                  {ex.category === "Lifts" ? `Weight (${ex.weightUnit || 'lbs'})` : "Time"}
-                </Text>
-                <Text style={styles.colHeaderText}>{ex.category === "Lifts" ? "Reps" : "Dist/Reps"}</Text>
-              </View>
-              <View style={styles.colCheck}><Text style={styles.colHeaderText}>-</Text></View>
+        <View style={styles.exerciseContent}>
+          <View style={styles.columnHeaders}>
+            <View style={styles.colIndex}><Text style={styles.colHeaderText}>Set</Text></View>
+            <View style={styles.colPrevious}><Text style={styles.colHeaderText}>Previous</Text></View>
+            <View style={styles.colInputs}>
+              <Text style={styles.colHeaderText}>
+                {ex.category === "Lifts" ? `Weight (${ex.weightUnit || 'lbs'})` : "Time"}
+              </Text>
+              <Text style={styles.colHeaderText}>{ex.category === "Lifts" ? "Reps" : "Dist/Reps"}</Text>
             </View>
-            <View style={styles.setsContainer}>
-              {ex.sets.map((set, idx) => {
-                // Calculate separate indices for warmup vs working sets
-                // Warmups are indexed separately: 1.1w, 1.2w, 2.1w, 2.2w, etc.
-                // Working sets are indexed separately: 1, 2, 3 or 1.1, 1.2 for dropsets
+            <View style={styles.colCheck}><Text style={styles.colHeaderText}>-</Text></View>
+          </View>
+          <View style={styles.setsContainer}>
+            {ex.sets.map((set, idx) => {
+              // Calculate separate indices for warmup vs working sets
+              // Warmups are indexed separately: 1.1w, 1.2w, 2.1w, 2.2w, etc.
+              // Working sets are indexed separately: 1, 2, 3 or 1.1, 1.2 for dropsets
 
-                let warmupIndex = null;  // { group: number, subIndex: number | null }
-                let workingIndex = null; // { group: number, subIndex: number | null }
+              let warmupIndex = null;  // { group: number, subIndex: number | null }
+              let workingIndex = null; // { group: number, subIndex: number | null }
 
-                // Track seen groups for warmups and working sets separately
-                let warmupGroupNum = 0;
-                let workingGroupNum = 0;
-                const seenWarmupGroups = new Set();
-                const seenWorkingGroups = new Set();
+              // Track seen groups for warmups and working sets separately
+              let warmupGroupNum = 0;
+              let workingGroupNum = 0;
+              const seenWarmupGroups = new Set();
+              const seenWorkingGroups = new Set();
 
-                // First pass: count all groups/sets before this index
-                for (let i = 0; i < idx; i++) {
-                  const s = ex.sets[i];
-                  if (s.isWarmup) {
-                    if (s.dropSetId) {
-                      if (!seenWarmupGroups.has(s.dropSetId)) {
-                        seenWarmupGroups.add(s.dropSetId);
-                        warmupGroupNum++;
-                      }
-                    } else {
+              // First pass: count all groups/sets before this index
+              for (let i = 0; i < idx; i++) {
+                const s = ex.sets[i];
+                if (s.isWarmup) {
+                  if (s.dropSetId) {
+                    if (!seenWarmupGroups.has(s.dropSetId)) {
+                      seenWarmupGroups.add(s.dropSetId);
                       warmupGroupNum++;
                     }
-                  } else {
-                    if (s.dropSetId) {
-                      if (!seenWorkingGroups.has(s.dropSetId)) {
-                        seenWorkingGroups.add(s.dropSetId);
-                        workingGroupNum++;
-                      }
-                    } else {
-                      workingGroupNum++;
-                    }
-                  }
-                }
-
-                // Now calculate the index for the current set
-                if (set.isWarmup) {
-                  if (set.dropSetId) {
-                    if (!seenWarmupGroups.has(set.dropSetId)) {
-                      warmupGroupNum++;
-                    }
-                    // Find all warmup sets in this dropset group
-                    const warmupGroupSets = ex.sets.filter(s => s.dropSetId === set.dropSetId && s.isWarmup);
-                    const subIdx = warmupGroupSets.findIndex(s => s.id === set.id) + 1;
-                    warmupIndex = { group: warmupGroupNum, subIndex: subIdx };
                   } else {
                     warmupGroupNum++;
-                    warmupIndex = { group: warmupGroupNum, subIndex: null };
                   }
                 } else {
-                  if (set.dropSetId) {
-                    if (!seenWorkingGroups.has(set.dropSetId)) {
+                  if (s.dropSetId) {
+                    if (!seenWorkingGroups.has(s.dropSetId)) {
+                      seenWorkingGroups.add(s.dropSetId);
                       workingGroupNum++;
                     }
-                    // Find all non-warmup sets in this dropset group
-                    const workingGroupSets = ex.sets.filter(s => s.dropSetId === set.dropSetId && !s.isWarmup);
-                    const subIdx = workingGroupSets.findIndex(s => s.id === set.id) + 1;
-                    workingIndex = { group: workingGroupNum, subIndex: subIdx };
                   } else {
                     workingGroupNum++;
-                    workingIndex = { group: workingGroupNum, subIndex: null };
                   }
                 }
+              }
 
-                // Legacy values for backward compatibility (groupSetNumber, indexInGroup, overallSetNumber)
-                let overallSetNumber = 0;
-                let groupSetNumber = null;
-                let indexInGroup = null;
-                const seenGroupIds = new Set();
-
-                for (let i = 0; i < idx; i++) {
-                  if (ex.sets[i].dropSetId) {
-                    if (!seenGroupIds.has(ex.sets[i].dropSetId)) {
-                      seenGroupIds.add(ex.sets[i].dropSetId);
-                      overallSetNumber++;
-                    }
-                  } else {
-                    overallSetNumber++;
-                  }
-                }
-
+              // Now calculate the index for the current set
+              if (set.isWarmup) {
                 if (set.dropSetId) {
-                  if (!seenGroupIds.has(set.dropSetId)) {
+                  if (!seenWarmupGroups.has(set.dropSetId)) {
+                    warmupGroupNum++;
+                  }
+                  // Find all warmup sets in this dropset group
+                  const warmupGroupSets = ex.sets.filter(s => s.dropSetId === set.dropSetId && s.isWarmup);
+                  const subIdx = warmupGroupSets.findIndex(s => s.id === set.id) + 1;
+                  warmupIndex = { group: warmupGroupNum, subIndex: subIdx };
+                } else {
+                  warmupGroupNum++;
+                  warmupIndex = { group: warmupGroupNum, subIndex: null };
+                }
+              } else {
+                if (set.dropSetId) {
+                  if (!seenWorkingGroups.has(set.dropSetId)) {
+                    workingGroupNum++;
+                  }
+                  // Find all non-warmup sets in this dropset group
+                  const workingGroupSets = ex.sets.filter(s => s.dropSetId === set.dropSetId && !s.isWarmup);
+                  const subIdx = workingGroupSets.findIndex(s => s.id === set.id) + 1;
+                  workingIndex = { group: workingGroupNum, subIndex: subIdx };
+                } else {
+                  workingGroupNum++;
+                  workingIndex = { group: workingGroupNum, subIndex: null };
+                }
+              }
+
+              // Legacy values for backward compatibility (groupSetNumber, indexInGroup, overallSetNumber)
+              let overallSetNumber = 0;
+              let groupSetNumber = null;
+              let indexInGroup = null;
+              const seenGroupIds = new Set();
+
+              for (let i = 0; i < idx; i++) {
+                if (ex.sets[i].dropSetId) {
+                  if (!seenGroupIds.has(ex.sets[i].dropSetId)) {
+                    seenGroupIds.add(ex.sets[i].dropSetId);
                     overallSetNumber++;
                   }
-                  groupSetNumber = overallSetNumber;
-                  const groupSets = ex.sets.filter(s => s.dropSetId === set.dropSetId);
-                  indexInGroup = groupSets.findIndex(s => s.id === set.id) + 1;
                 } else {
                   overallSetNumber++;
                 }
+              }
 
-                // Determine the group bar color type
-                // If in selection mode editing this group, use the temporary groupSetType state
-                // Otherwise, check if ALL sets in the group have the SAME type (indicating group-level type)
-                let displayGroupSetType = null;
-                if (set.dropSetId) {
-                  if (selectionMode?.exerciseId === ex.instanceId && selectionMode?.editingGroupId === set.dropSetId && groupSetType) {
-                    displayGroupSetType = groupSetType;
-                  } else {
-                    // Check if ALL sets in this group have the same type flag
-                    const groupSetsForType = ex.sets.filter(s => s.dropSetId === set.dropSetId);
-                    const allWarmup = groupSetsForType.length > 0 && groupSetsForType.every(s => s.isWarmup);
-                    const allDropset = groupSetsForType.length > 0 && groupSetsForType.every(s => s.isDropset);
-                    const allFailure = groupSetsForType.length > 0 && groupSetsForType.every(s => s.isFailure);
-
-                    if (allWarmup) displayGroupSetType = 'warmup';
-                    else if (allDropset) displayGroupSetType = 'dropset';
-                    else if (allFailure) displayGroupSetType = 'failure';
-                  }
+              if (set.dropSetId) {
+                if (!seenGroupIds.has(set.dropSetId)) {
+                  overallSetNumber++;
                 }
+                groupSetNumber = overallSetNumber;
+                const groupSets = ex.sets.filter(s => s.dropSetId === set.dropSetId);
+                indexInGroup = groupSets.findIndex(s => s.id === set.id) + 1;
+              } else {
+                overallSetNumber++;
+              }
 
-                // Get the previous set data with smart lookup
-                const previousData = getPreviousSetData(set, warmupIndex, workingIndex);
+              // Determine the group bar color type
+              // If in selection mode editing this group, use the temporary groupSetType state
+              // Otherwise, check if ALL sets in the group have the SAME type (indicating group-level type)
+              let displayGroupSetType = null;
+              if (set.dropSetId) {
+                if (selectionMode?.exerciseId === ex.instanceId && selectionMode?.editingGroupId === set.dropSetId && groupSetType) {
+                  displayGroupSetType = groupSetType;
+                } else {
+                  // Check if ALL sets in this group have the same type flag
+                  const groupSetsForType = ex.sets.filter(s => s.dropSetId === set.dropSetId);
+                  const allWarmup = groupSetsForType.length > 0 && groupSetsForType.every(s => s.isWarmup);
+                  const allDropset = groupSetsForType.length > 0 && groupSetsForType.every(s => s.isDropset);
+                  const allFailure = groupSetsForType.length > 0 && groupSetsForType.every(s => s.isFailure);
 
-                // Determine if rest timer should show after this set
-                const showRestTimer = set.restPeriodSeconds && !readOnly;
-                const isRestTimerActive = activeRestTimer?.setId === set.id;
+                  if (allWarmup) displayGroupSetType = 'warmup';
+                  else if (allDropset) displayGroupSetType = 'dropset';
+                  else if (allFailure) displayGroupSetType = 'failure';
+                }
+              }
 
-                return (
-                  <React.Fragment key={set.id}>
-                    <SetRow index={idx} set={set} category={ex.category}
-                      weightUnit={ex.weightUnit}
-                      previousSet={previousData ? convertPreviousSet(previousData) : null}
-                      previousSetIsFromOlderHistory={previousData?.isFromOlderHistory || false}
-                      onUpdate={(s) => handleUpdateSet(ex.instanceId, s)}
-                      onToggle={() => handleToggleComplete(ex.instanceId, set)}
-                      onDelete={() => handleDeleteSet(ex.instanceId, set.id)}
-                      isLast={idx === ex.sets.length - 1}
-                      onPressSetNumber={(pageX, pageY, width, height) => handleSetNumberPress(ex.instanceId, set.id, pageX, pageY, width, height)}
-                      isSelectionMode={selectionMode?.exerciseId === ex.instanceId}
-                      isSelected={selectedSetIds.has(set.id)}
-                      onToggleSelection={(isAddToGroupAction) => handleToggleSetSelection(set.id, isAddToGroupAction)}
-                      dropSetId={set.dropSetId}
-                      isDropSetStart={!!(set.dropSetId && (idx === 0 || ex.sets[idx - 1].dropSetId !== set.dropSetId))}
-                      isDropSetEnd={!!(set.dropSetId && (idx === ex.sets.length - 1 || ex.sets[idx + 1]?.dropSetId !== set.dropSetId) && !set.restPeriodSeconds)}
-                      groupSetNumber={groupSetNumber ?? 0}
-                      indexInGroup={indexInGroup ?? 0}
-                      overallSetNumber={overallSetNumber}
-                      warmupIndex={warmupIndex}
-                      workingIndex={workingIndex}
-                      editingGroupId={selectionMode?.editingGroupId}
-                      groupSetType={displayGroupSetType as GroupSetType}
-                      readOnly={readOnly}
-                      shouldFocus={focusNextSet?.setId === set.id ? (focusNextSet.field === 'weight' || focusNextSet.field === 'reps' ? focusNextSet.field : null) : null}
-                      onFocusHandled={() => setFocusNextSet(null)}
-                      onCustomKeyboardOpen={!readOnly && ex.category === 'Lifts' ? ({ field, value }) => handleCustomKeyboardOpen(ex.instanceId, set.id, field, value) : null}
-                      customKeyboardActive={customKeyboardTarget?.exerciseId === ex.instanceId && customKeyboardTarget?.setId === set.id}
-                      customKeyboardField={customKeyboardTarget?.exerciseId === ex.instanceId && customKeyboardTarget?.setId === set.id ? (customKeyboardTarget.field === 'weight' || customKeyboardTarget.field === 'reps' ? customKeyboardTarget.field : null) : null}
-                    />
+              // Get the previous set data with smart lookup
+              const previousData = getPreviousSetData(set, warmupIndex, workingIndex);
 
-                    {/* Rest Timer Bar */}
-                    {showRestTimer && (() => {
-                      // Determine if this rest timer is at the end of a dropset
-                      const isRestTimerDropSetEnd = !!(set.dropSetId && (idx === ex.sets.length - 1 || ex.sets[idx + 1]?.dropSetId !== set.dropSetId));
+              // Determine if rest timer should show after this set
+              const showRestTimer = set.restPeriodSeconds && !readOnly;
+              const isRestTimerActive = activeRestTimer?.setId === set.id;
 
-                      return (
-                        <RestTimerBar
-                          set={set}
-                          exerciseId={ex.instanceId}
-                          currentWorkout={currentWorkout}
-                          handleWorkoutUpdate={handleWorkoutUpdate}
-                          activeRestTimer={activeRestTimer}
-                          setActiveRestTimer={setActiveRestTimer}
-                          setRestPeriodSetInfo={setRestPeriodSetInfo}
-                          setRestTimerInput={setRestTimerInput}
-                          setRestPeriodModalOpen={setRestPeriodModalOpen}
-                          setRestTimerPopupOpen={setRestTimerPopupOpen}
-                          isRestTimerDropSetEnd={isRestTimerDropSetEnd}
-                          displayGroupSetType={displayGroupSetType as GroupSetType}
-                          styles={styles}
-                        />
-                      );
-                    })()}
-                  </React.Fragment>
-                );
-              })}
-            </View>
+              return (
+                <React.Fragment key={set.id}>
+                  <SetRow index={idx} set={set} category={ex.category}
+                    weightUnit={ex.weightUnit}
+                    previousSet={previousData ? convertPreviousSet(previousData) : null}
+                    previousSetIsFromOlderHistory={previousData?.isFromOlderHistory || false}
+                    onUpdate={(s) => handleUpdateSet(ex.instanceId, s)}
+                    onToggle={() => handleToggleComplete(ex.instanceId, set)}
+                    onDelete={() => handleDeleteSet(ex.instanceId, set.id)}
+                    isLast={idx === ex.sets.length - 1}
+                    onPressSetNumber={(pageX, pageY, width, height) => handleSetNumberPress(ex.instanceId, set.id, pageX, pageY, width, height)}
+                    isSelectionMode={selectionMode?.exerciseId === ex.instanceId}
+                    isSelected={selectedSetIds.has(set.id)}
+                    onToggleSelection={(isAddToGroupAction) => handleToggleSetSelection(set.id, isAddToGroupAction)}
+                    dropSetId={set.dropSetId}
+                    isDropSetStart={!!(set.dropSetId && (idx === 0 || ex.sets[idx - 1].dropSetId !== set.dropSetId))}
+                    isDropSetEnd={!!(set.dropSetId && (idx === ex.sets.length - 1 || ex.sets[idx + 1]?.dropSetId !== set.dropSetId) && !set.restPeriodSeconds)}
+                    groupSetNumber={groupSetNumber ?? 0}
+                    indexInGroup={indexInGroup ?? 0}
+                    overallSetNumber={overallSetNumber}
+                    warmupIndex={warmupIndex}
+                    workingIndex={workingIndex}
+                    editingGroupId={selectionMode?.editingGroupId}
+                    groupSetType={displayGroupSetType as GroupSetType}
+                    readOnly={readOnly}
+                    shouldFocus={focusNextSet?.setId === set.id ? (focusNextSet.field === 'weight' || focusNextSet.field === 'reps' ? focusNextSet.field : null) : null}
+                    onFocusHandled={() => setFocusNextSet(null)}
+                    onCustomKeyboardOpen={!readOnly && ex.category === 'Lifts' ? ({ field, value }) => handleCustomKeyboardOpen(ex.instanceId, set.id, field, value) : null}
+                    customKeyboardActive={customKeyboardTarget?.exerciseId === ex.instanceId && customKeyboardTarget?.setId === set.id}
+                    customKeyboardField={customKeyboardTarget?.exerciseId === ex.instanceId && customKeyboardTarget?.setId === set.id ? (customKeyboardTarget.field === 'weight' || customKeyboardTarget.field === 'reps' ? customKeyboardTarget.field : null) : null}
+                  />
 
-            {selectionMode?.exerciseId === ex.instanceId && (
-              <View style={styles.selectionModeFooter}>
-                <View style={styles.groupTypeDropdownContainer}>
-                  <TouchableOpacity
-                    onPress={() => setGroupSetType(groupSetType === 'warmup' ? null : 'warmup')}
-                    style={[
-                      styles.groupTypeOption,
-                      groupSetType === 'warmup' && styles.groupTypeOption__warmup
-                    ]}
-                  >
-                    <Flame size={14} color={groupSetType === 'warmup' ? COLORS.white : COLORS.orange[500]} />
-                    <Text style={[
-                      styles.groupTypeOptionText,
-                      groupSetType === 'warmup' && styles.groupTypeOptionText__selected
-                    ]}>Warmup</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => setGroupSetType(groupSetType === 'failure' ? null : 'failure')}
-                    style={[
-                      styles.groupTypeOption,
-                      groupSetType === 'failure' && styles.groupTypeOption__failure
-                    ]}
-                  >
-                    <Zap size={14} color={groupSetType === 'failure' ? COLORS.white : COLORS.red[500]} />
-                    <Text style={[
-                      styles.groupTypeOptionText,
-                      groupSetType === 'failure' && styles.groupTypeOptionText__selected
-                    ]}>Failure</Text>
-                  </TouchableOpacity>
-                </View>
+                  {/* Rest Timer Bar */}
+                  {showRestTimer && (() => {
+                    // Determine if this rest timer is at the end of a dropset
+                    const isRestTimerDropSetEnd = !!(set.dropSetId && (idx === ex.sets.length - 1 || ex.sets[idx + 1]?.dropSetId !== set.dropSetId));
 
-                <View style={styles.selectionModeActions}>
-                  <TouchableOpacity onPress={handleCancelDropSet} style={styles.selectionCancelButton}>
-                    <Text style={styles.selectionCancelText}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={handleSubmitDropSet}
-                    style={styles.selectionSubmitButton}
-                  >
-                    <Text style={styles.selectionSubmitText}>Save</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
+                    return (
+                      <RestTimerBar
+                        set={set}
+                        exerciseId={ex.instanceId}
+                        currentWorkout={currentWorkout}
+                        handleWorkoutUpdate={handleWorkoutUpdate}
+                        activeRestTimer={activeRestTimer}
+                        setActiveRestTimer={setActiveRestTimer}
+                        setRestPeriodSetInfo={setRestPeriodSetInfo}
+                        setRestTimerInput={setRestTimerInput}
+                        setRestPeriodModalOpen={setRestPeriodModalOpen}
+                        setRestTimerPopupOpen={setRestTimerPopupOpen}
+                        isRestTimerDropSetEnd={isRestTimerDropSetEnd}
+                        displayGroupSetType={displayGroupSetType as GroupSetType}
+                        styles={styles}
+                      />
+                    );
+                  })()}
+                </React.Fragment>
+              );
+            })}
           </View>
-        )}
 
-        {isMoving && (
-          <Animated.View
-            pointerEvents="none"
-            style={[
-              StyleSheet.absoluteFillObject,
-              styles.movingItemOverlay,
-              isGroupChild && groupColorScheme ? {
-                borderColor: groupColorScheme[500],
-              } : styles.movingItemOverlay__regular,
-              { opacity: fadeAnim }
-            ]}
-          />
-        )}
+          {selectionMode?.exerciseId === ex.instanceId && (
+            <View style={[
+              styles.selectionModeFooter,
+              isGroupChild && groupColorScheme && {
+                borderColor: groupColorScheme[200],
+                backgroundColor: groupColorScheme[100],
+              },
+            ]}>
+              <View style={styles.groupTypeDropdownContainer}>
+                <TouchableOpacity
+                  onPress={() => setGroupSetType(groupSetType === 'warmup' ? null : 'warmup')}
+                  style={[
+                    styles.groupTypeOption,
+                    groupSetType === 'warmup' && styles.groupTypeOption__warmup
+                  ]}
+                >
+                  <Flame size={14} color={groupSetType === 'warmup' ? COLORS.white : COLORS.orange[500]} />
+                  <Text style={[
+                    styles.groupTypeOptionText,
+                    groupSetType === 'warmup' && styles.groupTypeOptionText__selected
+                  ]}>Warmup</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setGroupSetType(groupSetType === 'failure' ? null : 'failure')}
+                  style={[
+                    styles.groupTypeOption,
+                    groupSetType === 'failure' && styles.groupTypeOption__failure
+                  ]}
+                >
+                  <Zap size={14} color={groupSetType === 'failure' ? COLORS.white : COLORS.red[500]} />
+                  <Text style={[
+                    styles.groupTypeOptionText,
+                    groupSetType === 'failure' && styles.groupTypeOptionText__selected
+                  ]}>Failure</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.selectionModeActions}>
+                <TouchableOpacity onPress={handleCancelDropSet} style={styles.selectionCancelButton}>
+                  <Text style={styles.selectionCancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleSubmitDropSet}
+                  style={styles.selectionSubmitButton}
+                >
+                  <Text style={styles.selectionSubmitText}>Save</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+        </View>
+
       </View>
     );
 
@@ -1677,15 +1500,12 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
               borderColor: groupColorScheme[200],
               backgroundColor: groupColorScheme[100],
             },
-            isLastChild && !isMoveMode && styles.groupChildWrapper__last,
-            isLastChild && !isMoveMode && groupColorScheme && {
+            isLastChild && styles.groupChildWrapper__last,
+            isLastChild && groupColorScheme && {
               borderBottomColor: groupColorScheme[200],
             },
-            isLastChild && !isMoveMode && shouldHaveMargin && { marginBottom: 16 },
-            isLastChild && !isMoveMode && !shouldHaveMargin && { marginBottom: 0 },
-            isMoveMode && groupColorScheme && {
-              backgroundColor: groupColorScheme[50],
-            }
+            isLastChild && shouldHaveMargin && { marginBottom: 16 },
+            isLastChild && !shouldHaveMargin && { marginBottom: 0 }
           ]}
         >
           {cardContent}
@@ -1727,6 +1547,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
           activeOpacity={1}
           style={[
             styles.dragGroupHeaderContainer,
+            isDragging && !isActive && styles.dragGroupHeaderContainer__exerciseDrag,
             isActive && {
               opacity: 0.9,
               shadowColor: '#000',
@@ -1762,7 +1583,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
             <View style={styles.dragGroupHeaderContent}>
               <Layers size={16} color={groupColorScheme[600]} />
               <Text style={[styles.dragGroupHeaderText, { color: groupColorScheme[700] }]}>
-                {item.groupType} ({item.childCount})
+                {item.groupType}
               </Text>
             </View>
           </View>
@@ -1803,6 +1624,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
               <View
                 style={[
                   styles.dragGroupFooter,
+                  styles.dragGroupFooter__dragging,
                   {
                     borderColor: groupColorScheme[200],
                     backgroundColor: groupColorScheme[100],
@@ -1835,9 +1657,11 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
         <View
           style={[
             styles.dragGroupFooter,
+            isDragging && !isDraggedGroup && styles.dragGroupFooter__exerciseDrag,
             {
               borderColor: groupColorScheme[200],
               backgroundColor: groupColorScheme[100],
+              opacity: isDragging ? 1 : 0, // Visible only when dragging
             },
           ]}
         />
@@ -1874,25 +1698,54 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
           delayLongPress={150}
           activeOpacity={1}
           style={[
-            styles.dragExerciseCard,
-            item.groupId && styles.dragExerciseCard__inGroup,
-            item.groupId && groupColorScheme && {
-              backgroundColor: groupColorScheme[50],
-              borderColor: groupColorScheme[200],
+            isActive && {
+              opacity: 0.9,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.15,
+              shadowRadius: 4,
+              elevation: 20,
+              zIndex: 9999,
+              transform: [{ scale: 1.02 }],
+              position: 'relative',
             },
-            item.isFirstInGroup && styles.dragExerciseCard__firstInGroup,
-            item.isLastInGroup && styles.dragExerciseCard__lastInGroup,
-            isActive && styles.dragItem__active,
           ]}
         >
-          <View style={styles.dragExerciseContent}>
-            <Text style={styles.dragExerciseName}>{item.exercise.name}</Text>
-            <Text style={[
-              styles.dragExerciseSetCount,
-              groupColorScheme && { color: groupColorScheme[600] }
-            ]}>
-              {item.setCount} sets
-            </Text>
+          <View
+            style={[
+              styles.dragExerciseCard,
+              item.groupId && styles.dragExerciseCard__inGroup,
+              item.groupId && groupColorScheme && {
+                backgroundColor: groupColorScheme[50],
+                borderColor: groupColorScheme[200],
+              },
+              item.isFirstInGroup && styles.dragExerciseCard__firstInGroup,
+              item.isLastInGroup && styles.dragExerciseCard__lastInGroup,
+              isActive && styles.dragItem__active,
+              isActive && item.groupId && groupColorScheme && {
+                borderColor: groupColorScheme[300],
+                zIndex: 9999,
+                elevation: 20,
+              },
+              // Add bottom border for frozen grouped exercises (not last in group) when dragging
+              // Applies when dragging individual exercise OR when a collapsed group is being dragged
+              // When dragging a collapsed group, collapsedGroupId is set; when dragging individual exercise, isDragging is true
+              // Other groups remain expanded when dragging a collapsed group, so their exercises are visible and can receive styling
+              ((isDragging && !isActive) || (collapsedGroupId && !isDraggedGroup)) && item.groupId && !isCollapsed && !item.isLastInGroup && groupColorScheme && {
+                borderBottomWidth: 1,
+                borderBottomColor: groupColorScheme[200],
+              },
+            ]}
+          >
+            <View style={styles.dragExerciseContent}>
+              <Text style={styles.dragExerciseName}>{item.exercise.name}</Text>
+              <Text style={[
+                styles.dragExerciseSetCount,
+                groupColorScheme && { color: groupColorScheme[600] }
+              ]}>
+                {item.setCount} sets
+              </Text>
+            </View>
           </View>
         </TouchableOpacity>
       );
@@ -1926,9 +1779,13 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
   const dragKeyExtractor = useCallback((item: WorkoutDragItem) => item.id, []);
 
   const notesHeaderComponent = useMemo(() => {
-    if (isDragging || isMoveMode) return null;
+    if (isDragging) return null;
     return (
-      <View style={styles.notesSection}>
+      <View style={[
+        styles.notesSection,
+        !showNotes && styles.notesSection__collapsed,
+        showNotes && styles.notesSection__expanded,
+      ]}>
         <View style={styles.notesHeader}>
           <TouchableOpacity onPress={() => setShowNotes(!showNotes)} style={styles.notesToggle}>
             <FileText size={16} color={COLORS.slate[500]} />
@@ -1961,7 +1818,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
         )}
       </View>
     );
-  }, [isDragging, isMoveMode, showNotes, currentWorkout.sessionNotes, sortedNotes, handlePinNote, handleRemoveNote]);
+  }, [isDragging, showNotes, currentWorkout.sessionNotes, sortedNotes, handlePinNote, handleRemoveNote]);
 
   const renderDraggableExercises = () => {
     if (currentWorkout.exercises.length === 0) {
@@ -2015,13 +1872,6 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
 
   return (
     <SafeAreaView style={styles.container}>
-      {isMoveMode && (
-        <MoveModeBanner
-          onCancel={handleCancelMove}
-          onDone={handleDoneMove}
-          styles={styles}
-        />
-      )}
 
       {customHeader ? customHeader : (
         <View style={styles.header}>
@@ -2045,21 +1895,12 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
               </View>
             </View>
           </View>
-          {isMoveMode ? (
-            <TouchableOpacity
-              onPress={handleCancelMove}
-              style={[styles.finishButton, styles.finishButton__cancelMode]}
-            >
-              <Text style={styles.finishButtonText}>CANCEL</Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              onPress={handleCancel}
-              style={[styles.finishButton, styles.finishButton__cancelWorkout]}
-            >
-              <Text style={styles.finishButtonText}>CANCEL</Text>
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity
+            onPress={handleCancel}
+            style={[styles.finishButton, styles.finishButton__cancelWorkout]}
+          >
+            <Text style={styles.finishButtonText}>CANCEL</Text>
+          </TouchableOpacity>
         </View>
       )}
 
@@ -2601,13 +2442,14 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.slate[50],
+    backgroundColor: COLORS.white,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     backgroundColor: COLORS.white,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.slate[200],
@@ -2620,7 +2462,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   workoutNameInput: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
     color: COLORS.slate[900],
     textAlign: 'center',
@@ -2667,6 +2509,13 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.slate[100],
     borderBottomWidth: 1,
     borderBottomColor: COLORS.slate[200],
+    marginHorizontal: -6,
+  },
+  notesSection__collapsed: {
+    borderBottomWidth: 0, // Remove double border effect when collapsed
+  },
+  notesSection__expanded: {
+    borderBottomWidth: 1, // Keep border when expanded
   },
   notesHeader: {
     flexDirection: 'row',
@@ -2737,6 +2586,8 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 8,
+    marginHorizontal: 8,
     height: 200,
     borderWidth: 2,
     borderColor: COLORS.slate[200],
@@ -2785,69 +2636,42 @@ const styles = StyleSheet.create({
   },
   exerciseCard: {
     backgroundColor: COLORS.white,
-    borderRadius: 0,
-    borderWidth: 1,
+    borderRadius: 8,
+    borderWidth: 2,
     borderColor: COLORS.slate[100],
     overflow: 'hidden',
     marginTop: 4,
-    marginBottom: 8,
-    marginHorizontal: 0,
-  },
-  exerciseCard__notMoveMode: {
-    borderWidth: 1,
-    borderRadius: 8,
-  },
-  exerciseCard__moveMode: {
     marginBottom: 0,
-  },
-  exerciseCard__moveMode__notSelected: {
-    borderRadius: 8,
-    borderColor: COLORS.slate[200],
-  },
-  exerciseCard__moveMode__selected: {
-    borderWidth: 0,
-    borderRadius: 12,
-    backgroundColor: COLORS.slate[50],
-    zIndex: 10,
+    marginHorizontal: 0,
   },
   exerciseCard__groupChild: {
     marginHorizontal: 0,
     marginBottom: 0,
     marginTop: 0,
-    borderRadius: 8,
-    borderWidth: 1,
+    borderRadius: 0,
+    borderWidth: 0,
+    borderTopWidth: 2,
   },
   exerciseCard__groupChild__first: {
     marginTop: 0,
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 10,
   },
   exerciseCard__groupChild__last: {
     marginBottom: 0,
+    borderBottomLeftRadius: 8,
+    borderBottomRightRadius: 8,
   },
 
   exerciseHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
-    paddingTop: 10,
+    paddingTop: 8,
     paddingBottom: 8,
     paddingHorizontal: 12,
-    backgroundColor: COLORS.blue[50],
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.blue[200],
-  },
-  exerciseHeader__notMoveMode: {
     backgroundColor: COLORS.slate[50],
     borderBottomWidth: 0,
-  },
-  exerciseHeader__moveMode__notSelected: {
-    borderBottomWidth: 0,
-    paddingBottom: 8,
-    opacity: 0.4,
-  },
-  exerciseHeader__moveMode__selected: {
-    borderBottomWidth: 0,
-    paddingBottom: 16,
-    paddingTop: 16,
   },
   exerciseHeader__groupChild: {
     paddingBottom: 8,
@@ -3429,10 +3253,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 12,
-    backgroundColor: COLORS.slate[50],
-    borderTopWidth: 1,
-    borderTopColor: COLORS.slate[200],
+    paddingHorizontal: 12,
+    paddingVertical: 0,
+    marginBottom: 0,
+    marginHorizontal: -2,
+    borderWidth: 2,
+    borderTopWidth: 0,
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+    minHeight: 8,
     gap: 12,
   },
   groupTypeDropdownContainer: {
@@ -3489,22 +3320,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 
-  // Moving item overlay
-  movingItemOverlay: {
-    borderWidth: 2,
-    borderRadius: 12,
-    zIndex: 20,
-  },
-  movingItemOverlay__regular: {
-    borderColor: COLORS.blue[500],
-  },
 
   // Group child wrapper
   groupChildWrapper: {
     marginHorizontal: -2,
     borderLeftWidth: 2,
     borderRightWidth: 2,
-    paddingHorizontal: 1,
+    paddingHorizontal: 2,
     borderColor: 'transparent',
     backgroundColor: 'transparent',
   },
@@ -3513,43 +3335,10 @@ const styles = StyleSheet.create({
     marginBottom: 0, // Will be conditionally set to 16 in drag mode for unselected groups
     borderBottomLeftRadius: 12,
     borderBottomRightRadius: 12,
+    paddingBottom: 0,
   },
 
   // Move mode banner
-  moveModeBanner: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 100,
-    backgroundColor: COLORS.blue[600],
-    padding: 12,
-    paddingTop: 80,
-    paddingBottom: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    elevation: 5,
-  },
-  moveModeBannerButtonText: {
-    color: COLORS.white,
-    fontWeight: 'bold',
-  },
-  moveModeBannerCenter: {
-    alignItems: 'center',
-  },
-  moveModeBannerTitle: {
-    color: COLORS.white,
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  moveModeBannerSubtitle: {
-    color: COLORS.blue[100],
-    fontSize: 12,
-  },
 
   // Finish button variants
   finishButton__cancelMode: {
@@ -3835,15 +3624,18 @@ const styles = StyleSheet.create({
     color: COLORS.white,
   },
   dragListContent: {
-    paddingHorizontal: 8,
-    paddingTop: 4,
+    paddingHorizontal: 6,
+    paddingTop: 0,
     paddingBottom: 100,
   },
   dragGroupHeaderContainer: {
-    marginTop: 4,
+    marginTop: 0,
     marginBottom: 0,
     position: 'relative',
     marginHorizontal: -2,
+  },
+  dragGroupHeaderContainer__exerciseDrag: {
+    marginHorizontal: 0,
   },
   dragGroupHeader: {
     flexDirection: 'row',
@@ -3852,6 +3644,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     marginHorizontal: 0,
+    marginTop: 4,
     borderWidth: 2,
     borderBottomWidth: 0,
     borderTopLeftRadius: 10,
@@ -3881,23 +3674,29 @@ const styles = StyleSheet.create({
   },
   dragGroupFooter: {
     paddingHorizontal: 12,
-    paddingVertical: 0, // Increase from 2 to 8 (or more)
+    paddingVertical: 0,
     marginBottom: 0,
-    marginHorizontal: -2,
+    marginHorizontal: 0,
     borderWidth: 2,
     borderTopWidth: 0,
     borderTopLeftRadius: 0,
     borderTopRightRadius: 0,
     borderBottomLeftRadius: 12,
     borderBottomRightRadius: 12,
-    minHeight: 8, // Or set explicit height
+    minHeight: 1,
+  },
+  dragGroupFooter__dragging: {
+    minHeight: 8, // Taller footer when collapsed and being dragged
+  },
+  dragGroupFooter__exerciseDrag: {
+    minHeight: 8, // Taller footer when dragging an individual exercise
   },
   dragExerciseCard: {
     backgroundColor: COLORS.white,
     borderRadius: 6,
     borderWidth: 1,
     borderColor: COLORS.slate[200],
-    marginVertical: 2,
+    marginTop: 4,
     marginHorizontal: 0,
     overflow: 'hidden',
   },
@@ -3926,13 +3725,6 @@ const styles = StyleSheet.create({
     borderColor: COLORS.slate[300],
     borderStyle: 'dashed',
     borderRadius: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 10,
-    transform: [{ scale: 1.02 }],
-    zIndex: 999,
   },
   dragExerciseContent: {
     flexDirection: 'row',

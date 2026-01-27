@@ -294,14 +294,17 @@ export const useWorkoutDragDrop = ({
       originalExercisesRef.current = currentWorkout.exercises;
     }
 
+    // Only collapse the dragged group, not other groups
+    // This allows styling to be applied to exercises in other groups
     let collapsed = collapseGroup(baseDragItems, groupId);
-    collapsed = collapseAllOtherGroups(collapsed, groupId);
+    // Don't collapse other groups - they should remain visible for styling
+    // collapsed = collapseAllOtherGroups(collapsed, groupId);
 
     setReorderedDragItems(collapsed);
     setCollapsedGroupId(groupId);
     setIsDragging(true); // Set dragging state so UI shows collapsed items
     pendingDragCallback.current = dragCallback;
-  }, [baseDragItems, collapseGroup, collapseAllOtherGroups, currentWorkout.exercises]);
+  }, [baseDragItems, collapseGroup, currentWorkout.exercises]);
 
   // Phase 1: Collapse all items, then schedule the drag (for regular exercises)
   const handlePrepareDrag = useCallback((dragCallback: () => void, itemId: string) => {
