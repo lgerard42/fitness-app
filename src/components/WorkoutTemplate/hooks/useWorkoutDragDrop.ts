@@ -45,6 +45,11 @@ interface UseWorkoutDragDropReturn {
   pendingDragCallback: React.MutableRefObject<(() => void) | null>;
   pendingDragItemId: React.MutableRefObject<string | null>;
   listRef: React.RefObject<React.ComponentRef<typeof DraggableFlatList<WorkoutDragItem>>>;
+  itemHeights: React.MutableRefObject<Map<string, number>>;
+  collapsedItemHeights: React.MutableRefObject<Map<string, number>>;
+  preCollapsePaddingTop: number | null;
+  recordTouchPosition: (itemId: string, pageY: number) => void;
+  setListLayoutY: (y: number) => void;
   initiateGroupDrag: (groupId: string, dragCallback: () => void) => void;
   handlePrepareDrag: (dragCallback: () => void, itemId: string) => void;
   handleDragBegin: () => void;
@@ -59,10 +64,16 @@ export const useWorkoutDragDrop = ({
   const [isDragging, setIsDragging] = useState(false);
   const [collapsedGroupId, setCollapsedGroupId] = useState<string | null>(null);
   const [reorderedDragItems, setReorderedDragItems] = useState<WorkoutDragItem[]>([]);
+  const [preCollapsePaddingTop, setPreCollapsePaddingTop] = useState<number | null>(null);
   const originalExercisesRef = useRef<ExerciseItem[] | null>(null);
   const pendingDragCallback = useRef<(() => void) | null>(null);
   const pendingDragItemId = useRef<string | null>(null);
   const listRef = useRef<React.ComponentRef<typeof DraggableFlatList<WorkoutDragItem>>>(null);
+  const itemHeights = useRef<Map<string, number>>(new Map());
+  const collapsedItemHeights = useRef<Map<string, number>>(new Map());
+  const touchYRef = useRef<number | null>(null);
+  const touchItemIdRef = useRef<string | null>(null);
+  const listLayoutYRef = useRef<number | null>(null);
 
   // Helper to collapse a group
   const collapseGroup = useCallback((items: WorkoutDragItem[], groupId: string): WorkoutDragItem[] => {
@@ -294,6 +305,18 @@ export const useWorkoutDragDrop = ({
       originalExercisesRef.current = currentWorkout.exercises;
     }
 
+    // Find the group header item ID
+    const groupHeaderItem = baseDragItems.find(
+      item => item.type === 'GroupHeader' && item.groupId === groupId
+    );
+    if (!groupHeaderItem) {
+      // Fallback if header not found
+      setCollapsedGroupId(groupId);
+      setIsDragging(true);
+      pendingDragCallback.current = dragCallback;
+      return;
+    }
+
     // Only collapse the dragged group, not other groups
     // This allows styling to be applied to exercises in other groups
     let collapsed = collapseGroup(baseDragItems, groupId);
@@ -304,7 +327,105 @@ export const useWorkoutDragDrop = ({
     setCollapsedGroupId(groupId);
     setIsDragging(true); // Set dragging state so UI shows collapsed items
     pendingDragCallback.current = dragCallback;
-  }, [baseDragItems, collapseGroup, currentWorkout.exercises]);
+
+    // Align after collapse to keep item at touch position
+    setTimeout(() => {
+      requestAnimationFrame(() => {
+        alignAfterCollapse(groupHeaderItem.id, collapsed);
+      });
+    }, 30);
+  }, [baseDragItems, collapseGroup, currentWorkout.exercises, alignAfterCollapse]);
+
+  const recordTouchPosition = useCallback((itemId: string, pageY: number) => {
+    touchItemIdRef.current = itemId;
+    touchYRef.current = pageY;
+  }, []);
+
+  const setListLayoutY = useCallback((y: number) => {
+    listLayoutYRef.current = y;
+  }, []);
+
+  const getCollapsedHeight = useCallback((item: WorkoutDragItem) => {
+    const measured = collapsedItemHeights.current.get(item.id);
+    if (measured !== undefined) return measured;
+    if (item.type === 'Exercise') return 70;
+    if (item.type === 'GroupHeader') return 55;
+    return 0; // footer
+  }, []);
+
+  const getCollapsedTop = useCallback((itemId: string, items: WorkoutDragItem[]) => {
+    let top = 0;
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      if (it.id === itemId) break;
+      top += getCollapsedHeight(it);
+    }
+    return top;
+  }, [getCollapsedHeight]);
+
+  const alignAfterCollapse = useCallback((itemId: string, items: WorkoutDragItem[]) => {
+    if (!listRef.current || touchYRef.current === null || listLayoutYRef.current === null) return;
+    const touchRel = touchYRef.current - listLayoutYRef.current;
+    const collapsedTop = getCollapsedTop(itemId, items);
+    let scrollOffset = collapsedTop - touchRel;
+    let paddingTop = 0;
+    if (scrollOffset < 0) {
+      paddingTop = -scrollOffset;
+      scrollOffset = 0;
+    }
+    setPreCollapsePaddingTop(paddingTop);
+    listRef.current.scrollToOffset?.({ offset: scrollOffset, animated: false });
+  }, [getCollapsedTop]);
+
+  // Calculate padding needed to prevent item shift when collapsing (kept for fallback usage)
+  const calculatePaddingTop = useCallback((itemId: string, items: WorkoutDragItem[]): number => {
+    const itemIndex = items.findIndex(item => item.id === itemId);
+    if (itemIndex === -1) return 0;
+
+    let totalHeightBefore = 0;
+    let totalHeightAfter = 0;
+
+    // Sum heights of all items before the dragged item
+    for (let i = 0; i < itemIndex; i++) {
+      const item = items[i];
+      const height = itemHeights.current.get(item.id) || 0;
+      totalHeightBefore += height;
+
+      // Use measured collapsed height if available, otherwise fall back to approximations
+      const collapsedMeasured = collapsedItemHeights.current.get(item.id);
+      let collapsedHeight = collapsedMeasured ?? 0;
+      if (collapsedMeasured === undefined) {
+        if (item.type === 'Exercise') {
+          collapsedHeight = 70;
+        } else if (item.type === 'GroupHeader') {
+          collapsedHeight = 55;
+        } else if (item.type === 'GroupFooter') {
+          collapsedHeight = 0;
+        }
+      }
+      totalHeightAfter += collapsedHeight;
+    }
+
+    // Include the dragged item itself (it also collapses)
+    const dragged = items[itemIndex];
+    const draggedHeight = itemHeights.current.get(dragged.id) || 0;
+    const draggedCollapsedMeasured = collapsedItemHeights.current.get(dragged.id);
+    let draggedCollapsed = draggedCollapsedMeasured ?? 0;
+    if (draggedCollapsedMeasured === undefined) {
+      if (dragged.type === 'Exercise') {
+        draggedCollapsed = 70;
+      } else if (dragged.type === 'GroupHeader') {
+        draggedCollapsed = 55;
+      } else if (dragged.type === 'GroupFooter') {
+        draggedCollapsed = 0;
+      }
+    }
+
+    totalHeightBefore += draggedHeight;
+    totalHeightAfter += draggedCollapsed;
+
+    return Math.max(0, totalHeightBefore - totalHeightAfter);
+  }, []);
 
   // Phase 1: Collapse all items, then schedule the drag (for regular exercises)
   const handlePrepareDrag = useCallback((dragCallback: () => void, itemId: string) => {
@@ -316,20 +437,27 @@ export const useWorkoutDragDrop = ({
 
     // Save original state
     originalExercisesRef.current = currentWorkout.exercises;
-    
+
     // Regular exercise drag - collapse all items (not a group header)
     setCollapsedGroupId(null);
     setReorderedDragItems([]); // Reset to use baseDragItems
-    
+
     // Store the item being dragged so we can scroll to it
     pendingDragItemId.current = itemId;
-    
+
     // Set dragging to collapse all items
     setIsDragging(true);
-    
+
     // Store the drag callback to be executed after layout settles
     pendingDragCallback.current = dragCallback;
-  }, [isDragging, currentWorkout.exercises]);
+
+    // Align after collapse to keep item at touch position
+    setTimeout(() => {
+      requestAnimationFrame(() => {
+        alignAfterCollapse(itemId, baseDragItems);
+      });
+    }, 30);
+  }, [isDragging, currentWorkout.exercises, baseDragItems, alignAfterCollapse]);
 
   // Called when drag actually begins (from DraggableFlatList onDragBegin)
   const handleDragBegin = useCallback(() => {
@@ -348,6 +476,11 @@ export const useWorkoutDragDrop = ({
     setIsDragging(false);
     setCollapsedGroupId(null);
     setReorderedDragItems([]);
+    setPreCollapsePaddingTop(null);
+    collapsedItemHeights.current.clear();
+    itemHeights.current.clear();
+    touchYRef.current = null;
+    touchItemIdRef.current = null;
     originalExercisesRef.current = null;
     pendingDragCallback.current = null;
     pendingDragItemId.current = null;
@@ -356,11 +489,16 @@ export const useWorkoutDragDrop = ({
   const handleDragEnd = useCallback(({ data, from, to }: { data: WorkoutDragItem[]; from: number; to: number }) => {
     pendingDragCallback.current = null;
     pendingDragItemId.current = null;
-    
+
     if (from === to) {
       setIsDragging(false);
       setCollapsedGroupId(null);
       setReorderedDragItems([]);
+      setPreCollapsePaddingTop(null);
+      collapsedItemHeights.current.clear();
+      itemHeights.current.clear();
+      touchYRef.current = null;
+      touchItemIdRef.current = null;
       originalExercisesRef.current = null;
       return;
     }
@@ -434,6 +572,11 @@ export const useWorkoutDragDrop = ({
     handleWorkoutUpdate({ ...currentWorkout, exercises: newExercises });
 
     setIsDragging(false);
+    setPreCollapsePaddingTop(null);
+    collapsedItemHeights.current.clear();
+    itemHeights.current.clear();
+    touchYRef.current = null;
+    touchItemIdRef.current = null;
     originalExercisesRef.current = null;
   }, [currentWorkout, handleWorkoutUpdate, collapsedGroupId, expandAllGroups]);
 
@@ -444,6 +587,11 @@ export const useWorkoutDragDrop = ({
     pendingDragCallback,
     pendingDragItemId,
     listRef,
+    itemHeights,
+    collapsedItemHeights,
+    preCollapsePaddingTop,
+    recordTouchPosition,
+    setListLayoutY,
     initiateGroupDrag,
     handlePrepareDrag,
     handleDragBegin,

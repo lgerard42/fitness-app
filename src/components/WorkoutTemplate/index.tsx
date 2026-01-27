@@ -92,6 +92,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
   const [expandedExerciseNotes, setExpandedExerciseNotes] = useState<Record<string, boolean>>({});
 
   const scrollViewRef = useRef<ScrollView | null>(null);
+  const listContainerRef = useRef<View | null>(null);
 
   // Rest Period Modal State
   const [restPeriodModalOpen, setRestPeriodModalOpen] = useState(false);
@@ -152,6 +153,11 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     pendingDragCallback,
     pendingDragItemId,
     listRef,
+    itemHeights,
+    collapsedItemHeights,
+    preCollapsePaddingTop,
+    recordTouchPosition,
+    setListLayoutY,
     initiateGroupDrag,
     handlePrepareDrag,
     handleDragBegin,
@@ -1537,6 +1543,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
 
       return (
         <TouchableOpacity
+          onPressIn={(e) => recordTouchPosition(item.id, e.nativeEvent.pageY)}
           onLongPress={() => {
             if (item.groupId) {
               initiateGroupDrag(item.groupId, drag);
@@ -1562,6 +1569,13 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
           ]}
         >
           <View
+            onLayout={(e) => {
+              if (isDragging || isActive) {
+                collapsedItemHeights.current.set(item.id, e.nativeEvent.layout.height);
+              } else {
+                itemHeights.current.set(item.id, e.nativeEvent.layout.height);
+              }
+            }}
             style={[
               styles.dragGroupHeader,
               isDraggedGroup && styles.dragGroupHeader__collapsed,
@@ -1655,6 +1669,13 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
 
       return (
         <View
+          onLayout={(e) => {
+            if (isDragging) {
+              collapsedItemHeights.current.set(item.id, e.nativeEvent.layout.height);
+            } else {
+              itemHeights.current.set(item.id, e.nativeEvent.layout.height);
+            }
+          }}
           style={[
             styles.dragGroupFooter,
             isDragging && !isDraggedGroup && styles.dragGroupFooter__exerciseDrag,
@@ -1693,6 +1714,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     if (isDragging || isActive) {
       return (
         <TouchableOpacity
+          onPressIn={(e) => recordTouchPosition(item.id, e.nativeEvent.pageY)}
           onLongPress={drag}
           disabled={isActive}
           delayLongPress={150}
@@ -1712,6 +1734,13 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
           ]}
         >
           <View
+            onLayout={(e) => {
+              if (isDragging || isActive) {
+                collapsedItemHeights.current.set(item.id, e.nativeEvent.layout.height);
+              } else {
+                itemHeights.current.set(item.id, e.nativeEvent.layout.height);
+              }
+            }}
             style={[
               styles.dragExerciseCard,
               item.groupId && styles.dragExerciseCard__inGroup,
@@ -1766,12 +1795,21 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     // Wrap with TouchableOpacity that triggers two-phase drag
     return (
       <TouchableOpacity
+        onPressIn={(e) => recordTouchPosition(item.id, e.nativeEvent.pageY)}
         onLongPress={initiateDelayedDrag}
         delayLongPress={200}
         activeOpacity={1}
         disabled={isActive}
       >
-        {fullCard}
+        <View
+          onLayout={(e) => {
+            if (!isDragging && !isActive) {
+              itemHeights.current.set(item.id, e.nativeEvent.layout.height);
+            }
+          }}
+        >
+          {fullCard}
+        </View>
       </TouchableOpacity>
     );
   }, [dragItems, isDragging, collapsedGroupId, renderExerciseCard, handlePrepareDrag, initiateGroupDrag]);
@@ -1837,36 +1875,49 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     }
 
     return (
-      <DraggableFlatList<WorkoutDragItem>
-        ref={listRef}
-        data={dragItems}
-        onDragBegin={handleDragBegin}
-        onDragEnd={handleDragEnd}
-        keyExtractor={dragKeyExtractor}
-        renderItem={renderDragItem}
-        contentContainerStyle={styles.dragListContent}
-        ListHeaderComponent={notesHeaderComponent}
-        ListFooterComponent={
-          !isDragging && !readOnly ? (
-            <View style={styles.exercisesContainer}>
-              <TouchableOpacity onPress={() => setShowPicker(true)} style={styles.addExerciseButton}>
-                <Plus size={20} color={COLORS.slate[500]} />
-                <Text style={styles.addExerciseButtonText}>ADD EXERCISE</Text>
-              </TouchableOpacity>
-              {hasExercises && (
-                customFinishButton ? customFinishButton : (
-                  <TouchableOpacity
-                    onPress={() => setFinishModalOpen(true)}
-                    style={styles.bottomFinishButton}
-                  >
-                    <Text style={styles.bottomFinishButtonText}>FINISH WORKOUT</Text>
-                  </TouchableOpacity>
-                )
-              )}
-            </View>
-          ) : null
-        }
-      />
+      <View
+        ref={listContainerRef}
+        onLayout={() => {
+          listContainerRef.current?.measureInWindow?.((_, pageY) => {
+            setListLayoutY(pageY);
+          });
+        }}
+        style={{ flex: 1 }}
+      >
+        <DraggableFlatList<WorkoutDragItem>
+          ref={listRef}
+          data={dragItems}
+          onDragBegin={handleDragBegin}
+          onDragEnd={handleDragEnd}
+          keyExtractor={dragKeyExtractor}
+          renderItem={renderDragItem}
+          contentContainerStyle={[
+            styles.dragListContent,
+            preCollapsePaddingTop !== null && { paddingTop: preCollapsePaddingTop },
+          ]}
+          ListHeaderComponent={notesHeaderComponent}
+          ListFooterComponent={
+            !isDragging && !readOnly ? (
+              <View style={styles.exercisesContainer}>
+                <TouchableOpacity onPress={() => setShowPicker(true)} style={styles.addExerciseButton}>
+                  <Plus size={20} color={COLORS.slate[500]} />
+                  <Text style={styles.addExerciseButtonText}>ADD EXERCISE</Text>
+                </TouchableOpacity>
+                {hasExercises && (
+                  customFinishButton ? customFinishButton : (
+                    <TouchableOpacity
+                      onPress={() => setFinishModalOpen(true)}
+                      style={styles.bottomFinishButton}
+                    >
+                      <Text style={styles.bottomFinishButtonText}>FINISH WORKOUT</Text>
+                    </TouchableOpacity>
+                  )
+                )}
+              </View>
+            ) : null
+          }
+        />
+      </View>
     );
   };
 
