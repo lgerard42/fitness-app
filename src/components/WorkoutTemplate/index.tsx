@@ -1437,7 +1437,8 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                     warmupIndex={warmupIndex}
                     workingIndex={workingIndex}
                     editingGroupId={selectionMode?.editingGroupId}
-                    groupSetType={displayGroupSetType as GroupSetType}
+                    isGroupChild={isGroupChild}
+                    parentGroupType={parentGroupType}
                     readOnly={readOnly}
                     shouldFocus={focusNextSet?.setId === set.id ? (focusNextSet.field === 'weight' || focusNextSet.field === 'reps' ? focusNextSet.field : null) : null}
                     onFocusHandled={() => setFocusNextSet(null)}

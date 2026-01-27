@@ -3,8 +3,9 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Animated } from 'r
 import { Check, Trash2, Plus } from 'lucide-react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { COLORS } from '@/constants/colors';
+import { defaultSupersetColorScheme, defaultHiitColorScheme } from '@/constants/defaultStyles';
 import { useSetRowLogic } from './hooks/useSetRowLogic';
-import type { Set, ExerciseCategory, WeightUnit, GroupSetType } from '@/types/workout';
+import type { Set, ExerciseCategory, WeightUnit } from '@/types/workout';
 
 interface SetIndex {
   group: number;
@@ -76,7 +77,8 @@ interface SetRowProps {
   warmupIndex: SetIndex | null;
   workingIndex: SetIndex | null;
   editingGroupId?: string;
-  groupSetType: GroupSetType;
+  isGroupChild?: boolean;
+  parentGroupType?: 'HIIT' | 'Superset' | null;
   readOnly?: boolean;
   shouldFocus?: 'weight' | 'reps' | 'duration' | 'distance' | null;
   onFocusHandled?: () => void;
@@ -109,7 +111,8 @@ const SetRow: React.FC<SetRowProps> = ({
   warmupIndex,
   workingIndex,
   editingGroupId,
-  groupSetType,
+  isGroupChild = false,
+  parentGroupType = null,
   readOnly = false,
   shouldFocus = null,
   onFocusHandled = () => { },
@@ -119,6 +122,11 @@ const SetRow: React.FC<SetRowProps> = ({
 }) => {
   const isLift = category === 'Lifts';
   const isCardio = category === 'Cardio';
+
+  // Determine group color scheme
+  const groupColorScheme = isGroupChild && parentGroupType
+    ? (parentGroupType === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme)
+    : null;
 
   const {
     focusedInput,
@@ -191,9 +199,7 @@ const SetRow: React.FC<SetRowProps> = ({
               styles.dropSetIndicator,
               isDropSetStart && styles.dropSetIndicator__start,
               isDropSetEnd && styles.dropSetIndicator__end,
-              groupSetType === 'warmup' && styles.dropSetIndicator__warmup,
-              groupSetType === 'dropset' && styles.dropSetIndicator__dropset,
-              groupSetType === 'failure' && styles.dropSetIndicator__failure
+              groupColorScheme ? { backgroundColor: groupColorScheme[400] } : { backgroundColor: COLORS.slate[400] }
             ]} />
           )}
           <View style={[
@@ -230,10 +236,11 @@ const SetRow: React.FC<SetRowProps> = ({
                             onPress={() => onToggleSelection(false)}
                             style={[
                               styles.selectionCheckbox,
-                              isSelected && !groupSetType && styles.selectionCheckboxSelected__default,
-                              isSelected && groupSetType === 'warmup' && styles.selectionCheckboxSelected__warmup,
-                              isSelected && groupSetType === 'dropset' && styles.selectionCheckboxSelected__dropset,
-                              isSelected && groupSetType === 'failure' && styles.selectionCheckboxSelected__failure
+                              isSelected && (
+                                groupColorScheme
+                                  ? { backgroundColor: groupColorScheme[500] }
+                                  : styles.selectionCheckboxSelected__default
+                              )
                             ]}
                           >
                             {isSelected && <Check size={14} color={COLORS.white} strokeWidth={3} />}
@@ -247,10 +254,11 @@ const SetRow: React.FC<SetRowProps> = ({
                             onPress={() => onToggleSelection(false)}
                             style={[
                               styles.selectionCheckbox,
-                              isSelected && !groupSetType && styles.selectionCheckboxSelected__default,
-                              isSelected && groupSetType === 'warmup' && styles.selectionCheckboxSelected__warmup,
-                              isSelected && groupSetType === 'dropset' && styles.selectionCheckboxSelected__dropset,
-                              isSelected && groupSetType === 'failure' && styles.selectionCheckboxSelected__failure
+                              isSelected && (
+                                groupColorScheme
+                                  ? { backgroundColor: groupColorScheme[500] }
+                                  : styles.selectionCheckboxSelected__default
+                              )
                             ]}
                           >
                             {isSelected && <Check size={14} color={COLORS.white} strokeWidth={3} />}
@@ -266,10 +274,11 @@ const SetRow: React.FC<SetRowProps> = ({
                         onPress={() => onToggleSelection(false)}
                         style={[
                           styles.selectionCheckbox,
-                          isSelected && !groupSetType && styles.selectionCheckboxSelected__default,
-                          isSelected && groupSetType === 'warmup' && styles.selectionCheckboxSelected__warmup,
-                          isSelected && groupSetType === 'dropset' && styles.selectionCheckboxSelected__dropset,
-                          isSelected && groupSetType === 'failure' && styles.selectionCheckboxSelected__failure
+                          isSelected && (
+                            groupColorScheme
+                              ? { backgroundColor: groupColorScheme[500] }
+                              : styles.selectionCheckboxSelected__default
+                          )
                         ]}
                       >
                         {isSelected && <Check size={14} color={COLORS.white} strokeWidth={3} />}
@@ -299,7 +308,14 @@ const SetRow: React.FC<SetRowProps> = ({
                     warmupIndex.subIndex !== null ? (
                       <Text style={styles.indexText}>
                         <Text style={styles.indexText__groupMain}>{warmupIndex.group}</Text>
-                        <Text style={styles.indexText__groupSub}>.{warmupIndex.subIndex}</Text>
+                        <Text style={[
+                          styles.indexText__groupSub,
+                          set.isWarmup && { color: COLORS.orange[400] },
+                          set.isFailure && { color: COLORS.red[400] },
+                          !set.isWarmup && !set.isFailure && (
+                            groupColorScheme ? { color: groupColorScheme[400] } : { color: COLORS.slate[400] }
+                          )
+                        ]}>.{warmupIndex.subIndex}</Text>
                       </Text>
                     ) : (
                       <Text style={styles.indexText}>{warmupIndex.group}</Text>
@@ -308,7 +324,14 @@ const SetRow: React.FC<SetRowProps> = ({
                     workingIndex.subIndex !== null ? (
                       <Text style={styles.indexText}>
                         <Text style={styles.indexText__groupMain}>{workingIndex.group}</Text>
-                        <Text style={styles.indexText__groupSub}>.{workingIndex.subIndex}</Text>
+                        <Text style={[
+                          styles.indexText__groupSub,
+                          set.isWarmup && { color: COLORS.orange[400] },
+                          set.isFailure && { color: COLORS.red[400] },
+                          !set.isWarmup && !set.isFailure && (
+                            groupColorScheme ? { color: groupColorScheme[400] } : { color: COLORS.slate[400] }
+                          )
+                        ]}>.{workingIndex.subIndex}</Text>
                       </Text>
                     ) : (
                       <Text style={styles.indexText}>{workingIndex.group}</Text>
@@ -317,7 +340,14 @@ const SetRow: React.FC<SetRowProps> = ({
                     dropSetId ? (
                       <Text style={styles.indexText}>
                         <Text style={styles.indexText__groupMain}>{groupSetNumber}</Text>
-                        <Text style={styles.indexText__groupSub}>.{indexInGroup}</Text>
+                        <Text style={[
+                          styles.indexText__groupSub,
+                          set.isWarmup && { color: COLORS.orange[400] },
+                          set.isFailure && { color: COLORS.red[400] },
+                          !set.isWarmup && !set.isFailure && (
+                            groupColorScheme ? { color: groupColorScheme[400] } : { color: COLORS.slate[400] }
+                          )
+                        ]}>.{indexInGroup}</Text>
                       </Text>
                     ) : (
                       <Text style={styles.indexText}>{overallSetNumber}</Text>
@@ -465,15 +495,6 @@ const styles = StyleSheet.create({
   dropSetIndicator__end: {
     bottom: 8,
   },
-  dropSetIndicator__warmup: {
-    backgroundColor: COLORS.orange[500],
-  },
-  dropSetIndicator__dropset: {
-    backgroundColor: COLORS.blue[500],
-  },
-  dropSetIndicator__failure: {
-    backgroundColor: COLORS.red[500],
-  },
   container__dropSetStart: {
     borderTopWidth: 2,
     borderTopColor: COLORS.indigo[200],
@@ -540,18 +561,15 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.slate[500],
   },
-  indexText__dropSet__Purple: {
-    color: COLORS.indigo[400],
-  },
   indexText__groupMain: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: COLORS.slate[500],
+    color: COLORS.slate[500], // Default color when not in a group
   },
   indexText__groupSub: {
     fontSize: 10,
     fontWeight: '600',
-    color: COLORS.indigo[400],
+    color: COLORS.slate[400], // Default color when not in a group
   },
   previousContainer: {
     flex: 1,
@@ -687,18 +705,6 @@ const styles = StyleSheet.create({
   selectionCheckboxSelected__default: {
     backgroundColor: COLORS.indigo[500],
     borderColor: COLORS.indigo[500],
-  },
-  selectionCheckboxSelected__warmup: {
-    backgroundColor: COLORS.orange[500],
-    borderColor: COLORS.orange[500],
-  },
-  selectionCheckboxSelected__dropset: {
-    backgroundColor: COLORS.blue[500],
-    borderColor: COLORS.blue[500],
-  },
-  selectionCheckboxSelected__failure: {
-    backgroundColor: COLORS.red[500],
-    borderColor: COLORS.red[500],
   },
   selectionPlusButton: {
     width: 32,
