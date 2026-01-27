@@ -317,11 +317,10 @@ export const useWorkoutDragDrop = ({
       return;
     }
 
-    // Only collapse the dragged group, not other groups
-    // This allows styling to be applied to exercises in other groups
+    // Collapse the dragged group and freeze all other groups
+    // This prevents dropping one group into another group
     let collapsed = collapseGroup(baseDragItems, groupId);
-    // Don't collapse other groups - they should remain visible for styling
-    // collapsed = collapseAllOtherGroups(collapsed, groupId);
+    collapsed = collapseAllOtherGroups(collapsed, groupId);
 
     setReorderedDragItems(collapsed);
     setCollapsedGroupId(groupId);
@@ -334,7 +333,7 @@ export const useWorkoutDragDrop = ({
         alignAfterCollapse(groupHeaderItem.id, collapsed);
       });
     }, 30);
-  }, [baseDragItems, collapseGroup, currentWorkout.exercises, alignAfterCollapse]);
+  }, [baseDragItems, collapseGroup, collapseAllOtherGroups, currentWorkout.exercises, alignAfterCollapse]);
 
   const recordTouchPosition = useCallback((itemId: string, pageY: number) => {
     touchItemIdRef.current = itemId;

@@ -1545,11 +1545,11 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
         <TouchableOpacity
           onPressIn={(e) => recordTouchPosition(item.id, e.nativeEvent.pageY)}
           onLongPress={() => {
-            if (item.groupId) {
+            if (item.groupId && !shouldRenderGhosts) {
               initiateGroupDrag(item.groupId, drag);
             }
           }}
-          disabled={isActive}
+          disabled={isActive || shouldRenderGhosts}
           delayLongPress={150}
           activeOpacity={1}
           style={[
@@ -1705,7 +1705,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
       return <View style={{ height: 0, overflow: 'hidden' }} />;
     }
 
-    // Hide exercises that are part of other collapsed groups (they're shown as ghosts)
+    // Hide exercises that are part of other collapsed groups (frozen groups - shown as ghosts in header)
     if (isCollapsed && !isDraggedGroup) {
       return <View style={{ height: 0, overflow: 'hidden' }} />;
     }
@@ -1756,10 +1756,10 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                 zIndex: 9999,
                 elevation: 20,
               },
-              // Add bottom border for frozen grouped exercises (not last in group) when dragging
+              // Add bottom border for grouped exercises (not last in group) when dragging
               // Applies when dragging individual exercise OR when a collapsed group is being dragged
               // When dragging a collapsed group, collapsedGroupId is set; when dragging individual exercise, isDragging is true
-              // Other groups remain expanded when dragging a collapsed group, so their exercises are visible and can receive styling
+              // Other groups are frozen (collapsed) when dragging a collapsed group, so only non-collapsed exercises in the dragged group receive this styling
               ((isDragging && !isActive) || (collapsedGroupId && !isDraggedGroup)) && item.groupId && !isCollapsed && !item.isLastInGroup && groupColorScheme && {
                 borderBottomWidth: 1,
                 borderBottomColor: groupColorScheme[200],
