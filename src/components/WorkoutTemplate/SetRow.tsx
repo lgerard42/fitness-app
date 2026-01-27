@@ -311,12 +311,15 @@ const SetRow: React.FC<SetRowProps> = ({
                   )}
                   {warmupIndex ? (
                     warmupIndex.subIndex !== null ? (
-                      <Text style={styles.indexText}>
+                      warmupIndex.subIndex === 1 ? (
+                        // First set in dropset: show only primary index
                         <Text style={[
-                          styles.indexText__groupMain,
+                          styles.indexText,
                           set.isWarmup && { color: COLORS.orange[500] },
                           set.isFailure && { color: COLORS.red[500] }
                         ]}>{warmupIndex.group}</Text>
+                      ) : (
+                        // Subsequent sets: show only subIndex with "."
                         <Text style={[
                           styles.indexText__groupSub,
                           set.isWarmup && { color: COLORS.orange[400] },
@@ -325,7 +328,7 @@ const SetRow: React.FC<SetRowProps> = ({
                             groupColorScheme ? { color: groupColorScheme[400] } : { color: COLORS.slate[400] }
                           )
                         ]}>.{warmupIndex.subIndex}</Text>
-                      </Text>
+                      )
                     ) : (
                       <Text style={[
                         styles.indexText,
@@ -335,12 +338,15 @@ const SetRow: React.FC<SetRowProps> = ({
                     )
                   ) : workingIndex ? (
                     workingIndex.subIndex !== null ? (
-                      <Text style={styles.indexText}>
+                      workingIndex.subIndex === 1 ? (
+                        // First set in dropset: show only primary index
                         <Text style={[
-                          styles.indexText__groupMain,
+                          styles.indexText,
                           set.isWarmup && { color: COLORS.orange[550] },
                           set.isFailure && { color: COLORS.red[550] }
                         ]}>{workingIndex.group}</Text>
+                      ) : (
+                        // Subsequent sets: show only subIndex with "."
                         <Text style={[
                           styles.indexText__groupSub,
                           set.isWarmup && { color: COLORS.orange[400] },
@@ -349,7 +355,7 @@ const SetRow: React.FC<SetRowProps> = ({
                             { color: COLORS.slate[400] }
                           )
                         ]}>.{workingIndex.subIndex}</Text>
-                      </Text>
+                      )
                     ) : (
                       <Text style={[
                         styles.indexText,
@@ -359,12 +365,15 @@ const SetRow: React.FC<SetRowProps> = ({
                     )
                   ) : (
                     dropSetId ? (
-                      <Text style={styles.indexText}>
+                      indexInGroup === 1 ? (
+                        // First set in dropset: show only primary index
                         <Text style={[
-                          styles.indexText__groupMain,
+                          styles.indexText,
                           set.isWarmup && { color: COLORS.orange[550] },
                           set.isFailure && { color: COLORS.red[550] }
                         ]}>{groupSetNumber}</Text>
+                      ) : (
+                        // Subsequent sets: show only subIndex with "."
                         <Text style={[
                           styles.indexText__groupSub,
                           set.isWarmup && { color: COLORS.orange[400] },
@@ -373,7 +382,7 @@ const SetRow: React.FC<SetRowProps> = ({
                             { color: COLORS.slate[400] }
                           )
                         ]}>.{indexInGroup}</Text>
-                      </Text>
+                      )
                     ) : (
                       <Text style={[
                         styles.indexText,

@@ -2779,7 +2779,7 @@ const styles = StyleSheet.create({
   },
   colIndex: {
     width: 36, // 32px indexBadge + 4px marginRight
-    alignItems: 'flex-start', // Left align
+    alignItems: 'center', // Left align
     justifyContent: 'center',
   },
   colPrevious: {
