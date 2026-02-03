@@ -240,6 +240,8 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                         const currentValue = set.restPeriodSeconds
                             ? set.restPeriodSeconds.toString()
                             : '';
+                        // Always reset to input mode when opening the modal
+                        setApplyToMode(null);
                         setRestTimerInput({
                             setId: set.id,
                             currentValue,
@@ -412,7 +414,10 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                         {/* Rest Timer Input Modal */}
                         {restTimerInput && (
                             <Pressable
-                                onPress={() => setRestTimerInput(null)}
+                                onPress={() => {
+                                    setRestTimerInput(null);
+                                    setApplyToMode(null);
+                                }}
                                 style={styles.restTimerInputOverlay}
                             >
                                 <Pressable
@@ -427,7 +432,10 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                                             }
                                         </Text>
                                         <TouchableOpacity
-                                            onPress={() => setRestTimerInput(null)}
+                                            onPress={() => {
+                                                setRestTimerInput(null);
+                                                setApplyToMode(null);
+                                            }}
                                             style={styles.restTimerInputClose}
                                         >
                                             <X size={20} color={COLORS.slate[600]} />
@@ -457,24 +465,84 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                                         </View>
                                     ) : (
                                         <View style={styles.restTimerInputContent}>
-                                            <Text style={styles.restTimerInputLabel}>
-                                                Select sets to apply rest timer to:
-                                            </Text>
                                             <ScrollView style={styles.setSelectionList}>
                                                 {setDragItems
                                                     .filter((i): i is SetDragItem => i.type === 'set')
-                                                    .map((item) => {
+                                                    .map((item, itemIndex) => {
                                                         const isSelected = applyToMode.selectedSetIds.includes(item.id);
                                                         const set = item.set;
                                                         const category = exercise?.category || 'Lifts';
                                                         const weightUnit = exercise?.weightUnit || 'lbs';
+
+                                                        // Get all sets in order for dropset calculations
+                                                        const allSets = setDragItems.filter((i): i is SetDragItem => i.type === 'set');
+                                                        const currentSetIndex = itemIndex;
+
+                                                        // Calculate display index based on dropset logic (matching SetRow.tsx)
+                                                        let displayIndexText: string;
+                                                        let isSubIndex = false;
+
+                                                        if (set.dropSetId) {
+                                                            // Find all sets in this dropset
+                                                            const dropSetSets = allSets.filter(s => s.set.dropSetId === set.dropSetId);
+                                                            const indexInDropSet = dropSetSets.findIndex(s => s.id === item.id) + 1;
+
+                                                            // Count group number: iterate through sets before this one, counting dropsets as single units
+                                                            let groupNumber = 0;
+                                                            const seenDropSetIds = new Set<string>();
+
+                                                            for (let i = 0; i < currentSetIndex; i++) {
+                                                                const prevSet = allSets[i].set;
+                                                                if (prevSet.dropSetId) {
+                                                                    if (!seenDropSetIds.has(prevSet.dropSetId)) {
+                                                                        seenDropSetIds.add(prevSet.dropSetId);
+                                                                        groupNumber++;
+                                                                    }
+                                                                } else {
+                                                                    groupNumber++;
+                                                                }
+                                                            }
+
+                                                            // Check if this dropset was already counted
+                                                            if (!seenDropSetIds.has(set.dropSetId)) {
+                                                                groupNumber++;
+                                                            }
+
+                                                            if (indexInDropSet === 1) {
+                                                                // First set in dropset: show only primary index
+                                                                displayIndexText = groupNumber.toString();
+                                                            } else {
+                                                                // Subsequent sets: show only subIndex with "."
+                                                                displayIndexText = `.${indexInDropSet}`;
+                                                                isSubIndex = true;
+                                                            }
+                                                        } else {
+                                                            // Not in a dropset - count all sets (treating dropsets as single units)
+                                                            let overallSetNumber = 0;
+                                                            const seenDropSetIds = new Set<string>();
+
+                                                            for (let i = 0; i < currentSetIndex; i++) {
+                                                                const prevSet = allSets[i].set;
+                                                                if (prevSet.dropSetId) {
+                                                                    if (!seenDropSetIds.has(prevSet.dropSetId)) {
+                                                                        seenDropSetIds.add(prevSet.dropSetId);
+                                                                        overallSetNumber++;
+                                                                    }
+                                                                } else {
+                                                                    overallSetNumber++;
+                                                                }
+                                                            }
+                                                            overallSetNumber++;
+                                                            displayIndexText = overallSetNumber.toString();
+                                                        }
 
                                                         return (
                                                             <TouchableOpacity
                                                                 key={item.id}
                                                                 style={[
                                                                     styles.setSelectionItem,
-                                                                    isSelected && styles.setSelectionItem__selected
+                                                                    isSelected && styles.setSelectionItem__selected,
+                                                                    set.dropSetId && styles.setSelectionItem__dropset
                                                                 ]}
                                                                 onPress={() => {
                                                                     const newSelected = [...applyToMode.selectedSetIds];
@@ -496,18 +564,38 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                                                                         <Square size={20} color={COLORS.slate[400]} />
                                                                     )}
                                                                     <View style={styles.setSelectionItemInfo}>
-                                                                        <Text style={styles.setSelectionItemIndex}>
-                                                                            Set {setDragItems.filter((i): i is SetDragItem => i.type === 'set').findIndex(s => s.id === item.id) + 1}
-                                                                        </Text>
-                                                                        <Text style={styles.setSelectionItemDetails}>
-                                                                            {category === 'Lifts' ? (
-                                                                                `${set.weight || '-'} ${weightUnit} × ${set.reps || '-'}`
-                                                                            ) : category === 'Cardio' ? (
-                                                                                `${set.duration || '-'} / ${set.distance || '-'}`
-                                                                            ) : (
-                                                                                `${set.reps || '-'} reps`
+                                                                        <View style={styles.setSelectionItemHeader}>
+                                                                            <Text style={[
+                                                                                styles.setSelectionItemIndex,
+                                                                                isSubIndex && styles.setSelectionItemIndex__subIndex
+                                                                            ]}>
+                                                                                {displayIndexText}
+                                                                            </Text>
+                                                                            <Text style={styles.setSelectionItemDetails}>
+                                                                                {category === 'Lifts' ? (
+                                                                                    `${set.weight || '-'} ${weightUnit} × ${set.reps || '-'}`
+                                                                                ) : category === 'Cardio' ? (
+                                                                                    `${set.duration || '-'} / ${set.distance || '-'}`
+                                                                                ) : (
+                                                                                    `${set.reps || '-'} reps`
+                                                                                )}
+                                                                            </Text>
+                                                                            {set.dropSetId && (
+                                                                                <View style={styles.setSelectionItemDropsetBadge}>
+                                                                                    <Text style={styles.setSelectionItemDropsetText}>D</Text>
+                                                                                </View>
                                                                             )}
-                                                                        </Text>
+                                                                            {set.isWarmup && (
+                                                                                <View style={[styles.setSelectionItemTypeBadge, styles.setSelectionItemTypeBadge__warmup]}>
+                                                                                    <Flame size={12} color={COLORS.orange[500]} />
+                                                                                </View>
+                                                                            )}
+                                                                            {set.isFailure && (
+                                                                                <View style={[styles.setSelectionItemTypeBadge, styles.setSelectionItemTypeBadge__failure]}>
+                                                                                    <Zap size={12} color={COLORS.red[500]} />
+                                                                                </View>
+                                                                            )}
+                                                                        </View>
                                                                     </View>
                                                                 </View>
                                                                 {set.restPeriodSeconds && (
@@ -527,55 +615,28 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
 
                                     <View style={styles.restTimerInputFooter}>
                                         {!applyToMode ? (
-                                            <>
-                                                <TouchableOpacity
-                                                    onPress={() => {
-                                                        if (restTimerInput.currentValue) {
-                                                            const seconds = parseRestTimeInput(restTimerInput.currentValue);
-                                                            if (seconds > 0) {
-                                                                // Initialize with current set selected
-                                                                const initialSelected = [restTimerInput.setId];
-                                                                setApplyToMode({ selectedSetIds: initialSelected });
-                                                            }
+                                            <TouchableOpacity
+                                                onPress={() => {
+                                                    if (restTimerInput.currentValue) {
+                                                        const seconds = parseRestTimeInput(restTimerInput.currentValue);
+                                                        if (seconds > 0) {
+                                                            // Initialize with current set selected
+                                                            const initialSelected = [restTimerInput.setId];
+                                                            setApplyToMode({ selectedSetIds: initialSelected });
                                                         }
-                                                    }}
-                                                    style={styles.restTimerInputApplyToButton}
-                                                    disabled={!restTimerInput.currentValue || parseRestTimeInput(restTimerInput.currentValue) <= 0}
-                                                >
-                                                    <Text style={[
-                                                        styles.restTimerInputApplyToText,
-                                                        (!restTimerInput.currentValue || parseRestTimeInput(restTimerInput.currentValue) <= 0) && styles.restTimerInputApplyToText__disabled
-                                                    ]}>Apply to</Text>
-                                                </TouchableOpacity>
-                                                <TouchableOpacity
-                                                    onPress={() => {
-                                                        if (restTimerInput.currentValue) {
-                                                            const seconds = parseRestTimeInput(restTimerInput.currentValue);
-                                                            if (seconds > 0) {
-                                                                onUpdateRestTimer(restTimerInput.setId, seconds);
-                                                            }
-                                                        } else {
-                                                            // Remove rest timer
-                                                            onUpdateRestTimer(restTimerInput.setId, undefined);
-                                                        }
-                                                        setRestTimerInput(null);
-                                                    }}
-                                                    style={styles.restTimerInputSaveButton}
-                                                >
-                                                    <Text style={styles.restTimerInputSaveText}>Save</Text>
-                                                </TouchableOpacity>
-                                                {setDragItems.find((i): i is SetDragItem => i.type === 'set' && i.id === restTimerInput.setId)?.set.restPeriodSeconds && (
-                                                    <TouchableOpacity
-                                                        onPress={() => {
-                                                            onUpdateRestTimer(restTimerInput.setId, undefined);
-                                                            setRestTimerInput(null);
-                                                        }}
-                                                        style={styles.restTimerInputRemoveButton}
-                                                    >
-                                                        <Text style={styles.restTimerInputRemoveText}>Remove</Text>
-                                                    </TouchableOpacity>
-                                                )}
-                                            </>
+                                                    }
+                                                }}
+                                                style={[
+                                                    styles.restTimerInputApplyToButton,
+                                                    (!restTimerInput.currentValue || parseRestTimeInput(restTimerInput.currentValue) <= 0) && styles.restTimerInputApplyToButton__disabled
+                                                ]}
+                                                disabled={!restTimerInput.currentValue || parseRestTimeInput(restTimerInput.currentValue) <= 0}
+                                            >
+                                                <Text style={[
+                                                    styles.restTimerInputApplyToText,
+                                                    (!restTimerInput.currentValue || parseRestTimeInput(restTimerInput.currentValue) <= 0) && styles.restTimerInputApplyToText__disabled
+                                                ]}>Apply to</Text>
+                                            </TouchableOpacity>
                                         ) : (
                                             <>
                                                 <TouchableOpacity
@@ -610,7 +671,13 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                                                         styles.restTimerInputSaveText,
                                                         applyToMode.selectedSetIds.length === 0 && styles.restTimerInputSaveText__disabled
                                                     ]}>
-                                                        Apply to {applyToMode.selectedSetIds.length} set{applyToMode.selectedSetIds.length !== 1 ? 's' : ''}
+                                                        {(() => {
+                                                            const seconds = restTimerInput.currentValue
+                                                                ? parseRestTimeInput(restTimerInput.currentValue)
+                                                                : 0;
+                                                            const formattedTime = seconds > 0 ? formatRestTime(seconds) : '';
+                                                            return `Apply ${formattedTime} to set(s)`;
+                                                        })()}
                                                     </Text>
                                                 </TouchableOpacity>
                                             </>
@@ -943,13 +1010,13 @@ const styles = StyleSheet.create({
     restTimerInputContainer: {
         backgroundColor: COLORS.white,
         borderRadius: 12,
-        width: '85%',
-        maxWidth: 400,
+        width: '95%',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.25,
         shadowRadius: 8,
         elevation: 10,
+        maxHeight: '95%',
     },
     restTimerInputHeader: {
         flexDirection: 'row',
@@ -1018,18 +1085,23 @@ const styles = StyleSheet.create({
         color: COLORS.red[600],
     },
     restTimerInputApplyToButton: {
+        flex: 1,
         paddingVertical: 12,
         paddingHorizontal: 16,
         borderRadius: 8,
         alignItems: 'center',
         borderWidth: 1,
         borderColor: COLORS.blue[300],
-        backgroundColor: COLORS.blue[50],
+        backgroundColor: COLORS.blue[600],
+    },
+    restTimerInputApplyToButton__disabled: {
+        backgroundColor: COLORS.slate[200],
+        borderColor: COLORS.slate[300],
     },
     restTimerInputApplyToText: {
         fontSize: 16,
         fontWeight: '600',
-        color: COLORS.blue[600],
+        color: COLORS.white,
     },
     restTimerInputApplyToText__disabled: {
         color: COLORS.slate[400],
@@ -1054,7 +1126,6 @@ const styles = StyleSheet.create({
         color: COLORS.slate[400],
     },
     setSelectionList: {
-        maxHeight: 300,
         marginTop: 8,
     },
     setSelectionItem: {
@@ -1073,6 +1144,10 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.blue[50],
         borderColor: COLORS.blue[300],
     },
+    setSelectionItem__dropset: {
+        borderLeftWidth: 3,
+        borderLeftColor: COLORS.indigo[400],
+    },
     setSelectionItemLeft: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1082,11 +1157,64 @@ const styles = StyleSheet.create({
     setSelectionItemInfo: {
         flex: 1,
     },
+    setSelectionItemHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        flexWrap: 'wrap',
+    },
     setSelectionItemIndex: {
         fontSize: 14,
         fontWeight: '600',
         color: COLORS.slate[700],
-        marginBottom: 2,
+    },
+    setSelectionItemIndex__subIndex: {
+        fontSize: 12,
+        color: COLORS.slate[500],
+    },
+    setSelectionItemDropsetBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: COLORS.indigo[50],
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+    },
+    setSelectionItemDropsetText: {
+        fontSize: 10,
+        fontWeight: '600',
+        color: COLORS.indigo[700],
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    setSelectionItemTypeBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+    },
+    setSelectionItemTypeBadge__warmup: {
+        backgroundColor: COLORS.orange[50],
+    },
+    setSelectionItemTypeBadge__failure: {
+        backgroundColor: COLORS.red[50],
+    },
+    setSelectionItemTypeText__warmup: {
+        fontSize: 10,
+        fontWeight: '600',
+        color: COLORS.orange[600],
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    setSelectionItemTypeText__failure: {
+        fontSize: 10,
+        fontWeight: '600',
+        color: COLORS.red[600],
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
     setSelectionItemDetails: {
         fontSize: 12,
