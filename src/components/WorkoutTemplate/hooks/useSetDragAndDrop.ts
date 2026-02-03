@@ -41,6 +41,8 @@ interface UseSetDragAndDropReturn {
   onCreateDropset: (setId: string) => void;
   onUpdateSet: (setId: string, updates: Partial<Set>) => void;
   onAddSet: () => void;
+  onUpdateRestTimer: (setId: string, restPeriodSeconds: number | undefined) => void;
+  onUpdateRestTimerMultiple: (setIds: string[], restPeriodSeconds: number | undefined) => void;
 }
 
 /**
@@ -398,6 +400,54 @@ export const useSetDragAndDrop = ({
     cancelSetDrag();
   }, [activeExerciseId, setDragItems, handleWorkoutUpdate, cancelSetDrag]);
 
+  /**
+   * Update a set's rest timer
+   */
+  const onUpdateRestTimer = useCallback((setId: string, restPeriodSeconds: number | undefined) => {
+    // Update the set in the items array
+    const updatedItems = setDragItems.map(item => {
+      if (item.type === 'set' && item.id === setId) {
+        const updatedSet = {
+          ...item.set,
+          restPeriodSeconds,
+        };
+        return {
+          ...item,
+          set: updatedSet,
+          hasRestTimer: !!restPeriodSeconds,
+        };
+      }
+      return item;
+    });
+
+    setSetDragItems(updatedItems);
+  }, [setDragItems]);
+
+  /**
+   * Update rest timer for multiple sets
+   */
+  const onUpdateRestTimerMultiple = useCallback((setIds: string[], restPeriodSeconds: number | undefined) => {
+    const setIdsSet = new Set(setIds);
+    
+    // Update all specified sets in the items array
+    const updatedItems = setDragItems.map(item => {
+      if (item.type === 'set' && setIdsSet.has(item.id)) {
+        const updatedSet = {
+          ...item.set,
+          restPeriodSeconds,
+        };
+        return {
+          ...item,
+          set: updatedSet,
+          hasRestTimer: !!restPeriodSeconds,
+        };
+      }
+      return item;
+    });
+
+    setSetDragItems(updatedItems);
+  }, [setDragItems]);
+
   return {
     isSetDragActive,
     activeExercise,
@@ -409,5 +459,7 @@ export const useSetDragAndDrop = ({
     onCreateDropset,
     onUpdateSet,
     onAddSet,
+    onUpdateRestTimer,
+    onUpdateRestTimerMultiple,
   };
 };

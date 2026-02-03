@@ -1,10 +1,10 @@
 import React, { useCallback, useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable, TextInput } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
-import { X, Timer, Flame, Zap, Check, Layers, Plus } from 'lucide-react-native';
+import { X, Timer, Flame, Zap, Check, Layers, Plus, Square } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
-import { formatRestTime } from '@/utils/workoutHelpers';
+import { formatRestTime, parseRestTimeInput } from '@/utils/workoutHelpers';
 import type { Exercise, Set, ExerciseCategory } from '@/types/workout';
 import type { SetDragListItem, SetDragItem, DropSetHeaderItem, DropSetFooterItem } from '../hooks/useSetDragAndDrop';
 
@@ -18,6 +18,8 @@ interface SetDragModalProps {
     onCreateDropset: (setId: string) => void;
     onUpdateSet: (setId: string, updates: Partial<Set>) => void;
     onAddSet: () => void;
+    onUpdateRestTimer: (setId: string, restPeriodSeconds: number | undefined) => void;
+    onUpdateRestTimerMultiple: (setIds: string[], restPeriodSeconds: number | undefined) => void;
 }
 
 const SetDragModal: React.FC<SetDragModalProps> = ({
@@ -30,8 +32,12 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
     onCreateDropset,
     onUpdateSet,
     onAddSet,
+    onUpdateRestTimer,
+    onUpdateRestTimerMultiple,
 }) => {
     const [indexPopup, setIndexPopup] = useState<{ setId: string; top: number; left: number } | null>(null);
+    const [restTimerInput, setRestTimerInput] = useState<{ setId: string; currentValue: string } | null>(null);
+    const [applyToMode, setApplyToMode] = useState<{ selectedSetIds: Set<string> } | null>(null);
     const badgeRefs = useRef<Map<string, View>>(new Map());
     const renderDropSetHeader = useCallback((item: DropSetHeaderItem) => {
         return (
@@ -229,14 +235,32 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                     )}
                 </View>
 
-                {setItem.hasRestTimer && (
-                    <View style={styles.restTimerBadge}>
-                        <Timer size={12} color={COLORS.blue[500]} />
-                        <Text style={styles.restTimerText}>
-                            {formatRestTime(set.restPeriodSeconds!)}
-                        </Text>
-                    </View>
-                )}
+                <TouchableOpacity
+                    onPress={() => {
+                        const currentValue = set.restPeriodSeconds
+                            ? set.restPeriodSeconds.toString()
+                            : '';
+                        setRestTimerInput({
+                            setId: set.id,
+                            currentValue,
+                        });
+                    }}
+                    style={[
+                        styles.restTimerBadge,
+                        !setItem.hasRestTimer && styles.restTimerBadge__add
+                    ]}
+                >
+                    <Timer size={12} color={setItem.hasRestTimer ? COLORS.blue[500] : COLORS.slate[400]} />
+                    <Text style={[
+                        styles.restTimerText,
+                        !setItem.hasRestTimer && styles.restTimerText__add
+                    ]}>
+                        {setItem.hasRestTimer
+                            ? formatRestTime(set.restPeriodSeconds!)
+                            : '+ rest'
+                        }
+                    </Text>
+                </TouchableOpacity>
 
                 {set.dropSetId && (
                     <View style={styles.dropSetIndicator} />
@@ -384,6 +408,214 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                                 </Pressable>
                             );
                         })()}
+
+                        {/* Rest Timer Input Modal */}
+                        {restTimerInput && (
+                            <Pressable
+                                onPress={() => setRestTimerInput(null)}
+                                style={styles.restTimerInputOverlay}
+                            >
+                                <Pressable
+                                    onPress={(e) => e.stopPropagation()}
+                                    style={styles.restTimerInputContainer}
+                                >
+                                    <View style={styles.restTimerInputHeader}>
+                                        <Text style={styles.restTimerInputTitle}>
+                                            {setDragItems.find((i): i is SetDragItem => i.type === 'set' && i.id === restTimerInput.setId)?.set.restPeriodSeconds
+                                                ? 'Update Rest Timer'
+                                                : 'Add Rest Timer'
+                                            }
+                                        </Text>
+                                        <TouchableOpacity
+                                            onPress={() => setRestTimerInput(null)}
+                                            style={styles.restTimerInputClose}
+                                        >
+                                            <X size={20} color={COLORS.slate[600]} />
+                                        </TouchableOpacity>
+                                    </View>
+
+                                    {!applyToMode ? (
+                                        <View style={styles.restTimerInputContent}>
+                                            <Text style={styles.restTimerInputLabel}>
+                                                Enter time (e.g., 90 for 1:30, 30 for 30 seconds)
+                                            </Text>
+                                            <TextInput
+                                                style={styles.restTimerInput}
+                                                value={restTimerInput.currentValue}
+                                                onChangeText={(text) => {
+                                                    // Only allow numbers
+                                                    const numericText = text.replace(/[^0-9]/g, '');
+                                                    setRestTimerInput({
+                                                        ...restTimerInput,
+                                                        currentValue: numericText,
+                                                    });
+                                                }}
+                                                placeholder="e.g., 90"
+                                                keyboardType="numeric"
+                                                autoFocus
+                                            />
+                                        </View>
+                                    ) : (
+                                        <View style={styles.restTimerInputContent}>
+                                            <Text style={styles.restTimerInputLabel}>
+                                                Select sets to apply rest timer to:
+                                            </Text>
+                                            <View style={styles.setSelectionList}>
+                                                {setDragItems
+                                                    .filter((i): i is SetDragItem => i.type === 'set')
+                                                    .map((item) => {
+                                                        const isSelected = applyToMode.selectedSetIds.has(item.id);
+                                                        const set = item.set;
+                                                        const category = exercise?.category || 'Lifts';
+                                                        const weightUnit = exercise?.weightUnit || 'lbs';
+                                                        
+                                                        return (
+                                                            <TouchableOpacity
+                                                                key={item.id}
+                                                                style={[
+                                                                    styles.setSelectionItem,
+                                                                    isSelected && styles.setSelectionItem__selected
+                                                                ]}
+                                                                onPress={() => {
+                                                                    const newSelected = new Set(applyToMode.selectedSetIds);
+                                                                    if (isSelected) {
+                                                                        newSelected.delete(item.id);
+                                                                    } else {
+                                                                        newSelected.add(item.id);
+                                                                    }
+                                                                    setApplyToMode({ selectedSetIds: newSelected });
+                                                                }}
+                                                            >
+                                                                <View style={styles.setSelectionItemLeft}>
+                                                                    {isSelected ? (
+                                                                        <Check size={20} color={COLORS.blue[600]} strokeWidth={3} />
+                                                                    ) : (
+                                                                        <Square size={20} color={COLORS.slate[400]} />
+                                                                    )}
+                                                                    <View style={styles.setSelectionItemInfo}>
+                                                                        <Text style={styles.setSelectionItemIndex}>
+                                                                            Set {setDragItems.filter((i): i is SetDragItem => i.type === 'set').findIndex(s => s.id === item.id) + 1}
+                                                                        </Text>
+                                                                        <Text style={styles.setSelectionItemDetails}>
+                                                                            {category === 'Lifts' ? (
+                                                                                `${set.weight || '-'} ${weightUnit} × ${set.reps || '-'}`
+                                                                            ) : category === 'Cardio' ? (
+                                                                                `${set.duration || '-'} / ${set.distance || '-'}`
+                                                                            ) : (
+                                                                                `${set.reps || '-'} reps`
+                                                                            )}
+                                                                        </Text>
+                                                                    </View>
+                                                                </View>
+                                                                {set.restPeriodSeconds && (
+                                                                    <View style={styles.setSelectionItemRestTimer}>
+                                                                        <Timer size={14} color={COLORS.blue[500]} />
+                                                                        <Text style={styles.setSelectionItemRestTimerText}>
+                                                                            {formatRestTime(set.restPeriodSeconds)}
+                                                                        </Text>
+                                                                    </View>
+                                                                )}
+                                                            </TouchableOpacity>
+                                                        );
+                                                    })}
+                                            </View>
+                                        </View>
+                                    )}
+
+                                    <View style={styles.restTimerInputFooter}>
+                                        {!applyToMode ? (
+                                            <>
+                                                <TouchableOpacity
+                                                    onPress={() => {
+                                                        if (restTimerInput.currentValue) {
+                                                            const seconds = parseRestTimeInput(restTimerInput.currentValue);
+                                                            if (seconds > 0) {
+                                                                // Initialize with current set selected
+                                                                const initialSelected = new Set<string>([restTimerInput.setId]);
+                                                                setApplyToMode({ selectedSetIds: initialSelected });
+                                                            }
+                                                        }
+                                                    }}
+                                                    style={styles.restTimerInputApplyToButton}
+                                                    disabled={!restTimerInput.currentValue || parseRestTimeInput(restTimerInput.currentValue) <= 0}
+                                                >
+                                                    <Text style={[
+                                                        styles.restTimerInputApplyToText,
+                                                        (!restTimerInput.currentValue || parseRestTimeInput(restTimerInput.currentValue) <= 0) && styles.restTimerInputApplyToText__disabled
+                                                    ]}>Apply to</Text>
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    onPress={() => {
+                                                        if (restTimerInput.currentValue) {
+                                                            const seconds = parseRestTimeInput(restTimerInput.currentValue);
+                                                            if (seconds > 0) {
+                                                                onUpdateRestTimer(restTimerInput.setId, seconds);
+                                                            }
+                                                        } else {
+                                                            // Remove rest timer
+                                                            onUpdateRestTimer(restTimerInput.setId, undefined);
+                                                        }
+                                                        setRestTimerInput(null);
+                                                    }}
+                                                    style={styles.restTimerInputSaveButton}
+                                                >
+                                                    <Text style={styles.restTimerInputSaveText}>Save</Text>
+                                                </TouchableOpacity>
+                                                {setDragItems.find((i): i is SetDragItem => i.type === 'set' && i.id === restTimerInput.setId)?.set.restPeriodSeconds && (
+                                                    <TouchableOpacity
+                                                        onPress={() => {
+                                                            onUpdateRestTimer(restTimerInput.setId, undefined);
+                                                            setRestTimerInput(null);
+                                                        }}
+                                                        style={styles.restTimerInputRemoveButton}
+                                                    >
+                                                        <Text style={styles.restTimerInputRemoveText}>Remove</Text>
+                                                    </TouchableOpacity>
+                                                )}
+                                            </>
+                                        ) : (
+                                            <>
+                                                <TouchableOpacity
+                                                    onPress={() => {
+                                                        setApplyToMode(null);
+                                                    }}
+                                                    style={styles.restTimerInputCancelButton}
+                                                >
+                                                    <Text style={styles.restTimerInputCancelText}>Cancel</Text>
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    onPress={() => {
+                                                        if (restTimerInput.currentValue) {
+                                                            const seconds = parseRestTimeInput(restTimerInput.currentValue);
+                                                            if (seconds > 0 && applyToMode.selectedSetIds.size > 0) {
+                                                                onUpdateRestTimerMultiple(
+                                                                    Array.from(applyToMode.selectedSetIds),
+                                                                    seconds
+                                                                );
+                                                            }
+                                                        }
+                                                        setApplyToMode(null);
+                                                        setRestTimerInput(null);
+                                                    }}
+                                                    style={[
+                                                        styles.restTimerInputSaveButton,
+                                                        applyToMode.selectedSetIds.size === 0 && styles.restTimerInputSaveButton__disabled
+                                                    ]}
+                                                    disabled={applyToMode.selectedSetIds.size === 0}
+                                                >
+                                                    <Text style={[
+                                                        styles.restTimerInputSaveText,
+                                                        applyToMode.selectedSetIds.size === 0 && styles.restTimerInputSaveText__disabled
+                                                    ]}>
+                                                        Apply to {applyToMode.selectedSetIds.size} set{applyToMode.selectedSetIds.size !== 1 ? 's' : ''}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            </>
+                                        )}
+                                    </View>
+                                </Pressable>
+                            </Pressable>
+                        )}
 
                         <View style={styles.footer}>
                             <TouchableOpacity onPress={onSave} style={styles.doneButton}>
@@ -553,10 +785,19 @@ const styles = StyleSheet.create({
         borderRadius: 6,
         marginLeft: 8,
     },
+    restTimerBadge__add: {
+        backgroundColor: COLORS.slate[50],
+        borderWidth: 1,
+        borderColor: COLORS.slate[200],
+        borderStyle: 'dashed',
+    },
     restTimerText: {
         fontSize: 11,
         fontWeight: '600',
         color: COLORS.blue[600],
+    },
+    restTimerText__add: {
+        color: COLORS.slate[500],
     },
     dropSetIndicator: {
         position: 'absolute',
@@ -681,6 +922,184 @@ const styles = StyleSheet.create({
     },
     addSetButtonText: {
         fontSize: 14,
+        fontWeight: '600',
+        color: COLORS.blue[600],
+    },
+    restTimerInputOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 1000,
+        elevation: 10,
+    },
+    restTimerInputContainer: {
+        backgroundColor: COLORS.white,
+        borderRadius: 12,
+        width: '85%',
+        maxWidth: 400,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+        elevation: 10,
+    },
+    restTimerInputHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.slate[200],
+    },
+    restTimerInputTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: COLORS.slate[800],
+    },
+    restTimerInputClose: {
+        padding: 4,
+    },
+    restTimerInputContent: {
+        padding: 16,
+    },
+    restTimerInputLabel: {
+        fontSize: 14,
+        color: COLORS.slate[600],
+        marginBottom: 12,
+    },
+    restTimerInput: {
+        borderWidth: 1,
+        borderColor: COLORS.slate[300],
+        borderRadius: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        fontSize: 16,
+        color: COLORS.slate[800],
+        backgroundColor: COLORS.white,
+    },
+    restTimerInputFooter: {
+        flexDirection: 'row',
+        padding: 16,
+        borderTopWidth: 1,
+        borderTopColor: COLORS.slate[200],
+        gap: 12,
+    },
+    restTimerInputSaveButton: {
+        flex: 1,
+        backgroundColor: COLORS.blue[600],
+        paddingVertical: 12,
+        borderRadius: 8,
+        alignItems: 'center',
+    },
+    restTimerInputSaveText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: COLORS.white,
+    },
+    restTimerInputRemoveButton: {
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: COLORS.red[300],
+    },
+    restTimerInputRemoveText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: COLORS.red[600],
+    },
+    restTimerInputApplyToButton: {
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: COLORS.blue[300],
+        backgroundColor: COLORS.blue[50],
+    },
+    restTimerInputApplyToText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: COLORS.blue[600],
+    },
+    restTimerInputApplyToText__disabled: {
+        color: COLORS.slate[400],
+    },
+    restTimerInputCancelButton: {
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: COLORS.slate[300],
+    },
+    restTimerInputCancelText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: COLORS.slate[600],
+    },
+    restTimerInputSaveButton__disabled: {
+        backgroundColor: COLORS.slate[200],
+    },
+    restTimerInputSaveText__disabled: {
+        color: COLORS.slate[400],
+    },
+    setSelectionList: {
+        maxHeight: 300,
+        marginTop: 8,
+    },
+    setSelectionItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 12,
+        paddingHorizontal: 12,
+        marginBottom: 4,
+        borderRadius: 8,
+        backgroundColor: COLORS.slate[50],
+        borderWidth: 1,
+        borderColor: COLORS.slate[200],
+    },
+    setSelectionItem__selected: {
+        backgroundColor: COLORS.blue[50],
+        borderColor: COLORS.blue[300],
+    },
+    setSelectionItemLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        flex: 1,
+    },
+    setSelectionItemInfo: {
+        flex: 1,
+    },
+    setSelectionItemIndex: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: COLORS.slate[700],
+        marginBottom: 2,
+    },
+    setSelectionItemDetails: {
+        fontSize: 12,
+        color: COLORS.slate[500],
+    },
+    setSelectionItemRestTimer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: COLORS.blue[50],
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+    },
+    setSelectionItemRestTimerText: {
+        fontSize: 11,
         fontWeight: '600',
         color: COLORS.blue[600],
     },

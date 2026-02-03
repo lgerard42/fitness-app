@@ -182,6 +182,8 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     onCreateDropset,
     onUpdateSet,
     onAddSet,
+    onUpdateRestTimer,
+    onUpdateRestTimerMultiple,
   } = useSetDragAndDrop({
     currentWorkout: currentWorkout || dummyWorkout,
     handleWorkoutUpdate,
@@ -2608,6 +2610,8 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
         onCreateDropset={onCreateDropset}
         onUpdateSet={onUpdateSet}
         onAddSet={onAddSet}
+        onUpdateRestTimer={onUpdateRestTimer}
+        onUpdateRestTimerMultiple={onUpdateRestTimerMultiple}
       />
     </SafeAreaView>
   );
