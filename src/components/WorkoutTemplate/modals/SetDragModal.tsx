@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable, TextInput, ScrollView } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
 import { X, Timer, Flame, Zap, Check, Layers, Plus, Square } from 'lucide-react-native';
@@ -37,7 +37,7 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
 }) => {
     const [indexPopup, setIndexPopup] = useState<{ setId: string; top: number; left: number } | null>(null);
     const [restTimerInput, setRestTimerInput] = useState<{ setId: string; currentValue: string } | null>(null);
-    const [applyToMode, setApplyToMode] = useState<{ selectedSetIds: Set<string> } | null>(null);
+    const [applyToMode, setApplyToMode] = useState<{ selectedSetIds: string[] } | null>(null);
     const badgeRefs = useRef<Map<string, View>>(new Map());
     const renderDropSetHeader = useCallback((item: DropSetHeaderItem) => {
         return (
@@ -460,15 +460,15 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                                             <Text style={styles.restTimerInputLabel}>
                                                 Select sets to apply rest timer to:
                                             </Text>
-                                            <View style={styles.setSelectionList}>
+                                            <ScrollView style={styles.setSelectionList}>
                                                 {setDragItems
                                                     .filter((i): i is SetDragItem => i.type === 'set')
                                                     .map((item) => {
-                                                        const isSelected = applyToMode.selectedSetIds.has(item.id);
+                                                        const isSelected = applyToMode.selectedSetIds.includes(item.id);
                                                         const set = item.set;
                                                         const category = exercise?.category || 'Lifts';
                                                         const weightUnit = exercise?.weightUnit || 'lbs';
-                                                        
+
                                                         return (
                                                             <TouchableOpacity
                                                                 key={item.id}
@@ -477,11 +477,14 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                                                                     isSelected && styles.setSelectionItem__selected
                                                                 ]}
                                                                 onPress={() => {
-                                                                    const newSelected = new Set(applyToMode.selectedSetIds);
+                                                                    const newSelected = [...applyToMode.selectedSetIds];
                                                                     if (isSelected) {
-                                                                        newSelected.delete(item.id);
+                                                                        const index = newSelected.indexOf(item.id);
+                                                                        if (index > -1) {
+                                                                            newSelected.splice(index, 1);
+                                                                        }
                                                                     } else {
-                                                                        newSelected.add(item.id);
+                                                                        newSelected.push(item.id);
                                                                     }
                                                                     setApplyToMode({ selectedSetIds: newSelected });
                                                                 }}
@@ -518,7 +521,7 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                                                             </TouchableOpacity>
                                                         );
                                                     })}
-                                            </View>
+                                            </ScrollView>
                                         </View>
                                     )}
 
@@ -531,7 +534,7 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                                                             const seconds = parseRestTimeInput(restTimerInput.currentValue);
                                                             if (seconds > 0) {
                                                                 // Initialize with current set selected
-                                                                const initialSelected = new Set<string>([restTimerInput.setId]);
+                                                                const initialSelected = [restTimerInput.setId];
                                                                 setApplyToMode({ selectedSetIds: initialSelected });
                                                             }
                                                         }
@@ -587,9 +590,9 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                                                     onPress={() => {
                                                         if (restTimerInput.currentValue) {
                                                             const seconds = parseRestTimeInput(restTimerInput.currentValue);
-                                                            if (seconds > 0 && applyToMode.selectedSetIds.size > 0) {
+                                                            if (seconds > 0 && applyToMode.selectedSetIds.length > 0) {
                                                                 onUpdateRestTimerMultiple(
-                                                                    Array.from(applyToMode.selectedSetIds),
+                                                                    applyToMode.selectedSetIds,
                                                                     seconds
                                                                 );
                                                             }
@@ -599,15 +602,15 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                                                     }}
                                                     style={[
                                                         styles.restTimerInputSaveButton,
-                                                        applyToMode.selectedSetIds.size === 0 && styles.restTimerInputSaveButton__disabled
+                                                        applyToMode.selectedSetIds.length === 0 && styles.restTimerInputSaveButton__disabled
                                                     ]}
-                                                    disabled={applyToMode.selectedSetIds.size === 0}
+                                                    disabled={applyToMode.selectedSetIds.length === 0}
                                                 >
                                                     <Text style={[
                                                         styles.restTimerInputSaveText,
-                                                        applyToMode.selectedSetIds.size === 0 && styles.restTimerInputSaveText__disabled
+                                                        applyToMode.selectedSetIds.length === 0 && styles.restTimerInputSaveText__disabled
                                                     ]}>
-                                                        Apply to {applyToMode.selectedSetIds.size} set{applyToMode.selectedSetIds.size !== 1 ? 's' : ''}
+                                                        Apply to {applyToMode.selectedSetIds.length} set{applyToMode.selectedSetIds.length !== 1 ? 's' : ''}
                                                     </Text>
                                                 </TouchableOpacity>
                                             </>
@@ -726,8 +729,8 @@ const styles = StyleSheet.create({
         transform: [{ scale: 1.02 }],
     },
     setIndexBadge: {
-        width: 32,
-        height: 28,
+        width: 30,
+        height: 26,
         borderRadius: 6,
         backgroundColor: COLORS.slate[100],
         alignItems: 'center',
