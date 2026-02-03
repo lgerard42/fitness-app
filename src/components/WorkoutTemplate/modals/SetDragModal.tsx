@@ -59,11 +59,78 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
         const category = exercise?.category || 'Lifts';
         const weightUnit = exercise?.weightUnit || 'lbs';
 
-        // Get the actual index from DraggableFlatList
-        const setIndex = getIndex() ?? 0;
+        // Get the position in the full array (including headers/footers)
+        const fullArrayIndex = getIndex() ?? 0;
 
-        // Simple 1-based index for display (set number in the exercise)
-        const displayIndex = setIndex + 1;
+        // Count how many sets come before this position (excluding headers/footers)
+        let setCountBefore = 0;
+        for (let i = 0; i < fullArrayIndex; i++) {
+            if (setDragItems[i]?.type === 'set') {
+                setCountBefore++;
+            }
+        }
+
+        // Get all sets in order for dropset calculations
+        const allSets = setDragItems.filter((i): i is SetDragItem => i.type === 'set');
+        const currentSetIndex = setCountBefore;
+
+        // Calculate display index based on dropset logic (matching SetRow.tsx)
+        let displayIndexText: string;
+        let isSubIndex = false;
+
+        if (set.dropSetId) {
+            // Find all sets in this dropset
+            const dropSetSets = allSets.filter(s => s.set.dropSetId === set.dropSetId);
+            const indexInDropSet = dropSetSets.findIndex(s => s.id === item.id) + 1;
+
+            // Count group number: iterate through sets before this one, counting dropsets as single units
+            let groupNumber = 0;
+            const seenDropSetIds = new Set<string>();
+
+            for (let i = 0; i < currentSetIndex; i++) {
+                const prevSet = allSets[i].set;
+                if (prevSet.dropSetId) {
+                    if (!seenDropSetIds.has(prevSet.dropSetId)) {
+                        seenDropSetIds.add(prevSet.dropSetId);
+                        groupNumber++;
+                    }
+                } else {
+                    groupNumber++;
+                }
+            }
+
+            // Check if this dropset was already counted
+            if (!seenDropSetIds.has(set.dropSetId)) {
+                groupNumber++;
+            }
+
+            if (indexInDropSet === 1) {
+                // First set in dropset: show only primary index
+                displayIndexText = groupNumber.toString();
+            } else {
+                // Subsequent sets: show only subIndex with "."
+                displayIndexText = `.${indexInDropSet}`;
+                isSubIndex = true;
+            }
+        } else {
+            // Not in a dropset - count all sets (treating dropsets as single units)
+            let overallSetNumber = 0;
+            const seenDropSetIds = new Set<string>();
+
+            for (let i = 0; i < currentSetIndex; i++) {
+                const prevSet = allSets[i].set;
+                if (prevSet.dropSetId) {
+                    if (!seenDropSetIds.has(prevSet.dropSetId)) {
+                        seenDropSetIds.add(prevSet.dropSetId);
+                        overallSetNumber++;
+                    }
+                } else {
+                    overallSetNumber++;
+                }
+            }
+            overallSetNumber++;
+            displayIndexText = overallSetNumber.toString();
+        }
 
         return (
             <TouchableOpacity
@@ -85,13 +152,23 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                     set.isWarmup && styles.setIndexBadge__warmup,
                     set.isFailure && styles.setIndexBadge__failure,
                 ]}>
-                    <Text style={[
-                        styles.setIndexText,
-                        set.isWarmup && styles.setIndexText__warmup,
-                        set.isFailure && styles.setIndexText__failure,
-                    ]}>
-                        {displayIndex}
-                    </Text>
+                    {isSubIndex ? (
+                        <Text style={[
+                            styles.setIndexText__groupSub,
+                            set.isWarmup && styles.setIndexText__groupSub__warmup,
+                            set.isFailure && styles.setIndexText__groupSub__failure,
+                        ]}>
+                            {displayIndexText}
+                        </Text>
+                    ) : (
+                        <Text style={[
+                            styles.setIndexText,
+                            set.isWarmup && styles.setIndexText__warmup,
+                            set.isFailure && styles.setIndexText__failure,
+                        ]}>
+                            {displayIndexText}
+                        </Text>
+                    )}
                 </View>
 
                 <View style={styles.setInfo}>
@@ -136,7 +213,7 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                 )}
             </TouchableOpacity>
         );
-    }, [exercise, renderDropSetHeader, renderDropSetFooter]);
+    }, [exercise, setDragItems, renderDropSetHeader, renderDropSetFooter]);
 
     const keyExtractor = useCallback((item: SetDragListItem) => item.id, []);
 
@@ -320,6 +397,17 @@ const styles = StyleSheet.create({
     },
     setIndexText__failure: {
         color: COLORS.red[600],
+    },
+    setIndexText__groupSub: {
+        fontSize: 10,
+        fontWeight: '600',
+        color: COLORS.slate[400],
+    },
+    setIndexText__groupSub__warmup: {
+        color: COLORS.orange[350],
+    },
+    setIndexText__groupSub__failure: {
+        color: COLORS.red[350],
     },
     setInfo: {
         flex: 1,
