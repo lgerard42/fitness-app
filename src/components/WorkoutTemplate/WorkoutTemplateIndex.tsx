@@ -206,16 +206,9 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
   // Wait for reorderedDragItems to be set (collapsed state) and then wait for layout to settle
   useEffect(() => {
     if (collapsedGroupId && pendingDragCallback.current && dragItems.length > 0 && pendingDragItemId.current) {
-      console.log('[DRAG DEBUG] useEffect triggered - will call drag() after delay', {
-        collapsedGroupId,
-        dragItemsCount: dragItems.length,
-        pendingDragItemId: pendingDragItemId.current,
-      });
-
       // Wait for layout to fully settle after collapse before aligning and triggering drag
       // This ensures all collapsed items are rendered and layout calculations are complete
       const timeoutId = setTimeout(() => {
-        console.log('[DRAG DEBUG] Layout settled, aligning and triggering drag');
         // Align the collapsed header to keep it at touch position (after all layouts are measured)
         if (pendingDragItemId.current) {
           alignAfterCollapse(pendingDragItemId.current, dragItems);
@@ -224,12 +217,9 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
         setTimeout(() => {
           // Ensure we check if we are STILL dragging before calling the callback
           if (pendingDragCallback.current && isDragging) {
-            console.log('[DRAG DEBUG] Calling pendingDragCallback (drag() function)');
             pendingDragCallback.current();
             pendingDragCallback.current = null;
-            console.log('[DRAG DEBUG] drag() called, pendingDragCallback cleared');
           } else if (pendingDragCallback.current && !isDragging) {
-            console.log('[DRAG DEBUG] Skipping pendingDragCallback - no longer dragging');
             pendingDragCallback.current = null;
           }
         }, 100);
@@ -238,19 +228,6 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     }
   }, [collapsedGroupId, dragItems, alignAfterCollapse, pendingDragItemId, isDragging]);
 
-  // Debug: Log when dragItems changes (only when dragging to reduce noise)
-  useEffect(() => {
-    if (isDragging || collapsedGroupId) {
-      console.log('[DRAG DEBUG] dragItems changed in component', {
-        dragItemsCount: dragItems.length,
-        isDragging,
-        collapsedGroupId,
-        headers: dragItems.filter(i => i.type === 'GroupHeader').map(i => ({ id: i.id, groupId: i.groupId })),
-        exercises: dragItems.filter(i => i.type === 'Exercise').length,
-        footers: dragItems.filter(i => i.type === 'GroupFooter').length,
-      });
-    }
-  }, [dragItems, isDragging, collapsedGroupId]);
 
   // Custom Keyboard State
   const [customKeyboardVisible, setCustomKeyboardVisible] = useState(false);
@@ -2015,16 +1992,10 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
           ref={listRef}
           data={dragItems}
           onDragBegin={() => {
-            console.log('[DRAG DEBUG] DraggableFlatList onDragBegin called');
             handleDragBegin();
           }}
           onDragEnd={(params) => {
-            console.log('[DRAG DEBUG] DraggableFlatList onDragEnd called', {
-              from: params.from,
-              to: params.to,
-            });
             handleDragEnd(params);
-            console.log('[DRAG DEBUG] DraggableFlatList onDragEnd handler completed');
           }}
           keyExtractor={dragKeyExtractor}
           renderItem={renderDragItem}
