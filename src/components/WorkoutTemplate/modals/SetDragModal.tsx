@@ -2,7 +2,7 @@ import React, { useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
-import { GripVertical, X, Timer, Flame, Zap, Check, Layers } from 'lucide-react-native';
+import { X, Timer, Flame, Zap, Check, Layers } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { formatRestTime } from '@/utils/workoutHelpers';
 import type { Exercise, Set, ExerciseCategory } from '@/types/workout';
@@ -14,6 +14,8 @@ interface SetDragModalProps {
     setDragItems: SetDragListItem[];
     onDragEnd: (params: { data: SetDragListItem[]; from: number; to: number }) => void;
     onCancel: () => void;
+    onSave: () => void;
+    onCreateDropset: (setId: string) => void;
 }
 
 const SetDragModal: React.FC<SetDragModalProps> = ({
@@ -22,6 +24,8 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
     setDragItems,
     onDragEnd,
     onCancel,
+    onSave,
+    onCreateDropset,
 }) => {
     const renderDropSetHeader = useCallback((item: DropSetHeaderItem) => {
         return (
@@ -29,7 +33,6 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                 style={styles.dropsetHeader}
                 pointerEvents="box-none"
             >
-                <Layers size={14} color={COLORS.indigo[600]} />
                 <Text style={styles.dropsetHeaderText}>Dropset ({item.setCount} sets)</Text>
             </View>
         );
@@ -143,10 +146,6 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                     isActive && styles.dragItem__active,
                 ]}
             >
-                <View style={styles.dragHandle}>
-                    <GripVertical size={20} color={COLORS.slate[400]} />
-                </View>
-
                 <View style={[
                     styles.setIndexBadge,
                     set.isWarmup && styles.setIndexBadge__warmup,
@@ -208,6 +207,19 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                     </View>
                 )}
 
+                {!set.dropSetId && (
+                    <TouchableOpacity
+                        onPress={(e) => {
+                            e.stopPropagation();
+                            onCreateDropset(set.id);
+                        }}
+                        style={styles.createDropsetButton}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                        <Layers size={18} color={COLORS.indigo[600]} />
+                    </TouchableOpacity>
+                )}
+
                 {set.dropSetId && (
                     <View style={styles.dropSetIndicator} />
                 )}
@@ -261,7 +273,7 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                         )}
 
                         <View style={styles.footer}>
-                            <TouchableOpacity onPress={onCancel} style={styles.doneButton}>
+                            <TouchableOpacity onPress={onSave} style={styles.doneButton}>
                                 <Text style={styles.doneButtonText}>Done</Text>
                             </TouchableOpacity>
                         </View>
@@ -348,10 +360,10 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: COLORS.white,
-        paddingVertical: 12,
+        paddingVertical: 6,
         paddingHorizontal: 16,
         marginHorizontal: 12,
-        marginVertical: 4,
+        marginTop: 4,
         borderRadius: 10,
         borderWidth: 1,
         borderColor: COLORS.slate[200],
@@ -368,9 +380,9 @@ const styles = StyleSheet.create({
         elevation: 8,
         transform: [{ scale: 1.02 }],
     },
-    dragHandle: {
-        marginRight: 12,
-        padding: 4,
+    createDropsetButton: {
+        padding: 6,
+        marginLeft: 8,
     },
     setIndexBadge: {
         width: 32,
@@ -469,18 +481,21 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 8,
         paddingHorizontal: 16,
-        paddingVertical: 10,
-        marginHorizontal: 12,
+        paddingVertical: 2,
+        marginHorizontal: 18,
         marginTop: 8,
-        marginBottom: 4,
-        backgroundColor: COLORS.indigo[50],
+        marginBottom: 0,
+        backgroundColor: COLORS.indigo[200],
         borderWidth: 2,
         borderColor: COLORS.indigo[200],
-        borderRadius: 8,
-        borderStyle: 'dashed',
+        borderBottomLeftRadius: 0,
+        borderBottomRightRadius: 0,
+        borderTopLeftRadius: 8,
+        borderTopRightRadius: 8,
+        borderStyle: 'solid',
     },
     dropsetHeaderText: {
-        fontSize: 12,
+        fontSize: 9,
         fontWeight: '700',
         color: COLORS.indigo[700],
         textTransform: 'uppercase',
@@ -488,10 +503,10 @@ const styles = StyleSheet.create({
     },
     dropsetFooter: {
         height: 8,
-        marginHorizontal: 12,
+        marginHorizontal: 18,
         marginTop: 4,
-        marginBottom: 8,
-        backgroundColor: COLORS.indigo[100],
+        marginBottom: 4,
+        backgroundColor: COLORS.indigo[200],
         borderBottomLeftRadius: 8,
         borderBottomRightRadius: 8,
     },

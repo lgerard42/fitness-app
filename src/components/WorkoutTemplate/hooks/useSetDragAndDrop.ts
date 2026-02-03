@@ -36,7 +36,9 @@ interface UseSetDragAndDropReturn {
   setDragItems: SetDragListItem[];
   startSetDrag: (exercise: Exercise) => void;
   cancelSetDrag: () => void;
+  saveSetDrag: () => void;
   handleSetDragEnd: (params: { data: SetDragListItem[]; from: number; to: number }) => void;
+  onCreateDropset: (setId: string) => void;
 }
 
 /**
@@ -49,7 +51,7 @@ export const useSetDragAndDrop = ({
 }: UseSetDragAndDropProps): UseSetDragAndDropReturn => {
   const [isSetDragActive, setIsSetDragActive] = useState(false);
   const [activeExerciseId, setActiveExerciseId] = useState<string | null>(null);
-  const [setDragItems, setSetDragItems] = useState<SetDragItem[]>([]);
+  const [setDragItems, setSetDragItems] = useState<SetDragListItem[]>([]);
   const originalSetsRef = useRef<Set[] | null>(null);
   
   // Use ref to always have access to current workout (avoids stale closure)
@@ -139,8 +141,58 @@ export const useSetDragAndDrop = ({
   }, []);
 
   /**
+   * Helper function to reconstruct headers/footers from sets
+   */
+  const reconstructItemsFromSets = useCallback((sets: Set[]): SetDragListItem[] => {
+    const items: SetDragListItem[] = [];
+    const processedDropSetIds = new Set<string>();
+    
+    sets.forEach((set, index) => {
+      // Check if this is the start of a new dropset
+      const isDropSetStart = set.dropSetId && 
+        (index === 0 || sets[index - 1].dropSetId !== set.dropSetId);
+      
+      // Check if this is the end of a dropset
+      const isDropSetEnd = set.dropSetId && 
+        (index === sets.length - 1 || sets[index + 1]?.dropSetId !== set.dropSetId);
+      
+      // Add dropset header if this is the start
+      if (isDropSetStart && set.dropSetId && !processedDropSetIds.has(set.dropSetId)) {
+        // Count sets in this dropset
+        const dropSetSets = sets.filter(s => s.dropSetId === set.dropSetId);
+        items.push({
+          id: `dropset-header-${set.dropSetId}`,
+          type: 'dropset_header',
+          dropSetId: set.dropSetId,
+          setCount: dropSetSets.length,
+        });
+        processedDropSetIds.add(set.dropSetId);
+      }
+      
+      // Add the set itself
+      items.push({
+        id: set.id,
+        type: 'set',
+        set,
+        hasRestTimer: !!set.restPeriodSeconds,
+      });
+      
+      // Add dropset footer if this is the end
+      if (isDropSetEnd && set.dropSetId) {
+        items.push({
+          id: `dropset-footer-${set.dropSetId}`,
+          type: 'dropset_footer',
+          dropSetId: set.dropSetId,
+        });
+      }
+    });
+
+    return items;
+  }, []);
+
+  /**
    * Handle the end of a set drag operation.
-   * Updates dropSetId based on position relative to dropset headers/footers.
+   * Updates local state and reconstructs headers/footers, but doesn't save yet.
    */
   const handleSetDragEnd = useCallback(({ data, from, to }: { 
     data: SetDragListItem[]; 
@@ -148,18 +200,16 @@ export const useSetDragAndDrop = ({
     to: number 
   }) => {
     if (!activeExerciseId || from === to) {
-      // No change, just close
-      cancelSetDrag();
+      // No change, just update the data array (in case headers/footers moved)
+      setSetDragItems(data);
       return;
     }
 
     // Extract only the sets (filter out headers/footers)
     const reorderedSets: Set[] = [];
-    const setItems: SetDragItem[] = [];
     
     data.forEach(item => {
       if (item.type === 'set') {
-        setItems.push(item);
         reorderedSets.push(item.set);
       }
     });
@@ -223,6 +273,58 @@ export const useSetDragAndDrop = ({
       };
     });
 
+    // Reconstruct headers/footers from the updated sets
+    const newItems = reconstructItemsFromSets(updatedSets);
+    setSetDragItems(newItems);
+  }, [activeExerciseId, reconstructItemsFromSets]);
+
+  /**
+   * Create a dropset for a single set
+   */
+  const onCreateDropset = useCallback((setId: string) => {
+    // Generate a new dropSetId
+    const newDropSetId = `dropset-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    // Update the set with the new dropSetId
+    const updatedItems = setDragItems.map(item => {
+      if (item.type === 'set' && item.id === setId) {
+        return {
+          ...item,
+          set: {
+            ...item.set,
+            dropSetId: newDropSetId,
+          },
+        };
+      }
+      return item;
+    });
+
+    // Reconstruct items with headers/footers
+    const sets: Set[] = [];
+    updatedItems.forEach(item => {
+      if (item.type === 'set') {
+        sets.push(item.set);
+      }
+    });
+
+    const newItems = reconstructItemsFromSets(sets);
+    setSetDragItems(newItems);
+  }, [setDragItems, reconstructItemsFromSets]);
+
+  /**
+   * Save the current drag state to the workout and close the modal
+   */
+  const saveSetDrag = useCallback(() => {
+    if (!activeExerciseId) return;
+
+    // Extract sets from current drag items
+    const sets: Set[] = [];
+    setDragItems.forEach(item => {
+      if (item.type === 'set') {
+        sets.push(item.set);
+      }
+    });
+
     // Update the workout with reordered sets (use ref for current workout)
     const workout = workoutRef.current;
     handleWorkoutUpdate({
@@ -231,14 +333,14 @@ export const useSetDragAndDrop = ({
         if (ex.type === 'group') return ex;
         return {
           ...ex,
-          sets: updatedSets,
+          sets,
         };
       }),
     });
 
     // Close the drag modal
     cancelSetDrag();
-  }, [activeExerciseId, handleWorkoutUpdate, cancelSetDrag]);
+  }, [activeExerciseId, setDragItems, handleWorkoutUpdate, cancelSetDrag]);
 
   return {
     isSetDragActive,
@@ -246,6 +348,8 @@ export const useSetDragAndDrop = ({
     setDragItems,
     startSetDrag,
     cancelSetDrag,
+    saveSetDrag,
     handleSetDragEnd,
+    onCreateDropset,
   };
 };
