@@ -23,6 +23,7 @@ interface DropSetFooterItem {
 }
 
 export type SetDragListItem = SetDragItem | DropSetHeaderItem | DropSetFooterItem;
+export type { SetDragItem, DropSetHeaderItem, DropSetFooterItem };
 
 interface UseSetDragAndDropProps {
   currentWorkout: Workout;
@@ -139,10 +140,10 @@ export const useSetDragAndDrop = ({
 
   /**
    * Handle the end of a set drag operation.
-   * Updates dropSetId based on new position.
+   * Updates dropSetId based on position relative to dropset headers/footers.
    */
   const handleSetDragEnd = useCallback(({ data, from, to }: { 
-    data: SetDragItem[]; 
+    data: SetDragListItem[]; 
     from: number; 
     to: number 
   }) => {
@@ -152,45 +153,68 @@ export const useSetDragAndDrop = ({
       return;
     }
 
-    // Extract the reordered sets
-    const reorderedSets = data.map(item => item.set);
+    // Extract only the sets (filter out headers/footers)
+    const reorderedSets: Set[] = [];
+    const setItems: SetDragItem[] = [];
+    
+    data.forEach(item => {
+      if (item.type === 'set') {
+        setItems.push(item);
+        reorderedSets.push(item.set);
+      }
+    });
 
-    // Update dropSetId based on new position
-    const updatedSets = reorderedSets.map((set, index) => {
-      const prevSet = index > 0 ? reorderedSets[index - 1] : null;
-      const nextSet = index < reorderedSets.length - 1 ? reorderedSets[index + 1] : null;
-
-      // Determine if this set should be part of a dropset based on neighbors
-      let newDropSetId = set.dropSetId;
-
-      // If the set was moved (it's the one that changed position)
-      if (reorderedSets[to]?.id === set.id) {
-        // Check if both neighbors have the same dropSetId
-        if (prevSet?.dropSetId && nextSet?.dropSetId && prevSet.dropSetId === nextSet.dropSetId) {
-          // Dropped between two sets in the same dropset - inherit that ID
-          newDropSetId = prevSet.dropSetId;
-        } else if (prevSet?.dropSetId && !nextSet?.dropSetId) {
-          // Dropped right after a dropset - check if we should join
-          // Only join if the previous set is part of a contiguous dropset ending here
-          const prevDropSetSets = reorderedSets.filter(s => s.dropSetId === prevSet.dropSetId);
-          const lastInDropSet = prevDropSetSets[prevDropSetSets.length - 1];
-          if (lastInDropSet?.id === prevSet.id) {
-            // We're right after the last set in a dropset - join it
-            newDropSetId = prevSet.dropSetId;
+    // Determine dropset membership based on position between headers/footers
+    const updatedSets = reorderedSets.map((set, setIndex) => {
+      // Find the position of this set in the full data array
+      let positionInFullArray = -1;
+      let setCount = 0;
+      for (let i = 0; i < data.length; i++) {
+        if (data[i].type === 'set') {
+          if (setCount === setIndex) {
+            positionInFullArray = i;
+            break;
           }
-        } else if (!prevSet?.dropSetId && nextSet?.dropSetId) {
-          // Dropped right before a dropset - check if we should join
-          const nextDropSetSets = reorderedSets.filter(s => s.dropSetId === nextSet.dropSetId);
-          const firstInDropSet = nextDropSetSets[0];
-          if (firstInDropSet?.id === nextSet.id) {
-            // We're right before the first set in a dropset - join it
-            newDropSetId = nextSet.dropSetId;
-          }
-        } else if (!prevSet?.dropSetId && !nextSet?.dropSetId) {
-          // Neither neighbor is in a dropset - remove from dropset
-          newDropSetId = undefined;
+          setCount++;
         }
-        // If only one neighbor has a dropSetId and it doesn't match our logic, keep current
+      }
+
+      if (positionInFullArray === -1) {
+        // Fallback: keep original dropSetId
+        return { ...set };
+      }
+
+      // Look backwards to find the nearest dropset header
+      let nearestHeader: DropSetHeaderItem | null = null;
+      for (let i = positionInFullArray; i >= 0; i--) {
+        if (data[i].type === 'dropset_header') {
+          nearestHeader = data[i] as DropSetHeaderItem;
+          break;
+        }
+        if (data[i].type === 'dropset_footer') {
+          // Hit a footer before a header, so we're outside a dropset
+          break;
+        }
+      }
+
+      // Look forwards to find the nearest dropset footer
+      let nearestFooter: DropSetFooterItem | null = null;
+      for (let i = positionInFullArray; i < data.length; i++) {
+        if (data[i].type === 'dropset_footer') {
+          nearestFooter = data[i] as DropSetFooterItem;
+          break;
+        }
+        if (data[i].type === 'dropset_header') {
+          // Hit a header before a footer, so we're outside a dropset
+          break;
+        }
+      }
+
+      // If we're between a matching header and footer, we're in that dropset
+      let newDropSetId: string | undefined = undefined;
+      if (nearestHeader && nearestFooter && 
+          nearestHeader.dropSetId === nearestFooter.dropSetId) {
+        newDropSetId = nearestHeader.dropSetId;
       }
 
       return {

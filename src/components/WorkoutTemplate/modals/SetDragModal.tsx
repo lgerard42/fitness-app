@@ -2,22 +2,17 @@ import React, { useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
-import { GripVertical, X, Timer, Flame, Zap, Check } from 'lucide-react-native';
+import { GripVertical, X, Timer, Flame, Zap, Check, Layers } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { formatRestTime } from '@/utils/workoutHelpers';
 import type { Exercise, Set, ExerciseCategory } from '@/types/workout';
-
-interface SetDragItem {
-    id: string;
-    set: Set;
-    hasRestTimer: boolean;
-}
+import type { SetDragListItem, SetDragItem, DropSetHeaderItem, DropSetFooterItem } from '../hooks/useSetDragAndDrop';
 
 interface SetDragModalProps {
     visible: boolean;
     exercise: Exercise | null;
-    setDragItems: SetDragItem[];
-    onDragEnd: (params: { data: SetDragItem[]; from: number; to: number }) => void;
+    setDragItems: SetDragListItem[];
+    onDragEnd: (params: { data: SetDragListItem[]; from: number; to: number }) => void;
     onCancel: () => void;
 }
 
@@ -28,8 +23,39 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
     onDragEnd,
     onCancel,
 }) => {
-    const renderDragItem = useCallback(({ item, drag, isActive, getIndex }: RenderItemParams<SetDragItem>) => {
-        const set = item.set;
+    const renderDropSetHeader = useCallback((item: DropSetHeaderItem) => {
+        return (
+            <View
+                style={styles.dropsetHeader}
+                pointerEvents="box-none"
+            >
+                <Layers size={14} color={COLORS.indigo[600]} />
+                <Text style={styles.dropsetHeaderText}>Dropset ({item.setCount} sets)</Text>
+            </View>
+        );
+    }, []);
+
+    const renderDropSetFooter = useCallback((item: DropSetFooterItem) => {
+        return (
+            <View
+                style={styles.dropsetFooter}
+                pointerEvents="box-none"
+            />
+        );
+    }, []);
+
+    const renderDragItem = useCallback(({ item, drag, isActive, getIndex }: RenderItemParams<SetDragListItem>) => {
+        // Handle dropset headers and footers (non-draggable)
+        if (item.type === 'dropset_header') {
+            return renderDropSetHeader(item);
+        }
+        if (item.type === 'dropset_footer') {
+            return renderDropSetFooter(item);
+        }
+
+        // Handle regular sets
+        const setItem = item as SetDragItem;
+        const set = setItem.set;
         const category = exercise?.category || 'Lifts';
         const weightUnit = exercise?.weightUnit || 'lbs';
 
@@ -96,7 +122,7 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                     )}
                 </View>
 
-                {item.hasRestTimer && (
+                {setItem.hasRestTimer && (
                     <View style={styles.restTimerBadge}>
                         <Timer size={12} color={COLORS.blue[500]} />
                         <Text style={styles.restTimerText}>
@@ -110,9 +136,9 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                 )}
             </TouchableOpacity>
         );
-    }, [exercise]);
+    }, [exercise, renderDropSetHeader, renderDropSetFooter]);
 
-    const keyExtractor = useCallback((item: SetDragItem) => item.id, []);
+    const keyExtractor = useCallback((item: SetDragListItem) => item.id, []);
 
     if (!visible || !exercise) return null;
 
@@ -349,6 +375,37 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
         color: COLORS.white,
+    },
+    dropsetHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        marginHorizontal: 12,
+        marginTop: 8,
+        marginBottom: 4,
+        backgroundColor: COLORS.indigo[50],
+        borderWidth: 2,
+        borderColor: COLORS.indigo[200],
+        borderRadius: 8,
+        borderStyle: 'dashed',
+    },
+    dropsetHeaderText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: COLORS.indigo[700],
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    dropsetFooter: {
+        height: 8,
+        marginHorizontal: 12,
+        marginTop: 4,
+        marginBottom: 8,
+        backgroundColor: COLORS.indigo[100],
+        borderBottomLeftRadius: 8,
+        borderBottomRightRadius: 8,
     },
 });
 
