@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { X, Plus } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
+import { Z_INDEX, PADDING, BORDER_RADIUS, SPACING } from '@/constants/layout';
 import DragAndDropModal from './DragAndDropModal';
 import type { ExerciseLibraryItem, GroupType } from '@/types/workout';
 
@@ -136,26 +137,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
-    zIndex: 101,
+    marginBottom: PADDING.base,
+    zIndex: Z_INDEX.headerTop,
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: PADDING.base,
   },
   closeButton: {
-    padding: 4,
-    marginLeft: -8,
+    padding: PADDING.xs,
+    marginLeft: -PADDING.md,
   },
   createButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: PADDING.xs,
     backgroundColor: COLORS.slate[100],
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingHorizontal: PADDING.base,
+    paddingVertical: PADDING.sm,
+    borderRadius: BORDER_RADIUS.lg,
   },
   createButtonText: {
     fontSize: 12,
@@ -165,14 +166,14 @@ const styles = StyleSheet.create({
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    zIndex: 102,
+    gap: PADDING.base,
+    zIndex: Z_INDEX.headerRight,
   },
   reviewButton: {
     backgroundColor: COLORS.blue[50],
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingHorizontal: PADDING.base,
+    paddingVertical: PADDING.sm,
+    borderRadius: BORDER_RADIUS.lg,
     borderWidth: 1,
     borderColor: COLORS.blue[400],
     borderStyle: 'dashed',
@@ -191,9 +192,9 @@ const styles = StyleSheet.create({
   },
   addButton: {
     backgroundColor: COLORS.blue[600],
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingHorizontal: PADDING.lg,
+    paddingVertical: PADDING.sm,
+    borderRadius: BORDER_RADIUS.lg,
     borderWidth: 1,
     borderColor: COLORS.blue[600],
   },

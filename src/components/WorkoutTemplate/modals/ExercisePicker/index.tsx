@@ -3,7 +3,8 @@ import { View, Modal, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { COLORS } from '@/constants/colors';
-import { PRIMARY_TO_SECONDARY_MAP } from '@/constants/data';
+import { Z_INDEX, PADDING, BORDER_RADIUS } from '@/constants/layout';
+import { filterExercises, getAvailableSecondaryMusclesForPrimaries } from '@/utils/exerciseFilters';
 import HeaderTopRow from './HeaderTopRow';
 import SearchBar from './SearchBar';
 import Filters from './Filters';
@@ -84,31 +85,23 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
     }
   }, [isOpen]);
 
-  const getAvailableSecondaryMuscles = (): string[] => {
-    if (filterMuscle.length === 0) return [];
-    const secondarySet = new Set<string>();
-    filterMuscle.forEach(primary => {
-      const secondaries = (PRIMARY_TO_SECONDARY_MAP as Record<string, string[]>)[primary] || [];
-      secondaries.forEach((sec: string) => secondarySet.add(sec));
+  const availableSecondaryMuscles = useMemo((): string[] => {
+    return getAvailableSecondaryMusclesForPrimaries(filterMuscle);
+  }, [filterMuscle]);
+
+  const getAvailableSecondaryMuscles = useCallback((): string[] => {
+    return availableSecondaryMuscles;
+  }, [availableSecondaryMuscles]);
+
+  const filtered = useMemo(() => {
+    return filterExercises(exercises, {
+      search,
+      category: filterCategory,
+      primaryMuscle: filterMuscle,
+      secondaryMuscle: filterSecondaryMuscle,
+      equipment: filterEquip,
     });
-    return Array.from(secondarySet).sort();
-  };
-
-  const filtered = exercises.filter(ex => {
-    const matchesSearch = ex.name.toLowerCase().includes(search.toLowerCase());
-    const matchesCategory = filterCategory.length === 0 || filterCategory.includes(ex.category);
-    const primaryMuscles = (ex.primaryMuscles as string[]) || [];
-    const matchesPrimaryMuscle = filterMuscle.length === 0 ||
-      filterMuscle.some(muscle => primaryMuscles.includes(muscle));
-    const secondaryMuscles = (ex.secondaryMuscles as string[]) || [];
-    const matchesSecondaryMuscle = filterSecondaryMuscle.length === 0 ||
-      (ex.secondaryMuscles && filterSecondaryMuscle.some(muscle => secondaryMuscles.includes(muscle)));
-    const weightEquipTags = (ex.weightEquipTags as string[]) || [];
-    const matchesEquip = filterEquip.length === 0 ||
-      (ex.weightEquipTags && filterEquip.some(equip => weightEquipTags.includes(equip)));
-
-    return matchesSearch && matchesCategory && matchesPrimaryMuscle && matchesSecondaryMuscle && matchesEquip;
-  });
+  }, [exercises, search, filterCategory, filterMuscle, filterSecondaryMuscle, filterEquip]);
 
   const getGroupedExercises = useMemo((): GroupedExercise[] => {
     const groups: GroupedExercise[] = [];
@@ -643,12 +636,12 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
   },
   header: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 12,
+    paddingHorizontal: PADDING.container.horizontal,
+    paddingTop: PADDING.container.top,
+    paddingBottom: PADDING.container.bottom,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.slate[200],
-    zIndex: 100,
+    zIndex: Z_INDEX.header,
   },
   dropdownBackdrop: {
     position: 'absolute',
@@ -656,7 +649,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    zIndex: 85,
+    zIndex: Z_INDEX.backdrop,
     backgroundColor: 'transparent',
   },
   listContainer: {

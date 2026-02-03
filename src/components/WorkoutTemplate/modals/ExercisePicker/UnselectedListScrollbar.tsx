@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, runOnJS } from 'react-native-reanimated';
 import { COLORS } from '@/constants/colors';
+import { PADDING } from '@/constants/layout';
 
 const LETTERS = Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i));
 
@@ -133,7 +134,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.slate[50],
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 2,
+    paddingVertical: PADDING.xs / 2,
   },
   letterContainer: {
     flex: 1,

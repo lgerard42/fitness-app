@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Check } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
+import { Z_INDEX, PADDING, BORDER_RADIUS, SHADOW } from '@/constants/layout';
 
 interface FilterDropdownProps {
   label: string;
@@ -33,12 +34,7 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
     ? (value.length === 0 ? label : value.length === 1 ? value[0] : `${value.length} selected`)
     : (value === "All" ? label : value);
   
-  const container_fullWidth = fullWidthContainer;
-  const button_active = isActive;
-  const button_inactive = !isActive;
   const button_muscleFilterPrimary = type === 'muscle' && filterMuscle.length > 0;
-  const buttonText_active = isActive;
-  const menu_leftAligned = leftAligned;
 
   return (
     <View style={[
@@ -49,14 +45,13 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
         onPress={() => setOpenFilter(openFilter === type ? null : type)}
         style={[
           styles.button,
-          button_active && styles.buttonActive,
-          button_inactive && styles.buttonInactive,
+          isActive ? styles.buttonActive : styles.buttonInactive,
           button_muscleFilterPrimary && styles.buttonMuscleFilterPrimary,
         ]}
       >
         <Text style={[
           styles.buttonText,
-          buttonText_active && styles.buttonTextActive,
+          isActive && styles.buttonTextActive,
         ]} numberOfLines={1}>
           {displayText}
         </Text>
@@ -66,13 +61,12 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
         <View 
           style={[
             styles.menu,
-            menu_leftAligned && styles.menuLeftAligned,
+            leftAligned && styles.menuLeftAligned,
           ]}
           pointerEvents="box-none"
         >
           {options.map((item) => {
             const isSelected = Array.isArray(value) ? value.includes(item) : value === item;
-            const option_selected = isSelected;
 
             return (
               <TouchableOpacity
@@ -80,7 +74,7 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
                 onPress={() => onToggleOption(type, item, value)}
                 style={[
                   styles.option,
-                  option_selected && styles.optionSelected,
+                  isSelected && styles.optionSelected,
                 ]}
               >
                 <Text style={styles.optionText}>
@@ -111,9 +105,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingHorizontal: PADDING.base,
+    paddingVertical: PADDING.md,
+    borderRadius: BORDER_RADIUS.lg,
     borderWidth: 1,
     minHeight: 0,
   },
@@ -144,17 +138,13 @@ const styles = StyleSheet.create({
     top: '100%',
     left: 0,
     right: 0,
-    marginTop: 4,
+    marginTop: PADDING.xs,
     backgroundColor: COLORS.white,
-    borderRadius: 8,
+    borderRadius: BORDER_RADIUS.lg,
     borderWidth: 1,
     borderColor: COLORS.slate[200],
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-    zIndex: 100,
+    ...SHADOW.sm,
+    zIndex: Z_INDEX.dropdown,
     overflow: 'hidden',
   },
   menuLeftAligned: {
@@ -165,8 +155,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: PADDING.base,
+    paddingVertical: PADDING.md,
     backgroundColor: COLORS.slate[600],
   },
   optionSelected: {

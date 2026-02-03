@@ -2,6 +2,7 @@ import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { Check } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
+import { Z_INDEX, PADDING, BORDER_RADIUS, SHADOW, SPACING } from '@/constants/layout';
 import { CATEGORIES, PRIMARY_MUSCLES, WEIGHT_EQUIP_TAGS } from '@/constants/data';
 import FilterDropdown from './FilterDropdown';
 import SecondaryMuscleFilter from './SecondaryMuscleFilter';
@@ -153,8 +154,8 @@ const Filters: React.FC<FiltersProps> = ({
 const styles = StyleSheet.create({
   filtersRow: {
     flexDirection: 'row',
-    gap: 8,
-    zIndex: 90,
+    gap: SPACING.sm,
+    zIndex: Z_INDEX.dropdown,
     alignItems: 'center',
   },
   muscleFiltersContainer: {
@@ -169,17 +170,13 @@ const styles = StyleSheet.create({
     top: '100%',
     left: 0,
     right: 0,
-    marginTop: 4,
+    marginTop: PADDING.xs,
     backgroundColor: COLORS.white,
-    borderRadius: 8,
+    borderRadius: BORDER_RADIUS.lg,
     borderWidth: 1,
     borderColor: COLORS.slate[200],
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-    zIndex: 100,
+    ...SHADOW.sm,
+    zIndex: Z_INDEX.dropdown,
     overflow: 'hidden',
   },
   secondaryFilterContainer: {
@@ -217,8 +214,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: PADDING.base,
+    paddingVertical: PADDING.md,
     backgroundColor: COLORS.slate[600],
   },
   filterOptionSelected: {
@@ -227,9 +224,6 @@ const styles = StyleSheet.create({
   filterOptionText: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: COLORS.white,
-  },
-  filterOptionTextSelected: {
     color: COLORS.white,
   },
 });

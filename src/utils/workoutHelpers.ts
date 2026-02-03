@@ -147,3 +147,20 @@ export const convertWorkoutUnits = (exercise: Exercise): Exercise => {
     }))
   };
 };
+
+/**
+ * Groups items alphabetically by their name property
+ * @param items - Array of items with a name property
+ * @returns Array of sections with title (letter) and data (items starting with that letter)
+ */
+export const groupExercisesAlphabetically = <T extends { name: string }>(
+  items: T[]
+): Array<{ title: string; data: T[] }> => {
+  const grouped: Record<string, T[]> = {};
+  items.forEach(item => {
+    const letter = item.name.charAt(0).toUpperCase();
+    if (!grouped[letter]) grouped[letter] = [];
+    grouped[letter].push(item);
+  });
+  return Object.keys(grouped).sort().map(letter => ({ title: letter, data: grouped[letter] }));
+};

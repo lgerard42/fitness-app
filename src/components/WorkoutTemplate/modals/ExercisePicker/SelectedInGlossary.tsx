@@ -1,6 +1,8 @@
 import React, { useRef, useCallback, useMemo } from 'react';
 import { View, Text, SectionList, StyleSheet } from 'react-native';
 import { COLORS } from '@/constants/colors';
+import { PADDING } from '@/constants/layout';
+import { groupExercisesAlphabetically } from '@/utils/workoutHelpers';
 import ExerciseListItem from './ExerciseListItem';
 import UnselectedListScrollbar from './UnselectedListScrollbar';
 import type { ExerciseLibraryItem } from '@/types/workout';
@@ -36,13 +38,7 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
   const sectionListRef = useRef<SectionList<ExerciseLibraryItem, Section>>(null);
 
   const sections = useMemo(() => {
-    const grouped: Record<string, ExerciseLibraryItem[]> = {};
-    exercises.forEach(ex => {
-      const letter = ex.name.charAt(0).toUpperCase();
-      if (!grouped[letter]) grouped[letter] = [];
-      grouped[letter].push(ex);
-    });
-    return Object.keys(grouped).sort().map(letter => ({ title: letter, data: grouped[letter] }));
+    return groupExercisesAlphabetically(exercises);
   }, [exercises]);
 
   const availableLetters = useMemo(() => {
@@ -143,8 +139,8 @@ const styles = StyleSheet.create({
   },
   sectionHeader: {
     backgroundColor: COLORS.slate[50],
-    paddingHorizontal: 16,
-    paddingVertical: 6,
+    paddingHorizontal: PADDING.lg,
+    paddingVertical: PADDING.sm,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.slate[50],
   },
