@@ -37,6 +37,8 @@ import CancelWorkoutModal from './modals/CancelWorkoutModal';
 import RestTimerInputModal from './modals/RestTimerInputModal';
 import ActiveRestTimerPopup from './modals/ActiveRestTimerPopup';
 import CustomNumberKeyboard from './modals/CustomNumberKeyboard';
+import SetDragModal from './modals/SetDragModal';
+import { useSetDragAndDrop } from './hooks/useSetDragAndDrop';
 import type { Workout, WorkoutMode, ExerciseLibraryItem, ExerciseStatsMap, ExerciseItem, Exercise, Set, RestPeriodSetInfo, FocusNextSet, GroupType, SetType, ExerciseCategory, ExerciseGroup, Note, GroupSetType } from '@/types/workout';
 
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
@@ -165,6 +167,18 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     handleDragEnd,
     alignAfterCollapse,
   } = useWorkoutDragDrop({
+    currentWorkout: currentWorkout || dummyWorkout,
+    handleWorkoutUpdate,
+  });
+
+  const {
+    isSetDragActive,
+    activeExercise: setDragActiveExercise,
+    setDragItems,
+    startSetDrag,
+    cancelSetDrag,
+    handleSetDragEnd,
+  } = useSetDragAndDrop({
     currentWorkout: currentWorkout || dummyWorkout,
     handleWorkoutUpdate,
   });
@@ -1511,6 +1525,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                     customKeyboardActive={customKeyboardTarget?.exerciseId === ex.instanceId && customKeyboardTarget?.setId === set.id}
                     customKeyboardField={customKeyboardTarget?.exerciseId === ex.instanceId && customKeyboardTarget?.setId === set.id ? (customKeyboardTarget.field === 'weight' || customKeyboardTarget.field === 'reps' || customKeyboardTarget.field === 'duration' || customKeyboardTarget.field === 'distance' ? customKeyboardTarget.field : null) : null}
                     customKeyboardShouldSelectAll={customKeyboardTarget?.exerciseId === ex.instanceId && customKeyboardTarget?.setId === set.id ? customKeyboardShouldSelectAll : false}
+                    onLongPressRow={() => startSetDrag(ex)}
                   />
 
                   {/* Rest Timer Bar */}
@@ -2577,6 +2592,14 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
         onSetValue={handleCustomKeyboardSetValue}
         onNext={handleCustomKeyboardNext}
         onClose={handleCustomKeyboardClose}
+      />
+
+      <SetDragModal
+        visible={isSetDragActive}
+        exercise={setDragActiveExercise}
+        setDragItems={setDragItems}
+        onDragEnd={handleSetDragEnd}
+        onCancel={cancelSetDrag}
       />
     </SafeAreaView>
   );

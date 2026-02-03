@@ -1,201 +1,285 @@
-# Feature Plan: Prevent Dragged Item Shift on Collapse
+# Set-Level Drag and Drop Feature Plan
+
+## ✅ IMPLEMENTATION COMPLETE
 
 ## Current State Analysis
 
-### Files Involved
-1. **`src/components/WorkoutTemplate/index.tsx`**
-   - Contains the `DraggableFlatList` component with `contentContainerStyle={styles.dragListContent}`
-   - Currently has `paddingTop: 0` in `dragListContent` style
-   - Handles drag initiation via `handlePrepareDrag` (exercises) and `initiateGroupDrag` (group headers)
-   - Uses `onLongPress` to trigger drag operations
+### Relevant Files and Their Responsibilities
 
-2. **`src/components/WorkoutTemplate/hooks/useWorkoutDragDrop.ts`**
-   - Manages drag state: `isDragging`, `collapsedGroupId`, `pendingDragItemId`
-   - `handlePrepareDrag`: Sets `isDragging = true`, which triggers collapse of all items
-   - `initiateGroupDrag`: Sets `isDragging = true` and collapses the dragged group
-   - `pendingDragItemId` is already stored but only used for scrolling
+1. **`src/components/WorkoutTemplate/WorkoutTemplateIndex.tsx`** (~3788 lines)
+   - Main workout template component
+   - Uses `DraggableFlatList` for exercise-level reordering
+   - `renderDragItem` callback handles both collapsed and expanded exercise rendering
+   - Current drag trigger: `TouchableOpacity.onLongPress={drag}` wraps entire exercise card
+   - Sets rendered via `ex.sets.map()` inside `renderExerciseCard` function (lines 1360-1542)
 
-3. **`src/components/WorkoutTemplate/index.tsx` - `renderDragItem`**
-   - Renders items in collapsed state when `isDragging || isActive`
-   - Items collapse immediately when `isDragging` becomes true
+2. **`src/components/WorkoutTemplate/SetRow.tsx`** (~861 lines)
+   - Individual set row component
+   - No current drag capability
+   - Has swipe-to-delete functionality via `SwipeToDelete` wrapper
+   - Props include `onUpdate`, `onToggle`, `onDelete` for set operations
 
-### Current Flow
-1. User presses down on item → `onLongPress` fires
-2. `handlePrepareDrag` or `initiateGroupDrag` is called
-3. `setIsDragging(true)` is called immediately
-4. React re-renders with `isDragging = true`
-5. All items above the dragged item collapse (height reduces)
-6. The dragged item shifts up because items above it lost height
-7. `onDragBegin` fires from `DraggableFlatList` (actual drag starts)
+3. **`src/components/WorkoutTemplate/hooks/useWorkoutDragDrop.ts`** (~577 lines)
+   - Manages exercise-level drag state
+   - Handles group collapsing/expanding during drag
+   - Returns `isDragging`, `dragItems`, `handlePrepareDrag`, `handleDragEnd`
 
-### Problem
-When items collapse, the total height of items above the dragged item decreases, causing the dragged item to shift upward. This creates a jarring visual experience.
+4. **`src/types/workout.ts`**
+   - `Set` interface includes `dropSetId?: string` for grouping sets
+   - `Exercise.sets: Set[]` is the array to be reordered
+
+### Current Drag Flow
+
+1. User long-presses anywhere on exercise card in `renderDragItem`
+2. `handlePrepareDrag` is called with `drag` callback
+3. All exercise cards collapse to compact view
+4. User drags to new position
+5. `handleDragEnd` reconstructs `exercises` array
+
+### Dependencies and Coupling
+
+- `SetRow` receives `set`, `onUpdate`, `onDelete` from parent
+- Exercise-level drag uses `updateExercisesDeep` helper to modify sets
+- `dropSetId` property groups sets visually (dropset indicator bar)
+
+---
+
+## Thinking: ExerciseItem Discriminated Union Impact Analysis
+
+**Current Structure:**
+- `ExerciseItem = Exercise | ExerciseGroup`
+- `Exercise.type = 'exercise'`
+- `ExerciseGroup.type = 'group'`
+
+**Proposed Change Impact:**
+- **Exercise type**: Sets array (`Exercise.sets`) will be reordered in place. The `dropSetId` property on individual sets will be updated when moving sets into/out of dropset ranges.
+- **ExerciseGroup type**: No direct impact - group children are still `Exercise[]`, and each exercise's sets can be reordered independently.
+- **Type narrowing considerations**: The new `useSetDragAndDrop` hook will operate on a single `Exercise` (already narrowed), not on `ExerciseItem[]`.
+- **Utility function updates needed**: 
+  - `updateExercisesDeep` - already supports updating individual exercises, will be used to persist set order changes.
+  - No new utility functions required since we're operating on `Exercise.sets` directly.
+
+---
 
 ## Proposed Changes (Step-by-Step)
 
-### Step 1: Add State to Track Pre-Collapse Position
-**File**: `src/components/WorkoutTemplate/hooks/useWorkoutDragDrop.ts`
-- Add new state: `preCollapsePaddingTop: number | null`
-- This will store the calculated padding needed to prevent shift
+### Step 1: Modify Exercise Drag Triggers (~30 lines changed)
 
-**Approximate lines**: ~5-10 lines
+**Files Modified:** `WorkoutTemplateIndex.tsx`
 
-### Step 2: Calculate Height Difference Before Collapse
-**File**: `src/components/WorkoutTemplate/index.tsx`
-- Before calling `handlePrepareDrag` or `initiateGroupDrag`, measure the position of the item being dragged
-- Use `listRef.current` and item measurement to calculate:
-  - Total height of items above the dragged item (before collapse)
-  - Total height of items above the dragged item (after collapse - estimated)
-  - Difference = paddingTop needed
+**Changes:**
+1. In `renderDragItem`, move the `onLongPress={drag}` trigger from the outer `TouchableOpacity` to only wrap the exercise header section.
+2. For the non-dragging full card view (lines 1887-1918), restrict the `onLongPress` to the header area only.
+3. Ensure set rows do NOT propagate long-press to parent drag handler.
 
-**Approximate lines**: ~20-30 lines
+**Why:** Separates exercise-level drag (header only) from set-level drag (set row).
 
-### Step 3: Update Drag Preparation Functions
-**File**: `src/components/WorkoutTemplate/hooks/useWorkoutDragDrop.ts`
-- Modify `handlePrepareDrag` to accept optional `paddingTop` parameter
-- Modify `initiateGroupDrag` to accept optional `paddingTop` parameter
-- Store the padding value in state
+### Step 2: Create Set Drag Hook (~200 lines new)
 
-**Approximate lines**: ~10-15 lines
+**New File:** `src/components/WorkoutTemplate/hooks/useSetDragAndDrop.ts`
 
-### Step 4: Apply Dynamic Padding to Content Container
-**File**: `src/components/WorkoutTemplate/index.tsx`
-- Update `contentContainerStyle` for `DraggableFlatList` to conditionally apply `paddingTop` when `isDragging` is true
-- Use the `preCollapsePaddingTop` value from the hook
-- Reset padding when drag ends
+**Responsibilities:**
+- `isSetDragging: boolean` - indicates active set drag
+- `activeExerciseId: string | null` - which exercise has active set drag
+- `setDragItems: Set[]` - local copy of sets during drag
+- `handleSetDragEnd({ data, from, to })` - calculates new order, updates `dropSetId`
+- `startSetDrag(exerciseId: string)` - initiates set drag, freezes rest of UI
+- `endSetDrag()` - clears drag state
 
-**Approximate lines**: ~5-10 lines
+**DropSet Logic in `handleSetDragEnd`:**
+```typescript
+// After reorder:
+// 1. Find the previous and next sets around the dropped position
+// 2. If either neighbor has a dropSetId and it matches, inherit that ID
+// 3. If moved outside any dropset range, clear the dropSetId
+// 4. Recalculate visual indicators (isDropSetStart, isDropSetEnd)
+```
 
-### Step 5: Reset Padding on Drag End
-**File**: `src/components/WorkoutTemplate/hooks/useWorkoutDragDrop.ts`
-- In `handleDragEnd` and `handleCancelDrag`, reset `preCollapsePaddingTop` to `null`
+### Step 3: Refactor SetRow Component (~50 lines changed)
 
-**Approximate lines**: ~5 lines
+**Files Modified:** `src/components/WorkoutTemplate/SetRow.tsx`
 
-### Step 6: Add Style for Dynamic Padding
-**File**: `src/components/WorkoutTemplate/index.tsx`
-- Update `dragListContent` style or create dynamic style object
-- Ensure padding doesn't interfere with existing layout
+**Changes:**
+1. Add new props:
+   - `drag?: () => void` - drag trigger callback from DraggableFlatList
+   - `isSetDragActive?: boolean` - whether set-level drag is active for this exercise
+   - `isBeingDragged?: boolean` - whether THIS set is currently being dragged
 
-**Approximate lines**: ~5-10 lines
+2. Wrap the touchable area with long-press handler:
+   ```tsx
+   <TouchableOpacity
+     onLongPress={drag}
+     delayLongPress={200}
+     disabled={!drag || isSelectionMode}
+   >
+     {/* existing SwipeToDelete content */}
+   </TouchableOpacity>
+   ```
+
+3. Add visual feedback for active drag state:
+   ```tsx
+   style={[
+     styles.rowWrapper,
+     isBeingDragged && styles.rowWrapper__dragging
+   ]}
+   ```
+
+4. New styles:
+   ```tsx
+   rowWrapper__dragging: {
+     transform: [{ scale: 1.02 }],
+     shadowColor: '#000',
+     shadowOffset: { width: 0, height: 2 },
+     shadowOpacity: 0.15,
+     shadowRadius: 4,
+     elevation: 5,
+     opacity: 0.95,
+   }
+   ```
+
+### Step 4: Integration in WorkoutTemplateIndex (~150 lines changed)
+
+**Files Modified:** `WorkoutTemplateIndex.tsx`
+
+**Changes:**
+
+1. Import and use the new hook:
+   ```tsx
+   const {
+     isSetDragging,
+     activeExerciseId,
+     setDragItems,
+     handleSetDragEnd,
+     startSetDrag,
+     endSetDrag
+   } = useSetDragAndDrop(currentWorkout, handleWorkoutUpdate);
+   ```
+
+2. In `renderExerciseCard`, replace the `.map()` with a nested `DraggableFlatList`:
+   ```tsx
+   <DraggableFlatList
+     data={isSetDragging && activeExerciseId === ex.instanceId 
+       ? setDragItems 
+       : ex.sets}
+     keyExtractor={(set) => set.id}
+     onDragBegin={() => startSetDrag(ex.instanceId)}
+     onDragEnd={handleSetDragEnd}
+     renderItem={({ item: set, drag, isActive }) => (
+       <SetRow
+         {...existingProps}
+         drag={drag}
+         isSetDragActive={isSetDragging && activeExerciseId === ex.instanceId}
+         isBeingDragged={isActive}
+       />
+     )}
+     containerStyle={{ minHeight: 50 }}
+     scrollEnabled={false}
+   />
+   ```
+
+3. Add dimming overlay when set drag is active:
+   ```tsx
+   {isSetDragging && (
+     <View style={[
+       styles.setDragDimmingOverlay,
+       { 
+         opacity: 0.5, 
+         pointerEvents: 'none' 
+       }
+     ]} />
+   )}
+   ```
+
+4. Conditionally apply dimming to exercises not being edited:
+   ```tsx
+   style={[
+     styles.exerciseCard,
+     isSetDragging && activeExerciseId !== ex.instanceId && {
+       opacity: 0.5,
+       pointerEvents: 'none'
+     }
+   ]}
+   ```
+
+5. Prevent exercise-level drag when set-level drag is active:
+   ```tsx
+   <TouchableOpacity
+     onLongPress={isSetDragging ? undefined : initiateDelayedDrag}
+     ...
+   />
+   ```
+
+---
 
 ## Potential Risks or Edge Cases
 
-### 1. Measurement Timing
-- **Risk**: Measuring item position before collapse might not be accurate if layout hasn't settled
-- **Mitigation**: Use `onLayout` callbacks or `requestAnimationFrame` to ensure measurement happens after layout
+### 1. Nested DraggableFlatList Conflicts
+- **Risk:** Having a `DraggableFlatList` inside another `DraggableFlatList` may cause gesture conflicts.
+- **Mitigation:** Disable exercise-level drag when set drag is active. Set `scrollEnabled={false}` on inner list.
 
-### 2. Different Collapse Heights
-- **Risk**: Different items have different heights, so collapse height reduction varies
-- **Mitigation**: Calculate based on actual item heights, or use a conservative estimate
+### 2. DropSet Boundary Logic
+- **Risk:** Complex edge cases when moving sets between/around dropsets.
+- **Mitigation:** Clear and well-tested algorithm:
+  1. If dropped between two sets with SAME dropSetId → inherit that ID
+  2. If dropped at start/end of dropset range → consider position (include or exclude)
+  3. If no neighbors have dropSetId → clear it
 
-### 3. Group Header Drag
-- **Risk**: When dragging a group header, only that group collapses, not all items
-- **Mitigation**: Calculate padding based on the specific group's height reduction
+### 3. Performance with Many Sets
+- **Risk:** Re-rendering all sets on every drag move.
+- **Mitigation:** Use `React.memo` on `SetRow`, ensure stable callbacks with `useCallback`.
 
-### 4. Performance
-- **Risk**: Measuring and calculating on every drag start might cause lag
-- **Mitigation**: Cache measurements, use `useMemo` for calculations
+### 4. Gesture Handler Interference
+- **Risk:** SwipeToDelete on SetRow may conflict with drag gesture.
+- **Mitigation:** Disable swipe when set drag is active.
 
-### 5. Scroll Position
-- **Risk**: If user has scrolled, the padding calculation needs to account for scroll offset
-- **Mitigation**: Use `listRef.current?.scrollToOffset` or measure relative to viewport
+### 5. Selection Mode Conflicts
+- **Risk:** Set selection mode (`isSelectionMode`) and set drag could conflict.
+- **Mitigation:** Disable drag when in selection mode (already handled by `disabled={isSelectionMode}`).
 
-### 6. Multiple Rapid Drags
-- **Risk**: User might start another drag before previous one ends
-- **Mitigation**: Reset padding in `handleCancelDrag` and ensure state is cleaned up
+### 6. Rest Timer Bar Rendering
+- **Risk:** Rest timer bars between sets need to remain in correct positions during drag.
+- **Mitigation:** Include rest timer as part of the draggable item or re-render after drag ends.
 
-### 7. Edge Cases
-- Empty workout: No items to measure
-- Single item: No items above to collapse
-- Very long list: Measurement might be expensive
+### 7. State Synchronization
+- **Risk:** Local drag state getting out of sync with global workout state.
+- **Mitigation:** Always persist to context via `handleWorkoutUpdate` in `handleSetDragEnd`.
 
-## Alternative Approaches Considered
+---
 
-### Approach 1: Measure All Items Above
-- Measure each item above the dragged item individually
-- Calculate total height difference
-- **Pros**: Accurate
-- **Cons**: Expensive, complex
+## Implementation Order
 
-### Approach 2: Estimate Based on Item Count
-- Count items above, multiply by average collapsed height
-- **Pros**: Simple, fast
-- **Cons**: Inaccurate for varying item heights
+1. **Step 2 first** - Create the `useSetDragAndDrop` hook (can be developed/tested independently)
+2. **Step 1** - Modify exercise drag triggers (minimal change, low risk)
+3. **Step 3** - Refactor SetRow (add props, can test in isolation)
+4. **Step 4** - Integration (ties everything together)
 
-### Approach 3: Use Fixed Padding
-- Add fixed padding when dragging starts
-- **Pros**: Simplest
-- **Cons**: Doesn't account for actual height differences
+---
 
-### Approach 4: Measure Item Position (Selected)
-- Measure the dragged item's position before collapse
-- Calculate how much it would shift
-- Add padding equal to the shift amount
-- **Pros**: Accurate, accounts for actual layout
-- **Cons**: Requires measurement API usage
+## Final Implementation Summary
 
-## Revised Implementation Strategy
+### Approach Taken: Modal-Based Set Reordering
 
-We have two options:
+Instead of nesting `DraggableFlatList` (which could cause conflicts), a **modal-based approach** was implemented:
 
-1) **Snap-to-touch approach (preferred)**  
-   - Capture the exact finger Y on press-in.  
-   - After collapse, scroll/offset so the pressed item’s top aligns with that Y.  
-   - This avoids brittle height-difference math.
+1. User long-presses (150ms) on any set row
+2. A modal opens showing all sets for that exercise in a `DraggableFlatList`
+3. User reorders sets by dragging within the modal
+4. Rest timer badges are shown alongside each set
+5. DropSet indicators (left colored bar) are visible
+6. On "Done" or drag end, sets are persisted with updated `dropSetId` values
 
-2) **Refine calculations**  
-   - Further improve measured/estimated height diffs.  
-   - Risk: still drift if measurements lag or vary per item.
+### Files Created/Modified
 
-### Chosen approach: Snap-to-touch
-- Use press-in to record `touchY` and `touchItemId`.
-- On collapse, compute the item’s current Y (sum measured heights of prior items + scroll offset).
-- Compute delta = currentY - touchY. Apply a temporary `paddingTop` and scroll adjustment so the item aligns to touchY.
-- Clear padding once drag ends.
+| File | Status | Description |
+|------|--------|-------------|
+| `hooks/useSetDragAndDrop.ts` | ✅ Created | Hook managing set drag state and dropSetId logic |
+| `modals/SetDragModal.tsx` | ✅ Created | Modal UI with DraggableFlatList for sets |
+| `SetRow.tsx` | ✅ Modified | Added `Pressable` wrapper with `onLongPressRow` prop |
+| `WorkoutTemplateIndex.tsx` | ✅ Modified | Integrated hook and modal, passed `onLongPressRow` to SetRow |
 
-### Step-by-step (refined)
-1. **Capture touch**  
-   - File: `src/components/WorkoutTemplate/index.tsx`  
-   - On press-in for headers and exercises: store `touchY` + `item.id` via hook.
+### Gesture Priority
 
-2. **Measure list absolute Y**  
-   - File: `index.tsx`  
-   - Wrap `DraggableFlatList` in a container `View` with a ref; on layout, call `measureInWindow` and store the container’s top (`listTopPageY`) in the hook (`setListLayoutY`).
+- **Set long-press**: 150ms delay (inner, triggers first)
+- **Exercise long-press**: 200ms delay (outer, triggers if set doesn't capture)
 
-3. **Expose touch refs in hook**  
-   - File: `src/components/WorkoutTemplate/hooks/useWorkoutDragDrop.ts`  
-   - Keep `touchYRef`, `touchItemIdRef`, `listLayoutYRef`; reset on end/cancel.
-
-4. **Align after collapse (snap-to-touch)**  
-   - File: hook  
-   - After collapse is triggered, compute collapsed tops using measured collapsed heights (fallback approximations).  
-   - Compute `touchRel = touchY - listTopPageY`.  
-   - `scrollOffset = collapsedTop - touchRel`; if negative, convert to `paddingTop` and clamp offset to 0.  
-   - Apply `paddingTop` and `scrollToOffset`.
-
-5. **Account for size changes static → drag**  
-   - Keep dual measurements: full heights when not dragging; collapsed heights when dragging/active.  
-   - Ensure footers/headers/exercises all record collapsed heights.
-
-6. **Cleanup**  
-   - Reset padding, touch refs, and height maps on drag end/cancel.
-
-## Potential Risks or Edge Cases
-- Measurement timing: still need the layout pass; use `requestAnimationFrame` before aligning.
-- Scroll offset: must include current scroll when computing item position.
-- Very fast taps: ensure press-in captured before collapse triggers.
-- Missing measurements: fallback to approximate heights if a height is missing; align best-effort.
-
-## User Approval Request
-
-This plan will:
-- Add state management for tracking pre-collapse padding
-- Implement measurement logic to calculate height difference
-- Apply dynamic padding to prevent item shift
-- Handle both individual exercise drags and group header drags
-- Reset padding when drag ends or is cancelled
-
-**Estimated total changes**: ~60-80 lines across 2 files
-
-Please review and approve this plan before I proceed with implementation.
+This ensures the set reorder modal opens when pressing on a set, while exercise drag still works when pressing on the exercise header.

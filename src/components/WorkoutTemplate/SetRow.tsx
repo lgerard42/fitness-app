@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Pressable, StyleSheet } from 'react-native';
 import { Check, Plus } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { useSetRowLogic } from './hooks/useSetRowLogic';
@@ -45,6 +45,7 @@ interface SetRowProps {
   customKeyboardActive?: boolean;
   customKeyboardField?: 'weight' | 'reps' | 'duration' | 'distance' | null;
   customKeyboardShouldSelectAll?: boolean;
+  onLongPressRow?: () => void;
 }
 
 const SetRow: React.FC<SetRowProps> = ({
@@ -79,7 +80,8 @@ const SetRow: React.FC<SetRowProps> = ({
   onCustomKeyboardOpen = null,
   customKeyboardActive = false,
   customKeyboardField = null,
-  customKeyboardShouldSelectAll = false
+  customKeyboardShouldSelectAll = false,
+  onLongPressRow
 }) => {
   const isLift = category === 'Lifts';
   const isCardio = category === 'Cardio';
@@ -219,7 +221,11 @@ const SetRow: React.FC<SetRowProps> = ({
   };
 
   return (
-    <View style={styles.rowWrapper}>
+    <Pressable
+      style={styles.rowWrapper}
+      onLongPress={!readOnly && !isSelectionMode && onLongPressRow ? onLongPressRow : undefined}
+      delayLongPress={150}
+    >
       <SwipeToDelete
         onDelete={onDelete}
         disabled={isSelectionMode}
@@ -597,7 +603,7 @@ const SetRow: React.FC<SetRowProps> = ({
           </View>
         </View>
       </SwipeToDelete>
-    </View>
+    </Pressable>
   );
 };
 
