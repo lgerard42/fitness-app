@@ -39,6 +39,7 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
     const [restTimerInput, setRestTimerInput] = useState<{ setId: string; currentValue: string } | null>(null);
     const [applyToMode, setApplyToMode] = useState<{ selectedSetIds: string[] } | null>(null);
     const badgeRefs = useRef<Map<string, View>>(new Map());
+    const modalContainerRef = useRef<View>(null);
     const renderDropSetHeader = useCallback((item: DropSetHeaderItem) => {
         return (
             <View
@@ -176,12 +177,21 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                         onPress={(e) => {
                             e.stopPropagation();
                             const badgeRef = badgeRefs.current.get(set.id);
-                            if (badgeRef) {
-                                badgeRef.measureInWindow((x, y, width, height) => {
-                                    setIndexPopup({
-                                        setId: set.id,
-                                        top: y + height + 4,
-                                        left: x,
+                            if (badgeRef && modalContainerRef.current) {
+                                // Measure badge position relative to window
+                                badgeRef.measureInWindow((badgeX, badgeY, badgeWidth, badgeHeight) => {
+                                    // Measure modal container position relative to window
+                                    modalContainerRef.current?.measureInWindow((containerX, containerY) => {
+                                        // Calculate position relative to modal container
+                                        const relativeX = badgeX - containerX;
+                                        const relativeY = badgeY - containerY;
+
+                                        // Position popup below the badge, aligned to the left edge
+                                        setIndexPopup({
+                                            setId: set.id,
+                                            top: relativeY + badgeHeight + 4,
+                                            left: relativeX,
+                                        });
                                     });
                                 });
                             }
@@ -284,7 +294,10 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
         >
             <GestureHandlerRootView style={styles.gestureRoot}>
                 <View style={styles.overlay}>
-                    <View style={styles.modalContainer}>
+                    <View
+                        ref={modalContainerRef}
+                        style={styles.modalContainer}
+                    >
                         <View style={styles.header}>
                             <View style={styles.headerContent}>
                                 <Text style={styles.title}>Reorder Sets</Text>
