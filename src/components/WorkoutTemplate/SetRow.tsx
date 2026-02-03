@@ -1,57 +1,16 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Animated } from 'react-native';
-import { Check, Trash2, Plus } from 'lucide-react-native';
-import { Swipeable } from 'react-native-gesture-handler';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { Check, Plus } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { useSetRowLogic } from './hooks/useSetRowLogic';
 import { getGroupColorScheme } from '@/utils/workoutHelpers';
+import SwipeToDelete from '@/components/common/SwipeToDelete';
 import type { Set, ExerciseCategory, WeightUnit } from '@/types/workout';
 
 interface SetIndex {
   group: number;
   subIndex: number | null;
 }
-
-interface DeleteActionProps {
-  progress: Animated.AnimatedInterpolation<number>;
-  dragX: Animated.AnimatedInterpolation<number>;
-  onDelete: () => void;
-  buttonStyle: object;
-}
-
-const DeleteAction: React.FC<DeleteActionProps> = ({ progress, dragX, onDelete, buttonStyle }) => {
-  const hasDeleted = React.useRef(false);
-  const onDeleteRef = React.useRef(onDelete);
-
-  React.useEffect(() => {
-    onDeleteRef.current = onDelete;
-  }, [onDelete]);
-
-  React.useEffect(() => {
-    hasDeleted.current = false;
-
-    const id = dragX.addListener(({ value }) => {
-      if (value < -120 && !hasDeleted.current) {
-        hasDeleted.current = true;
-        if (onDeleteRef.current) {
-          onDeleteRef.current();
-        }
-      }
-    });
-    return () => dragX.removeListener(id);
-  }, [dragX]);
-
-  return (
-    <TouchableOpacity
-      style={buttonStyle}
-      onPress={onDelete}
-    >
-      <Animated.View style={styles.deleteAction__animatedScale}>
-        <Trash2 size={20} color={COLORS.white} />
-      </Animated.View>
-    </TouchableOpacity>
-  );
-};
 
 interface SetRowProps {
   set: Set;
@@ -234,10 +193,6 @@ const SetRow: React.FC<SetRowProps> = ({
     return isEmpty ? styles.inputCompletedEmpty : styles.inputCompletedFilled;
   };
 
-  const renderRightActions = useCallback((progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
-    return <DeleteAction progress={progress} dragX={dragX} onDelete={onDelete} buttonStyle={styles.deleteButton} />;
-  }, [onDelete]);
-
   const renderPrevious = () => {
     if (!previousSet) return <Text style={styles.previousText}>-</Text>;
 
@@ -265,16 +220,11 @@ const SetRow: React.FC<SetRowProps> = ({
 
   return (
     <View style={styles.rowWrapper}>
-      <Swipeable
-        renderRightActions={renderRightActions}
-        onSwipeableWillOpen={(direction) => {
-          if (direction === 'right') {
-            onDelete();
-          }
-        }}
-        overshootRight={true}
-        rightThreshold={120}
-        enabled={!isSelectionMode}
+      <SwipeToDelete
+        onDelete={onDelete}
+        disabled={isSelectionMode}
+        trashBackgroundColor={groupColorScheme ? groupColorScheme[100] : undefined}
+        trashIconColor={groupColorScheme ? groupColorScheme[700] : undefined}
       >
         <View style={styles.swipeableRow}>
           {dropSetId && (
@@ -646,7 +596,7 @@ const SetRow: React.FC<SetRowProps> = ({
             </View>
           </View>
         </View>
-      </Swipeable>
+      </SwipeToDelete>
     </View>
   );
 };
@@ -872,18 +822,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.slate[100],
     borderColor: COLORS.slate[100],
     opacity: 0.5,
-  },
-  deleteButton: {
-    backgroundColor: COLORS.red[500],
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: 50,
-    height: '100%',
-    marginLeft: 8,
-    borderRadius: 8,
-  },
-  deleteAction__animatedScale: {
-    transform: [{ scale: 1 }],
   },
   selectionCheckbox: {
     width: 32,
