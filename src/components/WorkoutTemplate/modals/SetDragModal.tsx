@@ -645,7 +645,7 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                                                     }}
                                                     style={styles.restTimerInputCancelButton}
                                                 >
-                                                    <Text style={styles.restTimerInputCancelText}>Cancel</Text>
+                                                    <Text style={styles.restTimerInputCancelText}>Back</Text>
                                                 </TouchableOpacity>
                                                 <TouchableOpacity
                                                     onPress={() => {
