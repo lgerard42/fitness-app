@@ -1,4 +1,5 @@
 import type { ExerciseItem, Exercise, ExerciseGroup, FlatExerciseRow, GroupType } from '@/types/workout';
+import { defaultSupersetColorScheme, defaultHiitColorScheme } from '@/constants/defaultStyles';
 
 export const updateExercisesDeep = (
   list: ExerciseItem[],
@@ -163,4 +164,13 @@ export const groupExercisesAlphabetically = <T extends { name: string }>(
     grouped[letter].push(item);
   });
   return Object.keys(grouped).sort().map(letter => ({ title: letter, data: grouped[letter] }));
+};
+
+/**
+ * Returns the color scheme for a given group type
+ * @param type - The group type ('HIIT' or 'Superset')
+ * @returns The corresponding color scheme object
+ */
+export const getGroupColorScheme = (type: GroupType | null | undefined): typeof defaultSupersetColorScheme => {
+  return type === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme;
 };

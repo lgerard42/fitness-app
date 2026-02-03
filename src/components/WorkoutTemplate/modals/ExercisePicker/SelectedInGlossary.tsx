@@ -3,7 +3,7 @@ import { View, Text, SectionList, StyleSheet } from 'react-native';
 import { COLORS } from '@/constants/colors';
 import { PADDING } from '@/constants/layout';
 import { groupExercisesAlphabetically } from '@/utils/workoutHelpers';
-import ExerciseListItem from './ExerciseListItem';
+import ExerciseListItem from './ExerciseListItem/ExerciseListItemIndex';
 import UnselectedListScrollbar from './UnselectedListScrollbar';
 import type { ExerciseLibraryItem } from '@/types/workout';
 

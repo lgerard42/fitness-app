@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { COLORS } from '@/constants/colors';
-import { defaultSupersetColorScheme, defaultHiitColorScheme } from '@/constants/defaultStyles';
+import { getGroupColorScheme } from '@/utils/workoutHelpers';
+import { defaultSupersetColorScheme } from '@/constants/defaultStyles';
 import GroupBadge from './GroupBadge';
 import CountBadge from './CountBadge';
 import ExerciseTags from './ExerciseTags';
@@ -130,7 +131,7 @@ const ExerciseListItem: React.FC<ExerciseListItemProps> = ({
   const showAddRemoveButtons = isSelected && !isReordering && showAddMore;
   const showAddButtonOnly = !isSelected && !isReordering;
 
-  const groupColorScheme = exerciseGroup?.type === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme;
+  const groupColorScheme = exerciseGroup ? getGroupColorScheme(exerciseGroup.type) : null;
   const isGrouped = !!exerciseGroup;
 
   const getGroupBackgroundColor = (shade: keyof typeof defaultSupersetColorScheme) => ({

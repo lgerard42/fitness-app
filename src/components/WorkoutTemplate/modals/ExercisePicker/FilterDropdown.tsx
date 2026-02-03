@@ -39,7 +39,7 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
   return (
     <View style={[
       styles.container,
-      container_fullWidth && styles.containerFullWidth,
+      fullWidthContainer && styles.containerFullWidth,
     ]}>
       <TouchableOpacity 
         onPress={() => setOpenFilter(openFilter === type ? null : type)}

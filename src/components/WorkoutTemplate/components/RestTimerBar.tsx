@@ -1,55 +1,10 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Swipeable } from 'react-native-gesture-handler';
-import { Timer, Trash2 } from 'lucide-react-native';
+import { Timer } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { formatRestTime, updateExercisesDeep } from '@/utils/workoutHelpers';
+import SwipeToDelete from '@/components/common/SwipeToDelete';
 import type { Set, Workout, RestTimer, GroupSetType } from '@/types/workout';
-import type { Animated } from 'react-native';
-
-interface RestTimerDeleteActionProps {
-  progress: Animated.AnimatedInterpolation<number>;
-  dragX: Animated.AnimatedInterpolation<number>;
-  onDelete: () => void;
-}
-
-const RestTimerDeleteAction: React.FC<RestTimerDeleteActionProps> = ({ progress, dragX, onDelete }) => {
-  const hasDeleted = React.useRef(false);
-  const onDeleteRef = React.useRef(onDelete);
-  
-  React.useEffect(() => {
-    onDeleteRef.current = onDelete;
-  }, [onDelete]);
-
-  React.useEffect(() => {
-    hasDeleted.current = false;
-    
-    const id = dragX.addListener(({ value }) => {
-      if (value < -120 && !hasDeleted.current) {
-        hasDeleted.current = true;
-        if (onDeleteRef.current) {
-          onDeleteRef.current();
-        }
-      }
-    });
-    return () => dragX.removeListener(id);
-  }, [dragX]);
-
-  return (
-    <TouchableOpacity
-      style={{
-        backgroundColor: COLORS.red[500],
-        justifyContent: 'center',
-        alignItems: 'center',
-        width: 60,
-        height: '100%',
-      }}
-      onPress={onDelete}
-    >
-      <Trash2 size={20} color={COLORS.white} />
-    </TouchableOpacity>
-  );
-};
 
 interface RestTimerBarProps {
   set: Set;
@@ -86,43 +41,30 @@ const RestTimerBar: React.FC<RestTimerBarProps> = ({
 }) => {
   const isRestTimerActive = activeRestTimer?.setId === set.id;
 
-  const handleDeleteRestTimer = () => {
+  const handleDeleteRestTimer = useCallback(() => {
     handleWorkoutUpdate({
       ...currentWorkout,
-      exercises: updateExercisesDeep(currentWorkout.exercises, exerciseId, (exercise) => ({
-        ...exercise,
-        sets: exercise.sets.map(s => {
-          if (s.id === set.id) {
-            const { restPeriodSeconds, restTimerCompleted, ...rest } = s;
-            return rest;
-          }
-          return s;
-        })
-      }))
+      exercises: updateExercisesDeep(currentWorkout.exercises, exerciseId, (exercise) => {
+        if (exercise.type === 'group') return exercise;
+        return {
+          ...exercise,
+          sets: exercise.sets.map(s => {
+            if (s.id === set.id) {
+              const { restPeriodSeconds, restTimerCompleted, ...rest } = s;
+              return rest;
+            }
+            return s;
+          })
+        };
+      })
     });
     if (activeRestTimer?.setId === set.id) {
       setActiveRestTimer(null);
     }
-  };
+  }, [handleWorkoutUpdate, currentWorkout, exerciseId, set.id, activeRestTimer, setActiveRestTimer]);
 
   return (
-    <Swipeable
-      renderRightActions={(progress, dragX) => (
-        <RestTimerDeleteAction 
-          progress={progress} 
-          dragX={dragX} 
-          onDelete={handleDeleteRestTimer} 
-        />
-      )}
-      onSwipeableWillOpen={(direction) => {
-        if (direction === 'right') {
-          handleDeleteRestTimer();
-        }
-      }}
-      overshootRight={false}
-      friction={2}
-      rightThreshold={120}
-    >
+    <SwipeToDelete onDelete={handleDeleteRestTimer}>
       <View style={[
         styles.restTimerBar,
         set.completed && set.restTimerCompleted && styles.restTimerBar__completed,
@@ -140,7 +82,7 @@ const RestTimerBar: React.FC<RestTimerBarProps> = ({
           styles.restTimerLine,
           set.restTimerCompleted && styles.restTimerLine__completed
         ]} />
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[
             styles.restTimerBadge,
             isRestTimerActive && styles.restTimerBadge__active,
@@ -165,7 +107,7 @@ const RestTimerBar: React.FC<RestTimerBarProps> = ({
             <>
               <Timer size={12} color={
                 isBeingEdited ? COLORS.white :
-                set.restTimerCompleted ? COLORS.green[600] : COLORS.slate[500]
+                  set.restTimerCompleted ? COLORS.green[600] : COLORS.slate[500]
               } />
               <Text style={[
                 styles.restTimerText,
@@ -182,7 +124,7 @@ const RestTimerBar: React.FC<RestTimerBarProps> = ({
           set.restTimerCompleted && styles.restTimerLine__completed
         ]} />
       </View>
-    </Swipeable>
+    </SwipeToDelete>
   );
 };
 

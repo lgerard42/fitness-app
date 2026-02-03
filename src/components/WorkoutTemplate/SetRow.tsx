@@ -3,8 +3,8 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Animated } from 'r
 import { Check, Trash2, Plus } from 'lucide-react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { COLORS } from '@/constants/colors';
-import { defaultSupersetColorScheme, defaultHiitColorScheme } from '@/constants/defaultStyles';
 import { useSetRowLogic } from './hooks/useSetRowLogic';
+import { getGroupColorScheme } from '@/utils/workoutHelpers';
 import type { Set, ExerciseCategory, WeightUnit } from '@/types/workout';
 
 interface SetIndex {
@@ -127,7 +127,7 @@ const SetRow: React.FC<SetRowProps> = ({
 
   // Determine group color scheme
   const groupColorScheme = isGroupChild && parentGroupType
-    ? (parentGroupType === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme)
+    ? getGroupColorScheme(parentGroupType)
     : null;
 
   // Check if required values are missing (individually)

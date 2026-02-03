@@ -2,6 +2,32 @@
 
 This document provides comprehensive visual diagrams showing all styling conditions applied to elements in the ExercisePicker component files.
 
+## Helper Functions
+
+### `getGroupColorScheme(type: GroupType)`
+
+**Location**: `src/utils/workoutHelpers.ts`
+
+**Purpose**: Centralized helper function to retrieve the appropriate color scheme based on group type, eliminating repeated ternary checks across components.
+
+**Usage**: 
+- Replaces `parentGroupType === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme`
+- Replaces `groupType === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme`
+- Replaces `item.groupType === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme`
+- Replaces `exercise.groupType === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme`
+
+**Files Updated**:
+- `src/components/WorkoutTemplate/index.tsx` (5 occurrences)
+- `src/components/WorkoutTemplate/SetRow.tsx` (1 occurrence)
+- `src/components/WorkoutTemplate/modals/ExercisePicker/ExerciseListItem/GroupBadge.tsx` (1 occurrence)
+- `src/components/WorkoutTemplate/modals/ExercisePicker/ExerciseListItem/index.tsx` (1 occurrence)
+
+**Benefits**:
+- Single source of truth for color scheme selection logic
+- Easier maintenance if color scheme logic changes
+- Reduced code duplication
+- Improved readability
+
 ---
 
 ## 1. index.js (Main ExercisePicker Component)

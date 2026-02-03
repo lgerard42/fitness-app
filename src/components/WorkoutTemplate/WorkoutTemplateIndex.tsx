@@ -5,11 +5,10 @@ import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flat
 import { ChevronDown, ChevronLeft, ChevronRight, Calendar, Clock, FileText, Plus, Dumbbell, Layers, MoreVertical, CalendarDays, Trash2, RefreshCw, Scale, X, Flame, TrendingDown, Zap, Check, Timer, Pause, Play, Delete } from 'lucide-react-native';
 import type { NavigationProp } from '@react-navigation/native';
 import { COLORS } from '@/constants/colors';
-import { defaultSupersetColorScheme, defaultHiitColorScheme } from '@/constants/defaultStyles';
 import { formatDuration } from '@/constants/data';
 import SetRow from './SetRow';
 import SavedNoteItem from '@/components/SavedNoteItem';
-import ExercisePicker from './modals/ExercisePicker';
+import ExercisePicker from './modals/ExercisePicker/ExercisePickerIndex';
 import NewExercise from './modals/NewExercise';
 import { CATEGORIES } from '@/constants/data';
 import {
@@ -24,8 +23,10 @@ import {
   findExerciseSuperset,
   isExerciseInSuperset,
   getStandaloneExercises,
-  convertWorkoutUnits
+  convertWorkoutUnits,
+  getGroupColorScheme
 } from '@/utils/workoutHelpers';
+import { defaultSupersetColorScheme } from '@/constants/defaultStyles';
 import { useWorkoutRestTimer } from './hooks/useWorkoutRestTimer';
 import { useWorkoutSupersets } from './hooks/useWorkoutSupersets';
 import { useWorkoutGroups } from './hooks/useWorkoutGroups';
@@ -1075,7 +1076,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
   const renderExerciseCard = (ex: Exercise, isGroupChild: boolean = false, isLastChild: boolean = false, parentGroupType: GroupType | null = null, parentGroupId: string | null = null, isFirstChild: boolean = false) => {
     const historyEntries = exerciseStats[ex.exerciseId]?.history || [];
     const groupColorScheme = isGroupChild && parentGroupType
-      ? (parentGroupType === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme)
+      ? getGroupColorScheme(parentGroupType)
       : null;
 
     // Helper function to compute indices for historical sets
@@ -1656,7 +1657,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     };
 
     if (item.type === 'GroupHeader') {
-      const groupColorScheme = item.groupType === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme;
+      const groupColorScheme = getGroupColorScheme(item.groupType);
       const isCollapsed = item.isCollapsed || collapsedGroupId === item.groupId;
       const isDraggedGroup = collapsedGroupId === item.groupId;
       const shouldRenderGhosts = isCollapsed && !isDraggedGroup;
@@ -1779,7 +1780,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     }
 
     if (item.type === 'GroupFooter') {
-      const groupColorScheme = item.groupType === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme;
+      const groupColorScheme = getGroupColorScheme(item.groupType);
       const isCollapsed = item.isCollapsed || collapsedGroupId === item.groupId;
       const isDraggedGroup = collapsedGroupId === item.groupId;
 
@@ -1818,9 +1819,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
 
     // Exercise item
     const groupColorScheme = item.groupId
-      ? (dragItems.find(d => d.type === 'GroupHeader' && d.groupId === item.groupId) as any)?.groupType === 'HIIT'
-        ? defaultHiitColorScheme
-        : defaultSupersetColorScheme
+      ? getGroupColorScheme((dragItems.find(d => d.type === 'GroupHeader' && d.groupId === item.groupId) as any)?.groupType)
       : null;
 
     const isCollapsed = item.isCollapsed || (collapsedGroupId && item.groupId === collapsedGroupId);
@@ -2419,7 +2418,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
             groupType = group.groupType;
           }
         }
-        const bannerColorScheme = groupType === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme;
+        const bannerColorScheme = getGroupColorScheme(groupType);
 
         return (
           <Modal visible={true} transparent animationType="fade" onRequestClose={handleCancelSupersetSelection}>
@@ -2461,7 +2460,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                     // If NOT in a superset (creating new), allow clicking the group to add to it
                     const canClickGroup = supersetSelectionMode?.mode === 'create';
 
-                    const groupColorScheme = exercise.groupType === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme;
+                    const groupColorScheme = getGroupColorScheme(exercise.groupType);
                     return (
                       <View key={exercise.instanceId}>
                         {canClickGroup ? (

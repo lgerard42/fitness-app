@@ -1,12 +1,11 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import { View, Text, Modal, TouchableOpacity, StyleSheet, Animated, Dimensions } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DraggableFlatList from 'react-native-draggable-flatlist';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { runOnJS } from 'react-native-reanimated';
-import { Edit, Check, Plus, Minus, Trash2 } from 'lucide-react-native';
+import { Edit, Check, Plus, Minus } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { defaultSupersetColorScheme, defaultHiitColorScheme } from '@/constants/defaultStyles';
+import SwipeToDelete from '@/components/common/SwipeToDelete';
 import type { ExerciseLibraryItem, GroupType } from '@/types/workout';
 
 interface ExerciseGroup {
@@ -250,7 +249,6 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
   const prevVisibleRef = useRef(visible);
   const pendingDragRef = useRef<(() => void) | null>(null);
   const [swipedItemId, setSwipedItemId] = useState<string | null>(null);
-  const swipeTranslations = useRef<Map<string, Animated.Value>>(new Map());
   const screenWidth = Dimensions.get('window').width;
 
   const getNextGroupNumber = useCallback((type: GroupType): number => {
@@ -373,11 +371,6 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
       setDropsetExercises(new Set());
       pendingDragRef.current = null;
       setSwipedItemId(null);
-      // Reset all swipe translations
-      swipeTranslations.current.forEach((value) => {
-        value.setValue(0);
-      });
-      swipeTranslations.current.clear();
     }
 
     prevVisibleRef.current = isVisible;
@@ -576,28 +569,16 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
   }, [collapsedGroupId, reorderedItems]);
 
   // Helper function to close trash icon
-  const closeTrashIcon = useCallback((itemId?: string) => {
-    const idToClose = itemId || swipedItemId;
-    if (!idToClose) return;
-
-    const translateX = swipeTranslations.current.get(idToClose);
-    if (translateX) {
-      Animated.spring(translateX, {
-        toValue: 0,
-        useNativeDriver: true,
-        tension: 100,
-        friction: 8,
-      }).start();
-    }
+  const closeTrashIcon = useCallback(() => {
     setSwipedItemId(null);
-  }, [swipedItemId]);
+  }, []);
 
   const handleExerciseSelection = useCallback((exerciseId: string) => {
     if (!isSelectionMode) return;
 
     // Close trash icon if visible
     if (swipedItemId) {
-      closeTrashIcon();
+      setSwipedItemId(null);
     }
 
     // Prevent deselection of the initial exercise
@@ -745,11 +726,8 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
       }
 
       // Clean up swipe state
-      setSwipedItemId(null);
-      const translation = swipeTranslations.current.get(itemId);
-      if (translation) {
-        translation.setValue(0);
-        swipeTranslations.current.delete(itemId);
+      if (swipedItemId === itemId) {
+        setSwipedItemId(null);
       }
 
       return newItems;
@@ -830,101 +808,6 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
     });
   }, []);
 
-  // Helper functions for gesture callbacks (called via runOnJS)
-  const updateSwipeTranslation = useCallback((itemId: string, value: number) => {
-    const translateX = swipeTranslations.current.get(itemId);
-    if (translateX) {
-      // Only allow left swipes (negative) or right swipes when trash is visible
-      if (value < 0 || (value >= 0 && swipedItemId === itemId)) {
-        translateX.setValue(value);
-      }
-    }
-  }, [swipedItemId]);
-
-  const handleSwipeEnd = useCallback((itemId: string, translationX: number, velocityX: number) => {
-    const swipeDistance = Math.abs(translationX);
-    const swipeVelocity = Math.abs(velocityX);
-    const cardWidth = screenWidth * 0.9;
-    const swipeThreshold = cardWidth * 0.7;
-    const velocityThreshold = 500;
-
-    const translateXValue = swipeTranslations.current.get(itemId);
-    if (!translateXValue) return;
-
-    if (swipeDistance > swipeThreshold || swipeVelocity > velocityThreshold) {
-      // Clear intention: immediate deletion
-      handleDeleteExercise(itemId);
-      translateXValue.setValue(0);
-      swipeTranslations.current.delete(itemId);
-    } else if (swipeDistance > 50) {
-      // Ambiguous swipe: show trash icon
-      if (swipedItemId && swipedItemId !== itemId) {
-        const prevTranslation = swipeTranslations.current.get(swipedItemId);
-        if (prevTranslation) {
-          Animated.spring(prevTranslation, {
-            toValue: 0,
-            useNativeDriver: true,
-            tension: 100,
-            friction: 8,
-          }).start();
-        }
-      }
-      setSwipedItemId(itemId);
-      Animated.spring(translateXValue, {
-        toValue: -60,
-        useNativeDriver: true,
-        tension: 100,
-        friction: 8,
-      }).start();
-    } else if (swipedItemId === itemId) {
-      // If trash is visible, any swipe (including right) should close it
-      if (translationX > -50) {
-        // Swiping right to close
-        Animated.spring(translateXValue, {
-          toValue: 0,
-          useNativeDriver: true,
-          tension: 100,
-          friction: 8,
-        }).start();
-        setSwipedItemId(null);
-      } else {
-        // Small left swipe when trash visible: keep trash visible
-        Animated.spring(translateXValue, {
-          toValue: -60,
-          useNativeDriver: true,
-          tension: 100,
-          friction: 8,
-        }).start();
-      }
-    } else {
-      // Small swipe: reset
-      Animated.spring(translateXValue, {
-        toValue: 0,
-        useNativeDriver: true,
-        tension: 100,
-        friction: 8,
-      }).start();
-      if (swipedItemId === itemId) {
-        setSwipedItemId(null);
-      }
-    }
-  }, [screenWidth, handleDeleteExercise, swipedItemId]);
-
-  const createSwipeGesture = useCallback((itemId: string, isActive: boolean) => {
-    return Gesture.Pan()
-      .enabled(!isActive && !isSelectionMode)
-      .activeOffsetX([-10, 10])
-      .failOffsetY([-20, 20])
-      .onUpdate((e) => {
-        'worklet';
-        // Allow both left and right swipes
-        runOnJS(updateSwipeTranslation)(itemId, e.translationX);
-      })
-      .onEnd((e) => {
-        'worklet';
-        runOnJS(handleSwipeEnd)(itemId, e.translationX, e.velocityX);
-      });
-  }, [isSelectionMode, updateSwipeTranslation, handleSwipeEnd]);
 
   const toggleGroupType = useCallback((groupId: string) => {
     setReorderedItems(prev => prev.map(item => {
@@ -1133,84 +1016,46 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
     isLastInGroup: boolean,
     isActive: boolean
   ) => {
-    // Ensure animated value exists before creating gesture
-    if (!swipeTranslations.current.has(item.id)) {
-      swipeTranslations.current.set(item.id, new Animated.Value(0));
-    }
-    const translateX = swipeTranslations.current.get(item.id)!;
-    const swipeGesture = createSwipeGesture(item.id, isActive);
     const showTrash = swipedItemId === item.id;
 
-    // Calculate red bar width based on swipe distance
-    const redBarWidth = translateX.interpolate({
-      inputRange: [-screenWidth * 0.9, 0],
-      outputRange: [screenWidth * 0.9, 0],
-      extrapolate: 'clamp',
-    });
-    // Only show red bar when swiping left (negative translation)
-    const redBarOpacity = translateX.interpolate({
-      inputRange: [-screenWidth * 0.9, 0],
-      outputRange: [1, 0],
-      extrapolate: 'clamp',
-    });
-
     return (
-      <View style={styles.swipeContainer}>
-        {/* Red deletion indicator bar */}
-        <Animated.View
+      <SwipeToDelete
+        onDelete={() => handleDeleteExercise(item.id)}
+        disabled={isActive || isSelectionMode}
+        itemId={item.id}
+        isTrashVisible={showTrash}
+        onShowTrash={() => setSwipedItemId(item.id)}
+        onCloseTrash={closeTrashIcon}
+        trashBackgroundColor={groupColorScheme ? groupColorScheme[200] : COLORS.red[100]}
+        trashIconColor={groupColorScheme ? groupColorScheme[700] : COLORS.red[600]}
+      >
+        <View
           style={[
-            styles.swipeIndicatorBar,
-            {
-              width: redBarWidth,
-              opacity: redBarOpacity,
+            styles.exerciseCard,
+            styles.exerciseCard__groupChild,
+            groupColorScheme && {
+              borderColor: groupColorScheme[200],
+              backgroundColor: groupColorScheme[100],
+            },
+            isFirstInGroup && styles.exerciseCard__groupChild__first,
+            isLastInGroup && styles.exerciseCard__groupChild__last,
+            isActive && styles.exerciseCard__active,
+            isActive && styles.exerciseCard__groupChild__active,
+            isActive && groupColorScheme && {
+              backgroundColor: groupColorScheme[100],
+              borderColor: groupColorScheme[300],
             },
           ]}
-        />
-
-        {/* Trash icon background */}
-        {showTrash && (
-          <View style={[styles.swipeDeleteBackground, groupColorScheme && { backgroundColor: groupColorScheme[200] }]}>
-            <TouchableOpacity
-              onPress={() => handleDeleteExercise(item.id)}
-              style={styles.swipeDeleteButton}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Trash2 size={20} color={groupColorScheme ? groupColorScheme[700] : COLORS.red[600]} />
-            </TouchableOpacity>
-          </View>
-        )}
-
-        <GestureDetector gesture={swipeGesture}>
-          <Animated.View
-            style={[
-              styles.exerciseCard,
-              styles.exerciseCard__groupChild,
-              groupColorScheme && {
-                borderColor: groupColorScheme[200],
-                backgroundColor: groupColorScheme[100],
-              },
-              isFirstInGroup && styles.exerciseCard__groupChild__first,
-              isLastInGroup && styles.exerciseCard__groupChild__last,
-              isActive && styles.exerciseCard__active,
-              isActive && styles.exerciseCard__groupChild__active,
-              isActive && groupColorScheme && {
-                backgroundColor: groupColorScheme[100],
-                borderColor: groupColorScheme[300],
-              },
-              {
-                transform: [{ translateX }],
-              },
-            ]}
+        >
+          <TouchableOpacity
+            onPress={() => {
+              if (showTrash) {
+                closeTrashIcon();
+              }
+            }}
+            activeOpacity={1}
+            style={{ flex: 1, flexDirection: 'row', alignItems: 'stretch' }}
           >
-            <TouchableOpacity
-              onPress={() => {
-                if (showTrash) {
-                  closeTrashIcon(item.id);
-                }
-              }}
-              activeOpacity={1}
-              style={{ flex: 1, flexDirection: 'row', alignItems: 'stretch' }}
-            >
               <View
                 style={[
                   styles.groupChildWrapperLeft,
@@ -1326,11 +1171,10 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
                 ]}
               />
             </TouchableOpacity>
-          </Animated.View>
-        </GestureDetector>
-      </View>
-    );
-  };
+          </View>
+        </SwipeToDelete>
+      );
+    };
 
   const renderFooterContent = (groupColorScheme: typeof defaultSupersetColorScheme | typeof defaultHiitColorScheme) => {
     return (
@@ -1490,83 +1334,43 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
 
     const isSelected = isSelectionMode && selectedExercisesForGroup.has(item.id);
     const isSelectable = isSelectionMode && item.groupId === null;
-    // Ensure animated value exists before creating gesture
-    if (!swipeTranslations.current.has(item.id)) {
-      swipeTranslations.current.set(item.id, new Animated.Value(0));
-    }
-    const translateX = swipeTranslations.current.get(item.id)!;
-    const swipeGesture = createSwipeGesture(item.id, isActive);
     const showTrash = swipedItemId === item.id;
 
-    // Calculate red bar width based on swipe distance
-    const redBarWidth = translateX.interpolate({
-      inputRange: [-screenWidth * 0.9, 0],
-      outputRange: [screenWidth * 0.9, 0],
-      extrapolate: 'clamp',
-    });
-    // Only show red bar when swiping left (negative translation)
-    const redBarOpacity = translateX.interpolate({
-      inputRange: [-screenWidth * 0.9, 0],
-      outputRange: [1, 0],
-      extrapolate: 'clamp',
-    });
-
     return (
-      <View style={styles.swipeContainer}>
-        {/* Red deletion indicator bar */}
-        <Animated.View
+      <SwipeToDelete
+        onDelete={() => handleDeleteExercise(item.id)}
+        disabled={isActive || isSelectionMode}
+        itemId={item.id}
+        isTrashVisible={showTrash}
+        onShowTrash={() => setSwipedItemId(item.id)}
+        onCloseTrash={closeTrashIcon}
+      >
+        <View
           style={[
-            styles.swipeIndicatorBar,
-            {
-              width: redBarWidth,
-              opacity: redBarOpacity,
-            },
+            styles.exerciseCard,
+            styles.exerciseCard__standalone,
+            isActive && styles.exerciseCard__active,
+            isSelected && styles.exerciseCard__selected,
+            isSelectable && !isSelected && styles.exerciseCard__selectable,
           ]}
-        />
-
-        {/* Trash icon background */}
-        {showTrash && (
-          <View style={styles.swipeDeleteBackground}>
-            <TouchableOpacity
-              onPress={() => handleDeleteExercise(item.id)}
-              style={styles.swipeDeleteButton}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Trash2 size={20} color={COLORS.red[600]} />
-            </TouchableOpacity>
-          </View>
-        )}
-
-        <GestureDetector gesture={swipeGesture}>
-          <Animated.View
-            style={[
-              styles.exerciseCard,
-              styles.exerciseCard__standalone,
-              isActive && styles.exerciseCard__active,
-              isSelected && styles.exerciseCard__selected,
-              isSelectable && !isSelected && styles.exerciseCard__selectable,
-              {
-                transform: [{ translateX }],
-              },
-            ]}
+        >
+          <TouchableOpacity
+            onLongPress={isSelectionMode ? undefined : drag}
+            onPress={() => {
+              // Close trash icon if visible on this or another card
+              if (swipedItemId) {
+                closeTrashIcon();
+              }
+              // Then handle selection if applicable
+              if (isSelectable) {
+                handleExerciseSelection(item.id);
+              }
+            }}
+            disabled={isActive && !isSelectionMode}
+            delayLongPress={isSelectionMode ? 0 : 150}
+            activeOpacity={1}
+            style={{ flex: 1 }}
           >
-            <TouchableOpacity
-              onLongPress={isSelectionMode ? undefined : drag}
-              onPress={() => {
-                // Close trash icon if visible on this or another card
-                if (swipedItemId) {
-                  closeTrashIcon();
-                }
-                // Then handle selection if applicable
-                if (isSelectable) {
-                  handleExerciseSelection(item.id);
-                }
-              }}
-              disabled={isActive && !isSelectionMode}
-              delayLongPress={isSelectionMode ? 0 : 150}
-              activeOpacity={1}
-              style={{ flex: 1 }}
-            >
               <View style={[styles.exerciseCardContent, styles.exerciseCardContent__standalone]}>
                 <View style={styles.exerciseInfo}>
                   <View style={styles.exerciseNameRow}>
@@ -1642,11 +1446,10 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
                 </View>
               </View>
             </TouchableOpacity>
-          </Animated.View>
-        </GestureDetector>
-      </View>
+          </View>
+        </SwipeToDelete>
     );
-  }, [getItemGroupContext, initiateGroupDrag, collapsedGroupId, reorderedItems, toggleGroupType, isSelectionMode, selectedExercisesForGroup, handleExerciseSelection, handleIncrementSet, handleDecrementSet, createSwipeGesture, swipedItemId, handleDeleteExercise, closeTrashIcon, screenWidth, handleToggleDropset, handleDuplicateExercise]);
+  }, [getItemGroupContext, initiateGroupDrag, collapsedGroupId, reorderedItems, toggleGroupType, isSelectionMode, selectedExercisesForGroup, handleExerciseSelection, handleIncrementSet, handleDecrementSet, swipedItemId, handleDeleteExercise, closeTrashIcon, handleToggleDropset, handleDuplicateExercise]);
 
   return (
     <Modal
@@ -2178,33 +1981,6 @@ const styles = StyleSheet.create({
   emptyGroupPlaceholderText: {
     fontSize: 13,
     fontStyle: 'italic',
-  },
-  swipeContainer: {
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  swipeIndicatorBar: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    bottom: 0,
-    backgroundColor: COLORS.red[500],
-    zIndex: 0,
-  },
-  swipeDeleteBackground: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: 80,
-    backgroundColor: COLORS.red[100],
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1,
-  },
-  swipeDeleteButton: {
-    padding: 12,
-    borderRadius: 6,
   },
   dropdownOverlay: {
     position: 'absolute',
