@@ -180,6 +180,8 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     saveSetDrag,
     handleSetDragEnd,
     onCreateDropset,
+    onUpdateSet,
+    onAddSet,
   } = useSetDragAndDrop({
     currentWorkout: currentWorkout || dummyWorkout,
     handleWorkoutUpdate,
@@ -2604,6 +2606,8 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
         onCancel={cancelSetDrag}
         onSave={saveSetDrag}
         onCreateDropset={onCreateDropset}
+        onUpdateSet={onUpdateSet}
+        onAddSet={onAddSet}
       />
     </SafeAreaView>
   );

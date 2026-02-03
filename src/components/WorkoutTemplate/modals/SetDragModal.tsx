@@ -1,8 +1,8 @@
-import React, { useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal } from 'react-native';
+import React, { useCallback, useState, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
-import { X, Timer, Flame, Zap, Check, Layers } from 'lucide-react-native';
+import { X, Timer, Flame, Zap, Check, Layers, Plus } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { formatRestTime } from '@/utils/workoutHelpers';
 import type { Exercise, Set, ExerciseCategory } from '@/types/workout';
@@ -16,6 +16,8 @@ interface SetDragModalProps {
     onCancel: () => void;
     onSave: () => void;
     onCreateDropset: (setId: string) => void;
+    onUpdateSet: (setId: string, updates: Partial<Set>) => void;
+    onAddSet: () => void;
 }
 
 const SetDragModal: React.FC<SetDragModalProps> = ({
@@ -26,7 +28,11 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
     onCancel,
     onSave,
     onCreateDropset,
+    onUpdateSet,
+    onAddSet,
 }) => {
+    const [indexPopup, setIndexPopup] = useState<{ setId: string; top: number; left: number } | null>(null);
+    const badgeRefs = useRef<Map<string, View>>(new Map());
     const renderDropSetHeader = useCallback((item: DropSetHeaderItem) => {
         return (
             <View
@@ -146,28 +152,53 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                     isActive && styles.dragItem__active,
                 ]}
             >
-                <View style={[
-                    styles.setIndexBadge,
-                    set.isWarmup && styles.setIndexBadge__warmup,
-                    set.isFailure && styles.setIndexBadge__failure,
-                ]}>
-                    {isSubIndex ? (
-                        <Text style={[
-                            styles.setIndexText__groupSub,
-                            set.isWarmup && styles.setIndexText__groupSub__warmup,
-                            set.isFailure && styles.setIndexText__groupSub__failure,
-                        ]}>
-                            {displayIndexText}
-                        </Text>
-                    ) : (
-                        <Text style={[
-                            styles.setIndexText,
-                            set.isWarmup && styles.setIndexText__warmup,
-                            set.isFailure && styles.setIndexText__failure,
-                        ]}>
-                            {displayIndexText}
-                        </Text>
-                    )}
+                <View
+                    ref={(ref) => {
+                        if (ref) {
+                            badgeRefs.current.set(set.id, ref);
+                        } else {
+                            badgeRefs.current.delete(set.id);
+                        }
+                    }}
+                >
+                    <TouchableOpacity
+                        style={[
+                            styles.setIndexBadge,
+                            set.isWarmup && styles.setIndexBadge__warmup,
+                            set.isFailure && styles.setIndexBadge__failure,
+                        ]}
+                        onPress={(e) => {
+                            e.stopPropagation();
+                            const badgeRef = badgeRefs.current.get(set.id);
+                            if (badgeRef) {
+                                badgeRef.measureInWindow((x, y, width, height) => {
+                                    setIndexPopup({
+                                        setId: set.id,
+                                        top: y + height + 4,
+                                        left: x,
+                                    });
+                                });
+                            }
+                        }}
+                    >
+                        {isSubIndex ? (
+                            <Text style={[
+                                styles.setIndexText__groupSub,
+                                set.isWarmup && styles.setIndexText__groupSub__warmup,
+                                set.isFailure && styles.setIndexText__groupSub__failure,
+                            ]}>
+                                {displayIndexText}
+                            </Text>
+                        ) : (
+                            <Text style={[
+                                styles.setIndexText,
+                                set.isWarmup && styles.setIndexText__warmup,
+                                set.isFailure && styles.setIndexText__failure,
+                            ]}>
+                                {displayIndexText}
+                            </Text>
+                        )}
+                    </TouchableOpacity>
                 </View>
 
                 <View style={styles.setInfo}>
@@ -205,19 +236,6 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                             {formatRestTime(set.restPeriodSeconds!)}
                         </Text>
                     </View>
-                )}
-
-                {!set.dropSetId && (
-                    <TouchableOpacity
-                        onPress={(e) => {
-                            e.stopPropagation();
-                            onCreateDropset(set.id);
-                        }}
-                        style={styles.createDropsetButton}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                        <Layers size={18} color={COLORS.indigo[600]} />
-                    </TouchableOpacity>
                 )}
 
                 {set.dropSetId && (
@@ -269,8 +287,103 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                                 onDragEnd={onDragEnd}
                                 containerStyle={styles.listContainer}
                                 contentContainerStyle={styles.listContent}
+                                ListFooterComponent={
+                                    <TouchableOpacity
+                                        onPress={onAddSet}
+                                        style={styles.addSetButton}
+                                    >
+                                        <Plus size={18} color={COLORS.blue[600]} />
+                                        <Text style={styles.addSetButtonText}>Add set</Text>
+                                    </TouchableOpacity>
+                                }
                             />
                         )}
+
+                        {/* Index Popup Menu */}
+                        {indexPopup && (() => {
+                            const setItem = setDragItems.find((i): i is SetDragItem => i.type === 'set' && i.id === indexPopup.setId);
+                            const set = setItem?.set;
+                            if (!set) return null;
+
+                            return (
+                                <Pressable
+                                    onPress={() => setIndexPopup(null)}
+                                    style={styles.popupOverlay}
+                                >
+                                    <Pressable
+                                        onPress={(e) => e.stopPropagation()}
+                                        style={[
+                                            styles.setPopupMenuContainer,
+                                            {
+                                                position: 'absolute',
+                                                top: indexPopup.top,
+                                                left: indexPopup.left,
+                                                zIndex: 100,
+                                                elevation: 10,
+                                            }
+                                        ]}
+                                    >
+                                        <TouchableOpacity
+                                            style={styles.closeButton}
+                                            onPress={() => setIndexPopup(null)}
+                                        >
+                                            <X size={16} color={COLORS.white} />
+                                        </TouchableOpacity>
+
+                                        <TouchableOpacity
+                                            style={styles.setPopupOptionItem}
+                                            onPress={() => {
+                                                const newIsWarmup = !set.isWarmup;
+                                                onUpdateSet(set.id, {
+                                                    isWarmup: newIsWarmup,
+                                                    isFailure: newIsWarmup ? false : set.isFailure,
+                                                });
+                                                setIndexPopup(null);
+                                            }}
+                                        >
+                                            <Flame size={18} color={COLORS.orange[500]} />
+                                            <Text style={[
+                                                styles.setPopupOptionText,
+                                                set.isWarmup && styles.setPopupOptionText__warmup
+                                            ]}>Warmup</Text>
+                                            {set.isWarmup && <Check size={16} color={COLORS.orange[500]} strokeWidth={3} />}
+                                        </TouchableOpacity>
+
+                                        <TouchableOpacity
+                                            style={styles.setPopupOptionItem}
+                                            onPress={() => {
+                                                const newIsFailure = !set.isFailure;
+                                                onUpdateSet(set.id, {
+                                                    isFailure: newIsFailure,
+                                                    isWarmup: newIsFailure ? false : set.isWarmup,
+                                                });
+                                                setIndexPopup(null);
+                                            }}
+                                        >
+                                            <Zap size={18} color={COLORS.red[500]} />
+                                            <Text style={[
+                                                styles.setPopupOptionText,
+                                                set.isFailure && styles.setPopupOptionText__failure
+                                            ]}>Failure</Text>
+                                            {set.isFailure && <Check size={16} color={COLORS.red[500]} strokeWidth={3} />}
+                                        </TouchableOpacity>
+
+                                        {!set.dropSetId && (
+                                            <TouchableOpacity
+                                                style={[styles.setPopupOptionItem, { borderBottomWidth: 0 }]}
+                                                onPress={() => {
+                                                    onCreateDropset(set.id);
+                                                    setIndexPopup(null);
+                                                }}
+                                            >
+                                                <Layers size={18} color={COLORS.indigo[600]} />
+                                                <Text style={styles.setPopupOptionText}>Create dropset</Text>
+                                            </TouchableOpacity>
+                                        )}
+                                    </Pressable>
+                                </Pressable>
+                            );
+                        })()}
 
                         <View style={styles.footer}>
                             <TouchableOpacity onPress={onSave} style={styles.doneButton}>
@@ -379,10 +492,6 @@ const styles = StyleSheet.create({
         shadowRadius: 8,
         elevation: 8,
         transform: [{ scale: 1.02 }],
-    },
-    createDropsetButton: {
-        padding: 6,
-        marginLeft: 8,
     },
     setIndexBadge: {
         width: 32,
@@ -509,6 +618,71 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.indigo[200],
         borderBottomLeftRadius: 8,
         borderBottomRightRadius: 8,
+    },
+    popupOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 99,
+    },
+    setPopupMenuContainer: {
+        width: 200,
+        backgroundColor: COLORS.white,
+        borderRadius: 8,
+        padding: 8,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+        borderWidth: 1,
+        borderColor: COLORS.slate[100],
+    },
+    setPopupOptionItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        paddingVertical: 10,
+        paddingHorizontal: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.slate[100],
+    },
+    setPopupOptionText: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: COLORS.slate[700],
+        flex: 1,
+    },
+    setPopupOptionText__warmup: {
+        color: COLORS.orange[500],
+        fontWeight: '700',
+    },
+    setPopupOptionText__failure: {
+        color: COLORS.red[500],
+        fontWeight: '700',
+    },
+    addSetButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        marginHorizontal: 12,
+        marginTop: 8,
+        marginBottom: 8,
+        backgroundColor: COLORS.blue[50],
+        borderRadius: 10,
+        borderWidth: 2,
+        borderColor: COLORS.blue[200],
+        borderStyle: 'dashed',
+    },
+    addSetButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: COLORS.blue[600],
     },
 });
 

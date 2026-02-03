@@ -39,6 +39,8 @@ interface UseSetDragAndDropReturn {
   saveSetDrag: () => void;
   handleSetDragEnd: (params: { data: SetDragListItem[]; from: number; to: number }) => void;
   onCreateDropset: (setId: string) => void;
+  onUpdateSet: (setId: string, updates: Partial<Set>) => void;
+  onAddSet: () => void;
 }
 
 /**
@@ -312,6 +314,60 @@ export const useSetDragAndDrop = ({
   }, [setDragItems, reconstructItemsFromSets]);
 
   /**
+   * Update a set's properties (warmup, failure, etc.)
+   */
+  const onUpdateSet = useCallback((setId: string, updates: Partial<Set>) => {
+    // Update the set in the items array
+    const updatedItems = setDragItems.map(item => {
+      if (item.type === 'set' && item.id === setId) {
+        return {
+          ...item,
+          set: {
+            ...item.set,
+            ...updates,
+          },
+        };
+      }
+      return item;
+    });
+
+    setSetDragItems(updatedItems);
+  }, [setDragItems]);
+
+  /**
+   * Add a new set to the exercise
+   */
+  const onAddSet = useCallback(() => {
+    if (!activeExercise) return;
+
+    // Extract all current sets
+    const currentSets: Set[] = [];
+    setDragItems.forEach(item => {
+      if (item.type === 'set') {
+        currentSets.push(item.set);
+      }
+    });
+
+    // Create a new set
+    const newSet: Set = {
+      id: `s-${Date.now()}-${Math.random()}`,
+      type: "Working" as const,
+      weight: "",
+      reps: "",
+      duration: "",
+      distance: "",
+      completed: false,
+    };
+
+    // Add the new set to the end
+    const updatedSets = [...currentSets, newSet];
+
+    // Reconstruct items with headers/footers
+    const newItems = reconstructItemsFromSets(updatedSets);
+    setSetDragItems(newItems);
+  }, [activeExercise, setDragItems, reconstructItemsFromSets]);
+
+  /**
    * Save the current drag state to the workout and close the modal
    */
   const saveSetDrag = useCallback(() => {
@@ -351,5 +407,7 @@ export const useSetDragAndDrop = ({
     saveSetDrag,
     handleSetDragEnd,
     onCreateDropset,
+    onUpdateSet,
+    onAddSet,
   };
 };
