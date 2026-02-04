@@ -486,8 +486,80 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     const isBeingCompleted = !set.completed;
 
     if (isBeingCompleted) {
-      // Mark set as completed
-      handleUpdateSet(exInstanceId, { ...set, completed: true });
+      // Helper function to mark rest timers as complete for sets that are completed but don't have restTimerCompleted
+      const markInactiveRestTimersComplete = (exercises: ExerciseItem[]): ExerciseItem[] => {
+        return exercises.map(item => {
+          if (item.type === 'group') {
+            return {
+              ...item,
+              children: markInactiveRestTimersComplete(item.children)
+            } as ExerciseItem;
+          }
+          // For exercises, mark rest timers as complete for sets that:
+          // - Have restPeriodSeconds
+          // - Are completed
+          // - Don't have restTimerCompleted set
+          return {
+            ...item,
+            sets: item.sets.map((s: Set) => {
+              if (s.restPeriodSeconds && s.completed && !s.restTimerCompleted) {
+                return { ...s, restTimerCompleted: true };
+              }
+              return s;
+            })
+          } as ExerciseItem;
+        }) as ExerciseItem[];
+      };
+
+      // If there's an active rest timer running for a different exercise/set, mark it as complete
+      if (activeRestTimer && (activeRestTimer.exerciseId !== exInstanceId || activeRestTimer.setId !== set.id)) {
+        // Close the rest timer popup if it's open
+        setRestTimerPopupOpen(false);
+
+        // Update both: mark the timer as complete AND mark the new set as complete in one update
+        let updatedExercises = updateExercisesDeep(currentWorkout.exercises, activeRestTimer.exerciseId, (ex) => {
+          if (ex.type === 'group') return ex;
+          return {
+            ...ex,
+            sets: ex.sets.map((s: Set) => s.id === activeRestTimer.setId ? { ...s, restTimerCompleted: true } : s)
+          };
+        });
+
+        // Also mark the new set as completed in the same update
+        updatedExercises = updateExercisesDeep(updatedExercises, exInstanceId, (ex) => {
+          if (ex.type === 'group') return ex;
+          return {
+            ...ex,
+            sets: ex.sets.map((s: Set) => s.id === set.id ? { ...s, completed: true } : s)
+          };
+        });
+
+        // Mark all inactive rest timers (completed sets with rest timers that aren't marked complete) as complete
+        updatedExercises = markInactiveRestTimersComplete(updatedExercises);
+
+        handleWorkoutUpdate({
+          ...currentWorkout,
+          exercises: updatedExercises
+        });
+        setActiveRestTimer(null);
+      } else {
+        // Mark set as completed and mark all inactive rest timers as complete
+        let updatedExercises = updateExercisesDeep(currentWorkout.exercises, exInstanceId, (ex) => {
+          if (ex.type === 'group') return ex;
+          return {
+            ...ex,
+            sets: ex.sets.map((s: Set) => s.id === set.id ? { ...s, completed: true } : s)
+          };
+        });
+
+        // Mark all inactive rest timers (completed sets with rest timers that aren't marked complete) as complete
+        updatedExercises = markInactiveRestTimersComplete(updatedExercises);
+
+        handleWorkoutUpdate({
+          ...currentWorkout,
+          exercises: updatedExercises
+        });
+      }
 
       // Start rest timer if this set has a rest period
       startRestTimer(exInstanceId, set);
@@ -1536,6 +1608,8 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
 
                   {/* Rest Timer Bar */}
                   {showRestTimer && (() => {
+                    // Determine if this rest timer is at the start of a dropset
+                    const isRestTimerDropSetStart = !!(set.dropSetId && (idx === 0 || ex.sets[idx - 1]?.dropSetId !== set.dropSetId));
                     // Determine if this rest timer is at the end of a dropset
                     const isRestTimerDropSetEnd = !!(set.dropSetId && (idx === ex.sets.length - 1 || ex.sets[idx + 1]?.dropSetId !== set.dropSetId));
 
@@ -1551,10 +1625,10 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                         setRestTimerInput={setRestTimerInput}
                         setRestPeriodModalOpen={setRestPeriodModalOpen}
                         setRestTimerPopupOpen={setRestTimerPopupOpen}
+                        isRestTimerDropSetStart={isRestTimerDropSetStart}
                         isRestTimerDropSetEnd={isRestTimerDropSetEnd}
                         displayGroupSetType={displayGroupSetType as GroupSetType}
                         isBeingEdited={restPeriodSetInfo?.setId === set.id && restPeriodModalOpen}
-                        styles={styles}
                       />
                     );
                   })()}
@@ -2910,93 +2984,6 @@ const styles = StyleSheet.create({
   },
   setsContainer: {
     // gap: 4,
-  },
-  restTimerBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingTop: 0,
-    paddingBottom: 0,
-    paddingHorizontal: 16,
-  },
-  restTimerBar__completed: {
-    backgroundColor: COLORS.green[50],
-  },
-  restTimerBar__editing: {
-    backgroundColor: COLORS.blue[50],
-    borderWidth: 2,
-    borderColor: COLORS.blue[400],
-    borderRadius: 8,
-    marginVertical: 2,
-  },
-  restTimerDropSetIndicator: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 5,
-    backgroundColor: defaultSupersetColorScheme[500],
-  },
-  restTimerDropSetIndicator__end: {
-    bottom: 8,
-  },
-  restTimerDropSetIndicator__warmup: {
-    backgroundColor: COLORS.orange[500],
-  },
-  restTimerDropSetIndicator__failure: {
-    backgroundColor: COLORS.red[500],
-  },
-  restTimerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: COLORS.slate[200],
-  },
-  restTimerBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    marginHorizontal: 8,
-    minWidth: 58,
-  },
-  restTimerBadge__active: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    minWidth: 70,
-  },
-  restTimerBadge__completed: {
-    // No background for completed state
-  },
-  restTimerBadge__editing: {
-    backgroundColor: COLORS.blue[500],
-    borderRadius: 6,
-  },
-  restTimerLine__completed: {
-    backgroundColor: COLORS.green[500],
-    height: 1,
-  },
-  restTimerText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.slate[500],
-  },
-  restTimerText__completed: {
-    color: COLORS.green[600],
-  },
-  restTimerText__active: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.blue[600],
-  },
-  restTimerText__activeLarge: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.blue[600],
-  },
-  restTimerText__editing: {
-    color: COLORS.white,
-    fontWeight: '700',
   },
   timerPopupOverlay: {
     flex: 1,
