@@ -73,8 +73,15 @@ export const useSetRowLogic = ({
       // Small delay to ensure smooth transition
       setTimeout(focusInput, 50);
     } else if (!customKeyboardActive) {
-      // Clear focus state when keyboard is not targeting this set
+      // Clear focus state and blur inputs when keyboard is not targeting this set
       setFocusedInput(null);
+      // Blur the inputs to ensure they're not focused
+      if (firstInputRef.current) {
+        firstInputRef.current.blur();
+      }
+      if (secondInputRef.current) {
+        secondInputRef.current.blur();
+      }
     }
   }, [customKeyboardActive, customKeyboardField, readOnly]);
 

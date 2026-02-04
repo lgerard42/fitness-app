@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, Modal, Pressable } from 'react-native';
 import { Play, Pause } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { formatRestTime, updateExercisesDeep } from '@/utils/workoutHelpers';
-import type { Workout, RestTimer } from '@/types/workout';
+import type { Workout, RestTimer, Set } from '@/types/workout';
 
 interface ActiveRestTimerPopupProps {
   visible: boolean;
@@ -30,7 +30,7 @@ const ActiveRestTimerPopup: React.FC<ActiveRestTimerPopupProps> = ({
 
   const handleAdjustTime = (seconds: number, isAdd: boolean) => {
     if (!activeRestTimer) return;
-    
+
     if (isAdd) {
       setActiveRestTimer({
         ...activeRestTimer,
@@ -50,10 +50,13 @@ const ActiveRestTimerPopup: React.FC<ActiveRestTimerPopupProps> = ({
     if (activeRestTimer) {
       handleWorkoutUpdate({
         ...currentWorkout,
-        exercises: updateExercisesDeep(currentWorkout.exercises, activeRestTimer.exerciseId, (ex) => ({
-          ...ex,
-          sets: ex.sets.map(s => s.id === activeRestTimer.setId ? { ...s, restTimerCompleted: true } : s)
-        }))
+        exercises: updateExercisesDeep(currentWorkout.exercises, activeRestTimer.exerciseId, (ex) => {
+          if (ex.type === 'group') return ex;
+          return {
+            ...ex,
+            sets: ex.sets.map((s: Set) => s.id === activeRestTimer.setId ? { ...s, restTimerCompleted: true } : s)
+          };
+        })
       });
     }
     setActiveRestTimer(null);
@@ -61,14 +64,14 @@ const ActiveRestTimerPopup: React.FC<ActiveRestTimerPopupProps> = ({
   };
 
   return (
-    <Modal 
-      visible={visible && activeRestTimer !== null} 
-      transparent 
-      animationType="fade" 
+    <Modal
+      visible={visible && activeRestTimer !== null}
+      transparent
+      animationType="fade"
       onRequestClose={onClose}
     >
-      <Pressable 
-        style={styles.timerPopupOverlay} 
+      <Pressable
+        style={styles.timerPopupOverlay}
         onPress={onClose}
       >
         <Pressable style={styles.timerPopupContent} onPress={(e) => e.stopPropagation()}>
@@ -89,8 +92,8 @@ const ActiveRestTimerPopup: React.FC<ActiveRestTimerPopupProps> = ({
               </Text>
             </View>
           </View>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={[
               styles.timerPopupMainButton,
               activeRestTimer?.isPaused && styles.timerPopupMainButton__paused
@@ -109,17 +112,17 @@ const ActiveRestTimerPopup: React.FC<ActiveRestTimerPopupProps> = ({
               </>
             )}
           </TouchableOpacity>
-          
+
           <View style={styles.timerAdjustContainer}>
             {[5, 10, 15, 30].map(seconds => (
               <View key={seconds} style={styles.timerAdjustColumn}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.timerAdjustButton}
                   onPress={() => handleAdjustTime(seconds, true)}
                 >
                   <Text style={styles.timerAdjustButtonText}>+{seconds}s</Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.timerAdjustButton}
                   onPress={() => handleAdjustTime(seconds, false)}
                 >
@@ -128,15 +131,15 @@ const ActiveRestTimerPopup: React.FC<ActiveRestTimerPopupProps> = ({
               </View>
             ))}
           </View>
-          
+
           <View style={styles.timerPopupBottomButtons}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.timerPopupCloseButton}
               onPress={onClose}
             >
               <Text style={styles.timerPopupCloseButtonText}>Close</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.timerPopupCompleteButton}
               onPress={handleComplete}
             >

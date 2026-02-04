@@ -27,6 +27,9 @@ interface SetRowProps {
   isSelectionMode: boolean;
   isSelected: boolean;
   onToggleSelection: (isAddToGroupAction?: boolean) => void;
+  isRestTimerSelectionMode?: boolean;
+  isRestTimerSelected?: boolean;
+  onToggleRestTimerSelection?: () => void;
   dropSetId?: string;
   isDropSetStart: boolean;
   isDropSetEnd: boolean;
@@ -63,6 +66,9 @@ const SetRow: React.FC<SetRowProps> = ({
   isSelectionMode,
   isSelected,
   onToggleSelection,
+  isRestTimerSelectionMode = false,
+  isRestTimerSelected = false,
+  onToggleRestTimerSelection,
   dropSetId,
   isDropSetStart,
   isDropSetEnd,
@@ -241,13 +247,18 @@ const SetRow: React.FC<SetRowProps> = ({
               groupColorScheme ? { backgroundColor: groupColorScheme[400] } : { backgroundColor: COLORS.slate[400] }
             ]} />
           )}
-          <View style={[
-            styles.container,
-            set.completed && styles.completedContainer,
-            dropSetId && isDropSetStart && styles.container__dropSetStart,
-            dropSetId && isDropSetEnd && styles.container__dropSetEnd,
-            dropSetId ? styles.container__dropSet__flex : styles.container__nonDropSet__flex
-          ]}>
+          <Pressable
+            style={[
+              styles.container,
+              set.completed && styles.completedContainer,
+              dropSetId && isDropSetStart && styles.container__dropSetStart,
+              dropSetId && isDropSetEnd && styles.container__dropSetEnd,
+              dropSetId ? styles.container__dropSet__flex : styles.container__nonDropSet__flex,
+              isRestTimerSelectionMode && isRestTimerSelected && styles.container__restTimerSelected
+            ]}
+            onPress={isRestTimerSelectionMode && onToggleRestTimerSelection ? onToggleRestTimerSelection : undefined}
+            disabled={!isRestTimerSelectionMode || !onToggleRestTimerSelection}
+          >
             <View style={[
               styles.contentRow,
               dropSetId && styles.contentRow__dropSet,
@@ -329,13 +340,14 @@ const SetRow: React.FC<SetRowProps> = ({
                 <TouchableOpacity
                   ref={indexContainerRef}
                   onPress={() => {
-                    if (!readOnly && onPressSetNumber && indexContainerRef.current) {
+                    if (!readOnly && !isRestTimerSelectionMode && onPressSetNumber && indexContainerRef.current) {
                       indexContainerRef.current.measure((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
                         onPressSetNumber(pageX, pageY, width, height);
                       });
                     }
                   }}
-                  disabled={readOnly}
+                  disabled={readOnly || isRestTimerSelectionMode}
+                  pointerEvents={isRestTimerSelectionMode ? 'none' : 'auto'}
                   style={[
                     styles.indexBadge,
                     set.completed && styles.indexBadge__completed
@@ -437,7 +449,7 @@ const SetRow: React.FC<SetRowProps> = ({
                 {renderPrevious()}
               </View>
 
-              <View style={styles.weightContainer}>
+              <View style={styles.weightContainer} pointerEvents={isRestTimerSelectionMode ? 'none' : 'auto'}>
                 <View style={styles.weightInputWrapper}>
                   <TextInput
                     numberOfLines={1}
@@ -450,8 +462,10 @@ const SetRow: React.FC<SetRowProps> = ({
                     ]}
                     selectTextOnFocus={true}
                     showSoftInputOnFocus={!onCustomKeyboardOpen}
+                    editable={!readOnly && !isRestTimerSelectionMode}
+                    pointerEvents={isRestTimerSelectionMode ? 'none' : 'auto'}
                     onFocus={() => {
-                      if (!readOnly) {
+                      if (!readOnly && !isRestTimerSelectionMode) {
                         const val = isLift ? (set.weight || "") : (set.duration || "");
                         if (onCustomKeyboardOpen) {
                           if (isLift) {
@@ -513,7 +527,7 @@ const SetRow: React.FC<SetRowProps> = ({
                 </View>
               </View>
 
-              <View style={styles.repsContainer}>
+              <View style={styles.repsContainer} pointerEvents={isRestTimerSelectionMode ? 'none' : 'auto'}>
                 <View style={styles.repsInputWrapper}>
                   <TextInput
                     numberOfLines={1}
@@ -526,8 +540,10 @@ const SetRow: React.FC<SetRowProps> = ({
                     ]}
                     selectTextOnFocus={true}
                     showSoftInputOnFocus={!onCustomKeyboardOpen}
+                    editable={!readOnly && !isRestTimerSelectionMode}
+                    pointerEvents={isRestTimerSelectionMode ? 'none' : 'auto'}
                     onFocus={() => {
-                      if (!readOnly) {
+                      if (!readOnly && !isRestTimerSelectionMode) {
                         const val = isLift ? (set.reps || "") : isCardio ? (set.distance || "") : (set.reps || "");
                         if (onCustomKeyboardOpen) {
                           if (isLift) {
@@ -590,8 +606,9 @@ const SetRow: React.FC<SetRowProps> = ({
               </View>
 
               <TouchableOpacity
-                onPress={readOnly ? undefined : onToggle}
-                disabled={readOnly || isMissingValue}
+                onPress={readOnly || isRestTimerSelectionMode ? undefined : onToggle}
+                disabled={readOnly || isMissingValue || isRestTimerSelectionMode}
+                pointerEvents={isRestTimerSelectionMode ? 'none' : 'auto'}
                 style={[
                   styles.checkButton,
                   (readOnly || isMissingValue) ? styles.checkButtonDisabled : (set.completed ? styles.checkButtonCompleted : styles.checkButtonIncomplete)
@@ -600,7 +617,7 @@ const SetRow: React.FC<SetRowProps> = ({
                 <Check size={16} color={(readOnly || isMissingValue) ? COLORS.slate[300] : (set.completed ? COLORS.white : COLORS.slate[400])} strokeWidth={3} />
               </TouchableOpacity>
             </View>
-          </View>
+          </Pressable>
         </View>
       </SwipeToDelete>
     </Pressable>
@@ -630,6 +647,9 @@ const styles = StyleSheet.create({
   },
   completedContainer: {
     backgroundColor: COLORS.green[50],
+  },
+  container__restTimerSelected: {
+    // Border and background are handled by the wrapper in WorkoutTemplateIndex
   },
   swipeableRow: {
     flexDirection: 'row',

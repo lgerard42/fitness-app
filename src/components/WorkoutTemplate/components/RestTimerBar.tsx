@@ -22,6 +22,10 @@ interface RestTimerBarProps {
   isRestTimerDropSetEnd: boolean;
   displayGroupSetType: GroupSetType;
   isBeingEdited: boolean;
+  isRestTimerSelectionMode?: boolean;
+  isRestTimerSelected?: boolean;
+  onClearInputFocus?: () => void;
+  onToggleRestTimerSelection?: () => void;
 }
 
 interface AnimatedCharacterProps {
@@ -92,6 +96,10 @@ const RestTimerBarComponent: React.FC<RestTimerBarProps> = ({
   isRestTimerDropSetEnd,
   displayGroupSetType,
   isBeingEdited,
+  isRestTimerSelectionMode = false,
+  isRestTimerSelected = false,
+  onClearInputFocus,
+  onToggleRestTimerSelection,
 }) => {
   const isRestTimerActive = activeRestTimer?.setId === set.id;
 
@@ -419,6 +427,7 @@ const RestTimerBarComponent: React.FC<RestTimerBarProps> = ({
           {!isRestTimerActive && (
             <View style={[
               localStyles.restTimerLine,
+              isBeingEdited && localStyles.restTimerLine__editing,
               set.dropSetId && set.restTimerCompleted && localStyles.restTimerLine__completed__dropSet,
               set.dropSetId && !set.restTimerCompleted && localStyles.restTimerLine__dropSet,
               !set.dropSetId && set.restTimerCompleted && localStyles.restTimerLine__completed
@@ -433,6 +442,17 @@ const RestTimerBarComponent: React.FC<RestTimerBarProps> = ({
               isBeingEdited && localStyles.restTimerBadge__editing
             ]}
             onPress={() => {
+              // In selection mode, toggle selection instead of editing
+              if (isRestTimerSelectionMode && onToggleRestTimerSelection) {
+                onToggleRestTimerSelection();
+                return;
+              }
+
+              // Clear any focused weight/reps inputs
+              if (onClearInputFocus) {
+                onClearInputFocus();
+              }
+
               if (isRestTimerActive) {
                 setRestTimerPopupOpen(true);
               } else {
@@ -459,6 +479,7 @@ const RestTimerBarComponent: React.FC<RestTimerBarProps> = ({
           {!isRestTimerActive && (
             <View style={[
               localStyles.restTimerLine,
+              isBeingEdited && localStyles.restTimerLine__editing,
               set.dropSetId && set.restTimerCompleted && localStyles.restTimerLine__completed__dropSet,
               set.dropSetId && !set.restTimerCompleted && localStyles.restTimerLine__dropSet,
               !set.dropSetId && set.restTimerCompleted && localStyles.restTimerLine__completed
@@ -536,6 +557,10 @@ const localStyles = StyleSheet.create({
     backgroundColor: COLORS.forestgreen[200],
     height: 3,
   },
+  restTimerLine__editing: {
+    backgroundColor: COLORS.blue[400],
+    height: 3,
+  },
   restTimerLine__dropSet: {
     marginLeft: 0,
     height: 2,
@@ -550,7 +575,7 @@ const localStyles = StyleSheet.create({
     borderWidth: 2,
     borderColor: COLORS.blue[400],
     borderRadius: 6,
-    borderStyle: 'dashed',
+    borderStyle: 'solid',
     marginVertical: 2,
     marginHorizontal: 8,
   },

@@ -1,21 +1,24 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Timer, Play, X } from 'lucide-react-native';
+import { Play, X } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
-import { formatRestTime, parseRestTimeInput, updateExercisesDeep } from '@/utils/workoutHelpers';
-import type { Workout, RestTimer, RestPeriodSetInfo } from '@/types/workout';
+import { formatRestTime, parseRestTimeInput, updateExercisesDeep, findExerciseDeep } from '@/utils/workoutHelpers';
+import type { Workout, RestTimer, RestPeriodSetInfo, Set, ExerciseItem } from '@/types/workout';
 
 interface RestTimerInputModalProps {
   visible: boolean;
   onClose: () => void;
   restTimerInput: string;
-  setRestTimerInput: (input: string) => void;
+  setRestTimerInput: React.Dispatch<React.SetStateAction<string>>;
   restPeriodSetInfo: RestPeriodSetInfo | null;
   currentWorkout: Workout;
   handleWorkoutUpdate: (workout: Workout) => void;
   setActiveRestTimer: React.Dispatch<React.SetStateAction<RestTimer | null>>;
   setRestTimerPopupOpen: (open: boolean) => void;
   onAddRestPeriod?: () => void;
+  onSetSelectionMode?: (enabled: boolean) => void;
+  selectedSetIds?: globalThis.Set<string>;
+  onToggleSetSelection?: (exerciseId: string, setId: string) => void;
 }
 
 const RestTimerInputModal: React.FC<RestTimerInputModalProps> = ({
@@ -29,23 +32,90 @@ const RestTimerInputModal: React.FC<RestTimerInputModalProps> = ({
   setActiveRestTimer,
   setRestTimerPopupOpen,
   onAddRestPeriod,
+  onSetSelectionMode,
+  selectedSetIds = new Set(),
+  onToggleSetSelection,
 }) => {
+  const [isSelectionMode, setIsSelectionMode] = React.useState(false);
+  const lastInputRef = useRef<string>('');
+  const shouldClearOnNextInputRef = useRef<boolean>(false);
+  const previousSetIdRef = useRef<string | null>(null);
+
+  // Track when modal opens with existing text - should clear on first input
+  useEffect(() => {
+    if (visible && restPeriodSetInfo) {
+      const currentSetId = `${restPeriodSetInfo.exerciseId}-${restPeriodSetInfo.setId}`;
+      // If this is a new set (different from previous) and there's existing text, set flag
+      if (previousSetIdRef.current !== currentSetId && restTimerInput) {
+        shouldClearOnNextInputRef.current = true;
+      }
+      previousSetIdRef.current = currentSetId;
+    } else if (!visible) {
+      shouldClearOnNextInputRef.current = false;
+      previousSetIdRef.current = null;
+    }
+  }, [visible, restPeriodSetInfo, restTimerInput]);
+
+  // Reset ref when set info changes (new set selected)
+  useEffect(() => {
+    lastInputRef.current = '';
+  }, [restPeriodSetInfo]);
+
+  // Reset selection mode when modal closes
+  useEffect(() => {
+    if (!visible && isSelectionMode) {
+      setIsSelectionMode(false);
+      if (onSetSelectionMode) {
+        onSetSelectionMode(false);
+      }
+    }
+  }, [visible, isSelectionMode, onSetSelectionMode]);
+
+  // Automatically update the rest timer in the workout as user types
+  useEffect(() => {
+    if (!restPeriodSetInfo || restTimerInput === lastInputRef.current) return;
+
+    lastInputRef.current = restTimerInput;
+    const { exerciseId, setId } = restPeriodSetInfo;
+    const seconds = parseRestTimeInput(restTimerInput);
+
+    // Only update if we have a valid input (even if it's 0, we want to update to clear it)
+    handleWorkoutUpdate({
+      ...currentWorkout,
+      exercises: updateExercisesDeep(currentWorkout.exercises, exerciseId, (ex) => {
+        if (ex.type === 'group') return ex;
+        return {
+          ...ex,
+          sets: ex.sets.map((s: Set) =>
+            s.id === setId
+              ? { ...s, restPeriodSeconds: seconds > 0 ? seconds : undefined, restTimerCompleted: false }
+              : s
+          )
+        };
+      })
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restTimerInput, restPeriodSetInfo]);
+
   if (!visible) return null;
 
   const handleStartTimer = () => {
     const seconds = parseRestTimeInput(restTimerInput);
     if (seconds <= 0 || !restPeriodSetInfo) return;
-    
+
     const { exerciseId, setId } = restPeriodSetInfo;
-    
+
     handleWorkoutUpdate({
       ...currentWorkout,
-      exercises: updateExercisesDeep(currentWorkout.exercises, exerciseId, (ex) => ({
-        ...ex,
-        sets: ex.sets.map(s => s.id === setId ? { ...s, restPeriodSeconds: seconds, restTimerCompleted: false } : s)
-      }))
+      exercises: updateExercisesDeep(currentWorkout.exercises, exerciseId, (ex) => {
+        if (ex.type === 'group') return ex;
+        return {
+          ...ex,
+          sets: ex.sets.map((s: Set) => s.id === setId ? { ...s, restPeriodSeconds: seconds, restTimerCompleted: false } : s)
+        };
+      })
     });
-    
+
     setActiveRestTimer({
       exerciseId,
       setId,
@@ -53,7 +123,7 @@ const RestTimerInputModal: React.FC<RestTimerInputModalProps> = ({
       totalSeconds: seconds,
       isPaused: false
     });
-    
+
     onClose();
     setRestTimerInput('');
     setRestTimerPopupOpen(true);
@@ -67,20 +137,109 @@ const RestTimerInputModal: React.FC<RestTimerInputModalProps> = ({
     setRestTimerInput('');
   };
 
+  const handleApplyTo = () => {
+    setIsSelectionMode(true);
+    if (onSetSelectionMode) {
+      onSetSelectionMode(true);
+    }
+    // Automatically select the set that was being edited
+    if (restPeriodSetInfo && onToggleSetSelection) {
+      onToggleSetSelection(restPeriodSetInfo.exerciseId, restPeriodSetInfo.setId);
+    }
+  };
+
+  const handleSaveSelected = () => {
+    const seconds = parseRestTimeInput(restTimerInput);
+    if (seconds <= 0 || !selectedSetIds || selectedSetIds.size === 0) return;
+
+    // Update all selected sets with the rest timer
+    // Group sets by exerciseId to update efficiently
+    const setsByExercise = new Map<string, string[]>();
+    selectedSetIds.forEach((setId: string) => {
+      // Find which exercise contains this set by searching all exercises
+      const findExerciseWithSet = (items: ExerciseItem[]): string | null => {
+        for (const item of items) {
+          if (item.type === 'exercise' && item.sets.some((s: Set) => s.id === setId)) {
+            return item.instanceId;
+          }
+          if (item.type === 'group' && item.children) {
+            const found = findExerciseWithSet(item.children);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+
+      const exerciseId = findExerciseWithSet(currentWorkout.exercises);
+      if (exerciseId) {
+        if (!setsByExercise.has(exerciseId)) {
+          setsByExercise.set(exerciseId, []);
+        }
+        setsByExercise.get(exerciseId)!.push(setId);
+      }
+    });
+
+    // Update each exercise with its selected sets
+    let updatedWorkout = currentWorkout;
+    setsByExercise.forEach((setIds, exerciseId) => {
+      updatedWorkout = {
+        ...updatedWorkout,
+        exercises: updateExercisesDeep(updatedWorkout.exercises, exerciseId, (ex: ExerciseItem) => {
+          if (ex.type === 'group') return ex;
+          return {
+            ...ex,
+            sets: ex.sets.map((s: Set) =>
+              setIds.includes(s.id)
+                ? { ...s, restPeriodSeconds: seconds, restTimerCompleted: false }
+                : s
+            )
+          };
+        })
+      };
+    });
+
+    handleWorkoutUpdate(updatedWorkout);
+    setIsSelectionMode(false);
+    if (onSetSelectionMode) {
+      onSetSelectionMode(false);
+    }
+    onClose();
+    setRestTimerInput('');
+  };
+
+  const handleCancelSelection = () => {
+    setIsSelectionMode(false);
+    if (onSetSelectionMode) {
+      onSetSelectionMode(false);
+    }
+  };
+
   const handleClose = () => {
+    if (isSelectionMode) {
+      handleCancelSelection();
+    }
     onClose();
     setRestTimerInput('');
   };
 
   const handleInput = (key: string) => {
-    setRestTimerInput(prev => prev + key);
+    setRestTimerInput(prev => {
+      // If we should clear on next input (modal opened with existing text), clear first
+      if (shouldClearOnNextInputRef.current) {
+        shouldClearOnNextInputRef.current = false;
+        return key;
+      }
+      return prev + key;
+    });
   };
 
   const handleBackspace = () => {
+    shouldClearOnNextInputRef.current = false;
     setRestTimerInput(prev => prev.slice(0, -1));
   };
 
   const handleClear = () => {
+    shouldClearOnNextInputRef.current = false;
     setRestTimerInput('');
   };
 
@@ -89,62 +248,6 @@ const RestTimerInputModal: React.FC<RestTimerInputModalProps> = ({
 
   return (
     <View style={localStyles.container}>
-      {/* Preview Section */}
-      <View style={localStyles.previewSection}>
-        <Timer size={24} color={isValid ? COLORS.blue[500] : COLORS.slate[300]} />
-        <Text style={[localStyles.previewText, isValid && localStyles.previewText__active]}>
-          {isValid ? formatRestTime(parsedSeconds) : '0:00'}
-        </Text>
-      </View>
-
-      {/* Quick Options - Row 1 */}
-      <View style={localStyles.row}>
-        {[30, 45, 60, 75, 90].map(seconds => {
-          const isSelected = parsedSeconds === seconds;
-          return (
-            <TouchableOpacity
-              key={seconds}
-              style={[
-                localStyles.quickOptionButton,
-                isSelected && localStyles.quickOptionButton__selected
-              ]}
-              onPress={() => setRestTimerInput(String(seconds))}
-            >
-              <Text style={[
-                localStyles.quickOptionText,
-                isSelected && localStyles.quickOptionText__selected
-              ]}>
-                {formatRestTime(seconds)}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      {/* Quick Options - Row 2 */}
-      <View style={localStyles.row}>
-        {[105, 120, 150, 180, 210].map(seconds => {
-          const isSelected = parsedSeconds === seconds;
-          return (
-            <TouchableOpacity
-              key={seconds}
-              style={[
-                localStyles.quickOptionButton,
-                isSelected && localStyles.quickOptionButton__selected
-              ]}
-              onPress={() => setRestTimerInput(String(seconds))}
-            >
-              <Text style={[
-                localStyles.quickOptionText,
-                isSelected && localStyles.quickOptionText__selected
-              ]}>
-                {formatRestTime(seconds)}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
       {/* Number Pad - Row 1 */}
       <View style={localStyles.row}>
         {['1', '2', '3'].map(key => (
@@ -175,18 +278,33 @@ const RestTimerInputModal: React.FC<RestTimerInputModalProps> = ({
             <Text style={localStyles.keyButtonText}>{key}</Text>
           </TouchableOpacity>
         ))}
-        <TouchableOpacity
-          style={[
-            localStyles.saveButton,
-            !isValid && localStyles.saveButton__disabled
-          ]}
-          onPress={handleSave}
-          disabled={!isValid}
-        >
-          <Text style={localStyles.saveButtonText}>
-            Save
-          </Text>
-        </TouchableOpacity>
+        {isSelectionMode ? (
+          <TouchableOpacity
+            style={[
+              localStyles.saveButton,
+              (selectedSetIds.size === 0 || !isValid) && localStyles.saveButton__disabled
+            ]}
+            onPress={handleSaveSelected}
+            disabled={selectedSetIds.size === 0 || !isValid}
+          >
+            <Text style={localStyles.saveButtonText}>
+              Save ({selectedSetIds.size})
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={[
+              localStyles.applyToButton,
+              !isValid && localStyles.applyToButton__disabled
+            ]}
+            onPress={handleApplyTo}
+            disabled={!isValid}
+          >
+            <Text style={localStyles.applyToButtonText}>
+              Apply to
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Number Pad - Row 3 */}
@@ -233,12 +351,6 @@ const RestTimerInputModal: React.FC<RestTimerInputModalProps> = ({
         >
           <Text style={localStyles.secondaryButtonText}>⌫</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={localStyles.cancelButton}
-          onPress={handleClose}
-        >
-          <Text style={localStyles.cancelButtonText}>Cancel</Text>
-        </TouchableOpacity>
       </View>
     </View>
   );
@@ -257,55 +369,10 @@ const localStyles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 8,
   },
-  previewSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    marginBottom: 16,
-    paddingVertical: 12,
-  },
-  previewText: {
-    fontSize: 32,
-    fontWeight: '600',
-    color: COLORS.slate[300],
-  },
-  previewText__active: {
-    color: COLORS.blue[500],
-  },
   row: {
     flexDirection: 'row',
     gap: 8,
     marginBottom: 8,
-  },
-  quickOptionButton: {
-    flex: 1,
-    flexBasis: 0,
-    minWidth: 0,
-    maxWidth: '100%',
-    height: 52,
-    backgroundColor: COLORS.slate[600],
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  quickOptionButton__selected: {
-    backgroundColor: COLORS.blue[600],
-  },
-  quickOptionText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: COLORS.white,
-  },
-  quickOptionText__selected: {
-    color: COLORS.white,
-    fontWeight: '600',
   },
   keyButton: {
     flex: 1,
@@ -393,6 +460,31 @@ const localStyles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.white,
   },
+  applyToButton: {
+    flex: 1,
+    flexBasis: 0,
+    minWidth: 0,
+    maxWidth: '100%',
+    height: 52,
+    backgroundColor: COLORS.blue[600],
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  applyToButton__disabled: {
+    opacity: 0.5,
+  },
+  applyToButtonText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.white,
+  },
   startTimerButton: {
     flex: 1,
     flexBasis: 0,
@@ -418,28 +510,6 @@ const localStyles = StyleSheet.create({
   startTimerButtonText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: COLORS.white,
-  },
-  cancelButton: {
-    flex: 1,
-    flexBasis: 0,
-    minWidth: 0,
-    maxWidth: '100%',
-    height: 52,
-    backgroundColor: COLORS.slate[700],
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  cancelButtonText: {
-    fontSize: 18,
-    fontWeight: '500',
     color: COLORS.white,
   },
 });
