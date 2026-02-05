@@ -900,7 +900,7 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
   };
 
   // Sync data from list view back to itemSetGroupsMap before opening drag and drop modal
-  // Returns the updated map so it can be used immediately
+  // Returns both updated maps so they can be used immediately
   const syncListViewToDragDrop = useCallback(() => {
     const updatedItemSetGroupsMap: Record<string, SetGroup[]> = {};
     const updatedItemIdToOrderIndices: Record<string, number[]> = {};
@@ -982,20 +982,27 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
     }
     
     // Update both maps
+    const mergedItemSetGroupsMap = Object.keys(updatedItemSetGroupsMap).length > 0
+      ? { ...itemSetGroupsMap, ...updatedItemSetGroupsMap }
+      : itemSetGroupsMap;
+    
+    const mergedItemIdToOrderIndices = Object.keys(updatedItemIdToOrderIndices).length > 0
+      ? { ...itemIdToOrderIndices, ...updatedItemIdToOrderIndices }
+      : itemIdToOrderIndices;
+    
     if (Object.keys(updatedItemSetGroupsMap).length > 0) {
-      const mergedMap = { ...itemSetGroupsMap, ...updatedItemSetGroupsMap };
-      setItemSetGroupsMap(mergedMap);
-      prevItemSetGroupsMapRef.current = { ...mergedMap };
-      
-      // Also update itemIdToOrderIndices if we created new ones
-      if (Object.keys(updatedItemIdToOrderIndices).length > 0) {
-        setItemIdToOrderIndices(prev => ({ ...prev, ...updatedItemIdToOrderIndices }));
-      }
-      
-      return mergedMap;
+      setItemSetGroupsMap(mergedItemSetGroupsMap);
+      prevItemSetGroupsMapRef.current = { ...mergedItemSetGroupsMap };
     }
     
-    return itemSetGroupsMap;
+    if (Object.keys(updatedItemIdToOrderIndices).length > 0) {
+      setItemIdToOrderIndices(mergedItemIdToOrderIndices);
+    }
+    
+    return {
+      itemSetGroupsMap: mergedItemSetGroupsMap,
+      itemIdToOrderIndices: mergedItemIdToOrderIndices
+    };
   }, [exerciseInstanceSetGroups, itemIdToOrderIndices, selectedOrder, itemSetGroupsMap]);
 
   const handleClose = () => {

@@ -38,7 +38,7 @@ interface HeaderTopRowProps {
   setExerciseSetGroups: ((map: Record<string, SetGroup[]>) => void) | null;
   setItemIdToOrderIndices?: ((map: Record<string, number[]>) => void) | null;
   setItemSetGroupsMap?: ((map: Record<string, SetGroup[]>) => void) | null;
-  onBeforeOpenDragDrop?: (() => Record<string, SetGroup[]> | undefined) | null;
+  onBeforeOpenDragDrop?: (() => { itemSetGroupsMap: Record<string, SetGroup[]>; itemIdToOrderIndices: Record<string, number[]> } | undefined) | null;
   itemSetGroupsMap?: Record<string, SetGroup[]>;
   itemIdToOrderIndices?: Record<string, number[]>;
 }
@@ -77,19 +77,26 @@ const HeaderTopRow: React.FC<HeaderTopRowProps> = ({
     if (selectedIds.length > 0 && selectedOrder.length > 0) {
       // Sync list view changes to drag and drop before opening
       let syncedItemSetGroupsMap = itemSetGroupsMapProp;
+      let syncedItemIdToOrderIndices = itemIdToOrderIndicesProp;
+      
       if (onBeforeOpenDragDrop) {
-        const updatedMap = onBeforeOpenDragDrop();
-        if (updatedMap) {
-          syncedItemSetGroupsMap = updatedMap;
-          // Update local state with synced data
-          setItemSetGroupsMapLocal(updatedMap);
+        const updatedData = onBeforeOpenDragDrop();
+        if (updatedData) {
+          syncedItemSetGroupsMap = updatedData.itemSetGroupsMap;
+          syncedItemIdToOrderIndices = updatedData.itemIdToOrderIndices;
+          // Update local state with synced data immediately
+          setItemSetGroupsMapLocal(updatedData.itemSetGroupsMap);
+          setItemIdToOrderIndicesLocal(updatedData.itemIdToOrderIndices);
         }
-      } else if (itemSetGroupsMapProp) {
-        setItemSetGroupsMapLocal(itemSetGroupsMapProp);
+      } else {
+        if (itemSetGroupsMapProp) {
+          setItemSetGroupsMapLocal(itemSetGroupsMapProp);
+        }
+        if (itemIdToOrderIndicesProp) {
+          setItemIdToOrderIndicesLocal(itemIdToOrderIndicesProp);
+        }
       }
-      if (itemIdToOrderIndicesProp) {
-        setItemIdToOrderIndicesLocal(itemIdToOrderIndicesProp);
-      }
+      
       setIsDragDropModalVisible(true);
     }
   }, [selectedIds.length, selectedOrder.length, onBeforeOpenDragDrop, itemSetGroupsMapProp, itemIdToOrderIndicesProp]);
