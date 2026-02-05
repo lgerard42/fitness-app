@@ -50,6 +50,8 @@ export interface SetGroup {
   id: string;
   count: number;
   isDropset: boolean;
+  isWarmup?: boolean;
+  isFailure?: boolean;
 }
 
 interface ExerciseItem extends DragItemBase {
@@ -416,6 +418,11 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
   const [exerciseToEdit, setExerciseToEdit] = useState<ExerciseItem | null>(null);
   const [editDropdownPosition, setEditDropdownPosition] = useState<{ x: number; y: number } | null>(null);
   const [clickedSetGroupId, setClickedSetGroupId] = useState<string | null>(null); // Track which setGroup's edit icon was clicked
+
+  const [showTagModal, setShowTagModal] = useState(false);
+  const [exerciseForTag, setExerciseForTag] = useState<ExerciseItem | null>(null);
+  const [tagSetGroupId, setTagSetGroupId] = useState<string | null>(null);
+  const [tagDropdownPosition, setTagDropdownPosition] = useState<{ x: number; y: number } | null>(null);
   const buttonRefsMap = useRef<Map<string, any>>(new Map());
   const prevVisibleRef = useRef(visible);
   const pendingDragRef = useRef<(() => void) | null>(null);
@@ -545,6 +552,10 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
       setExerciseToEdit(null);
       setEditDropdownPosition(null);
       setClickedSetGroupId(null);
+      setShowTagModal(false);
+      setExerciseForTag(null);
+      setTagSetGroupId(null);
+      setTagDropdownPosition(null);
       setDropsetExercises(new Set());
       pendingDragRef.current = null;
       setSwipedItemId(null);
@@ -618,6 +629,41 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
       setTimeout(measureButton, 0);
     }
   }, [showEditModal, exerciseToEdit, clickedSetGroupId, screenWidth]);
+
+  useEffect(() => {
+    if (showTagModal && exerciseForTag && tagSetGroupId) {
+      // Measure the tag button position after state updates
+      const measureButton = () => {
+        const buttonRef = buttonRefsMap.current.get(`tag-${exerciseForTag.id}-${tagSetGroupId}`);
+        if (buttonRef) {
+          buttonRef.measureInWindow((pageX: number, pageY: number, pageWidth: number, pageHeight: number) => {
+            const dropdownWidth = 140;
+            const padding = 16;
+            let x = pageX + pageWidth - dropdownWidth;
+
+            // Ensure dropdown doesn't go off the left edge
+            if (x < padding) {
+              x = padding;
+            }
+
+            // Ensure dropdown doesn't go off the right edge
+            if (x + dropdownWidth > screenWidth - padding) {
+              x = screenWidth - dropdownWidth - padding;
+            }
+
+            setTagDropdownPosition({
+              x: x,
+              y: pageY + pageHeight + 4,
+            });
+          });
+        } else {
+          // Retry if ref not available yet
+          setTimeout(measureButton, 10);
+        }
+      };
+      setTimeout(measureButton, 0);
+    }
+  }, [showTagModal, exerciseForTag, tagSetGroupId, screenWidth]);
 
   const collapseGroup = useCallback((items: DragItem[], groupId: string): DragItem[] => {
     return items.map(item => {
@@ -978,6 +1024,8 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           id: `setgroup-${exerciseItem.exercise.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           count: clickedSetGroup.count,
           isDropset: clickedSetGroup.isDropset,
+          isWarmup: clickedSetGroup.isWarmup,
+          isFailure: clickedSetGroup.isFailure,
         };
 
         // Insert the new setGroup right after the clicked one
@@ -995,6 +1043,58 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           setGroups: updatedSetGroups,
           count: totalCount,
           isDropset: hasAnyDropset,
+        };
+      }
+      return item;
+    }));
+  }, []);
+
+  const handleToggleWarmup = useCallback((exerciseItem: ExerciseItem, setGroupId: string) => {
+    setReorderedItems(prevItems => prevItems.map(item => {
+      if (item.id === exerciseItem.id && item.type === 'Item') {
+        const updatedSetGroups = item.setGroups.map(sg => {
+          if (sg.id === setGroupId) {
+            // Toggle warmup, and remove failure if warmup is being set
+            const newIsWarmup = !sg.isWarmup;
+            return {
+              ...sg,
+              isWarmup: newIsWarmup,
+              isFailure: newIsWarmup ? false : sg.isFailure, // Remove failure if setting warmup
+            };
+          }
+          return sg;
+        });
+        const totalCount = updatedSetGroups.reduce((sum, sg) => sum + sg.count, 0);
+        return {
+          ...item,
+          setGroups: updatedSetGroups,
+          count: totalCount,
+        };
+      }
+      return item;
+    }));
+  }, []);
+
+  const handleToggleFailure = useCallback((exerciseItem: ExerciseItem, setGroupId: string) => {
+    setReorderedItems(prevItems => prevItems.map(item => {
+      if (item.id === exerciseItem.id && item.type === 'Item') {
+        const updatedSetGroups = item.setGroups.map(sg => {
+          if (sg.id === setGroupId) {
+            // Toggle failure, and remove warmup if failure is being set
+            const newIsFailure = !sg.isFailure;
+            return {
+              ...sg,
+              isFailure: newIsFailure,
+              isWarmup: newIsFailure ? false : sg.isWarmup, // Remove warmup if setting failure
+            };
+          }
+          return sg;
+        });
+        const totalCount = updatedSetGroups.reduce((sum, sg) => sum + sg.count, 0);
+        return {
+          ...item,
+          setGroups: updatedSetGroups,
+          count: totalCount,
         };
       }
       return item;
@@ -1381,18 +1481,56 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
             <View style={styles.exerciseNameRow}>
               <View style={styles.setCountContainer}>
                 {setGroup.isDropset && (
-                  <View
-                    style={[
-                      styles.dropsetIndicator,
-                      groupColorScheme && { backgroundColor: COLORS.orange[500] }
-                    ]}
-                  />
+                  <View style={styles.dropsetIndicator} />
                 )}
-                <Text style={styles.setCountText}>{setGroup.count} x</Text>
+                {!isSelectionMode ? (
+                  <TouchableOpacity
+                    ref={(ref) => {
+                      if (ref) {
+                        const refKey = `tag-${item.id}-${setGroup.id}`;
+                        buttonRefsMap.current.set(refKey, ref);
+                      } else {
+                        buttonRefsMap.current.delete(`tag-${item.id}-${setGroup.id}`);
+                      }
+                    }}
+                    onPress={() => {
+                      if (swipedItemId) {
+                        closeTrashIcon();
+                      }
+                      setExerciseForTag(item);
+                      setTagSetGroupId(setGroup.id);
+                      setShowTagModal(true);
+                    }}
+                    disabled={isActive}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    style={{ flexDirection: 'row', alignItems: 'center' }}
+                  >
+                    <View style={styles.setCountWrapper}>
+                      <Text style={[
+                        styles.setCountText,
+                        setGroup.isWarmup && { color: COLORS.orange[500] },
+                        setGroup.isFailure && { color: COLORS.red[500] },
+                      ]}>{setGroup.count}</Text>
+                    </View>
+                    <Text style={styles.setCountPrefix}> x </Text>
+                  </TouchableOpacity>
+                ) : (
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <View style={styles.setCountWrapper}>
+                      <Text style={[
+                        styles.setCountText,
+                        setGroup.isWarmup && { color: COLORS.orange[500] },
+                        setGroup.isFailure && { color: COLORS.red[500] },
+                      ]}>{setGroup.count}</Text>
+                    </View>
+                    <Text style={styles.setCountPrefix}> x </Text>
+                  </View>
+                )}
               </View>
-              {showExerciseName && (
-                <Text style={styles.exerciseName}>{item.exercise.name}</Text>
-              )}
+              <Text style={[
+                styles.exerciseName,
+                !showExerciseName && { color: COLORS.slate[150] }
+              ]}>{item.exercise.name}</Text>
             </View>
           </View>
 
@@ -1785,13 +1923,56 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
                       <View style={styles.exerciseNameRow}>
                         <View style={styles.setCountContainer}>
                           {setGroup.isDropset && (
-                            <View style={[styles.dropsetIndicator, { backgroundColor: COLORS.orange[500] }]} />
+                            <View style={styles.dropsetIndicator} />
                           )}
-                          <Text style={styles.setCountText}>{setGroup.count} x </Text>
+                          {!isSelectionMode ? (
+                            <TouchableOpacity
+                              ref={(ref) => {
+                                if (ref) {
+                                  const refKey = `tag-${item.id}-${setGroup.id}`;
+                                  buttonRefsMap.current.set(refKey, ref);
+                                } else {
+                                  buttonRefsMap.current.delete(`tag-${item.id}-${setGroup.id}`);
+                                }
+                              }}
+                              onPress={() => {
+                                if (swipedItemId) {
+                                  closeTrashIcon();
+                                }
+                                setExerciseForTag(item);
+                                setTagSetGroupId(setGroup.id);
+                                setShowTagModal(true);
+                              }}
+                              disabled={isActive}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                              style={{ flexDirection: 'row', alignItems: 'center' }}
+                            >
+                              <View style={styles.setCountWrapper}>
+                                <Text style={[
+                                  styles.setCountText,
+                                  setGroup.isWarmup && { color: COLORS.orange[500] },
+                                  setGroup.isFailure && { color: COLORS.red[500] },
+                                ]}>{setGroup.count}</Text>
+                              </View>
+                              <Text style={styles.setCountPrefix}> x </Text>
+                            </TouchableOpacity>
+                          ) : (
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                              <View style={styles.setCountWrapper}>
+                                <Text style={[
+                                  styles.setCountText,
+                                  setGroup.isWarmup && { color: COLORS.orange[500] },
+                                  setGroup.isFailure && { color: COLORS.red[500] },
+                                ]}>{setGroup.count}</Text>
+                              </View>
+                              <Text style={styles.setCountPrefix}> x </Text>
+                            </View>
+                          )}
                         </View>
-                        {index === 0 && (
-                          <Text style={styles.exerciseName}>{item.exercise.name}</Text>
-                        )}
+                        <Text style={[
+                          styles.exerciseName,
+                          index !== 0 && { color: COLORS.slate[150] }
+                        ]}>{item.exercise.name}</Text>
                       </View>
                     </View>
 
@@ -1872,7 +2053,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
         </View>
       </SwipeToDelete>
     );
-  }, [getItemGroupContext, initiateGroupDrag, collapsedGroupId, reorderedItems, toggleGroupType, isSelectionMode, selectedExercisesForGroup, handleExerciseSelection, handleIncrementSet, handleDecrementSet, swipedItemId, handleDeleteExercise, closeTrashIcon, handleToggleDropset, handleDuplicateExercise]);
+  }, [getItemGroupContext, initiateGroupDrag, collapsedGroupId, reorderedItems, toggleGroupType, isSelectionMode, selectedExercisesForGroup, handleExerciseSelection, handleIncrementSet, handleDecrementSet, swipedItemId, handleDeleteExercise, closeTrashIcon, handleToggleDropset, handleDuplicateExercise, handleToggleWarmup, handleToggleFailure]);
 
   return (
     <Modal
@@ -2030,27 +2211,6 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
                 ]}
                 onStartShouldSetResponder={() => true}
               >
-                {/* Dropset - toggle for the clicked setGroup */}
-                {clickedSetGroupId && exerciseToEdit && (
-                  <TouchableOpacity
-                    style={[
-                      styles.editDropdownItem,
-                      exerciseToEdit.setGroups.find(sg => sg.id === clickedSetGroupId)?.isDropset && styles.editDropdownItemActive
-                    ]}
-                    onPress={() => {
-                      if (exerciseToEdit && clickedSetGroupId) {
-                        handleToggleDropset(exerciseToEdit, clickedSetGroupId);
-                      }
-                      setShowEditModal(false);
-                      setExerciseToEdit(null);
-                      setClickedSetGroupId(null);
-                      setEditDropdownPosition(null);
-                    }}
-                  >
-                    <Text style={styles.editDropdownItemText}>Dropset</Text>
-                  </TouchableOpacity>
-                )}
-
                 {/* Create Group */}
                 {exerciseToEdit && exerciseToEdit.groupId === null && (
                   <TouchableOpacity
@@ -2108,6 +2268,89 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           </>
         )}
 
+        {showTagModal && exerciseForTag && tagSetGroupId && (
+          <>
+            <TouchableOpacity
+              style={styles.dropdownOverlay}
+              activeOpacity={1}
+              onPress={() => {
+                setShowTagModal(false);
+                setExerciseForTag(null);
+                setTagSetGroupId(null);
+                setTagDropdownPosition(null);
+              }}
+            />
+            {tagDropdownPosition && (
+              <View
+                style={[
+                  styles.editDropdown,
+                  {
+                    top: tagDropdownPosition.y,
+                    left: tagDropdownPosition.x,
+                  },
+                ]}
+                onStartShouldSetResponder={() => true}
+              >
+                {/* Dropset */}
+                <TouchableOpacity
+                  style={[
+                    styles.editDropdownItem,
+                    exerciseForTag.setGroups.find(sg => sg.id === tagSetGroupId)?.isDropset && styles.editDropdownItemActive
+                  ]}
+                  onPress={() => {
+                    if (exerciseForTag && tagSetGroupId) {
+                      handleToggleDropset(exerciseForTag, tagSetGroupId);
+                    }
+                    setShowTagModal(false);
+                    setExerciseForTag(null);
+                    setTagSetGroupId(null);
+                    setTagDropdownPosition(null);
+                  }}
+                >
+                  <Text style={styles.editDropdownItemText}>Dropset</Text>
+                </TouchableOpacity>
+
+                {/* Warmup */}
+                <TouchableOpacity
+                  style={[
+                    styles.editDropdownItem,
+                    exerciseForTag.setGroups.find(sg => sg.id === tagSetGroupId)?.isWarmup && styles.editDropdownItemActive
+                  ]}
+                  onPress={() => {
+                    if (exerciseForTag && tagSetGroupId) {
+                      handleToggleWarmup(exerciseForTag, tagSetGroupId);
+                    }
+                    setShowTagModal(false);
+                    setExerciseForTag(null);
+                    setTagSetGroupId(null);
+                    setTagDropdownPosition(null);
+                  }}
+                >
+                  <Text style={[styles.editDropdownItemText, exerciseForTag.setGroups.find(sg => sg.id === tagSetGroupId)?.isWarmup && { color: COLORS.orange[500] }]}>Warmup</Text>
+                </TouchableOpacity>
+
+                {/* Failure */}
+                <TouchableOpacity
+                  style={[
+                    styles.editDropdownItem,
+                    exerciseForTag.setGroups.find(sg => sg.id === tagSetGroupId)?.isFailure && styles.editDropdownItemActive
+                  ]}
+                  onPress={() => {
+                    if (exerciseForTag && tagSetGroupId) {
+                      handleToggleFailure(exerciseForTag, tagSetGroupId);
+                    }
+                    setShowTagModal(false);
+                    setExerciseForTag(null);
+                    setTagSetGroupId(null);
+                    setTagDropdownPosition(null);
+                  }}
+                >
+                  <Text style={[styles.editDropdownItemText, exerciseForTag.setGroups.find(sg => sg.id === tagSetGroupId)?.isFailure && { color: COLORS.red[500] }]}>Failure</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </>
+        )}
       </SafeAreaView>
     </Modal>
   );
@@ -2361,10 +2604,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     position: 'relative',
   },
+  setCountWrapper: {
+    backgroundColor: COLORS.slate[100],
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 4,
+  },
   setCountText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: COLORS.slate[600],
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: COLORS.slate[900],
+  },
+  setCountPrefix: {
+    fontSize: 15,
+    fontWeight: 'normal',
+    color: COLORS.slate[500],
   },
   setCountButton: {
     paddingVertical: 2,
@@ -2418,8 +2674,8 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   groupIconButton: {
-    padding: 4,
-    marginLeft: 4,
+    padding: 2,
+    marginLeft: 0,
   },
   emptyGroupPlaceholder: {
     paddingVertical: 24,
@@ -2511,9 +2767,10 @@ const styles = StyleSheet.create({
   dropsetIndicator: {
     width: 2,
     position: 'absolute',
-    left: -4,
-    top: 0,
-    bottom: 0,
+    left: -6,
+    top: 1,
+    bottom: 1,
+    backgroundColor: COLORS.indigo[400],
   },
   selectionModeBanner: {
     backgroundColor: COLORS.blue[100],
