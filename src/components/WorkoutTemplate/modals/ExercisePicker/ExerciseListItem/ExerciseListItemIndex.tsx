@@ -129,7 +129,8 @@ const ExerciseListItem: React.FC<ExerciseListItemProps> = ({
   const showCountBadge = isSelected && selectedCount > 0;
   const showGroupBadge = exerciseGroup && renderingSection === 'reviewContainer';
   const showAddRemoveButtons = isSelected && !isReordering && showAddMore;
-  const showAddButtonOnly = !isSelected && !isReordering;
+  // Don't show add button for unselected exercises in glossary (list view)
+  const showAddButtonOnly = !isSelected && !isReordering && renderingSection !== 'glossary';
 
   const groupColorScheme = exerciseGroup ? getGroupColorScheme(exerciseGroup.type) : null;
   const isGrouped = !!exerciseGroup;
@@ -223,7 +224,7 @@ const ExerciseListItem: React.FC<ExerciseListItemProps> = ({
           onAdd={handleAdd}
           onRemove={handleRemove}
         />
-      ) : (
+      ) : renderingSection === 'glossary' && !isSelected ? null : (
         <ReorderCheckbox
           isSelected={isSelected}
           hideNumber={hideNumber}

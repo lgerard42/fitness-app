@@ -94,61 +94,69 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
           const exerciseId = selectedOrder[firstOrderIndex];
           if (exerciseId) {
             const instanceKey = `${exerciseId}::${firstOrderIndex}`;
-            newInstanceSetGroups[instanceKey] = setGroups;
+            // Deep copy setGroups to preserve all properties including isWarmup and isFailure
+            newInstanceSetGroups[instanceKey] = setGroups.map(sg => ({ ...sg }));
           }
         }
       });
       
       setExerciseInstanceSetGroups(newInstanceSetGroups);
-      prevItemSetGroupsMapRef.current = { ...itemSetGroupsMap };
+      // Deep copy for ref comparison
+      prevItemSetGroupsMapRef.current = Object.fromEntries(
+        Object.entries(itemSetGroupsMap).map(([key, value]) => [
+          key,
+          value.map(sg => ({ ...sg }))
+        ])
+      );
     }
   }, [itemSetGroupsMap, itemIdToOrderIndices, selectedOrder]);
 
-  // Create instance keys for exercises added from list view (when not from drag and drop)
+  // Create instance keys for exercises added from list view
+  // This runs for exercises that don't have instances yet, regardless of whether itemSetGroupsMap is empty
   useEffect(() => {
-    // Only run if we don't have drag and drop data (itemSetGroupsMap is empty)
-    if (Object.keys(itemSetGroupsMap).length === 0) {
-      const newInstanceSetGroups: Record<string, SetGroup[]> = {};
+    const newInstanceSetGroups: Record<string, SetGroup[]> = {};
+    
+    selectedOrder.forEach((exerciseId, orderIndex) => {
+      const instanceKey = `${exerciseId}::${orderIndex}`;
+      // If this instance doesn't have setGroups yet, check if we should create/copy them
+      // Only create if it's not already in itemSetGroupsMap (which means it came from drag and drop)
+      const isInDragDrop = Object.values(itemIdToOrderIndices).some(indices => indices.includes(orderIndex));
       
-      selectedOrder.forEach((exerciseId, orderIndex) => {
-        const instanceKey = `${exerciseId}::${orderIndex}`;
-        // If this instance doesn't have setGroups yet, check if we should create/copy them
-        if (!exerciseInstanceSetGroups[instanceKey]) {
-          // Check if there's a previous instance of this exercise
-          let foundPrevious = false;
-          for (let i = orderIndex - 1; i >= 0; i--) {
-            if (selectedOrder[i] === exerciseId) {
-              const prevInstanceKey = `${exerciseId}::${i}`;
-              const prevSetGroups = exerciseInstanceSetGroups[prevInstanceKey] || exerciseSetGroups[exerciseId];
-              if (prevSetGroups && prevSetGroups.length > 0) {
-                newInstanceSetGroups[instanceKey] = prevSetGroups.map(sg => ({ ...sg }));
-                foundPrevious = true;
-                break;
-              }
-            }
-          }
-          // If no previous instance found, use exerciseSetGroups or create default
-          if (!foundPrevious) {
-            const defaultSetGroups = exerciseSetGroups[exerciseId];
-            if (defaultSetGroups && defaultSetGroups.length > 0) {
-              newInstanceSetGroups[instanceKey] = defaultSetGroups.map(sg => ({ ...sg }));
-            } else {
-              newInstanceSetGroups[instanceKey] = [{
-                id: `sg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                count: 1,
-                isDropset: false,
-              }];
+      if (!exerciseInstanceSetGroups[instanceKey] && !isInDragDrop) {
+        // Check if there's a previous instance of this exercise
+        let foundPrevious = false;
+        for (let i = orderIndex - 1; i >= 0; i--) {
+          if (selectedOrder[i] === exerciseId) {
+            const prevInstanceKey = `${exerciseId}::${i}`;
+            const prevSetGroups = exerciseInstanceSetGroups[prevInstanceKey] || exerciseSetGroups[exerciseId];
+            if (prevSetGroups && prevSetGroups.length > 0) {
+              newInstanceSetGroups[instanceKey] = prevSetGroups.map(sg => ({ ...sg }));
+              foundPrevious = true;
+              break;
             }
           }
         }
-      });
-      
-      // Only update if we have new instances to add
-      if (Object.keys(newInstanceSetGroups).length > 0) {
-        setExerciseInstanceSetGroups(prev => ({ ...prev, ...newInstanceSetGroups }));
+        // If no previous instance found, use exerciseSetGroups or create default
+        if (!foundPrevious) {
+          const defaultSetGroups = exerciseSetGroups[exerciseId];
+          if (defaultSetGroups && defaultSetGroups.length > 0) {
+            newInstanceSetGroups[instanceKey] = defaultSetGroups.map(sg => ({ ...sg }));
+          } else {
+            newInstanceSetGroups[instanceKey] = [{
+              id: `sg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              count: 1,
+              isDropset: false,
+            }];
+          }
+        }
       }
+    });
+    
+    // Only update if we have new instances to add
+    if (Object.keys(newInstanceSetGroups).length > 0) {
+      setExerciseInstanceSetGroups(prev => ({ ...prev, ...newInstanceSetGroups }));
     }
-  }, [selectedOrder, itemSetGroupsMap, exerciseInstanceSetGroups, exerciseSetGroups]);
+  }, [selectedOrder, itemSetGroupsMap, exerciseInstanceSetGroups, exerciseSetGroups, itemIdToOrderIndices]);
 
   // Helper to get setGroups for an exercise instance
   const getSetGroupsForInstance = useCallback((exerciseId: string, orderIndex: number): SetGroup[] | undefined => {
@@ -917,7 +925,8 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
             const setGroups = exerciseInstanceSetGroups[instanceKey];
             if (setGroups && setGroups.length > 0) {
               // Update the itemSetGroupsMap with the latest setGroups from list view
-              updatedItemSetGroupsMap[itemId] = setGroups;
+              // Deep copy to preserve all properties including isWarmup and isFailure
+              updatedItemSetGroupsMap[itemId] = setGroups.map(sg => ({ ...sg }));
               updatedItemIdToOrderIndices[itemId] = orderIndices;
             }
           }
@@ -955,7 +964,7 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
               currentGroup = {
                 exerciseId,
                 orderIndices: [orderIndex],
-                setGroups
+                setGroups: setGroups.map(sg => ({ ...sg })) // Deep copy to preserve all properties
               };
             }
           }
@@ -976,7 +985,8 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
       // Create itemIds for new instance groups
       instanceGroups.forEach(group => {
         const itemId = `item-${group.exerciseId}-${group.orderIndices[0]}-${Date.now()}`;
-        updatedItemSetGroupsMap[itemId] = group.setGroups;
+        // Deep copy to preserve all properties including isWarmup and isFailure
+        updatedItemSetGroupsMap[itemId] = group.setGroups.map(sg => ({ ...sg }));
         updatedItemIdToOrderIndices[itemId] = group.orderIndices;
       });
     }
@@ -992,7 +1002,13 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
     
     if (Object.keys(updatedItemSetGroupsMap).length > 0) {
       setItemSetGroupsMap(mergedItemSetGroupsMap);
-      prevItemSetGroupsMapRef.current = { ...mergedItemSetGroupsMap };
+      // Deep copy for ref comparison
+      prevItemSetGroupsMapRef.current = Object.fromEntries(
+        Object.entries(mergedItemSetGroupsMap).map(([key, value]) => [
+          key,
+          value.map(sg => ({ ...sg }))
+        ])
+      );
     }
     
     if (Object.keys(updatedItemIdToOrderIndices).length > 0) {

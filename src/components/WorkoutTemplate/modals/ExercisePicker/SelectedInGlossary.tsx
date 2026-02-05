@@ -5,6 +5,7 @@ import { COLORS } from '@/constants/colors';
 import { PADDING } from '@/constants/layout';
 import { groupExercisesAlphabetically } from '@/utils/workoutHelpers';
 import ExerciseListItem from './ExerciseListItem/ExerciseListItemIndex';
+import ExerciseTags from './ExerciseListItem/ExerciseTags';
 import UnselectedListScrollbar from './UnselectedListScrollbar';
 import type { ExerciseLibraryItem } from '@/types/workout';
 import type { SetGroup } from './DragAndDropModal';
@@ -266,25 +267,190 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
       }
     });
     
-    // If no instance-based entries found, fall back to exerciseSetGroups (for simple cases)
-    if (exerciseInstances.length === 0 && exerciseSetGroups[item.id]) {
+    // If no instance-based entries found, fall back to exerciseSetGroups or create default
+    if (exerciseInstances.length === 0 && isAlreadySelected) {
       // Find the first occurrence in selectedOrder to use as the orderIndex
       const firstOrderIndex = selectedOrder.findIndex(id => id === item.id);
       if (firstOrderIndex !== -1) {
         const instanceKey = `${item.id}::${firstOrderIndex}`;
+        // Use exerciseSetGroups if available, otherwise create a default setGroup
+        const setGroups = exerciseSetGroups[item.id] || [{
+          id: `sg-${item.id}-${firstOrderIndex}-default`,
+          count: 1,
+          isDropset: false,
+        }];
         exerciseInstances.push({ 
           orderIndex: firstOrderIndex, 
           instanceKey, 
-          setGroups: exerciseSetGroups[item.id] 
+          setGroups 
         });
       }
     }
 
-    // Check if any instance has multiple rows or special properties
+    // Check if any instance has multiple rows (but not if there's only 1 instance with 1 row)
     const hasAnyExpandedInstance = exerciseInstances.some(instance => {
       const setGroups = instance.setGroups;
-      return setGroups && (setGroups.length > 1 || (setGroups.length === 1 && (setGroups[0].count > 1 || setGroups[0].isDropset || setGroups[0].isWarmup || setGroups[0].isFailure)));
+      // Only consider it expanded if there are multiple rows, OR multiple instances
+      return setGroups && setGroups.length > 1;
     });
+
+    // Check if this is a simple case: 1 instance, 1 row (regardless of count or special properties)
+    const isSimpleCase = isAlreadySelected && 
+      exerciseInstances.length === 1 && 
+      exerciseInstances[0].setGroups && 
+      exerciseInstances[0].setGroups.length === 1;
+
+    // If simple case, show inline controls in the regular list item
+    if (isSimpleCase) {
+      const instance = exerciseInstances[0];
+      const setGroup = instance.setGroups![0];
+      
+      return (
+        <View style={styles.inlineExerciseContainer}>
+          <TouchableOpacity
+            onPress={() => onToggleSelect(item.id)}
+            style={styles.inlineExerciseContent}
+          >
+            <View style={styles.inlineExerciseInfo}>
+              <Text style={styles.inlineExerciseName}>{item.name}</Text>
+              <View style={styles.inlineTagsContainer}>
+                <ExerciseTags
+                  item={item}
+                  isCollapsedGroup={false}
+                  groupExercises={null}
+                  showAddMore={false}
+                  renderingSection={null}
+                />
+              </View>
+            </View>
+          </TouchableOpacity>
+          
+          {/* Inline controls where +/- button used to be */}
+          <View style={styles.inlineControls}>
+            {/* Set count and type indicators */}
+            <View style={styles.inlineSetGroupLeft}>
+              {setGroup.isDropset && (
+                <View style={styles.inlineDropsetIndicator} />
+              )}
+              <Text style={[
+                styles.inlineSetGroupCount,
+                setGroup.isWarmup && { color: COLORS.orange[500] },
+                setGroup.isFailure && { color: COLORS.red[500] },
+              ]}>{setGroup.count}</Text>
+              <Text style={styles.inlineSetGroupX}> x </Text>
+            </View>
+
+            {/* Controls */}
+            <View style={styles.inlineSetGroupControls}>
+              <TouchableOpacity
+                onPress={() => onDecrementSetGroup?.(instance.instanceKey, setGroup.id)}
+                disabled={setGroup.count <= 1}
+                style={[
+                  styles.inlineSetGroupButton,
+                  setGroup.count <= 1 && styles.inlineSetGroupButtonDisabled,
+                ]}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Minus size={14} color={setGroup.count <= 1 ? COLORS.slate[300] : COLORS.slate[600]} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => onIncrementSetGroup?.(instance.instanceKey, setGroup.id)}
+                style={styles.inlineSetGroupButton}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Plus size={14} color={COLORS.slate[600]} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  const isMenuOpen = openMenuExerciseId === instance.instanceKey && openMenuSetGroupId === setGroup.id;
+                  if (isMenuOpen) {
+                    setOpenMenuExerciseId(null);
+                    setOpenMenuSetGroupId(null);
+                  } else {
+                    setOpenMenuExerciseId(instance.instanceKey);
+                    setOpenMenuSetGroupId(setGroup.id);
+                  }
+                }}
+                style={styles.inlineSetGroupButton}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <MoreVertical size={14} color={COLORS.blue[600]} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Dropdown Menu */}
+            {openMenuExerciseId === instance.instanceKey && openMenuSetGroupId === setGroup.id && (
+              <>
+                <TouchableOpacity
+                  style={styles.menuBackdrop}
+                  activeOpacity={1}
+                  onPress={() => {
+                    setOpenMenuExerciseId(null);
+                    setOpenMenuSetGroupId(null);
+                  }}
+                />
+                <View style={styles.inlineSetGroupMenu}>
+                  {/* Dropset */}
+                  <TouchableOpacity
+                    style={[
+                      styles.menuItem,
+                      setGroup.isDropset && { backgroundColor: COLORS.indigo[500] }
+                    ]}
+                    onPress={() => {
+                      onToggleDropset?.(instance.instanceKey, setGroup.id);
+                    }}
+                  >
+                    <TrendingDown size={14} color={setGroup.isDropset ? COLORS.white : COLORS.indigo[400]} />
+                    <Text style={[styles.menuItemText, setGroup.isDropset && { color: COLORS.white }]}>Dropset</Text>
+                  </TouchableOpacity>
+
+                  {/* Warmup / Failure Row */}
+                  <View style={styles.menuItemRow}>
+                    <TouchableOpacity
+                      style={[
+                        styles.menuItemHalf,
+                        setGroup.isWarmup && { backgroundColor: COLORS.orange[500] }
+                      ]}
+                      onPress={() => {
+                        onToggleWarmup?.(instance.instanceKey, setGroup.id);
+                      }}
+                    >
+                      <Flame size={14} color={setGroup.isWarmup ? COLORS.white : COLORS.orange[500]} />
+                      <Text style={[styles.menuItemText, setGroup.isWarmup && { color: COLORS.white }]}>Warmup</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.menuItemHalf,
+                        setGroup.isFailure && { backgroundColor: COLORS.red[500] }
+                      ]}
+                      onPress={() => {
+                        onToggleFailure?.(instance.instanceKey, setGroup.id);
+                      }}
+                    >
+                      <XCircle size={14} color={setGroup.isFailure ? COLORS.white : COLORS.red[500]} />
+                      <Text style={[styles.menuItemText, setGroup.isFailure && { color: COLORS.white }]}>Failure</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Insert Row */}
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={() => {
+                      onInsertRow?.(instance.instanceKey, setGroup.id);
+                      setOpenMenuExerciseId(null);
+                      setOpenMenuSetGroupId(null);
+                    }}
+                  >
+                    <Plus size={14} color={COLORS.slate[200]} />
+                    <Text style={styles.menuItemText}>Insert Row</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+      );
+    }
 
     // If selected and has any expanded instance, show expanded view for all instances in one card
     if (isAlreadySelected && hasAnyExpandedInstance && exerciseInstances.length > 0) {
@@ -297,17 +463,16 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
           >
             <View style={styles.expandedExerciseInfo}>
               <Text style={styles.expandedExerciseName}>{item.name}</Text>
-              <Text style={styles.expandedExerciseCategory}>{item.category}</Text>
+              <View style={styles.expandedTagsContainer}>
+                <ExerciseTags
+                  item={item}
+                  isCollapsedGroup={false}
+                  groupExercises={null}
+                  showAddMore={false}
+                  renderingSection={null}
+                />
+              </View>
             </View>
-            <TouchableOpacity
-              onPress={(e) => {
-                e.stopPropagation();
-                onRemoveSet?.(item.id);
-              }}
-              style={styles.removeExerciseButton}
-            >
-              <Minus size={16} color={COLORS.slate[500]} />
-            </TouchableOpacity>
           </TouchableOpacity>
 
           {/* Each instance's setGroups in its own container */}
@@ -329,6 +494,8 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
       );
     }
 
+    // For unselected exercises or simple selected exercises that don't meet the simple case criteria,
+    // show the regular list item without the +/- buttons
     return (
       <ExerciseListItem
         item={item}
@@ -336,14 +503,14 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
         isLastSelected={false}
         selectionOrder={null}
         onToggle={onToggleSelect}
-        showAddMore={isAlreadySelected}
-        onAddMore={onAddSet ? () => onAddSet(item.id) : null}
-        onRemoveSet={onRemoveSet ? () => onRemoveSet(item.id) : null}
+        showAddMore={false}
+        onAddMore={null}
+        onRemoveSet={null}
         selectedCount={selectedCount}
         renderingSection="glossary"
       />
     );
-  }, [onToggleSelect, selectedIds, selectedOrder, onAddSet, onRemoveSet, exerciseSetGroups, exerciseInstanceSetGroups, renderSetGroupRow]);
+  }, [onToggleSelect, selectedIds, selectedOrder, onAddSet, onRemoveSet, exerciseSetGroups, exerciseInstanceSetGroups, renderSetGroupRow, openMenuExerciseId, openMenuSetGroupId, onIncrementSetGroup, onDecrementSetGroup, onToggleDropset, onToggleWarmup, onToggleFailure, onInsertRow]);
 
   const keyExtractor = useCallback((item: ExerciseLibraryItem) => item.id, []);
 
@@ -437,20 +604,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.slate[900],
   },
-  expandedExerciseCategory: {
-    fontSize: 12,
-    color: COLORS.slate[500],
-    marginTop: 2,
-  },
-  removeExerciseButton: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: COLORS.white,
-    borderWidth: 1,
-    borderColor: COLORS.slate[300],
-    alignItems: 'center',
-    justifyContent: 'center',
+  expandedTagsContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+    flexWrap: 'wrap',
   },
   setGroupsContainer: {
     backgroundColor: COLORS.white,
@@ -562,6 +720,94 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: COLORS.white,
+  },
+  // Inline exercise styles (for simple case)
+  inlineExerciseContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    borderBottomColor: COLORS.slate[100],
+    backgroundColor: COLORS.blue[100],
+  },
+  inlineExerciseContent: {
+    flex: 1,
+  },
+  inlineExerciseInfo: {
+    flex: 1,
+  },
+  inlineExerciseName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.slate[900],
+  },
+  inlineTagsContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+    flexWrap: 'wrap',
+  },
+  inlineControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    position: 'relative',
+  },
+  inlineSetGroupLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  inlineDropsetIndicator: {
+    width: 3,
+    backgroundColor: COLORS.indigo[400],
+    position: 'absolute',
+    left: -12,
+    top: -10,
+    bottom: -10,
+  },
+  inlineSetGroupCount: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: COLORS.slate[900],
+  },
+  inlineSetGroupX: {
+    fontSize: 15,
+    color: COLORS.slate[500],
+  },
+  inlineSetGroupControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  inlineSetGroupButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    backgroundColor: COLORS.slate[100],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inlineSetGroupButtonDisabled: {
+    opacity: 0.5,
+  },
+  inlineSetGroupMenu: {
+    position: 'absolute',
+    right: 0,
+    top: 40,
+    backgroundColor: COLORS.slate[700],
+    borderRadius: 8,
+    minWidth: 180,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 999,
+    overflow: 'hidden',
   },
 });
 

@@ -185,7 +185,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
             exercise: exercise,
             orderIndex: firstOrderIndex,
             count: totalCount,
-            setGroups: setGroups,
+            setGroups: setGroups.map(sg => ({ ...sg })), // Deep copy to preserve all properties
             groupId: exerciseGroup.id,
             isFirstInGroup: isFirstInGroup,
             isLastInGroup: isLastInGroup,
@@ -217,7 +217,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
             exercise: exercise,
             orderIndex: firstOrderIndex,
             count: totalCount,
-            setGroups: setGroups,
+            setGroups: setGroups.map(sg => ({ ...sg })), // Deep copy to preserve all properties
             groupId: null,
             isFirstInGroup: false,
             isLastInGroup: false,
@@ -344,7 +344,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           exercise: exercise,
           orderIndex: orderIndex,
           count: totalCount,
-          setGroups: setGroupsToUse,
+          setGroups: setGroupsToUse.map(sg => ({ ...sg })), // Deep copy to preserve all properties
           groupId: exerciseGroup.id,
           isFirstInGroup: isFirstInGroup,
           isLastInGroup: isLastInGroup,
@@ -424,7 +424,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           exercise: exercise,
           orderIndex: orderIndex,
           count: totalCount,
-          setGroups: setGroupsToUse,
+          setGroups: setGroupsToUse.map(sg => ({ ...sg })), // Deep copy to preserve all properties
           groupId: null,
           isFirstInGroup: false,
           isLastInGroup: false,
@@ -517,7 +517,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           exercise: item.exercise,
           orderIndex: item.orderIndex,
           count: item.count,
-          setGroups: item.setGroups || [{
+          setGroups: item.setGroups ? item.setGroups.map(sg => ({ ...sg })) : [{
             id: `setgroup-${item.exercise.id}-${item.orderIndex}-0`,
             count: item.count,
             isDropset: item.isDropset || false,
@@ -1366,11 +1366,12 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
     finalItems.forEach((item) => {
       if (item.type === 'Item') {
         // Store setGroups by item ID to preserve separate cards
-        itemSetGroupsMap[item.id] = item.setGroups;
+        // Deep copy to preserve all properties including isWarmup and isFailure
+        itemSetGroupsMap[item.id] = item.setGroups.map(sg => ({ ...sg }));
 
         // Also store by exercise ID for backward compatibility (use first occurrence)
         if (!setGroupsMap[item.exercise.id]) {
-          setGroupsMap[item.exercise.id] = item.setGroups;
+          setGroupsMap[item.exercise.id] = item.setGroups.map(sg => ({ ...sg }));
         }
 
         // Check if any setGroup is a dropset
