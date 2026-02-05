@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { View, Platform, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -99,7 +99,7 @@ const MainTabs: React.FC = () => {
   );
 };
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
@@ -130,5 +130,48 @@ const App: React.FC = () => {
     </GestureHandlerRootView>
   );
 };
+
+const App: React.FC = () => {
+  // On web, wrap the app in a container that mimics iPhone 16 Pro Max dimensions
+  if (Platform.OS === 'web') {
+    return (
+      <View style={styles.webContainer}>
+        <View style={styles.phoneFrame}>
+          <AppContent />
+        </View>
+      </View>
+    );
+  }
+
+  // On native (iPhone), render normally
+  return <AppContent />;
+};
+
+const styles = StyleSheet.create({
+  webContainer: {
+    flex: 1,
+    width: '100%',
+    height: '100vh',
+    backgroundColor: '#1a1a1a', // Dark background to frame the phone
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  phoneFrame: {
+    width: 430, // iPhone 16 Pro Max width
+    height: 932, // iPhone 16 Pro Max height
+    maxWidth: '100%',
+    maxHeight: '100%',
+    backgroundColor: '#000',
+    borderRadius: 50,
+    padding: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.5,
+    shadowRadius: 40,
+    elevation: 20,
+    overflow: 'hidden',
+  },
+});
 
 export default App;

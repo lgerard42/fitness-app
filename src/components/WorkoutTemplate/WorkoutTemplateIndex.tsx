@@ -477,7 +477,9 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
         const newSet: Set = {
           id: `s-${Date.now()}-${Math.random()}`, type: "Working" as SetType,
           weight: lastSet ? lastSet.weight : "", reps: lastSet ? lastSet.reps : "", duration: lastSet ? lastSet.duration : "", distance: lastSet ? lastSet.distance : "",
-          completed: false
+          completed: false,
+          // Copy rest timer if the previous set has one
+          ...(lastSet?.restPeriodSeconds && { restPeriodSeconds: lastSet.restPeriodSeconds })
         };
         return { ...ex, sets: [...ex.sets, newSet] };
       })
@@ -1386,16 +1388,6 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
 
               {!expandedExerciseNotes[ex.instanceId] && !readOnly && (
                 <View style={styles.exerciseHeaderActions}>
-                  <TouchableOpacity
-                    onPress={() => handleAddSet(ex.instanceId)}
-                    style={styles.addSetHeaderButton}
-                  >
-                    <Text style={[
-                      styles.addSetHeaderText,
-                      isGroupChild && groupColorScheme && { color: groupColorScheme[600] }
-                    ]}>+ Set</Text>
-                  </TouchableOpacity>
-
                   <TouchableOpacity onPress={(e) => handleOpenOptions(ex.instanceId, e)} style={styles.optionsButton}>
                     <MoreVertical size={20} color={COLORS.slate[400]} />
                   </TouchableOpacity>
@@ -1437,16 +1429,6 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                   </View>
 
                   <View style={styles.expandedNotesRightActions}>
-                    <TouchableOpacity
-                      onPress={() => handleAddSet(ex.instanceId)}
-                      style={styles.addSetHeaderButton}
-                    >
-                      <Text style={[
-                        styles.addSetHeaderText,
-                        isGroupChild && groupColorScheme && { color: groupColorScheme[600] }
-                      ]}>+Set</Text>
-                    </TouchableOpacity>
-
                     <TouchableOpacity onPress={(e) => handleOpenOptions(ex.instanceId, e)} style={styles.optionsButton}>
                       <MoreVertical size={20} color={COLORS.slate[400]} />
                     </TouchableOpacity>
@@ -1783,6 +1765,23 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                 </React.Fragment>
               );
             })}
+            {!readOnly && (
+              <TouchableOpacity
+                onPress={() => handleAddSet(ex.instanceId)}
+                style={[
+                  styles.addSetButton,
+                  isGroupChild && groupColorScheme && {
+                    borderColor: groupColorScheme[200],
+                    backgroundColor: groupColorScheme[50],
+                  }
+                ]}
+              >
+                <Text style={[
+                  styles.addSetButtonText,
+                  isGroupChild && groupColorScheme && { color: groupColorScheme[600] }
+                ]}>+ Set</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {selectionMode?.exerciseId === ex.instanceId && (
@@ -3147,6 +3146,24 @@ const styles = StyleSheet.create({
   },
   setsContainer: {
     // gap: 4,
+  },
+  addSetButton: {
+    marginTop: 4,
+    marginHorizontal: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: COLORS.slate[200],
+    borderStyle: 'dashed',
+    backgroundColor: COLORS.slate[50],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addSetButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.blue[600],
   },
   timerPopupOverlay: {
     flex: 1,
