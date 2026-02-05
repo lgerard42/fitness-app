@@ -3,11 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { COLORS } from '@/constants/colors';
 import { getGroupColorScheme } from '@/utils/workoutHelpers';
 import { defaultSupersetColorScheme } from '@/constants/defaultStyles';
-import GroupBadge from './GroupBadge';
-import CountBadge from './CountBadge';
 import ExerciseTags from './ExerciseTags';
-import ActionButtons from './ActionButtons';
-import ReorderCheckbox from './ReorderCheckbox';
 import type { ExerciseLibraryItem, GroupType } from '@/types/workout';
 
 interface ExerciseGroup {
@@ -24,23 +20,17 @@ interface ExerciseListItemProps {
   item: ExerciseLibraryItem;
   isSelected: boolean;
   isLastSelected: boolean;
-  selectionOrder: number | null;
   onToggle: (id: string) => void;
   onLongPress?: (() => void) | null;
-  hideNumber?: boolean;
   isReordering?: boolean;
   isReordered?: boolean;
   showAddMore?: boolean;
-  onAddMore?: (() => void) | null;
-  onRemoveSet?: (() => void) | null;
-  selectedCount?: number;
   renderingSection?: 'reviewContainer' | 'glossary' | null;
   exerciseGroup?: ExerciseGroup | null;
   isGroupMode?: boolean;
   isSelectedInGroup?: boolean;
   isCollapsedGroup?: boolean;
   groupExercises?: GroupExercise[];
-  isGroupItemReorder?: boolean;
   isFirstInGroup?: boolean;
   isLastInGroup?: boolean;
   disableTouch?: boolean;
@@ -50,23 +40,17 @@ const ExerciseListItem: React.FC<ExerciseListItemProps> = ({
   item, 
   isSelected, 
   isLastSelected, 
-  selectionOrder, 
   onToggle,
   onLongPress = null,
-  hideNumber = false,
   isReordering = false,
   isReordered = false,
   showAddMore = false,
-  onAddMore = null,
-  onRemoveSet = null,
-  selectedCount = 0,
   renderingSection = null,
   exerciseGroup = null,
   isGroupMode = false,
   isSelectedInGroup = false,
   isCollapsedGroup = false,
   groupExercises = [],
-  isGroupItemReorder = false,
   isFirstInGroup = false,
   isLastInGroup = false,
   disableTouch = false,
@@ -86,25 +70,12 @@ const ExerciseListItem: React.FC<ExerciseListItemProps> = ({
       return;
     }
     
-    if (isSelected && showAddMore && onRemoveSet) {
-      onRemoveSet();
-    } else if (onToggle) {
-      onToggle(item.id);
+    // In glossary, don't toggle selection for already-selected exercises
+    if (renderingSection === 'glossary' && isSelected) {
+      return;
     }
-  };
-
-  const handleRemove = (e: any) => {
-    e.stopPropagation();
-    if (onRemoveSet) {
-      onRemoveSet();
-    }
-  };
-
-  const handleAdd = (e: any) => {
-    e.stopPropagation();
-    if (showAddMore && onAddMore) {
-      onAddMore();
-    } else if (onToggle) {
+    
+    if (onToggle) {
       onToggle(item.id);
     }
   };
@@ -125,12 +96,6 @@ const ExerciseListItem: React.FC<ExerciseListItemProps> = ({
   const container_groupModeUnselected = isGroupMode && !isSelectedInGroup;
   const container_firstInGroup = isFirstInGroup && isGrouped;
   const container_lastInGroup = isLastInGroup && isGrouped;
-
-  const showCountBadge = isSelected && selectedCount > 0;
-  const showGroupBadge = exerciseGroup && renderingSection === 'reviewContainer';
-  const showAddRemoveButtons = isSelected && !isReordering && showAddMore;
-  // Don't show add button for unselected exercises in glossary (list view)
-  const showAddButtonOnly = !isSelected && !isReordering && renderingSection !== 'glossary';
 
   const groupColorScheme = exerciseGroup ? getGroupColorScheme(exerciseGroup.type) : null;
   const isGrouped = !!exerciseGroup;
@@ -185,18 +150,10 @@ const ExerciseListItem: React.FC<ExerciseListItemProps> = ({
             text_selectedInReviewContainer && styles.nameTextSelectedInReviewContainer,
             text_selected && styles.nameTextSelected,
             text_selectedInGlossary && styles.nameTextSelectedInGlossary,
-            text_reorderingMode && !isGroupItemReorder && styles.nameTextReorderingMode,
-            text_reorderingMode && isGroupItemReorder && styles.nameTextReorderingModeGroup,
+            text_reorderingMode && styles.nameTextReorderingMode,
           ]}>
             {item.name}
           </Text>
-          <View style={styles.badgesContainer}>
-            {showGroupBadge && (
-              <GroupBadge 
-                exerciseGroup={exerciseGroup} 
-              />
-            )}
-          </View>
         </View>
         <View style={styles.tagsContainer}>
           <ExerciseTags
@@ -208,32 +165,6 @@ const ExerciseListItem: React.FC<ExerciseListItemProps> = ({
           />
         </View>
       </View>
-      {showCountBadge && (
-        <View style={styles.countBadgeWrapper}>
-          <CountBadge 
-            selectedCount={selectedCount}
-          />
-        </View>
-      )}
-      {showAddRemoveButtons || showAddButtonOnly ? (
-        <ActionButtons
-          isSelected={isSelected}
-          isReordering={isReordering}
-          showAddMore={showAddMore}
-          renderingSection={renderingSection}
-          onAdd={handleAdd}
-          onRemove={handleRemove}
-        />
-      ) : renderingSection === 'glossary' && !isSelected ? null : (
-        <ReorderCheckbox
-          isSelected={isSelected}
-          hideNumber={hideNumber}
-          selectionOrder={selectionOrder}
-          isReordering={isReordering}
-          isReordered={isReordered}
-          isGroupItemReorder={isGroupItemReorder}
-        />
-      )}
     </TouchableOpacity>
   );
 };
@@ -263,22 +194,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.slate[900],
   },
-  badgesContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
   tagsContainer: {
     flexDirection: 'row',
     gap: 8,
     marginTop: 4,
     flexWrap: 'wrap',
-  },
-  countBadgeWrapper: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 8,
-    height: 24,
   },
   nameTextSelectedInReviewContainer: {
     color: COLORS.slate[900],
@@ -324,9 +244,6 @@ const styles = StyleSheet.create({
     borderColor: COLORS.slate[100],
   },
   nameTextReorderingMode: {},
-  nameTextReorderingModeGroup: {
-    color: COLORS.indigo[600],
-  },
   containerReorderedItem: {
     backgroundColor: COLORS.slate[50],
     borderWidth: 2,

@@ -1,5 +1,5 @@
 import React, { useRef, useCallback, useMemo, useState } from 'react';
-import { View, Text, SectionList, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, SectionList, StyleSheet, TouchableOpacity, Modal, Dimensions } from 'react-native';
 import { Plus, Minus, MoreVertical, TrendingDown, Flame, XCircle, Trash2 } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { PADDING } from '@/constants/layout';
@@ -59,6 +59,9 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
   const sectionListRef = useRef<SectionList<ExerciseLibraryItem, Section>>(null);
   const [openMenuExerciseId, setOpenMenuExerciseId] = useState<string | null>(null);
   const [openMenuSetGroupId, setOpenMenuSetGroupId] = useState<string | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
+  const menuButtonRefs = useRef<Map<string, any>>(new Map());
+  const screenWidth = Dimensions.get('window').width;
 
   const sections = useMemo(() => {
     return groupExercisesAlphabetically(exercises);
@@ -145,13 +148,46 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
             <Plus size={14} color={COLORS.slate[600]} />
           </TouchableOpacity>
           <TouchableOpacity
+            ref={(ref) => {
+              if (ref) {
+                menuButtonRefs.current.set(`${instanceKey}-${setGroup.id}`, ref);
+              } else {
+                menuButtonRefs.current.delete(`${instanceKey}-${setGroup.id}`);
+              }
+            }}
             onPress={() => {
               if (isMenuOpen) {
                 setOpenMenuExerciseId(null);
                 setOpenMenuSetGroupId(null);
+                setMenuPosition(null);
               } else {
                 setOpenMenuExerciseId(instanceKey);
                 setOpenMenuSetGroupId(setGroup.id);
+                // Measure button position with a delay to ensure ref is available
+                const measureButton = () => {
+                  const buttonRef = menuButtonRefs.current.get(`${instanceKey}-${setGroup.id}`);
+                  if (buttonRef) {
+                    buttonRef.measureInWindow((x: number, y: number, width: number, height: number) => {
+                      const dropdownWidth = 180;
+                      const padding = 16;
+                      // Align dropdown to the right edge of the button
+                      let menuX = x + width - dropdownWidth;
+                      // Ensure dropdown doesn't go off the right edge
+                      if (menuX + dropdownWidth > screenWidth - padding) {
+                        menuX = screenWidth - dropdownWidth - padding;
+                      }
+                      // Ensure dropdown doesn't go off the left edge
+                      if (menuX < padding) {
+                        menuX = padding;
+                      }
+                      setMenuPosition({ x: menuX, y: y + height + 4 });
+                    });
+                  } else {
+                    // Retry if ref not available yet
+                    setTimeout(measureButton, 10);
+                  }
+                };
+                setTimeout(measureButton, 0);
               }
             }}
             style={styles.setGroupButton}
@@ -161,102 +197,18 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
           </TouchableOpacity>
         </View>
 
-        {/* Dropdown Menu */}
-        {isMenuOpen && (
-          <>
-            <TouchableOpacity
-              style={styles.menuBackdrop}
-              activeOpacity={1}
-              onPress={() => {
-                setOpenMenuExerciseId(null);
-                setOpenMenuSetGroupId(null);
-              }}
-            />
-            <View style={styles.setGroupMenu}>
-              {/* Dropset */}
-              <TouchableOpacity
-                style={[
-                  styles.menuItem,
-                  setGroup.isDropset && { backgroundColor: COLORS.indigo[500] }
-                ]}
-                onPress={() => {
-                  onToggleDropset?.(instanceKey, setGroup.id);
-                }}
-              >
-                <TrendingDown size={14} color={setGroup.isDropset ? COLORS.white : COLORS.indigo[400]} />
-                <Text style={[styles.menuItemText, setGroup.isDropset && { color: COLORS.white }]}>Dropset</Text>
-              </TouchableOpacity>
-
-              {/* Warmup / Failure Row */}
-              <View style={styles.menuItemRow}>
-                <TouchableOpacity
-                  style={[
-                    styles.menuItemHalf,
-                    setGroup.isWarmup && { backgroundColor: COLORS.orange[500] }
-                  ]}
-                  onPress={() => {
-                    onToggleWarmup?.(instanceKey, setGroup.id);
-                  }}
-                >
-                  <Flame size={14} color={setGroup.isWarmup ? COLORS.white : COLORS.orange[500]} />
-                  <Text style={[styles.menuItemText, setGroup.isWarmup && { color: COLORS.white }]}>Warmup</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.menuItemHalf,
-                    setGroup.isFailure && { backgroundColor: COLORS.red[500] }
-                  ]}
-                  onPress={() => {
-                    onToggleFailure?.(instanceKey, setGroup.id);
-                  }}
-                >
-                  <XCircle size={14} color={setGroup.isFailure ? COLORS.white : COLORS.red[500]} />
-                  <Text style={[styles.menuItemText, setGroup.isFailure && { color: COLORS.white }]}>Failure</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Insert Row */}
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={() => {
-                  onInsertRow?.(instanceKey, setGroup.id);
-                  setOpenMenuExerciseId(null);
-                  setOpenMenuSetGroupId(null);
-                }}
-              >
-                <Plus size={14} color={COLORS.slate[200]} />
-                <Text style={styles.menuItemText}>Insert Row</Text>
-              </TouchableOpacity>
-
-              {/* Delete Row */}
-              {!isOnlyDefaultRow && (
-                <TouchableOpacity
-                  style={styles.menuItem}
-                  onPress={() => {
-                    onDeleteRow?.(instanceKey, setGroup.id);
-                    setOpenMenuExerciseId(null);
-                    setOpenMenuSetGroupId(null);
-                  }}
-                >
-                  <Trash2 size={14} color={COLORS.red[500]} />
-                  <Text style={[styles.menuItemText, { color: COLORS.red[500] }]}>Delete Row</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          </>
-        )}
+        {/* Menu trigger - actual menu rendered in Modal at root level */}
       </View>
     );
   }, [openMenuExerciseId, openMenuSetGroupId, onIncrementSetGroup, onDecrementSetGroup, onToggleDropset, onToggleWarmup, onToggleFailure, onInsertRow, onDeleteRow]);
 
   const renderItem = useCallback(({ item }: { item: ExerciseLibraryItem }) => {
     const isAlreadySelected = selectedIds.includes(item.id);
-    const selectedCount = selectedOrder.filter(id => id === item.id).length;
-    
+
     // Find all instances of this exercise by looking at exerciseInstanceSetGroups keys
     // Each key represents one card/instance from the drag and drop modal
     const exerciseInstances: Array<{ orderIndex: number; instanceKey: string; setGroups: SetGroup[] | undefined }> = [];
-    
+
     // First, check exerciseInstanceSetGroups for instance-based entries
     Object.keys(exerciseInstanceSetGroups).forEach(instanceKey => {
       const [exerciseId, orderIndexStr] = instanceKey.split('::');
@@ -266,7 +218,7 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
         exerciseInstances.push({ orderIndex, instanceKey, setGroups });
       }
     });
-    
+
     // If no instance-based entries found, fall back to exerciseSetGroups or create default
     if (exerciseInstances.length === 0 && isAlreadySelected) {
       // Find the first occurrence in selectedOrder to use as the orderIndex
@@ -279,10 +231,10 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
           count: 1,
           isDropset: false,
         }];
-        exerciseInstances.push({ 
-          orderIndex: firstOrderIndex, 
-          instanceKey, 
-          setGroups 
+        exerciseInstances.push({
+          orderIndex: firstOrderIndex,
+          instanceKey,
+          setGroups
         });
       }
     }
@@ -295,20 +247,28 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
     });
 
     // Check if this is a simple case: 1 instance, 1 row (regardless of count or special properties)
-    const isSimpleCase = isAlreadySelected && 
-      exerciseInstances.length === 1 && 
-      exerciseInstances[0].setGroups && 
+    const isSimpleCase = isAlreadySelected &&
+      exerciseInstances.length === 1 &&
+      exerciseInstances[0].setGroups &&
       exerciseInstances[0].setGroups.length === 1;
 
     // If simple case, show inline controls in the regular list item
     if (isSimpleCase) {
       const instance = exerciseInstances[0];
       const setGroup = instance.setGroups![0];
-      
+
+      const hasOnlyOneSet = setGroup.count === 1;
+
       return (
         <View style={styles.inlineExerciseContainer}>
           <TouchableOpacity
-            onPress={() => onToggleSelect(item.id)}
+            onPress={() => {
+              if (hasOnlyOneSet) {
+                // If only 1 set, clicking the exercise reduces sets by 1 (which unselects it)
+                onDecrementSetGroup?.(instance.instanceKey, setGroup.id);
+              }
+              // Otherwise, do nothing - clicking on selected exercises shouldn't toggle them
+            }}
             style={styles.inlineExerciseContent}
           >
             <View style={styles.inlineExerciseInfo}>
@@ -324,7 +284,7 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
               </View>
             </View>
           </TouchableOpacity>
-          
+
           {/* Inline controls where +/- button used to be */}
           <View style={styles.inlineControls}>
             {/* Set count and type indicators */}
@@ -342,17 +302,15 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
 
             {/* Controls */}
             <View style={styles.inlineSetGroupControls}>
-              <TouchableOpacity
-                onPress={() => onDecrementSetGroup?.(instance.instanceKey, setGroup.id)}
-                disabled={setGroup.count <= 1}
-                style={[
-                  styles.inlineSetGroupButton,
-                  setGroup.count <= 1 && styles.inlineSetGroupButtonDisabled,
-                ]}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Minus size={14} color={setGroup.count <= 1 ? COLORS.slate[300] : COLORS.slate[600]} />
-              </TouchableOpacity>
+              {!hasOnlyOneSet && (
+                <TouchableOpacity
+                  onPress={() => onDecrementSetGroup?.(instance.instanceKey, setGroup.id)}
+                  style={styles.inlineSetGroupButton}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Minus size={14} color={COLORS.slate[600]} />
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 onPress={() => onIncrementSetGroup?.(instance.instanceKey, setGroup.id)}
                 style={styles.inlineSetGroupButton}
@@ -361,14 +319,47 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
                 <Plus size={14} color={COLORS.slate[600]} />
               </TouchableOpacity>
               <TouchableOpacity
+                ref={(ref) => {
+                  if (ref) {
+                    menuButtonRefs.current.set(`${instance.instanceKey}-${setGroup.id}`, ref);
+                  } else {
+                    menuButtonRefs.current.delete(`${instance.instanceKey}-${setGroup.id}`);
+                  }
+                }}
                 onPress={() => {
                   const isMenuOpen = openMenuExerciseId === instance.instanceKey && openMenuSetGroupId === setGroup.id;
                   if (isMenuOpen) {
                     setOpenMenuExerciseId(null);
                     setOpenMenuSetGroupId(null);
+                    setMenuPosition(null);
                   } else {
                     setOpenMenuExerciseId(instance.instanceKey);
                     setOpenMenuSetGroupId(setGroup.id);
+                    // Measure button position with a delay to ensure ref is available
+                    const measureButton = () => {
+                      const buttonRef = menuButtonRefs.current.get(`${instance.instanceKey}-${setGroup.id}`);
+                      if (buttonRef) {
+                        buttonRef.measureInWindow((x: number, y: number, width: number, height: number) => {
+                          const dropdownWidth = 180;
+                          const padding = 16;
+                          // Align dropdown to the right edge of the button
+                          let menuX = x + width - dropdownWidth;
+                          // Ensure dropdown doesn't go off the right edge
+                          if (menuX + dropdownWidth > screenWidth - padding) {
+                            menuX = screenWidth - dropdownWidth - padding;
+                          }
+                          // Ensure dropdown doesn't go off the left edge
+                          if (menuX < padding) {
+                            menuX = padding;
+                          }
+                          setMenuPosition({ x: menuX, y: y + height + 4 });
+                        });
+                      } else {
+                        // Retry if ref not available yet
+                        setTimeout(measureButton, 10);
+                      }
+                    };
+                    setTimeout(measureButton, 0);
                   }
                 }}
                 style={styles.inlineSetGroupButton}
@@ -378,75 +369,7 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
               </TouchableOpacity>
             </View>
 
-            {/* Dropdown Menu */}
-            {openMenuExerciseId === instance.instanceKey && openMenuSetGroupId === setGroup.id && (
-              <>
-                <TouchableOpacity
-                  style={styles.menuBackdrop}
-                  activeOpacity={1}
-                  onPress={() => {
-                    setOpenMenuExerciseId(null);
-                    setOpenMenuSetGroupId(null);
-                  }}
-                />
-                <View style={styles.inlineSetGroupMenu}>
-                  {/* Dropset */}
-                  <TouchableOpacity
-                    style={[
-                      styles.menuItem,
-                      setGroup.isDropset && { backgroundColor: COLORS.indigo[500] }
-                    ]}
-                    onPress={() => {
-                      onToggleDropset?.(instance.instanceKey, setGroup.id);
-                    }}
-                  >
-                    <TrendingDown size={14} color={setGroup.isDropset ? COLORS.white : COLORS.indigo[400]} />
-                    <Text style={[styles.menuItemText, setGroup.isDropset && { color: COLORS.white }]}>Dropset</Text>
-                  </TouchableOpacity>
-
-                  {/* Warmup / Failure Row */}
-                  <View style={styles.menuItemRow}>
-                    <TouchableOpacity
-                      style={[
-                        styles.menuItemHalf,
-                        setGroup.isWarmup && { backgroundColor: COLORS.orange[500] }
-                      ]}
-                      onPress={() => {
-                        onToggleWarmup?.(instance.instanceKey, setGroup.id);
-                      }}
-                    >
-                      <Flame size={14} color={setGroup.isWarmup ? COLORS.white : COLORS.orange[500]} />
-                      <Text style={[styles.menuItemText, setGroup.isWarmup && { color: COLORS.white }]}>Warmup</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.menuItemHalf,
-                        setGroup.isFailure && { backgroundColor: COLORS.red[500] }
-                      ]}
-                      onPress={() => {
-                        onToggleFailure?.(instance.instanceKey, setGroup.id);
-                      }}
-                    >
-                      <XCircle size={14} color={setGroup.isFailure ? COLORS.white : COLORS.red[500]} />
-                      <Text style={[styles.menuItemText, setGroup.isFailure && { color: COLORS.white }]}>Failure</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Insert Row */}
-                  <TouchableOpacity
-                    style={styles.menuItem}
-                    onPress={() => {
-                      onInsertRow?.(instance.instanceKey, setGroup.id);
-                      setOpenMenuExerciseId(null);
-                      setOpenMenuSetGroupId(null);
-                    }}
-                  >
-                    <Plus size={14} color={COLORS.slate[200]} />
-                    <Text style={styles.menuItemText}>Insert Row</Text>
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
+            {/* Menu trigger - actual menu rendered in Modal at root level */}
           </View>
         </View>
       );
@@ -458,7 +381,10 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
         <View style={styles.expandedExerciseContainer}>
           {/* Exercise header - shown once for all instances */}
           <TouchableOpacity
-            onPress={() => onToggleSelect(item.id)}
+            onPress={() => {
+              // Don't toggle selection - clicking on selected exercises shouldn't unselect them
+              // The user should use the controls to modify the exercise
+            }}
             style={styles.expandedExerciseHeader}
           >
             <View style={styles.expandedExerciseInfo}>
@@ -479,12 +405,12 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
           {exerciseInstances.map((instance, instanceIndex) => {
             const setGroups = instance.setGroups;
             const hasMultipleRows = setGroups && (setGroups.length > 1 || (setGroups.length === 1 && (setGroups[0].count > 1 || setGroups[0].isDropset || setGroups[0].isWarmup || setGroups[0].isFailure)));
-            
+
             if (!hasMultipleRows) return null;
-            
+
             return (
               <View key={instance.instanceKey} style={styles.setGroupsContainer}>
-                {setGroups.map((setGroup, index) => 
+                {setGroups.map((setGroup, index) =>
                   renderSetGroupRow(instance.instanceKey, setGroup, index, setGroups.length, setGroups.length === 1)
                 )}
               </View>
@@ -501,16 +427,106 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
         item={item}
         isSelected={isAlreadySelected}
         isLastSelected={false}
-        selectionOrder={null}
         onToggle={onToggleSelect}
         showAddMore={false}
-        onAddMore={null}
-        onRemoveSet={null}
-        selectedCount={selectedCount}
         renderingSection="glossary"
       />
     );
   }, [onToggleSelect, selectedIds, selectedOrder, onAddSet, onRemoveSet, exerciseSetGroups, exerciseInstanceSetGroups, renderSetGroupRow, openMenuExerciseId, openMenuSetGroupId, onIncrementSetGroup, onDecrementSetGroup, onToggleDropset, onToggleWarmup, onToggleFailure, onInsertRow]);
+
+  // Helper to render menu content
+  const renderMenuContent = useCallback((setGroup: SetGroup, instanceKey: string, isExpanded: boolean = false) => {
+    return (
+      <>
+        {/* Dropset */}
+        <TouchableOpacity
+          style={[
+            styles.menuItem,
+            setGroup.isDropset && { backgroundColor: COLORS.indigo[500] }
+          ]}
+          onPress={() => {
+            onToggleDropset?.(instanceKey, setGroup.id);
+          }}
+        >
+          <TrendingDown size={14} color={setGroup.isDropset ? COLORS.white : COLORS.indigo[400]} />
+          <Text style={[styles.menuItemText, setGroup.isDropset && { color: COLORS.white }]}>Dropset</Text>
+        </TouchableOpacity>
+
+        {/* Warmup / Failure Row */}
+        <View style={styles.menuItemRow}>
+          <TouchableOpacity
+            style={[
+              styles.menuItemHalf,
+              setGroup.isWarmup && { backgroundColor: COLORS.orange[500] }
+            ]}
+            onPress={() => {
+              onToggleWarmup?.(instanceKey, setGroup.id);
+            }}
+          >
+            <Flame size={14} color={setGroup.isWarmup ? COLORS.white : COLORS.orange[500]} />
+            <Text style={[styles.menuItemText, setGroup.isWarmup && { color: COLORS.white }]}>Warmup</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.menuItemHalf,
+              setGroup.isFailure && { backgroundColor: COLORS.red[500] }
+            ]}
+            onPress={() => {
+              onToggleFailure?.(instanceKey, setGroup.id);
+            }}
+          >
+            <XCircle size={14} color={setGroup.isFailure ? COLORS.white : COLORS.red[500]} />
+            <Text style={[styles.menuItemText, setGroup.isFailure && { color: COLORS.white }]}>Failure</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Insert Row */}
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => {
+            onInsertRow?.(instanceKey, setGroup.id);
+            setOpenMenuExerciseId(null);
+            setOpenMenuSetGroupId(null);
+          }}
+        >
+          <Plus size={14} color={COLORS.slate[200]} />
+          <Text style={styles.menuItemText}>Insert Row</Text>
+        </TouchableOpacity>
+
+        {/* Delete Row - only for expanded view */}
+        {isExpanded && (
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => {
+              onDeleteRow?.(instanceKey, setGroup.id);
+              setOpenMenuExerciseId(null);
+              setOpenMenuSetGroupId(null);
+            }}
+          >
+            <Trash2 size={14} color={COLORS.red[500]} />
+            <Text style={[styles.menuItemText, { color: COLORS.red[500] }]}>Delete Row</Text>
+          </TouchableOpacity>
+        )}
+      </>
+    );
+  }, [onToggleDropset, onToggleWarmup, onToggleFailure, onInsertRow, onDeleteRow]);
+
+  // Find the currently open menu's setGroup data
+  const openMenuData = useMemo(() => {
+    if (!openMenuExerciseId || !openMenuSetGroupId) return null;
+
+    if (exerciseInstanceSetGroups[openMenuExerciseId]) {
+      const setGroups = exerciseInstanceSetGroups[openMenuExerciseId];
+      const setGroup = setGroups.find(sg => sg.id === openMenuSetGroupId);
+      if (setGroup) {
+        // Determine if this is an expanded view (multiple rows or complex configuration)
+        const hasMultipleRows = setGroups.length > 1 || (setGroups.length === 1 && (setGroups[0].count > 1 || setGroups[0].isDropset || setGroups[0].isWarmup || setGroups[0].isFailure));
+        return { setGroup, instanceKey: openMenuExerciseId, isExpanded: hasMultipleRows };
+      }
+    }
+
+    return null;
+  }, [openMenuExerciseId, openMenuSetGroupId, exerciseInstanceSetGroups]);
 
   const keyExtractor = useCallback((item: ExerciseLibraryItem) => item.id, []);
 
@@ -538,14 +554,43 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
           console.log('[SectionList] onScrollToIndexFailed:', info);
         }}
       />
-      
-      <UnselectedListScrollbar 
+
+      <UnselectedListScrollbar
         availableLetters={availableLetters}
         highlightedLetter={highlightedLetter}
         setHighlightedLetter={setHighlightedLetter}
         onScrollToLetter={scrollToLetter}
         blockDismissGestureRef={blockDismissGestureRef}
       />
+
+      {/* Render popups in Modal to ensure they're on top */}
+      <Modal
+        visible={!!openMenuData}
+        transparent={true}
+        animationType="none"
+        onRequestClose={() => {
+          setOpenMenuExerciseId(null);
+          setOpenMenuSetGroupId(null);
+        }}
+      >
+        <TouchableOpacity
+          style={styles.modalBackdrop}
+          activeOpacity={1}
+          onPress={() => {
+            setOpenMenuExerciseId(null);
+            setOpenMenuSetGroupId(null);
+            setMenuPosition(null);
+          }}
+        >
+          {openMenuData && menuPosition && (
+            <View style={[styles.modalMenuContainer, { left: menuPosition.x, top: menuPosition.y }]}>
+              <View style={styles.modalMenu}>
+                {renderMenuContent(openMenuData.setGroup, openMenuData.instanceKey, openMenuData.isExpanded)}
+              </View>
+            </View>
+          )}
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 };
@@ -588,6 +633,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 0,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.slate[100],
+    overflow: 'visible',
   },
   expandedExerciseHeader: {
     flexDirection: 'row',
@@ -617,7 +663,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: COLORS.slate[200],
-    overflow: 'hidden',
+    overflow: 'visible',
   },
   setGroupRow: {
     flexDirection: 'row',
@@ -628,6 +674,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.slate[100],
     position: 'relative',
+    zIndex: 1000,
   },
   setGroupRowFirst: {},
   setGroupRowLast: {
@@ -673,11 +720,13 @@ const styles = StyleSheet.create({
   },
   menuBackdrop: {
     position: 'absolute',
-    top: -1000,
-    left: -1000,
-    right: -1000,
-    bottom: -1000,
-    zIndex: 998,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'transparent',
+    zIndex: 99998,
+    elevation: 99998,
   },
   setGroupMenu: {
     position: 'absolute',
@@ -690,8 +739,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
-    elevation: 8,
-    zIndex: 999,
+    elevation: 99999,
+    zIndex: 99999,
     overflow: 'hidden',
   },
   menuItem: {
@@ -721,6 +770,24 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.white,
   },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  modalMenuContainer: {
+    position: 'absolute',
+  },
+  modalMenu: {
+    backgroundColor: COLORS.slate[700],
+    borderRadius: 8,
+    minWidth: 180,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 99999,
+    overflow: 'hidden',
+  },
   // Inline exercise styles (for simple case)
   inlineExerciseContainer: {
     flexDirection: 'row',
@@ -732,6 +799,7 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
     borderBottomColor: COLORS.slate[100],
     backgroundColor: COLORS.blue[100],
+    overflow: 'visible',
   },
   inlineExerciseContent: {
     flex: 1,
@@ -755,6 +823,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     position: 'relative',
+    zIndex: 1,
   },
   inlineSetGroupLeft: {
     flexDirection: 'row',
@@ -805,8 +874,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
-    elevation: 8,
-    zIndex: 999,
+    elevation: 99999,
+    zIndex: 99999,
     overflow: 'hidden',
   },
 });
