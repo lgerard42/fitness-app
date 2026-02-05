@@ -10,11 +10,12 @@ import SearchBar from './SearchBar';
 import Filters from './Filters';
 import SelectedInGlossary from './SelectedInGlossary';
 import type { ExerciseLibraryItem, GroupType } from '@/types/workout';
+import type { SetGroup } from './DragAndDropModal';
 
 interface ExercisePickerProps {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (exercises: (ExerciseLibraryItem & { _setCount?: number; _isDropset?: boolean })[], groupType: GroupType | null, groupsMetadata: any) => void;
+  onAdd: (exercises: (ExerciseLibraryItem & { _setCount?: number; _isDropset?: boolean; _setGroups?: SetGroup[] })[], groupType: GroupType | null, groupsMetadata: any) => void;
   onCreate: () => void;
   exercises: ExerciseLibraryItem[];
   newlyCreatedId?: string | null;
@@ -64,6 +65,10 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
     dropsetExerciseIdsRef.current = ids; // Update ref IMMEDIATELY (sync)
     setDropsetExerciseIdsRaw(ids);       // Queue state update (async)
   }, []);
+
+  const [exerciseSetGroups, setExerciseSetGroups] = useState<Record<string, SetGroup[]>>({});
+  const [itemIdToOrderIndices, setItemIdToOrderIndices] = useState<Record<string, number[]>>({});
+  const [itemSetGroupsMap, setItemSetGroupsMap] = useState<Record<string, SetGroup[]>>({});
 
   useEffect(() => {
     if (newlyCreatedId && !selectedIds.includes(newlyCreatedId)) {
@@ -446,17 +451,33 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
     const currentDropsetIds = dropsetExerciseIdsRef.current;
     const dropsetSet = new Set(currentDropsetIds);
     
-    // Build exercises array with _setCount from getGroupedExercises
-    // This gives us unique exercises with their set counts
-    const exercisesToAdd = getGroupedExercises.map(group => ({
-      ...group.exercise,
-      _setCount: group.count,
-      _isDropset: dropsetSet.has(group.exercise.id)
-    }));
+    // Build exercises array - one entry per unique exercise, with setGroups info if available
+    // This preserves the multi-setGroup structure (e.g., dropset x 2, dropset x 2, x 1)
+    const exercisesToAdd: (ExerciseLibraryItem & { _setCount?: number; _isDropset?: boolean; _setGroups?: SetGroup[] })[] = [];
 
-    // Build groupsMetadata with exerciseIndices relative to the final exercises array
-    // The final array will have one entry per unique exercise (with _setCount)
-    // But we need to map the indices to account for how exercises will be expanded
+    getGroupedExercises.forEach((group) => {
+      const setGroups = exerciseSetGroups[group.exercise.id];
+
+      if (setGroups && setGroups.length > 0) {
+        // Pass setGroups information to preserve structure
+        exercisesToAdd.push({
+          ...group.exercise,
+          _setGroups: setGroups,
+          // Keep _setCount and _isDropset for backward compatibility
+          _setCount: setGroups.reduce((sum, sg) => sum + sg.count, 0),
+          _isDropset: setGroups.some(sg => sg.isDropset),
+        });
+      } else {
+        // Fallback: use total count (backward compatibility)
+        exercisesToAdd.push({
+          ...group.exercise,
+          _setCount: group.count,
+          _isDropset: dropsetSet.has(group.exercise.id),
+        });
+      }
+    });
+
+    // Build groupsMetadata with exerciseIndices relative to the exercises array
     const groupsMetadata: Array<{
       id: string;
       type: GroupType;
@@ -508,7 +529,7 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
       exercisesToAdd,
       groupsMetadata: groupsMetadata.length > 0 ? groupsMetadata : null
     };
-  }, [selectedOrder, exerciseGroups, getGroupedExercises, filtered]);
+  }, [selectedOrder, exerciseGroups, getGroupedExercises, filtered, exerciseSetGroups]);
 
   const handleAddAction = () => {
     const { exercisesToAdd, groupsMetadata } = convertToWorkoutFormat();
@@ -522,6 +543,9 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
     setSelectedGroupType('Superset');
     setGroupSelectionIndices([]);
     setDropsetExerciseIds([]);
+    setExerciseSetGroups({});
+    setItemIdToOrderIndices({});
+    setItemSetGroupsMap({});
   };
 
   const handleClose = () => {
@@ -534,6 +558,9 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
     setSelectedGroupType('Superset');
     setGroupSelectionIndices([]);
     setDropsetExerciseIds([]);
+    setExerciseSetGroups({});
+    setItemIdToOrderIndices({});
+    setItemSetGroupsMap({});
     onClose();
   };
 
@@ -576,6 +603,9 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
                 setSelectedOrder={setSelectedOrder}
                 setSelectedIds={setSelectedIds}
                 setDropsetExerciseIds={setDropsetExerciseIds}
+                setExerciseSetGroups={setExerciseSetGroups}
+                setItemIdToOrderIndices={setItemIdToOrderIndices}
+                setItemSetGroupsMap={setItemSetGroupsMap}
               />
               <SearchBar search={search} setSearch={setSearch} />
               <Filters

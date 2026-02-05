@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { X, Plus } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { Z_INDEX, PADDING, BORDER_RADIUS, SPACING } from '@/constants/layout';
-import DragAndDropModal from './DragAndDropModal';
+import DragAndDropModal, { SetGroup } from './DragAndDropModal';
 import type { ExerciseLibraryItem, GroupType } from '@/types/workout';
 
 interface ExerciseGroup {
@@ -35,6 +35,9 @@ interface HeaderTopRowProps {
   setSelectedOrder: ((order: string[]) => void) | null;
   setSelectedIds: ((ids: string[] | ((prev: string[]) => string[])) => void) | null;
   setDropsetExerciseIds: ((ids: string[]) => void) | null;
+  setExerciseSetGroups: ((map: Record<string, SetGroup[]>) => void) | null;
+  setItemIdToOrderIndices?: ((map: Record<string, number[]>) => void) | null;
+  setItemSetGroupsMap?: ((map: Record<string, SetGroup[]>) => void) | null;
 }
 
 const HeaderTopRow: React.FC<HeaderTopRowProps> = ({
@@ -51,8 +54,14 @@ const HeaderTopRow: React.FC<HeaderTopRowProps> = ({
   setSelectedOrder,
   setSelectedIds,
   setDropsetExerciseIds,
+  setExerciseSetGroups,
+  setItemIdToOrderIndices,
+  setItemSetGroupsMap,
 }) => {
   const [isDragDropModalVisible, setIsDragDropModalVisible] = useState(false);
+  const [exerciseSetGroups, setExerciseSetGroupsLocal] = useState<Record<string, SetGroup[]>>({});
+  const [itemIdToOrderIndices, setItemIdToOrderIndicesLocal] = useState<Record<string, number[]>>({});
+  const [itemSetGroupsMap, setItemSetGroupsMapLocal] = useState<Record<string, SetGroup[]>>({});
 
   const handleReviewPress = useCallback(() => {
     if (selectedIds.length > 0 && selectedOrder.length > 0) {
@@ -60,7 +69,7 @@ const HeaderTopRow: React.FC<HeaderTopRowProps> = ({
     }
   }, [selectedIds.length, selectedOrder.length]);
 
-  const handleDragDropReorder = useCallback((newOrder: string[], updatedGroups?: ExerciseGroup[], dropsetExerciseIds?: string[]) => {
+  const handleDragDropReorder = useCallback((newOrder: string[], updatedGroups?: ExerciseGroup[], dropsetExerciseIds?: string[], setGroupsMap?: Record<string, SetGroup[]>, itemIdToOrderIndices?: Record<string, number[]>, itemSetGroupsMap?: Record<string, SetGroup[]>) => {
     if (setSelectedOrder && setExerciseGroups) {
       setSelectedOrder(newOrder);
 
@@ -82,8 +91,28 @@ const HeaderTopRow: React.FC<HeaderTopRowProps> = ({
       if (setDropsetExerciseIds) {
         setDropsetExerciseIds(dropsetExerciseIds || []);
       }
+      
+      // Store the setGroups map for preserving multi-setGroup structure
+      if (setGroupsMap) {
+        setExerciseSetGroupsLocal(setGroupsMap);
+        if (setExerciseSetGroups) {
+          setExerciseSetGroups(setGroupsMap);
+        }
+      }
+      
+      // Store item structure maps for preserving separate cards
+      if (itemIdToOrderIndices && itemSetGroupsMap) {
+        setItemIdToOrderIndicesLocal(itemIdToOrderIndices);
+        setItemSetGroupsMapLocal(itemSetGroupsMap);
+        if (setItemIdToOrderIndices) {
+          setItemIdToOrderIndices(itemIdToOrderIndices);
+        }
+        if (setItemSetGroupsMap) {
+          setItemSetGroupsMap(itemSetGroupsMap);
+        }
+      }
     }
-  }, [setSelectedOrder, setExerciseGroups, setSelectedIds, setDropsetExerciseIds]);
+  }, [setSelectedOrder, setExerciseGroups, setSelectedIds, setDropsetExerciseIds, setExerciseSetGroups]);
 
   return (
     <>
@@ -127,6 +156,9 @@ const HeaderTopRow: React.FC<HeaderTopRowProps> = ({
         filtered={filtered}
         getExerciseGroup={getExerciseGroup}
         onReorder={handleDragDropReorder}
+        exerciseSetGroups={exerciseSetGroups}
+        itemIdToOrderIndices={itemIdToOrderIndices}
+        itemSetGroupsMap={itemSetGroupsMap}
       />
     </>
   );

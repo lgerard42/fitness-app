@@ -46,14 +46,21 @@ interface GroupFooterItem extends DragItemBase {
   group: ExerciseGroup;
 }
 
+export interface SetGroup {
+  id: string;
+  count: number;
+  isDropset: boolean;
+}
+
 interface ExerciseItem extends DragItemBase {
   type: 'Item';
   exercise: ExerciseLibraryItem;
   orderIndex: number;
-  count: number;
+  count: number; // Total count (sum of all set groups)
+  setGroups: SetGroup[]; // Array of set groups for this exercise
   isFirstInGroup?: boolean;
   isLastInGroup?: boolean;
-  isDropset?: boolean;
+  isDropset?: boolean; // Legacy: true if any set group is a dropset
 }
 
 type DragItem = GroupHeaderItem | GroupFooterItem | ExerciseItem;
@@ -66,7 +73,10 @@ interface DragAndDropModalProps {
   groupedExercises: GroupedExercise[];
   filtered: ExerciseLibraryItem[];
   getExerciseGroup: ((index: number) => ExerciseGroup | null) | null;
-  onReorder: (newOrder: string[], updatedGroups: ExerciseGroup[], dropsetExerciseIds?: string[]) => void;
+  onReorder: (newOrder: string[], updatedGroups: ExerciseGroup[], dropsetExerciseIds?: string[], exerciseSetGroups?: Record<string, SetGroup[]>, itemIdToOrderIndices?: Record<string, number[]>, itemSetGroupsMap?: Record<string, SetGroup[]>) => void;
+  exerciseSetGroups?: Record<string, SetGroup[]>; // Preserved setGroups from previous save
+  itemIdToOrderIndices?: Record<string, number[]>; // Map of item.id to order indices (preserves separate cards)
+  itemSetGroupsMap?: Record<string, SetGroup[]>; // Map of item.id to setGroups (preserves separate cards)
 }
 
 interface ItemGroupContext {
@@ -85,6 +95,9 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
   filtered,
   getExerciseGroup,
   onReorder,
+  exerciseSetGroups,
+  itemIdToOrderIndices,
+  itemSetGroupsMap,
 }) => {
   const [dropsetExercises, setDropsetExercises] = useState<Set<string>>(new Set());
 
@@ -92,6 +105,132 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
     const items: DragItem[] = [];
     const processedIndices = new Set<number>();
 
+    // If we have item structure maps, use them to preserve separate cards
+    if (itemIdToOrderIndices && itemSetGroupsMap && Object.keys(itemIdToOrderIndices).length > 0) {
+      // Create items based on saved structure
+      const itemIds = Object.keys(itemIdToOrderIndices).sort((a, b) => {
+        const indicesA = itemIdToOrderIndices[a];
+        const indicesB = itemIdToOrderIndices[b];
+        return (indicesA[0] || 0) - (indicesB[0] || 0);
+      });
+
+      itemIds.forEach((itemId) => {
+        const orderIndices = itemIdToOrderIndices[itemId];
+        if (orderIndices.length === 0) return;
+
+        const firstOrderIndex = orderIndices[0];
+        const exerciseId = selectedOrder[firstOrderIndex];
+        const exercise = filtered.find(ex => ex.id === exerciseId);
+        if (!exercise) return;
+
+        const exerciseGroup = getExerciseGroup ? getExerciseGroup(firstOrderIndex) : null;
+        const setGroups = itemSetGroupsMap[itemId] || [];
+
+        if (setGroups.length === 0) return;
+
+        // Determine group context
+        if (exerciseGroup) {
+          const firstIndexInGroup = exerciseGroup.exerciseIndices[0];
+          const lastIndexInGroup = exerciseGroup.exerciseIndices[exerciseGroup.exerciseIndices.length - 1];
+
+          // Add header if this is the first item in the group
+          if (firstOrderIndex === firstIndexInGroup) {
+            // Check if header already exists
+            const headerExists = items.some(item =>
+              item.type === 'GroupHeader' && item.groupId === exerciseGroup.id
+            );
+            if (!headerExists) {
+              const groupExercisesData: GroupExerciseData[] = [];
+              // Collect exercises in this group from item structure
+              exerciseGroup.exerciseIndices.forEach(idx => {
+                const itemIdForIdx = Object.keys(itemIdToOrderIndices).find(id =>
+                  itemIdToOrderIndices[id].includes(idx)
+                );
+                if (itemIdForIdx && itemSetGroupsMap[itemIdForIdx]) {
+                  const exId = selectedOrder[idx];
+                  const ex = filtered.find(e => e.id === exId);
+                  if (ex) {
+                    const totalCount = itemSetGroupsMap[itemIdForIdx].reduce((sum, sg) => sum + sg.count, 0);
+                    groupExercisesData.push({
+                      exercise: ex,
+                      orderIndex: idx,
+                      count: totalCount,
+                    });
+                  }
+                }
+              });
+
+              items.push({
+                id: `header-${exerciseGroup.id}`,
+                type: 'GroupHeader',
+                group: exerciseGroup,
+                groupId: exerciseGroup.id,
+                groupExercises: groupExercisesData,
+              });
+            }
+          }
+
+          // Determine if first/last in group
+          const isFirstInGroup = firstOrderIndex === firstIndexInGroup;
+          const isLastInGroup = orderIndices.some(idx => idx === lastIndexInGroup);
+
+          const totalCount = setGroups.reduce((sum, sg) => sum + sg.count, 0);
+          const hasAnyDropset = setGroups.some(sg => sg.isDropset);
+
+          items.push({
+            id: itemId,
+            type: 'Item',
+            exercise: exercise,
+            orderIndex: firstOrderIndex,
+            count: totalCount,
+            setGroups: setGroups,
+            groupId: exerciseGroup.id,
+            isFirstInGroup: isFirstInGroup,
+            isLastInGroup: isLastInGroup,
+            isDropset: hasAnyDropset,
+          });
+
+          // Add footer if this is the last item in the group
+          if (isLastInGroup) {
+            const footerExists = items.some(item =>
+              item.type === 'GroupFooter' && item.groupId === exerciseGroup.id
+            );
+            if (!footerExists) {
+              items.push({
+                id: `footer-${exerciseGroup.id}`,
+                type: 'GroupFooter',
+                group: exerciseGroup,
+                groupId: exerciseGroup.id,
+              });
+            }
+          }
+        } else {
+          // Standalone exercise
+          const totalCount = setGroups.reduce((sum, sg) => sum + sg.count, 0);
+          const hasAnyDropset = setGroups.some(sg => sg.isDropset);
+
+          items.push({
+            id: itemId,
+            type: 'Item',
+            exercise: exercise,
+            orderIndex: firstOrderIndex,
+            count: totalCount,
+            setGroups: setGroups,
+            groupId: null,
+            isFirstInGroup: false,
+            isLastInGroup: false,
+            isDropset: hasAnyDropset,
+          });
+        }
+
+        // Mark all indices as processed
+        orderIndices.forEach(idx => processedIndices.add(idx));
+      });
+
+      return items;
+    }
+
+    // Fallback to original logic using groupedExercises
     selectedOrder.forEach((exerciseId, orderIndex) => {
       if (processedIndices.has(orderIndex)) return;
 
@@ -168,16 +307,31 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           isLastInGroup = orderIndex === lastIndexInGroup;
         }
 
+        const isDropset = dropsetExercises.has(exerciseId);
+
+        // Use preserved setGroups from props if available, otherwise create default
+        const preservedSetGroups = exerciseSetGroups?.[exerciseId];
+        const setGroupsToUse = preservedSetGroups && preservedSetGroups.length > 0
+          ? preservedSetGroups
+          : [{
+            id: `setgroup-${exerciseId}-${orderIndex}-0`,
+            count: count,
+            isDropset: isDropset,
+          }];
+        const totalCount = setGroupsToUse.reduce((sum, sg) => sum + sg.count, 0);
+        const hasAnyDropset = setGroupsToUse.some(sg => sg.isDropset);
+
         items.push({
           id: `item-${exerciseId}-${orderIndex}`,
           type: 'Item',
           exercise: exercise,
           orderIndex: orderIndex,
-          count: count,
+          count: totalCount,
+          setGroups: setGroupsToUse,
           groupId: exerciseGroup.id,
           isFirstInGroup: isFirstInGroup,
           isLastInGroup: isLastInGroup,
-          isDropset: dropsetExercises.has(exerciseId),
+          isDropset: hasAnyDropset,
         });
 
         // Add footer if this is the last unique exercise in the group
@@ -216,22 +370,38 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           processedIndices.add(orderIndex);
         }
 
+        const isDropset = dropsetExercises.has(exerciseId);
+        const itemCount = groupedExercise ? groupedExercise.count : 1;
+
+        // Use preserved setGroups from props if available, otherwise create default
+        const preservedSetGroups = exerciseSetGroups?.[exerciseId];
+        const setGroupsToUse = preservedSetGroups && preservedSetGroups.length > 0
+          ? preservedSetGroups
+          : [{
+            id: `setgroup-${exerciseId}-${orderIndex}-0`,
+            count: itemCount,
+            isDropset: isDropset,
+          }];
+        const totalCount = setGroupsToUse.reduce((sum, sg) => sum + sg.count, 0);
+        const hasAnyDropset = setGroupsToUse.some(sg => sg.isDropset);
+
         items.push({
           id: `item-${exerciseId}-${orderIndex}`,
           type: 'Item',
           exercise: exercise,
           orderIndex: orderIndex,
-          count: groupedExercise ? groupedExercise.count : 1,
+          count: totalCount,
+          setGroups: setGroupsToUse,
           groupId: null,
           isFirstInGroup: false,
           isLastInGroup: false,
-          isDropset: dropsetExercises.has(exerciseId),
+          isDropset: hasAnyDropset,
         });
       }
     });
 
     return items;
-  }, [selectedOrder, exerciseGroups, groupedExercises, filtered, getExerciseGroup, dropsetExercises]);
+  }, [selectedOrder, exerciseGroups, groupedExercises, filtered, getExerciseGroup, dropsetExercises, exerciseSetGroups, itemIdToOrderIndices, itemSetGroupsMap]);
 
   const [reorderedItems, setReorderedItems] = useState<DragItem[]>(dragItems);
   const [collapsedGroupId, setCollapsedGroupId] = useState<string | null>(null);
@@ -245,6 +415,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
   const [showEditModal, setShowEditModal] = useState(false);
   const [exerciseToEdit, setExerciseToEdit] = useState<ExerciseItem | null>(null);
   const [editDropdownPosition, setEditDropdownPosition] = useState<{ x: number; y: number } | null>(null);
+  const [clickedSetGroupId, setClickedSetGroupId] = useState<string | null>(null); // Track which setGroup's edit icon was clicked
   const buttonRefsMap = useRef<Map<string, any>>(new Map());
   const prevVisibleRef = useRef(visible);
   const pendingDragRef = useRef<(() => void) | null>(null);
@@ -312,6 +483,11 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           exercise: item.exercise,
           orderIndex: item.orderIndex,
           count: item.count,
+          setGroups: item.setGroups || [{
+            id: `setgroup-${item.exercise.id}-${item.orderIndex}-0`,
+            count: item.count,
+            isDropset: item.isDropset || false,
+          }],
           groupId: newGroup.id,
           isFirstInGroup: idx === 0,
           isLastInGroup: idx === sortedExercises.length - 1,
@@ -368,6 +544,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
       setShowEditModal(false);
       setExerciseToEdit(null);
       setEditDropdownPosition(null);
+      setClickedSetGroupId(null);
       setDropsetExercises(new Set());
       pendingDragRef.current = null;
       setSwipedItemId(null);
@@ -401,7 +578,17 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
     if (showEditModal && exerciseToEdit) {
       // Measure the button position after state updates
       const measureButton = () => {
-        const buttonRef = buttonRefsMap.current.get(exerciseToEdit.id);
+        // Use clickedSetGroupId if available, otherwise try the first set group or old key format
+        let buttonRef: any = null;
+        if (clickedSetGroupId) {
+          buttonRef = buttonRefsMap.current.get(`${exerciseToEdit.id}-${clickedSetGroupId}`);
+        }
+        if (!buttonRef) {
+          buttonRef = buttonRefsMap.current.get(exerciseToEdit.id);
+        }
+        if (!buttonRef && exerciseToEdit.setGroups && exerciseToEdit.setGroups.length > 0) {
+          buttonRef = buttonRefsMap.current.get(`${exerciseToEdit.id}-${exerciseToEdit.setGroups[0].id}`);
+        }
         if (buttonRef) {
           buttonRef.measureInWindow((pageX: number, pageY: number, pageWidth: number, pageHeight: number) => {
             const dropdownWidth = 140;
@@ -430,7 +617,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
       };
       setTimeout(measureButton, 0);
     }
-  }, [showEditModal, exerciseToEdit, screenWidth]);
+  }, [showEditModal, exerciseToEdit, clickedSetGroupId, screenWidth]);
 
   const collapseGroup = useCallback((items: DragItem[], groupId: string): DragItem[] => {
     return items.map(item => {
@@ -631,33 +818,42 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
   }, [pendingGroupType, pendingGroupInitialExercise, reorderedItems, selectedExercisesForGroup, createGroupWithExercises, handleCancelSelection]);
 
   const handleIncrementSet = useCallback((exerciseItem: ExerciseItem) => {
-    setReorderedItems(prev => {
-      return prev.map(item => {
-        if (item.id === exerciseItem.id && item.type === 'Item') {
-          return {
-            ...item,
-            count: item.count + 1,
-          };
-        }
-        return item;
-      });
-    });
+    // For backward compatibility, increment the first set group
+    setReorderedItems(prev => prev.map(item => {
+      if (item.id === exerciseItem.id && item.type === 'Item' && item.setGroups.length > 0) {
+        const firstSetGroup = item.setGroups[0];
+        const updatedSetGroups = item.setGroups.map((sg, idx) =>
+          idx === 0 ? { ...sg, count: sg.count + 1 } : sg
+        );
+        const totalCount = updatedSetGroups.reduce((sum, sg) => sum + sg.count, 0);
+        return {
+          ...item,
+          setGroups: updatedSetGroups,
+          count: totalCount,
+        };
+      }
+      return item;
+    }));
   }, []);
 
   const handleDecrementSet = useCallback((exerciseItem: ExerciseItem) => {
-    if (exerciseItem.count <= 1) return;
+    // For backward compatibility, decrement the first set group
+    if (exerciseItem.setGroups.length > 0 && exerciseItem.setGroups[0].count <= 1) return;
 
-    setReorderedItems(prev => {
-      return prev.map(item => {
-        if (item.id === exerciseItem.id && item.type === 'Item' && item.count > 1) {
-          return {
-            ...item,
-            count: item.count - 1,
-          };
-        }
-        return item;
-      });
-    });
+    setReorderedItems(prev => prev.map(item => {
+      if (item.id === exerciseItem.id && item.type === 'Item' && item.setGroups.length > 0) {
+        const updatedSetGroups = item.setGroups.map((sg, idx) =>
+          idx === 0 && sg.count > 1 ? { ...sg, count: sg.count - 1 } : sg
+        );
+        const totalCount = updatedSetGroups.reduce((sum, sg) => sum + sg.count, 0);
+        return {
+          ...item,
+          setGroups: updatedSetGroups,
+          count: totalCount,
+        };
+      }
+      return item;
+    }));
   }, []);
 
   const handleDeleteExercise = useCallback((itemId: string) => {
@@ -734,29 +930,130 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
     });
   }, []);
 
-  const handleToggleDropset = useCallback((exerciseItem: ExerciseItem) => {
-    setDropsetExercises(prev => {
-      const newSet = new Set(prev);
-      const wasDropset = newSet.has(exerciseItem.exercise.id);
-      if (wasDropset) {
-        newSet.delete(exerciseItem.exercise.id);
-      } else {
-        newSet.add(exerciseItem.exercise.id);
-      }
+  const handleToggleDropset = useCallback((exerciseItem: ExerciseItem, setGroupId: string | null) => {
+    if (!setGroupId) return;
 
-      // Update reorderedItems to reflect dropset state
-      setReorderedItems(prevItems => prevItems.map(item => {
-        if (item.id === exerciseItem.id && item.type === 'Item') {
-          return {
-            ...item,
-            isDropset: !wasDropset
-          };
+    setReorderedItems(prevItems => prevItems.map(item => {
+      if (item.id === exerciseItem.id && item.type === 'Item') {
+        const updatedSetGroups = item.setGroups.map(sg =>
+          sg.id === setGroupId ? { ...sg, isDropset: !sg.isDropset } : sg
+        );
+        const totalCount = updatedSetGroups.reduce((sum, sg) => sum + sg.count, 0);
+        const hasAnyDropset = updatedSetGroups.some(sg => sg.isDropset);
+
+        // Update dropsetExercises set
+        if (hasAnyDropset) {
+          setDropsetExercises(prev => new Set([...prev, exerciseItem.exercise.id]));
+        } else {
+          setDropsetExercises(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(exerciseItem.exercise.id);
+            return newSet;
+          });
         }
-        return item;
-      }));
 
-      return newSet;
-    });
+        return {
+          ...item,
+          setGroups: updatedSetGroups,
+          count: totalCount,
+          isDropset: hasAnyDropset
+        };
+      }
+      return item;
+    }));
+  }, []);
+
+  const handleInsertRow = useCallback((exerciseItem: ExerciseItem, setGroupId: string) => {
+    setReorderedItems(prev => prev.map(item => {
+      if (item.id === exerciseItem.id && item.type === 'Item') {
+        // Find the clicked setGroup to duplicate
+        const clickedSetGroup = item.setGroups.find(sg => sg.id === setGroupId);
+        if (!clickedSetGroup) return item;
+
+        // Find the index of the clicked setGroup
+        const clickedIndex = item.setGroups.findIndex(sg => sg.id === setGroupId);
+
+        // Create a new setGroup identical to the clicked one
+        const newSetGroup: SetGroup = {
+          id: `setgroup-${exerciseItem.exercise.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          count: clickedSetGroup.count,
+          isDropset: clickedSetGroup.isDropset,
+        };
+
+        // Insert the new setGroup right after the clicked one
+        const updatedSetGroups = [
+          ...item.setGroups.slice(0, clickedIndex + 1),
+          newSetGroup,
+          ...item.setGroups.slice(clickedIndex + 1)
+        ];
+
+        const totalCount = updatedSetGroups.reduce((sum, sg) => sum + sg.count, 0);
+        const hasAnyDropset = updatedSetGroups.some(sg => sg.isDropset);
+
+        return {
+          ...item,
+          setGroups: updatedSetGroups,
+          count: totalCount,
+          isDropset: hasAnyDropset,
+        };
+      }
+      return item;
+    }));
+  }, []);
+
+  const handleIncrementSetGroup = useCallback((exerciseItem: ExerciseItem, setGroupId: string) => {
+    setReorderedItems(prev => prev.map(item => {
+      if (item.id === exerciseItem.id && item.type === 'Item') {
+        const updatedSetGroups = item.setGroups.map(sg =>
+          sg.id === setGroupId ? { ...sg, count: sg.count + 1 } : sg
+        );
+        const totalCount = updatedSetGroups.reduce((sum, sg) => sum + sg.count, 0);
+        return {
+          ...item,
+          setGroups: updatedSetGroups,
+          count: totalCount,
+        };
+      }
+      return item;
+    }));
+  }, []);
+
+  const handleDecrementSetGroup = useCallback((exerciseItem: ExerciseItem, setGroupId: string) => {
+    setReorderedItems(prev => prev.map(item => {
+      if (item.id === exerciseItem.id && item.type === 'Item') {
+        const updatedSetGroups = item.setGroups.map(sg =>
+          sg.id === setGroupId && sg.count > 1 ? { ...sg, count: sg.count - 1 } : sg
+        );
+        const totalCount = updatedSetGroups.reduce((sum, sg) => sum + sg.count, 0);
+        return {
+          ...item,
+          setGroups: updatedSetGroups,
+          count: totalCount,
+        };
+      }
+      return item;
+    }));
+  }, []);
+
+  const handleDeleteSetGroup = useCallback((exerciseItem: ExerciseItem, setGroupId: string) => {
+    setReorderedItems(prev => prev.map(item => {
+      if (item.id === exerciseItem.id && item.type === 'Item') {
+        if (item.setGroups.length <= 1) {
+          // Don't allow deleting the last set group
+          return item;
+        }
+        const updatedSetGroups = item.setGroups.filter(sg => sg.id !== setGroupId);
+        const totalCount = updatedSetGroups.reduce((sum, sg) => sum + sg.count, 0);
+        const hasAnyDropset = updatedSetGroups.some(sg => sg.isDropset);
+        return {
+          ...item,
+          setGroups: updatedSetGroups,
+          count: totalCount,
+          isDropset: hasAnyDropset,
+        };
+      }
+      return item;
+    }));
   }, []);
 
   const handleDuplicateExercise = useCallback((exerciseItem: ExerciseItem) => {
@@ -768,6 +1065,10 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
       const duplicate: ExerciseItem = {
         ...exerciseItem,
         id: `item-${exerciseItem.exercise.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        setGroups: exerciseItem.setGroups.map(sg => ({
+          ...sg,
+          id: `setgroup-${exerciseItem.exercise.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        })),
         isDropset: exerciseItem.isDropset, // Preserve dropset state
       };
 
@@ -905,6 +1206,9 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
 
     const newOrder: string[] = [];
     const updatedGroups: ExerciseGroup[] = [];
+    // Map to track which item IDs correspond to which positions in newOrder
+    // This preserves separate cards even if they have the same exercise ID
+    const itemIdToOrderIndices: Record<string, number[]> = {};
 
     let currentGroup: ExerciseGroup | null = null;
     let currentGroupIndices: number[] = [];
@@ -914,13 +1218,23 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
         currentGroup = { ...item.group };
         currentGroupIndices = [];
       } else if (item.type === 'Item') {
-        const count = item.count || 1;
-        for (let i = 0; i < count; i++) {
-          if (currentGroup) {
-            currentGroupIndices.push(newOrder.length);
+        // Track which order indices this item occupies
+        const itemOrderIndices: number[] = [];
+
+        // Iterate through setGroups to add exercises in order
+        item.setGroups.forEach(setGroup => {
+          for (let i = 0; i < setGroup.count; i++) {
+            const orderIndex = newOrder.length;
+            if (currentGroup) {
+              currentGroupIndices.push(orderIndex);
+            }
+            newOrder.push(item.exercise.id);
+            itemOrderIndices.push(orderIndex);
           }
-          newOrder.push(item.exercise.id);
-        }
+        });
+
+        // Store the mapping for this item
+        itemIdToOrderIndices[item.id] = itemOrderIndices;
       } else if (item.type === 'GroupFooter') {
         if (currentGroup && currentGroupIndices.length > 0) {
           updatedGroups.push({
@@ -943,17 +1257,32 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
       });
     }
 
-    // Collect dropset exercise IDs from finalItems
+    // Collect dropset exercise IDs and setGroups from finalItems
+    // Store setGroups per item ID (not just exercise ID) to preserve separate cards
     const dropsetExerciseIds: string[] = [];
+    const setGroupsMap: Record<string, SetGroup[]> = {};
+    const itemSetGroupsMap: Record<string, SetGroup[]> = {}; // Map by item.id, not exercise.id
+
     finalItems.forEach((item) => {
-      if (item.type === 'Item' && item.isDropset) {
-        if (!dropsetExerciseIds.includes(item.exercise.id)) {
+      if (item.type === 'Item') {
+        // Store setGroups by item ID to preserve separate cards
+        itemSetGroupsMap[item.id] = item.setGroups;
+
+        // Also store by exercise ID for backward compatibility (use first occurrence)
+        if (!setGroupsMap[item.exercise.id]) {
+          setGroupsMap[item.exercise.id] = item.setGroups;
+        }
+
+        // Check if any setGroup is a dropset
+        const hasDropset = item.setGroups.some(sg => sg.isDropset);
+        if (hasDropset && !dropsetExerciseIds.includes(item.exercise.id)) {
           dropsetExerciseIds.push(item.exercise.id);
         }
       }
     });
 
-    onReorder(newOrder, updatedGroups, dropsetExerciseIds);
+    // Pass item structure information to preserve separate cards
+    onReorder(newOrder, updatedGroups, dropsetExerciseIds, setGroupsMap, itemIdToOrderIndices, itemSetGroupsMap);
     onClose();
   }, [reorderedItems, collapsedGroupId, expandAllGroups, onReorder, onClose]);
 
@@ -1009,6 +1338,147 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
     return { currentGroupId, groupType, isFirstInGroup, isLastInGroup };
   }, [reorderedItems]);
 
+  const renderSetGroupRow = (
+    item: ExerciseItem,
+    setGroup: SetGroup,
+    setGroupIndex: number,
+    groupColorScheme: typeof defaultSupersetColorScheme | typeof defaultHiitColorScheme | null,
+    isFirstInGroup: boolean,
+    isLastInGroup: boolean,
+    isActive: boolean,
+    showExerciseName: boolean
+  ) => {
+    const isFirstRow = setGroupIndex === 0;
+    const isLastRow = setGroupIndex === item.setGroups.length - 1;
+    const isFirstRowInCard = isFirstRow && isFirstInGroup;
+    const isLastRowInCard = isLastRow && isLastInGroup;
+
+    return (
+      <View
+        key={setGroup.id}
+        style={[
+          styles.setGroupRow,
+          groupColorScheme && {
+            borderBottomColor: setGroupIndex < item.setGroups.length - 1 ? groupColorScheme[200] : 'transparent',
+          },
+          isFirstRowInCard && styles.setGroupRow__first,
+          isLastRowInCard && styles.setGroupRow__last,
+        ]}
+      >
+        <View style={[
+          styles.exerciseCardContent,
+          styles.exerciseCardContent__groupChild,
+          groupColorScheme && {
+            backgroundColor: groupColorScheme[50],
+            borderBottomColor: setGroupIndex < item.setGroups.length - 1 ? groupColorScheme[200] : 'transparent',
+            borderColor: groupColorScheme[150]
+          },
+          isFirstRowInCard && styles.exerciseCardContent__groupChild__first,
+          isFirstRowInCard && groupColorScheme && { borderTopColor: groupColorScheme[200] },
+          isLastRowInCard && styles.exerciseCardContent__groupChild__last,
+        ]}>
+          <View style={styles.exerciseInfo}>
+            <View style={styles.exerciseNameRow}>
+              <View style={styles.setCountContainer}>
+                {setGroup.isDropset && (
+                  <View
+                    style={[
+                      styles.dropsetIndicator,
+                      groupColorScheme && { backgroundColor: COLORS.orange[500] }
+                    ]}
+                  />
+                )}
+                <Text style={styles.setCountText}>{setGroup.count} x</Text>
+              </View>
+              {showExerciseName && (
+                <Text style={styles.exerciseName}>{item.exercise.name}</Text>
+              )}
+            </View>
+          </View>
+
+          <View style={styles.exerciseRight}>
+            <View style={styles.setControls}>
+              <TouchableOpacity
+                onPress={() => handleDecrementSetGroup(item, setGroup.id)}
+                disabled={isActive || setGroup.count <= 1}
+                style={[
+                  styles.setControlButton,
+                  groupColorScheme && { backgroundColor: groupColorScheme[100] },
+                  (isActive || setGroup.count <= 1) && styles.setControlButton__disabled,
+                ]}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Minus
+                  size={16}
+                  color={
+                    setGroup.count <= 1
+                      ? (groupColorScheme ? groupColorScheme[700] : COLORS.slate[300])
+                      : (groupColorScheme ? groupColorScheme[700] : COLORS.slate[700])
+                  }
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => handleIncrementSetGroup(item, setGroup.id)}
+                disabled={isActive}
+                style={[
+                  styles.setControlButton,
+                  groupColorScheme && { backgroundColor: groupColorScheme[150] },
+                  isActive && styles.setControlButton__disabled,
+                ]}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Plus
+                  size={16}
+                  color={
+                    isActive
+                      ? (groupColorScheme ? groupColorScheme[400] : COLORS.slate[300])
+                      : (groupColorScheme ? groupColorScheme[700] : COLORS.slate[700])
+                  }
+                />
+              </TouchableOpacity>
+            </View>
+            {!isSelectionMode && (
+              <View
+                ref={(ref) => {
+                  if (ref) {
+                    const refKey = `${item.id}-${setGroup.id}`;
+                    buttonRefsMap.current.set(refKey, ref);
+                    // Also store with old key format for first set group (backward compatibility)
+                    if (setGroupIndex === 0) {
+                      buttonRefsMap.current.set(item.id, ref);
+                    }
+                  } else {
+                    buttonRefsMap.current.delete(`${item.id}-${setGroup.id}`);
+                    if (setGroupIndex === 0) {
+                      buttonRefsMap.current.delete(item.id);
+                    }
+                  }
+                }}
+                collapsable={false}
+              >
+                <TouchableOpacity
+                  onPress={() => {
+                    if (swipedItemId) {
+                      closeTrashIcon();
+                    }
+                    setExerciseToEdit(item);
+                    setClickedSetGroupId(setGroup.id);
+                    setShowEditModal(true);
+                  }}
+                  disabled={isActive}
+                  style={styles.groupIconButton}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Edit size={18} color={groupColorScheme ? groupColorScheme[700] : COLORS.blue[600]} />
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </View>
+      </View>
+    );
+  };
+
   const renderExerciseContent = (
     item: ExerciseItem,
     groupColorScheme: typeof defaultSupersetColorScheme | typeof defaultHiitColorScheme | null,
@@ -1017,6 +1487,15 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
     isActive: boolean
   ) => {
     const showTrash = swipedItemId === item.id;
+
+    // Safety check: ensure setGroups exists and is not empty
+    if (!item.setGroups || item.setGroups.length === 0) {
+      item.setGroups = [{
+        id: `setgroup-${item.exercise.id}-${item.orderIndex}-0`,
+        count: item.count || 1,
+        isDropset: item.isDropset || false,
+      }];
+    }
 
     return (
       <SwipeToDelete
@@ -1056,125 +1535,41 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
             activeOpacity={1}
             style={{ flex: 1, flexDirection: 'row', alignItems: 'stretch' }}
           >
-              <View
-                style={[
-                  styles.groupChildWrapperLeft,
-                  groupColorScheme && { backgroundColor: groupColorScheme[200] },
-                  isActive && styles.groupChildWrapperLeft__active,
-                ]}
-              />
+            <View
+              style={[
+                styles.groupChildWrapperLeft,
+                groupColorScheme && { backgroundColor: groupColorScheme[200] },
+                isActive && styles.groupChildWrapperLeft__active,
+              ]}
+            />
 
-              <View style={[
-                styles.exerciseCardContent,
-                styles.exerciseCardContent__groupChild,
-                groupColorScheme && { backgroundColor: groupColorScheme[50], borderBottomColor: groupColorScheme[200], borderColor: groupColorScheme[150] },
-                isActive && groupColorScheme && { backgroundColor: groupColorScheme[100] },
-                isFirstInGroup && styles.exerciseCardContent__groupChild__first,
-                isFirstInGroup && groupColorScheme && { borderTopColor: groupColorScheme[200] },
-                isLastInGroup && styles.exerciseCardContent__groupChild__last,
-                isActive && styles.exerciseCardContent__active,
-                isActive && styles.exerciseCardContent__groupChild__active,
-              ]}>
-                <View style={styles.exerciseInfo}>
-                  <View style={styles.exerciseNameRow}>
-                    <View style={styles.setCountContainer}>
-                      {item.isDropset && (
-                        <View
-                          style={[
-                            styles.dropsetIndicator,
-                            groupColorScheme && { backgroundColor: COLORS.orange[500] }
-                          ]}
-                        />
-                      )}
-                      <Text style={styles.setCountText}>{item.count} x</Text>
-                    </View>
-                    <Text style={styles.exerciseName}>{item.exercise.name}</Text>
-                  </View>
-                </View>
+            <View style={{ flex: 1 }}>
+              {item.setGroups.map((setGroup, index) =>
+                renderSetGroupRow(
+                  item,
+                  setGroup,
+                  index,
+                  groupColorScheme,
+                  isFirstInGroup,
+                  isLastInGroup,
+                  isActive,
+                  index === 0 // Only show exercise name on first row
+                )
+              )}
+            </View>
 
-                <View style={styles.exerciseRight}>
-                  <View style={styles.setControls}>
-                    <TouchableOpacity
-                      onPress={() => handleDecrementSet(item)}
-                      disabled={isActive || item.count <= 1}
-                      style={[
-                        styles.setControlButton,
-                        groupColorScheme && { backgroundColor: groupColorScheme[100] },
-                        (isActive || item.count <= 1) && styles.setControlButton__disabled,
-                      ]}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <Minus
-                        size={16}
-                        color={
-                          item.count <= 1
-                            ? (groupColorScheme ? groupColorScheme[700] : COLORS.slate[300])
-                            : (groupColorScheme ? groupColorScheme[700] : COLORS.slate[700])
-                        }
-                      />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => handleIncrementSet(item)}
-                      disabled={isActive}
-                      style={[
-                        styles.setControlButton,
-                        groupColorScheme && { backgroundColor: groupColorScheme[150] },
-                        isActive && styles.setControlButton__disabled,
-                      ]}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <Plus
-                        size={16}
-                        color={
-                          isActive
-                            ? (groupColorScheme ? groupColorScheme[400] : COLORS.slate[300])
-                            : (groupColorScheme ? groupColorScheme[700] : COLORS.slate[700])
-                        }
-                      />
-                    </TouchableOpacity>
-                  </View>
-                  {!isSelectionMode && (
-                    <View
-                      ref={(ref) => {
-                        if (ref) {
-                          buttonRefsMap.current.set(item.id, ref);
-                        } else {
-                          buttonRefsMap.current.delete(item.id);
-                        }
-                      }}
-                      collapsable={false}
-                    >
-                      <TouchableOpacity
-                        onPress={() => {
-                          if (swipedItemId) {
-                            closeTrashIcon();
-                          }
-                          setExerciseToEdit(item);
-                          setShowEditModal(true);
-                        }}
-                        disabled={isActive}
-                        style={styles.groupIconButton}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <Edit size={18} color={groupColorScheme ? groupColorScheme[700] : COLORS.blue[600]} />
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                </View>
-              </View>
-
-              <View
-                style={[
-                  styles.groupChildWrapperRight,
-                  groupColorScheme && { backgroundColor: groupColorScheme[200] },
-                  isActive && styles.groupChildWrapperRight__active,
-                ]}
-              />
-            </TouchableOpacity>
-          </View>
-        </SwipeToDelete>
-      );
-    };
+            <View
+              style={[
+                styles.groupChildWrapperRight,
+                groupColorScheme && { backgroundColor: groupColorScheme[200] },
+                isActive && styles.groupChildWrapperRight__active,
+              ]}
+            />
+          </TouchableOpacity>
+        </View>
+      </SwipeToDelete>
+    );
+  };
 
   const renderFooterContent = (groupColorScheme: typeof defaultSupersetColorScheme | typeof defaultHiitColorScheme) => {
     return (
@@ -1371,83 +1766,111 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
             activeOpacity={1}
             style={{ flex: 1 }}
           >
-              <View style={[styles.exerciseCardContent, styles.exerciseCardContent__standalone]}>
-                <View style={styles.exerciseInfo}>
-                  <View style={styles.exerciseNameRow}>
-                    <View style={styles.setCountContainer}>
-                      {item.isDropset && (
-                        <View style={[styles.dropsetIndicator, { backgroundColor: COLORS.orange[500] }]} />
-                      )}
-                      <Text style={styles.setCountText}>{item.count} x </Text>
+            <View style={{ flex: 1 }}>
+              {(!item.setGroups || item.setGroups.length === 0 ? [{
+                id: `setgroup-${item.exercise.id}-${item.orderIndex}-0`,
+                count: item.count || 1,
+                isDropset: item.isDropset || false,
+              }] : item.setGroups).map((setGroup, index) => (
+                <View
+                  key={setGroup.id}
+                  style={[
+                    styles.setGroupRow,
+                    styles.setGroupRow__standalone,
+                    index < item.setGroups.length - 1 && { borderBottomWidth: 1, borderBottomColor: COLORS.slate[200] },
+                  ]}
+                >
+                  <View style={[styles.exerciseCardContent, styles.exerciseCardContent__standalone]}>
+                    <View style={styles.exerciseInfo}>
+                      <View style={styles.exerciseNameRow}>
+                        <View style={styles.setCountContainer}>
+                          {setGroup.isDropset && (
+                            <View style={[styles.dropsetIndicator, { backgroundColor: COLORS.orange[500] }]} />
+                          )}
+                          <Text style={styles.setCountText}>{setGroup.count} x </Text>
+                        </View>
+                        {index === 0 && (
+                          <Text style={styles.exerciseName}>{item.exercise.name}</Text>
+                        )}
+                      </View>
                     </View>
-                    <Text style={styles.exerciseName}>{item.exercise.name}</Text>
+
+                    <View style={styles.exerciseRight}>
+                      {!isSelectionMode && (
+                        <View style={styles.setControls}>
+                          <TouchableOpacity
+                            onPress={() => handleDecrementSetGroup(item, setGroup.id)}
+                            disabled={isActive || setGroup.count <= 1}
+                            style={[
+                              styles.setControlButton,
+                              (isActive || setGroup.count <= 1) && styles.setControlButton__disabled,
+                            ]}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Minus size={16} color={setGroup.count <= 1 ? COLORS.slate[300] : COLORS.slate[700]} />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={() => handleIncrementSetGroup(item, setGroup.id)}
+                            disabled={isActive}
+                            style={[
+                              styles.setControlButton,
+                              isActive && styles.setControlButton__disabled,
+                            ]}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Plus size={16} color={isActive ? COLORS.slate[300] : COLORS.slate[700]} />
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                      {isSelected && index === 0 && (
+                        <View style={styles.selectedIndicator}>
+                          <Check size={20} color={COLORS.green[600]} />
+                        </View>
+                      )}
+                      {!isSelectionMode && (
+                        <View
+                          ref={(ref) => {
+                            if (ref) {
+                              const refKey = `${item.id}-${setGroup.id}`;
+                              buttonRefsMap.current.set(refKey, ref);
+                              // Also store with old key format for first set group (backward compatibility)
+                              if (index === 0) {
+                                buttonRefsMap.current.set(item.id, ref);
+                              }
+                            } else {
+                              buttonRefsMap.current.delete(`${item.id}-${setGroup.id}`);
+                              if (index === 0) {
+                                buttonRefsMap.current.delete(item.id);
+                              }
+                            }
+                          }}
+                          collapsable={false}
+                        >
+                          <TouchableOpacity
+                            onPress={() => {
+                              if (swipedItemId) {
+                                closeTrashIcon();
+                              }
+                              setExerciseToEdit(item);
+                              setClickedSetGroupId(setGroup.id);
+                              setShowEditModal(true);
+                            }}
+                            disabled={isActive}
+                            style={styles.groupIconButton}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Edit size={18} color={COLORS.blue[600]} />
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                    </View>
                   </View>
                 </View>
-
-                <View style={styles.exerciseRight}>
-                  {!isSelectionMode && (
-                    <View style={styles.setControls}>
-                      <TouchableOpacity
-                        onPress={() => handleDecrementSet(item)}
-                        disabled={isActive || item.count <= 1}
-                        style={[
-                          styles.setControlButton,
-                          (isActive || item.count <= 1) && styles.setControlButton__disabled,
-                        ]}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <Minus size={16} color={item.count <= 1 ? COLORS.slate[300] : COLORS.slate[700]} />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={() => handleIncrementSet(item)}
-                        disabled={isActive}
-                        style={[
-                          styles.setControlButton,
-                          isActive && styles.setControlButton__disabled,
-                        ]}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <Plus size={16} color={isActive ? COLORS.slate[300] : COLORS.slate[700]} />
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                  {isSelected && (
-                    <View style={styles.selectedIndicator}>
-                      <Check size={20} color={COLORS.green[600]} />
-                    </View>
-                  )}
-                  {!isSelectionMode && (
-                    <View
-                      ref={(ref) => {
-                        if (ref) {
-                          buttonRefsMap.current.set(item.id, ref);
-                        } else {
-                          buttonRefsMap.current.delete(item.id);
-                        }
-                      }}
-                      collapsable={false}
-                    >
-                      <TouchableOpacity
-                        onPress={() => {
-                          if (swipedItemId) {
-                            closeTrashIcon();
-                          }
-                          setExerciseToEdit(item);
-                          setShowEditModal(true);
-                        }}
-                        disabled={isActive}
-                        style={styles.groupIconButton}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <Edit size={18} color={COLORS.blue[600]} />
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                </View>
-              </View>
-            </TouchableOpacity>
-          </View>
-        </SwipeToDelete>
+              ))}
+            </View>
+          </TouchableOpacity>
+        </View>
+      </SwipeToDelete>
     );
   }, [getItemGroupContext, initiateGroupDrag, collapsedGroupId, reorderedItems, toggleGroupType, isSelectionMode, selectedExercisesForGroup, handleExerciseSelection, handleIncrementSet, handleDecrementSet, swipedItemId, handleDeleteExercise, closeTrashIcon, handleToggleDropset, handleDuplicateExercise]);
 
@@ -1592,6 +2015,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
               onPress={() => {
                 setShowEditModal(false);
                 setExerciseToEdit(null);
+                setClickedSetGroupId(null);
                 setEditDropdownPosition(null);
               }}
             />
@@ -1606,6 +2030,28 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
                 ]}
                 onStartShouldSetResponder={() => true}
               >
+                {/* Dropset - toggle for the clicked setGroup */}
+                {clickedSetGroupId && exerciseToEdit && (
+                  <TouchableOpacity
+                    style={[
+                      styles.editDropdownItem,
+                      exerciseToEdit.setGroups.find(sg => sg.id === clickedSetGroupId)?.isDropset && styles.editDropdownItemActive
+                    ]}
+                    onPress={() => {
+                      if (exerciseToEdit && clickedSetGroupId) {
+                        handleToggleDropset(exerciseToEdit, clickedSetGroupId);
+                      }
+                      setShowEditModal(false);
+                      setExerciseToEdit(null);
+                      setClickedSetGroupId(null);
+                      setEditDropdownPosition(null);
+                    }}
+                  >
+                    <Text style={styles.editDropdownItemText}>Dropset</Text>
+                  </TouchableOpacity>
+                )}
+
+                {/* Create Group */}
                 {exerciseToEdit && exerciseToEdit.groupId === null && (
                   <TouchableOpacity
                     style={styles.editDropdownItem}
@@ -1616,12 +2062,33 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
                       }
                       setShowEditModal(false);
                       setExerciseToEdit(null);
+                      setClickedSetGroupId(null);
                       setEditDropdownPosition(null);
                     }}
                   >
                     <Text style={styles.editDropdownItemText}>Create Group</Text>
                   </TouchableOpacity>
                 )}
+
+                {/* Insert Row */}
+                {clickedSetGroupId && exerciseToEdit && (
+                  <TouchableOpacity
+                    style={styles.editDropdownItem}
+                    onPress={() => {
+                      if (exerciseToEdit && clickedSetGroupId) {
+                        handleInsertRow(exerciseToEdit, clickedSetGroupId);
+                      }
+                      setShowEditModal(false);
+                      setExerciseToEdit(null);
+                      setClickedSetGroupId(null);
+                      setEditDropdownPosition(null);
+                    }}
+                  >
+                    <Text style={styles.editDropdownItemText}>Insert Row</Text>
+                  </TouchableOpacity>
+                )}
+
+                {/* Duplicate Exercise */}
                 <TouchableOpacity
                   style={styles.editDropdownItem}
                   onPress={() => {
@@ -1630,31 +2097,17 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
                     }
                     setShowEditModal(false);
                     setExerciseToEdit(null);
+                    setClickedSetGroupId(null);
                     setEditDropdownPosition(null);
                   }}
                 >
-                  <Text style={styles.editDropdownItemText}>Duplicate</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.editDropdownItem,
-                    exerciseToEdit && exerciseToEdit.isDropset && styles.editDropdownItemActive
-                  ]}
-                  onPress={() => {
-                    if (exerciseToEdit) {
-                      handleToggleDropset(exerciseToEdit);
-                    }
-                    setShowEditModal(false);
-                    setExerciseToEdit(null);
-                    setEditDropdownPosition(null);
-                  }}
-                >
-                  <Text style={styles.editDropdownItemText}>Dropset</Text>
+                  <Text style={styles.editDropdownItemText}>Duplicate Exercise</Text>
                 </TouchableOpacity>
               </View>
             )}
           </>
         )}
+
       </SafeAreaView>
     </Modal>
   );
@@ -2120,6 +2573,18 @@ const styles = StyleSheet.create({
   },
   selectedIndicator: {
     marginLeft: 8,
+  },
+  setGroupRow: {
+    borderBottomWidth: 1,
+  },
+  setGroupRow__first: {
+    borderTopWidth: 0,
+  },
+  setGroupRow__last: {
+    borderBottomWidth: 0,
+  },
+  setGroupRow__standalone: {
+    borderBottomWidth: 0,
   },
 });
 

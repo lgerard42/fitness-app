@@ -343,13 +343,59 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     };
   };
 
-  const handleAddExercisesFromPicker = (selectedExercises: (ExerciseLibraryItem & { _setCount?: number; _isDropset?: boolean })[], groupType: GroupType | null, groupsMetadata: any = null) => {
+  const createExerciseInstanceWithSetGroups = (ex: ExerciseLibraryItem, setGroups: Array<{ count: number; isDropset: boolean }>): Exercise => {
+    // Get pinned notes from the library exercise
+    const libraryExercise = exercisesLibrary.find(libEx => libEx.id === ex.id);
+    const pinnedNotes = libraryExercise?.pinnedNotes || [];
+
+    // Create sets based on setGroups - each setGroup gets its own dropSetId if it's a dropset
+    const sets: Set[] = [];
+    setGroups.forEach((setGroup) => {
+      const dropSetId = setGroup.isDropset ? `dropset-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` : undefined;
+
+      for (let i = 0; i < setGroup.count; i++) {
+        sets.push({
+          id: `s-${Date.now()}-${Math.random()}-${sets.length}`,
+          type: "Working" as SetType,
+          weight: "",
+          reps: "",
+          duration: "",
+          distance: "",
+          completed: false,
+          ...(dropSetId && { dropSetId, isDropset: true })
+        });
+      }
+    });
+
+    return {
+      instanceId: `inst-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      exerciseId: ex.id,
+      name: ex.name,
+      category: ex.category,
+      type: 'exercise',
+      sets: sets,
+      notes: [...pinnedNotes], // Include pinned notes from library
+      collapsed: false
+    };
+  };
+
+  const handleAddExercisesFromPicker = (selectedExercises: (ExerciseLibraryItem & { _setCount?: number; _isDropset?: boolean; _setGroups?: Array<{ count: number; isDropset: boolean }> })[], groupType: GroupType | null, groupsMetadata: any = null) => {
     if (replacingExerciseId) {
       // Handle Replacement
       if (selectedExercises.length > 0) {
-        const setCount = selectedExercises[0]._setCount || 1;
-        const isDropset = selectedExercises[0]._isDropset || false;
-        const newEx = createExerciseInstance(selectedExercises[0], setCount, isDropset);
+        const ex = selectedExercises[0];
+        let newEx: Exercise;
+
+        if (ex._setGroups && ex._setGroups.length > 0) {
+          // Use setGroups to create sets with proper dropset structure
+          newEx = createExerciseInstanceWithSetGroups(ex, ex._setGroups);
+        } else {
+          // Fallback to old behavior
+          const setCount = ex._setCount || 1;
+          const isDropset = ex._isDropset || false;
+          newEx = createExerciseInstance(ex, setCount, isDropset);
+        }
+
         // Preserve sets if possible? For now, let's just replace with new sets.
         // Or maybe try to map old sets to new? The user said "replace", usually implies a swap.
         // Let's keep it simple: swap the exercise, keep the instanceId? No, new instanceId is safer.
@@ -369,10 +415,17 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     }
 
     // Create instances with the specified set count from grouped exercises
+    // If _setGroups is provided, use it to create sets with proper dropset grouping
     const newInstances = selectedExercises.map(ex => {
-      const setCount = ex._setCount || 1; // Use _setCount if provided, otherwise default to 1
-      const isDropset = ex._isDropset || false; // Use _isDropset if provided, otherwise default to false
-      return createExerciseInstance(ex, setCount, isDropset);
+      if (ex._setGroups && ex._setGroups.length > 0) {
+        // Use setGroups to create sets with proper dropset structure
+        return createExerciseInstanceWithSetGroups(ex, ex._setGroups);
+      } else {
+        // Fallback to old behavior
+        const setCount = ex._setCount || 1; // Use _setCount if provided, otherwise default to 1
+        const isDropset = ex._isDropset || false; // Use _isDropset if provided, otherwise default to false
+        return createExerciseInstance(ex, setCount, isDropset);
+      }
     });
 
     let itemsToAdd: ExerciseItem[] = [];
