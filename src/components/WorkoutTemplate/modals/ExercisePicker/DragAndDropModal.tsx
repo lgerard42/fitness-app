@@ -228,11 +228,10 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
         // Mark all indices as processed
         orderIndices.forEach(idx => processedIndices.add(idx));
       });
-
-      return items;
     }
 
-    // Fallback to original logic using groupedExercises
+    // Process remaining items that don't have itemIds (new exercises from list view)
+    // This fallback handles exercises that weren't in the itemId structure
     selectedOrder.forEach((exerciseId, orderIndex) => {
       if (processedIndices.has(orderIndex)) return;
 
@@ -311,15 +310,31 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
 
         const isDropset = dropsetExercises.has(exerciseId);
 
-        // Use preserved setGroups from props if available, otherwise create default
-        const preservedSetGroups = exerciseSetGroups?.[exerciseId];
-        const setGroupsToUse = preservedSetGroups && preservedSetGroups.length > 0
-          ? preservedSetGroups
-          : [{
-            id: `setgroup-${exerciseId}-${orderIndex}-0`,
-            count: count,
-            isDropset: isDropset,
-          }];
+        // First check if this exercise has an itemId in itemSetGroupsMap (from sync)
+        // If not, fall back to exerciseSetGroups, then create default
+        let setGroupsToUse: SetGroup[] | undefined;
+
+        // Check if there's an itemId for this orderIndex
+        if (itemIdToOrderIndices && itemSetGroupsMap) {
+          const itemIdForIndex = Object.keys(itemIdToOrderIndices).find(itemId =>
+            itemIdToOrderIndices[itemId].includes(orderIndex)
+          );
+          if (itemIdForIndex && itemSetGroupsMap[itemIdForIndex]) {
+            setGroupsToUse = itemSetGroupsMap[itemIdForIndex];
+          }
+        }
+
+        // Fall back to exerciseSetGroups if no itemId found
+        if (!setGroupsToUse) {
+          const preservedSetGroups = exerciseSetGroups?.[exerciseId];
+          setGroupsToUse = preservedSetGroups && preservedSetGroups.length > 0
+            ? preservedSetGroups
+            : [{
+              id: `setgroup-${exerciseId}-${orderIndex}-0`,
+              count: count,
+              isDropset: isDropset,
+            }];
+        }
         const totalCount = setGroupsToUse.reduce((sum, sg) => sum + sg.count, 0);
         const hasAnyDropset = setGroupsToUse.some(sg => sg.isDropset);
 
@@ -375,15 +390,31 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
         const isDropset = dropsetExercises.has(exerciseId);
         const itemCount = groupedExercise ? groupedExercise.count : 1;
 
-        // Use preserved setGroups from props if available, otherwise create default
-        const preservedSetGroups = exerciseSetGroups?.[exerciseId];
-        const setGroupsToUse = preservedSetGroups && preservedSetGroups.length > 0
-          ? preservedSetGroups
-          : [{
-            id: `setgroup-${exerciseId}-${orderIndex}-0`,
-            count: itemCount,
-            isDropset: isDropset,
-          }];
+        // First check if this exercise has an itemId in itemSetGroupsMap (from sync)
+        // If not, fall back to exerciseSetGroups, then create default
+        let setGroupsToUse: SetGroup[] | undefined;
+
+        // Check if there's an itemId for this orderIndex
+        if (itemIdToOrderIndices && itemSetGroupsMap) {
+          const itemIdForIndex = Object.keys(itemIdToOrderIndices).find(itemId =>
+            itemIdToOrderIndices[itemId].includes(orderIndex)
+          );
+          if (itemIdForIndex && itemSetGroupsMap[itemIdForIndex]) {
+            setGroupsToUse = itemSetGroupsMap[itemIdForIndex];
+          }
+        }
+
+        // Fall back to exerciseSetGroups if no itemId found
+        if (!setGroupsToUse) {
+          const preservedSetGroups = exerciseSetGroups?.[exerciseId];
+          setGroupsToUse = preservedSetGroups && preservedSetGroups.length > 0
+            ? preservedSetGroups
+            : [{
+              id: `setgroup-${exerciseId}-${orderIndex}-0`,
+              count: itemCount,
+              isDropset: isDropset,
+            }];
+        }
         const totalCount = setGroupsToUse.reduce((sum, sg) => sum + sg.count, 0);
         const hasAnyDropset = setGroupsToUse.some(sg => sg.isDropset);
 

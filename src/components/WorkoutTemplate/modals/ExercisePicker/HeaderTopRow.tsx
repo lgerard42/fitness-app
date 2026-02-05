@@ -38,6 +38,9 @@ interface HeaderTopRowProps {
   setExerciseSetGroups: ((map: Record<string, SetGroup[]>) => void) | null;
   setItemIdToOrderIndices?: ((map: Record<string, number[]>) => void) | null;
   setItemSetGroupsMap?: ((map: Record<string, SetGroup[]>) => void) | null;
+  onBeforeOpenDragDrop?: (() => Record<string, SetGroup[]> | undefined) | null;
+  itemSetGroupsMap?: Record<string, SetGroup[]>;
+  itemIdToOrderIndices?: Record<string, number[]>;
 }
 
 const HeaderTopRow: React.FC<HeaderTopRowProps> = ({
@@ -57,17 +60,39 @@ const HeaderTopRow: React.FC<HeaderTopRowProps> = ({
   setExerciseSetGroups,
   setItemIdToOrderIndices,
   setItemSetGroupsMap,
+  onBeforeOpenDragDrop = null,
+  itemSetGroupsMap: itemSetGroupsMapProp,
+  itemIdToOrderIndices: itemIdToOrderIndicesProp,
 }) => {
   const [isDragDropModalVisible, setIsDragDropModalVisible] = useState(false);
   const [exerciseSetGroups, setExerciseSetGroupsLocal] = useState<Record<string, SetGroup[]>>({});
-  const [itemIdToOrderIndices, setItemIdToOrderIndicesLocal] = useState<Record<string, number[]>>({});
-  const [itemSetGroupsMap, setItemSetGroupsMapLocal] = useState<Record<string, SetGroup[]>>({});
+  const [itemIdToOrderIndicesLocal, setItemIdToOrderIndicesLocal] = useState<Record<string, number[]>>({});
+  const [itemSetGroupsMapLocal, setItemSetGroupsMapLocal] = useState<Record<string, SetGroup[]>>({});
+  
+  // Use local state (which gets updated on sync) or prop values as fallback
+  const itemIdToOrderIndices = itemIdToOrderIndicesLocal || itemIdToOrderIndicesProp;
+  const itemSetGroupsMap = itemSetGroupsMapLocal || itemSetGroupsMapProp;
 
   const handleReviewPress = useCallback(() => {
     if (selectedIds.length > 0 && selectedOrder.length > 0) {
+      // Sync list view changes to drag and drop before opening
+      let syncedItemSetGroupsMap = itemSetGroupsMapProp;
+      if (onBeforeOpenDragDrop) {
+        const updatedMap = onBeforeOpenDragDrop();
+        if (updatedMap) {
+          syncedItemSetGroupsMap = updatedMap;
+          // Update local state with synced data
+          setItemSetGroupsMapLocal(updatedMap);
+        }
+      } else if (itemSetGroupsMapProp) {
+        setItemSetGroupsMapLocal(itemSetGroupsMapProp);
+      }
+      if (itemIdToOrderIndicesProp) {
+        setItemIdToOrderIndicesLocal(itemIdToOrderIndicesProp);
+      }
       setIsDragDropModalVisible(true);
     }
-  }, [selectedIds.length, selectedOrder.length]);
+  }, [selectedIds.length, selectedOrder.length, onBeforeOpenDragDrop, itemSetGroupsMapProp, itemIdToOrderIndicesProp]);
 
   const handleDragDropReorder = useCallback((newOrder: string[], updatedGroups?: ExerciseGroup[], dropsetExerciseIds?: string[], setGroupsMap?: Record<string, SetGroup[]>, itemIdToOrderIndices?: Record<string, number[]>, itemSetGroupsMap?: Record<string, SetGroup[]>) => {
     if (setSelectedOrder && setExerciseGroups) {
