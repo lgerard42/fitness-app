@@ -798,6 +798,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
 
 
   const [activeSetMenu, setActiveSetMenu] = useState<{ exerciseId: string; setId: string; top: number; left: number; originalTop: number } | null>(null);
+  const [columnHeaderMenu, setColumnHeaderMenu] = useState<{ exerciseId: string; top: number; left: number } | null>(null);
   const [scrollOffset, setScrollOffset] = useState(0);
   // selectionMode and selectedSetIds are now managed by useWorkoutGroups hook
 
@@ -819,6 +820,24 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
       top: visibleTop,
       left: popupLeft,
       originalTop: contentTop
+    });
+  };
+
+  const handleColumnHeaderPress = (exerciseId: string, event: any) => {
+    // Close other popups if open
+    setOptionsModalExId(null);
+    setActiveSetMenu(null);
+
+    const { pageX, pageY } = event.nativeEvent;
+    const visibleTop = pageY - 100; // Approximate offset
+    const popupLeft = pageX - 100; // Center the popup relative to the click
+
+    // Force popup re-mount and position it correctly
+    setPopupKey(prev => prev + 1);
+    setColumnHeaderMenu({
+      exerciseId,
+      top: visibleTop,
+      left: popupLeft
     });
   };
 
@@ -1442,11 +1461,15 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
           <View style={styles.columnHeaders}>
             <View style={styles.colIndex}><Text style={styles.colHeaderText}>Set</Text></View>
             <View style={styles.colPrevious}><Text style={styles.colHeaderText}>Previous</Text></View>
-            <View style={styles.colWeight}>
+            <TouchableOpacity
+              style={styles.colWeight}
+              onPress={(e) => !readOnly && ex.category === "Lifts" && handleColumnHeaderPress(ex.instanceId, e)}
+              disabled={readOnly || ex.category !== "Lifts"}
+            >
               <Text style={styles.colHeaderText}>
                 {ex.category === "Lifts" ? `Weight (${ex.weightUnit || 'lbs'})` : "Time"}
               </Text>
-            </View>
+            </TouchableOpacity>
             <View style={styles.colReps}>
               <Text style={styles.colHeaderText}>{ex.category === "Lifts" ? "Reps" : "Dist/Reps"}</Text>
             </View>
@@ -2315,6 +2338,9 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
           if (optionsModalExId) {
             setOptionsModalExId(null);
           }
+          if (columnHeaderMenu) {
+            setColumnHeaderMenu(null);
+          }
         }}
       >
         <View style={styles.mainContentWrapper}>
@@ -2441,16 +2467,10 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
 
               {(() => {
                 const currentExercise = findExerciseDeep(currentWorkout.exercises, optionsModalExId);
+                const isInGroup = currentExercise ? isExerciseInSuperset(currentWorkout.exercises, optionsModalExId) : false;
 
                 return (
                   <>
-                    <TouchableOpacity style={styles.setPopupOptionItem} onPress={() => handleToggleUnit(optionsModalExId)}>
-                      <Scale size={18} color={COLORS.slate[600]} />
-                      <Text style={styles.setPopupOptionText}>
-                        {currentExercise?.weightUnit === 'kg' ? 'Switch to lbs' : 'Switch to kg'}
-                      </Text>
-                    </TouchableOpacity>
-
                     <TouchableOpacity style={styles.setPopupOptionItem} onPress={() => handleReplaceExercise(optionsModalExId)}>
                       <RefreshCw size={18} color={COLORS.slate[600]} />
                       <Text style={styles.setPopupOptionText}>Replace Exercise</Text>
@@ -2459,7 +2479,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                     {/* Superset Options */}
                     <TouchableOpacity style={styles.setPopupOptionItem} onPress={() => handleEditSupersetWrapper(optionsModalExId)}>
                       <Layers size={18} color={defaultSupersetColorScheme[600]} />
-                      <Text style={styles.setPopupOptionText}>Edit superset</Text>
+                      <Text style={styles.setPopupOptionText}>{isInGroup ? 'Edit superset' : 'Create Group'}</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity style={[styles.setPopupOptionItem, { borderBottomWidth: 0 }]} onPress={() => handleDeleteExercise(optionsModalExId)}>
@@ -2470,6 +2490,56 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                 );
               })()}
             </Pressable>
+          )}
+
+          {/* Column Header Menu Popup */}
+          {columnHeaderMenu && (
+            <>
+              <Pressable
+                style={styles.columnHeaderPopupBackdrop}
+                onPress={() => {
+                  setColumnHeaderMenu(null);
+                }}
+              />
+              <Pressable
+                key={popupKey}
+                onPress={(e) => {
+                  e.stopPropagation();
+                }}
+                style={[
+                  styles.columnHeaderPopupContainer,
+                  {
+                    position: 'absolute',
+                    top: columnHeaderMenu.top,
+                    left: columnHeaderMenu.left,
+                    zIndex: 101,
+                    elevation: 11,
+                  }
+                ]}
+              >
+                {(() => {
+                  const currentExercise = findExerciseDeep(currentWorkout.exercises, columnHeaderMenu.exerciseId);
+                  return (
+                    <>
+                      {currentExercise?.category === "Lifts" && (
+                        <TouchableOpacity
+                          style={styles.columnHeaderPopupOption}
+                          onPress={() => {
+                            handleToggleUnit(columnHeaderMenu.exerciseId);
+                            setColumnHeaderMenu(null);
+                          }}
+                        >
+                          <Scale size={18} color={COLORS.slate[600]} />
+                          <Text style={styles.columnHeaderPopupOptionText}>
+                            {currentExercise?.weightUnit === 'kg' ? 'Switch to lbs' : 'Switch to kg'}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </>
+                  );
+                })()}
+              </Pressable>
+            </>
           )}
         </View>
       </Pressable>
@@ -3491,6 +3561,25 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.slate[100],
   },
+  columnHeaderPopupBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 100,
+    elevation: 10,
+  },
+  columnHeaderPopupContainer: {
+    position: 'absolute',
+    width: 200,
+    backgroundColor: COLORS.white,
+    borderRadius: 8,
+    padding: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: COLORS.slate[100],
+  },
   closeButton: {
     position: 'absolute',
     top: -8,
@@ -3530,6 +3619,20 @@ const styles = StyleSheet.create({
   setPopupOptionText__failure: {
     color: COLORS.red[500],
     fontWeight: '700',
+  },
+  columnHeaderPopupOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderBottomWidth: 0,
+  },
+  columnHeaderPopupOptionText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: COLORS.slate[700],
+    flex: 1,
   },
   optionDestructive: {
     color: COLORS.red[500],
