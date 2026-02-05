@@ -343,7 +343,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     };
   };
 
-  const createExerciseInstanceWithSetGroups = (ex: ExerciseLibraryItem, setGroups: Array<{ count: number; isDropset: boolean }>): Exercise => {
+  const createExerciseInstanceWithSetGroups = (ex: ExerciseLibraryItem, setGroups: Array<{ count: number; isDropset: boolean; isWarmup?: boolean; isFailure?: boolean }>): Exercise => {
     // Get pinned notes from the library exercise
     const libraryExercise = exercisesLibrary.find(libEx => libEx.id === ex.id);
     const pinnedNotes = libraryExercise?.pinnedNotes || [];
@@ -356,13 +356,15 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
       for (let i = 0; i < setGroup.count; i++) {
         sets.push({
           id: `s-${Date.now()}-${Math.random()}-${sets.length}`,
-          type: "Working" as SetType,
+          type: setGroup.isWarmup ? "Warmup" as SetType : setGroup.isFailure ? "Failure" as SetType : "Working" as SetType,
           weight: "",
           reps: "",
           duration: "",
           distance: "",
           completed: false,
-          ...(dropSetId && { dropSetId, isDropset: true })
+          ...(dropSetId && { dropSetId, isDropset: true }),
+          ...(setGroup.isWarmup && { isWarmup: true }),
+          ...(setGroup.isFailure && { isFailure: true })
         });
       }
     });

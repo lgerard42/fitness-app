@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { View, Text, Modal, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DraggableFlatList from 'react-native-draggable-flatlist';
-import { MoreVertical, Check, Plus, Minus, TrendingDown, Flame, XCircle, Users, Copy } from 'lucide-react-native';
+import { MoreVertical, Check, Plus, Minus, TrendingDown, Flame, XCircle, Users, Copy, Trash2 } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { defaultSupersetColorScheme, defaultHiitColorScheme } from '@/constants/defaultStyles';
 import SwipeToDelete from '@/components/common/SwipeToDelete';
@@ -594,7 +594,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
         }
         if (buttonRef) {
           buttonRef.measureInWindow((pageX: number, pageY: number, pageWidth: number, pageHeight: number) => {
-            const dropdownWidth = 180; // Increased to account for icons
+            const dropdownWidth = 220; // Match minWidth from styles
             const padding = 16;
 
             // Start by aligning dropdown to the right edge of the button
@@ -624,6 +624,15 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
     }
   }, [showEditModal, exerciseToEdit, clickedSetGroupId, screenWidth]);
 
+  // Sync exerciseToEdit with reorderedItems when popup is open
+  useEffect(() => {
+    if (showEditModal && exerciseToEdit) {
+      const updatedItem = reorderedItems.find(item => item.id === exerciseToEdit.id && item.type === 'Item');
+      if (updatedItem && updatedItem.type === 'Item' && updatedItem !== exerciseToEdit) {
+        setExerciseToEdit(updatedItem);
+      }
+    }
+  }, [reorderedItems, showEditModal, exerciseToEdit]);
 
   const collapseGroup = useCallback((items: DragItem[], groupId: string): DragItem[] => {
     return items.map(item => {
@@ -2112,10 +2121,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
                       if (exerciseToEdit && clickedSetGroupId) {
                         handleToggleDropset(exerciseToEdit, clickedSetGroupId);
                       }
-                      setShowEditModal(false);
-                      setExerciseToEdit(null);
-                      setClickedSetGroupId(null);
-                      setEditDropdownPosition(null);
+                      // Don't close popup - allow user to select multiple options
                     }}
                   >
                     <View style={styles.editDropdownItemContent}>
@@ -2128,58 +2134,50 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
                   </TouchableOpacity>
                 )}
 
-                {/* Warmup */}
+                {/* Warmup and Failure */}
                 {clickedSetGroupId && exerciseToEdit && (
-                  <TouchableOpacity
-                    style={[
-                      styles.editDropdownItem,
-                      exerciseToEdit.setGroups.find(sg => sg.id === clickedSetGroupId)?.isWarmup && { backgroundColor: COLORS.orange[500] }
-                    ]}
-                    onPress={() => {
-                      if (exerciseToEdit && clickedSetGroupId) {
-                        handleToggleWarmup(exerciseToEdit, clickedSetGroupId);
-                      }
-                      setShowEditModal(false);
-                      setExerciseToEdit(null);
-                      setClickedSetGroupId(null);
-                      setEditDropdownPosition(null);
-                    }}
-                  >
-                    <View style={styles.editDropdownItemContent}>
-                      <Flame size={16} color={exerciseToEdit.setGroups.find(sg => sg.id === clickedSetGroupId)?.isWarmup ? COLORS.white : COLORS.orange[500]} />
-                      <Text style={[
-                        styles.editDropdownItemText,
-                        exerciseToEdit.setGroups.find(sg => sg.id === clickedSetGroupId)?.isWarmup && { color: COLORS.white }
-                      ]}>Warmup</Text>
-                    </View>
-                  </TouchableOpacity>
-                )}
-
-                {/* Failure */}
-                {clickedSetGroupId && exerciseToEdit && (
-                  <TouchableOpacity
-                    style={[
-                      styles.editDropdownItem,
-                      exerciseToEdit.setGroups.find(sg => sg.id === clickedSetGroupId)?.isFailure && { backgroundColor: COLORS.red[500] }
-                    ]}
-                    onPress={() => {
-                      if (exerciseToEdit && clickedSetGroupId) {
-                        handleToggleFailure(exerciseToEdit, clickedSetGroupId);
-                      }
-                      setShowEditModal(false);
-                      setExerciseToEdit(null);
-                      setClickedSetGroupId(null);
-                      setEditDropdownPosition(null);
-                    }}
-                  >
-                    <View style={styles.editDropdownItemContent}>
-                      <XCircle size={16} color={exerciseToEdit.setGroups.find(sg => sg.id === clickedSetGroupId)?.isFailure ? COLORS.white : COLORS.red[500]} />
-                      <Text style={[
-                        styles.editDropdownItemText,
-                        exerciseToEdit.setGroups.find(sg => sg.id === clickedSetGroupId)?.isFailure && { color: COLORS.white }
-                      ]}>Failure</Text>
-                    </View>
-                  </TouchableOpacity>
+                  <View style={styles.editDropdownItemRow}>
+                    <TouchableOpacity
+                      style={[
+                        styles.editDropdownItemHalf,
+                        exerciseToEdit.setGroups.find(sg => sg.id === clickedSetGroupId)?.isWarmup && { backgroundColor: COLORS.orange[500] }
+                      ]}
+                      onPress={() => {
+                        if (exerciseToEdit && clickedSetGroupId) {
+                          handleToggleWarmup(exerciseToEdit, clickedSetGroupId);
+                        }
+                        // Don't close popup - allow user to select multiple options
+                      }}
+                    >
+                      <View style={styles.editDropdownItemContent}>
+                        <Flame size={16} color={exerciseToEdit.setGroups.find(sg => sg.id === clickedSetGroupId)?.isWarmup ? COLORS.white : COLORS.orange[500]} />
+                        <Text style={[
+                          styles.editDropdownItemText,
+                          exerciseToEdit.setGroups.find(sg => sg.id === clickedSetGroupId)?.isWarmup && { color: COLORS.white }
+                        ]}>Warmup</Text>
+                      </View>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.editDropdownItemHalf,
+                        exerciseToEdit.setGroups.find(sg => sg.id === clickedSetGroupId)?.isFailure && { backgroundColor: COLORS.red[500] }
+                      ]}
+                      onPress={() => {
+                        if (exerciseToEdit && clickedSetGroupId) {
+                          handleToggleFailure(exerciseToEdit, clickedSetGroupId);
+                        }
+                        // Don't close popup - allow user to select multiple options
+                      }}
+                    >
+                      <View style={styles.editDropdownItemContent}>
+                        <XCircle size={16} color={exerciseToEdit.setGroups.find(sg => sg.id === clickedSetGroupId)?.isFailure ? COLORS.white : COLORS.red[500]} />
+                        <Text style={[
+                          styles.editDropdownItemText,
+                          exerciseToEdit.setGroups.find(sg => sg.id === clickedSetGroupId)?.isFailure && { color: COLORS.white }
+                        ]}>Failure</Text>
+                      </View>
+                    </TouchableOpacity>
+                  </View>
                 )}
 
                 {/* Create Group */}
@@ -2243,6 +2241,27 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
                     <Text style={styles.editDropdownItemText}>Duplicate Exercise</Text>
                   </View>
                 </TouchableOpacity>
+
+                {/* Delete Row */}
+                {clickedSetGroupId && exerciseToEdit && (
+                  <TouchableOpacity
+                    style={styles.editDropdownItem}
+                    onPress={() => {
+                      if (exerciseToEdit && clickedSetGroupId) {
+                        handleDeleteSetGroup(exerciseToEdit, clickedSetGroupId);
+                      }
+                      setShowEditModal(false);
+                      setExerciseToEdit(null);
+                      setClickedSetGroupId(null);
+                      setEditDropdownPosition(null);
+                    }}
+                  >
+                    <View style={styles.editDropdownItemContent}>
+                      <Trash2 size={16} color={COLORS.red[500]} />
+                      <Text style={[styles.editDropdownItemText, { color: COLORS.red[500] }]}>Delete Row</Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
               </View>
             )}
           </>
@@ -2628,7 +2647,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     backgroundColor: COLORS.slate[700],
     borderRadius: 8,
-    minWidth: 180,
+    minWidth: 220,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
@@ -2644,6 +2663,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.slate[600],
+  },
+  editDropdownItemRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.slate[600],
+  },
+  editDropdownItemHalf: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
   },
   editDropdownItemActive: {
     backgroundColor: COLORS.orange[50],
