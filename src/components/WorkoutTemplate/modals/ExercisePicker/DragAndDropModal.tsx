@@ -2274,8 +2274,8 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
                   </View>
                 </TouchableOpacity>
 
-                {/* Delete Row */}
-                {clickedSetGroupId && exerciseToEdit && (
+                {/* Delete Row - only show if there are multiple rows */}
+                {clickedSetGroupId && exerciseToEdit && exerciseToEdit.setGroups && exerciseToEdit.setGroups.length > 1 && (
                   <TouchableOpacity
                     style={styles.editDropdownItem}
                     onPress={() => {

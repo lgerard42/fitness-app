@@ -435,7 +435,7 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
   }, [onToggleSelect, selectedIds, selectedOrder, onAddSet, onRemoveSet, exerciseSetGroups, exerciseInstanceSetGroups, renderSetGroupRow, openMenuExerciseId, openMenuSetGroupId, onIncrementSetGroup, onDecrementSetGroup, onToggleDropset, onToggleWarmup, onToggleFailure, onInsertRow]);
 
   // Helper to render menu content
-  const renderMenuContent = useCallback((setGroup: SetGroup, instanceKey: string, isExpanded: boolean = false) => {
+  const renderMenuContent = useCallback((setGroup: SetGroup, instanceKey: string, isExpanded: boolean = false, canDeleteRow: boolean = false) => {
     return (
       <>
         {/* Dropset */}
@@ -493,8 +493,8 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
           <Text style={styles.menuItemText}>Insert Row</Text>
         </TouchableOpacity>
 
-        {/* Delete Row - only for expanded view */}
-        {isExpanded && (
+        {/* Delete Row - only show if there are multiple rows */}
+        {canDeleteRow && (
           <TouchableOpacity
             style={styles.menuItem}
             onPress={() => {
@@ -521,7 +521,9 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
       if (setGroup) {
         // Determine if this is an expanded view (multiple rows or complex configuration)
         const hasMultipleRows = setGroups.length > 1 || (setGroups.length === 1 && (setGroups[0].count > 1 || setGroups[0].isDropset || setGroups[0].isWarmup || setGroups[0].isFailure));
-        return { setGroup, instanceKey: openMenuExerciseId, isExpanded: hasMultipleRows };
+        // Delete row should only be available when there are multiple setGroups (rows)
+        const canDeleteRow = setGroups.length > 1;
+        return { setGroup, instanceKey: openMenuExerciseId, isExpanded: hasMultipleRows, canDeleteRow };
       }
     }
 
@@ -585,7 +587,7 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
           {openMenuData && menuPosition && (
             <View style={[styles.modalMenuContainer, { left: menuPosition.x, top: menuPosition.y }]}>
               <View style={styles.modalMenu}>
-                {renderMenuContent(openMenuData.setGroup, openMenuData.instanceKey, openMenuData.isExpanded)}
+                {renderMenuContent(openMenuData.setGroup, openMenuData.instanceKey, openMenuData.isExpanded, openMenuData.canDeleteRow)}
               </View>
             </View>
           )}
@@ -657,22 +659,23 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   setGroupsContainer: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.blue[200],
     marginHorizontal: 12,
-    marginBottom: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: COLORS.slate[200],
+    marginBottom: 8,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: COLORS.blue[200],
     overflow: 'visible',
   },
   setGroupRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingRight: 8,
+    paddingLeft: 12,
+    paddingVertical: 4,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.slate[100],
+    borderBottomColor: COLORS.blue[150],
     position: 'relative',
     zIndex: 1000,
   },
