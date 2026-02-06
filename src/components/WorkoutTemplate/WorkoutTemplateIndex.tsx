@@ -1483,7 +1483,8 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
               const previousData = getPreviousSetData(set, warmupIndex, workingIndex);
 
               // Determine if rest timer should show after this set
-              const showRestTimer = set.restPeriodSeconds && !readOnly;
+              const isBeingEdited = restPeriodSetInfo?.setId === set.id && restPeriodModalOpen;
+              const showRestTimer = (set.restPeriodSeconds || isBeingEdited) && !readOnly;
               const isRestTimerActive = activeRestTimer?.setId === set.id;
 
               const isRestTimerSelected = restTimerSelectedSetIds.has(set.id);
@@ -1555,7 +1556,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                 isRestTimerDropSetStart,
                 isRestTimerDropSetEnd,
                 displayGroupSetType: displayGroupSetType as GroupSetType,
-                isBeingEdited: restPeriodSetInfo?.setId === set.id && restPeriodModalOpen,
+                isBeingEdited,
                 onClearInputFocus: closeCustomKeyboard,
                 isRestTimerSelectionMode: restTimerSelectionMode,
                 isRestTimerSelected,
@@ -2214,7 +2215,10 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                         styles.setPopupOptionItem,
                         hasRestPeriod && styles.setPopupOptionItem__activeRest
                       ]}
-                      onPress={() => handleSetMenuAction(hasRestPeriod ? 'remove_rest' : 'add_rest')}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handleSetMenuAction(hasRestPeriod ? 'remove_rest' : 'add_rest');
+                      }}
                     >
                       <Timer size={18} color={hasRestPeriod ? COLORS.white : COLORS.blue[500]} />
                       <Text style={[
