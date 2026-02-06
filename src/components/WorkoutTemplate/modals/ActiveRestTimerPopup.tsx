@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Modal, Pressable } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, Pressable, StyleSheet } from 'react-native';
 import { Play, Pause } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
+import { PADDING, BORDER_RADIUS, SPACING } from '@/constants/layout';
 import { formatRestTime, updateExercisesDeep } from '@/utils/workoutHelpers';
 import type { Workout, RestTimer, Set } from '@/types/workout';
 
@@ -12,7 +13,6 @@ interface ActiveRestTimerPopupProps {
   setActiveRestTimer: React.Dispatch<React.SetStateAction<RestTimer | null>>;
   currentWorkout: Workout;
   handleWorkoutUpdate: (workout: Workout) => void;
-  styles: any;
 }
 
 const ActiveRestTimerPopup: React.FC<ActiveRestTimerPopupProps> = ({
@@ -22,7 +22,6 @@ const ActiveRestTimerPopup: React.FC<ActiveRestTimerPopupProps> = ({
   setActiveRestTimer,
   currentWorkout,
   handleWorkoutUpdate,
-  styles,
 }) => {
   const handleTogglePause = () => {
     setActiveRestTimer(prev => prev ? { ...prev, isPaused: !prev.isPaused } : null);
@@ -151,5 +150,132 @@ const ActiveRestTimerPopup: React.FC<ActiveRestTimerPopupProps> = ({
     </Modal>
   );
 };
+
+const styles = StyleSheet.create({
+  timerPopupOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  timerPopupContent: {
+    backgroundColor: COLORS.white,
+    borderRadius: BORDER_RADIUS.xl,
+    padding: PADDING.xxl,
+    width: '85%',
+    maxWidth: 340,
+    alignItems: 'center',
+  },
+  timerCircleContainer: {
+    width: 180,
+    height: 180,
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: PADDING.xxl,
+  },
+  timerCircleBg: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    borderWidth: 8,
+    borderColor: COLORS.slate[200],
+  },
+  timerCircleProgress: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    borderWidth: 8,
+    borderColor: COLORS.blue[500],
+  },
+  timerCircleTextContainer: {
+    alignItems: 'center',
+  },
+  timerCircleText: {
+    fontSize: 48,
+    fontWeight: '700',
+    color: COLORS.slate[800],
+  },
+  timerCircleSubtext: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: COLORS.slate[400],
+    marginTop: PADDING.xs,
+  },
+  timerPopupMainButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.sm,
+    backgroundColor: COLORS.blue[500],
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: BORDER_RADIUS.lg,
+    width: '100%',
+    marginBottom: PADDING.xl,
+  },
+  timerPopupMainButton__paused: {
+    backgroundColor: COLORS.green[500],
+  },
+  timerPopupMainButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.white,
+  },
+  timerAdjustContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: SPACING.sm,
+    marginBottom: PADDING.lg,
+  },
+  timerAdjustColumn: {
+    gap: SPACING.xs,
+  },
+  timerAdjustButton: {
+    backgroundColor: COLORS.slate[100],
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.slate[200],
+    alignItems: 'center',
+    minWidth: 60,
+  },
+  timerAdjustButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.slate[600],
+  },
+  timerPopupBottomButtons: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: PADDING.lg,
+    marginTop: PADDING.sm,
+  },
+  timerPopupCloseButton: {
+    paddingVertical: PADDING.base,
+    paddingHorizontal: PADDING.xxl,
+    backgroundColor: COLORS.slate[100],
+    borderRadius: BORDER_RADIUS.lg,
+  },
+  timerPopupCloseButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.slate[600],
+  },
+  timerPopupCompleteButton: {
+    paddingVertical: PADDING.base,
+    paddingHorizontal: PADDING.xxl,
+    backgroundColor: COLORS.green[500],
+    borderRadius: BORDER_RADIUS.lg,
+  },
+  timerPopupCompleteButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.white,
+  },
+});
 
 export default ActiveRestTimerPopup;

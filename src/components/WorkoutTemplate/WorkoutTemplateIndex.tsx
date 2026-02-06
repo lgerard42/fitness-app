@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { View, Text, TextInput, TouchableOpacity, Pressable, ScrollView, StyleSheet, Modal, Animated, Easing, Keyboard } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
-import { ChevronDown, ChevronLeft, ChevronRight, Calendar, Clock, FileText, Plus, Dumbbell, Layers, MoreVertical, CalendarDays, Trash2, RefreshCw, Scale, X, Flame, TrendingDown, Zap, Check, Timer, Pause, Play, Delete } from 'lucide-react-native';
+import { ChevronDown, ChevronLeft, ChevronRight, Calendar, Clock, FileText, Plus, Dumbbell, Layers, MoreVertical, Trash2, RefreshCw, Scale, X, Flame, TrendingDown, Zap, Check, Timer, Pause, Play, Delete } from 'lucide-react-native';
 import type { NavigationProp } from '@react-navigation/native';
 import { COLORS } from '@/constants/colors';
 import { formatDuration } from '@/constants/data';
@@ -32,13 +32,14 @@ import { useWorkoutSupersets } from './hooks/useWorkoutSupersets';
 import { useWorkoutGroups } from './hooks/useWorkoutGroups';
 import { useWorkoutDragDrop, WorkoutDragItem, ExerciseDragItem } from './hooks/useWorkoutDragDrop';
 import RestTimerBar from './components/RestTimerBar';
-import FinishWorkoutModal from './modals/FinishWorkoutModal';
-import CancelWorkoutModal from './modals/CancelWorkoutModal';
 import RestTimerInputModal from './modals/RestTimerInputModal';
 import ActiveRestTimerPopup from './modals/ActiveRestTimerPopup';
 import CustomNumberKeyboard from './modals/CustomNumberKeyboard';
 import SetDragModal from './modals/SetDragModal';
+import WorkoutModals from './components/WorkoutModals';
 import { useSetDragAndDrop } from './hooks/useSetDragAndDrop';
+import { useWorkoutNotes, useExerciseNotes } from './hooks/useWorkoutNotes';
+import { createExerciseInstance, createExerciseInstanceWithSetGroups } from '@/utils/workoutInstanceHelpers';
 import type { Workout, WorkoutMode, ExerciseLibraryItem, ExerciseStatsMap, ExerciseItem, Exercise, Set, RestPeriodSetInfo, FocusNextSet, GroupType, SetType, ExerciseCategory, ExerciseGroup, Note, GroupSetType } from '@/types/workout';
 
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
@@ -90,9 +91,6 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
   const [optionsModalExId, setOptionsModalExId] = useState<string | null>(null);
   const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 16, originalTop: 0 });
   const [replacingExerciseId, setReplacingExerciseId] = useState<string | null>(null);
-  const [exerciseNoteModalOpen, setExerciseNoteModalOpen] = useState(false);
-  const [currentExerciseNote, setCurrentExerciseNote] = useState("");
-  const [expandedExerciseNotes, setExpandedExerciseNotes] = useState<Record<string, boolean>>({});
 
   const scrollViewRef = useRef<ScrollView | null>(null);
   const listContainerRef = useRef<View | null>(null);
@@ -260,12 +258,36 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
 
   // Rest Timer countdown is now handled in useWorkoutRestTimer hook
 
+  // Notes Management - using hooks
+  const {
+    showNotes,
+    setShowNotes,
+    isNoteModalOpen,
+    setIsNoteModalOpen,
+    newNote,
+    setNewNote,
+    newNoteDate,
+    setNewNoteDate,
+    sortedNotes,
+    handleAddNote,
+    handleRemoveNote,
+    handlePinNote,
+  } = useWorkoutNotes(currentWorkout || dummyWorkout, handleWorkoutUpdate);
 
-  // Notes State
-  const [showNotes, setShowNotes] = useState(false);
-  const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
-  const [newNote, setNewNote] = useState("");
-  const [newNoteDate, setNewNoteDate] = useState(new Date().toISOString().split('T')[0]);
+  const {
+    exerciseNoteModalOpen,
+    setExerciseNoteModalOpen,
+    currentExerciseNote,
+    setCurrentExerciseNote,
+    expandedExerciseNotes,
+    setExpandedExerciseNotes,
+    handleOpenExerciseNote,
+    handleSaveExerciseNote,
+    handlePinExerciseNote,
+    handleRemoveExerciseNote,
+    handleUpdateExerciseNote,
+    toggleExerciseNotes,
+  } = useExerciseNotes(currentWorkout || dummyWorkout, handleWorkoutUpdate);
 
   useEffect(() => {
     if (!currentWorkout) {
@@ -284,101 +306,10 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
 
   if (!currentWorkout) return null;
 
-  const handleAddNote = () => {
-    if (!newNote.trim()) return;
-    const noteToAdd = { id: `note-${Date.now()}`, text: newNote, date: newNoteDate, pinned: false };
-    handleWorkoutUpdate({ ...currentWorkout, sessionNotes: [noteToAdd, ...(currentWorkout.sessionNotes || [])] });
-    setNewNote("");
-    setNewNoteDate(new Date().toISOString().split('T')[0]);
-    setIsNoteModalOpen(false);
-    setShowNotes(true);
-  };
-
-  const handleRemoveNote = (noteId: string) => {
-    handleWorkoutUpdate({ ...currentWorkout, sessionNotes: (currentWorkout.sessionNotes || []).filter(n => n.id !== noteId) });
-  };
-
-  const handlePinNote = (noteId: string) => {
-    handleWorkoutUpdate({ ...currentWorkout, sessionNotes: (currentWorkout.sessionNotes || []).map(n => n.id === noteId ? { ...n, pinned: !n.pinned } : n) });
-  };
-
-  const sortedNotes = useMemo(() => {
-    return [...(currentWorkout.sessionNotes || [])].sort((a, b) => {
-      if (a.pinned && !b.pinned) return -1;
-      if (!a.pinned && b.pinned) return 1;
-      return 0;
-    });
-  }, [currentWorkout.sessionNotes]);
-
-  const createExerciseInstance = (ex: ExerciseLibraryItem, setCount: number = 1, isDropset: boolean = false): Exercise => {
-    // Get pinned notes from the library exercise
+  // Helper to get pinned notes for exercise instance creation
+  const getPinnedNotes = (ex: ExerciseLibraryItem): Note[] => {
     const libraryExercise = exercisesLibrary.find(libEx => libEx.id === ex.id);
-    const pinnedNotes = libraryExercise?.pinnedNotes || [];
-
-    // Generate a shared dropSetId if this is a dropset (groups sets together visually)
-    const dropSetId = isDropset ? `dropset-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` : undefined;
-
-    // Create the specified number of sets
-    const sets: Set[] = Array.from({ length: setCount }, (_, i) => ({
-      id: `s-${Date.now()}-${Math.random()}-${i}`,
-      type: "Working" as SetType,
-      weight: "",
-      reps: "",
-      duration: "",
-      distance: "",
-      completed: false,
-      // If dropset, assign the shared dropSetId to group sets together
-      ...(dropSetId && { dropSetId })
-    }));
-
-    return {
-      instanceId: `inst-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      exerciseId: ex.id,
-      name: ex.name,
-      category: ex.category,
-      type: 'exercise',
-      sets: sets,
-      notes: [...pinnedNotes], // Include pinned notes from library
-      collapsed: false
-    };
-  };
-
-  const createExerciseInstanceWithSetGroups = (ex: ExerciseLibraryItem, setGroups: Array<{ count: number; isDropset: boolean; isWarmup?: boolean; isFailure?: boolean }>): Exercise => {
-    // Get pinned notes from the library exercise
-    const libraryExercise = exercisesLibrary.find(libEx => libEx.id === ex.id);
-    const pinnedNotes = libraryExercise?.pinnedNotes || [];
-
-    // Create sets based on setGroups - each setGroup gets its own dropSetId if it's a dropset
-    const sets: Set[] = [];
-    setGroups.forEach((setGroup) => {
-      const dropSetId = setGroup.isDropset ? `dropset-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` : undefined;
-
-      for (let i = 0; i < setGroup.count; i++) {
-        sets.push({
-          id: `s-${Date.now()}-${Math.random()}-${sets.length}`,
-          type: setGroup.isWarmup ? "Warmup" as SetType : setGroup.isFailure ? "Failure" as SetType : "Working" as SetType,
-          weight: "",
-          reps: "",
-          duration: "",
-          distance: "",
-          completed: false,
-          ...(dropSetId && { dropSetId, isDropset: true }),
-          ...(setGroup.isWarmup && { isWarmup: true }),
-          ...(setGroup.isFailure && { isFailure: true })
-        });
-      }
-    });
-
-    return {
-      instanceId: `inst-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      exerciseId: ex.id,
-      name: ex.name,
-      category: ex.category,
-      type: 'exercise',
-      sets: sets,
-      notes: [...pinnedNotes], // Include pinned notes from library
-      collapsed: false
-    };
+    return libraryExercise?.pinnedNotes || [];
   };
 
   const handleAddExercisesFromPicker = (selectedExercises: (ExerciseLibraryItem & { _setCount?: number; _isDropset?: boolean; _setGroups?: Array<{ count: number; isDropset: boolean }> })[], groupType: GroupType | null, groupsMetadata: any = null) => {
@@ -390,12 +321,12 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
 
         if (ex._setGroups && ex._setGroups.length > 0) {
           // Use setGroups to create sets with proper dropset structure
-          newEx = createExerciseInstanceWithSetGroups(ex, ex._setGroups);
+          newEx = createExerciseInstanceWithSetGroups(ex, ex._setGroups, getPinnedNotes(ex));
         } else {
           // Fallback to old behavior
           const setCount = ex._setCount || 1;
           const isDropset = ex._isDropset || false;
-          newEx = createExerciseInstance(ex, setCount, isDropset);
+          newEx = createExerciseInstance(ex, setCount, isDropset, getPinnedNotes(ex));
         }
 
         // Preserve sets if possible? For now, let's just replace with new sets.
@@ -421,12 +352,12 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     const newInstances = selectedExercises.map(ex => {
       if (ex._setGroups && ex._setGroups.length > 0) {
         // Use setGroups to create sets with proper dropset structure
-        return createExerciseInstanceWithSetGroups(ex, ex._setGroups);
+        return createExerciseInstanceWithSetGroups(ex, ex._setGroups, getPinnedNotes(ex));
       } else {
         // Fallback to old behavior
         const setCount = ex._setCount || 1; // Use _setCount if provided, otherwise default to 1
         const isDropset = ex._isDropset || false; // Use _isDropset if provided, otherwise default to false
-        return createExerciseInstance(ex, setCount, isDropset);
+        return createExerciseInstance(ex, setCount, isDropset, getPinnedNotes(ex));
       }
     });
 
@@ -1125,106 +1056,12 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     setOptionsModalExId(null);
   };
 
-  const handleOpenExerciseNote = (instanceId: string) => {
-    setCurrentExerciseNote("");
+  // Exercise note handlers are now in useExerciseNotes hook
+  // Wrapper to handle replacingExerciseId state for exercise replacement
+  const handleOpenExerciseNoteWrapper = (instanceId: string) => {
     setReplacingExerciseId(instanceId);
-    setExerciseNoteModalOpen(true);
     setOptionsModalExId(null);
-  };
-
-  const handleSaveExerciseNote = () => {
-    if (replacingExerciseId && currentExerciseNote.trim()) {
-      handleWorkoutUpdate({
-        ...currentWorkout,
-        exercises: updateExercisesDeep(currentWorkout.exercises, replacingExerciseId, (ex) => {
-          if (ex.type === 'group') return ex;
-          return {
-            ...ex,
-            notes: [
-              { id: `note-${Date.now()}`, text: currentExerciseNote, date: new Date().toISOString().split('T')[0], pinned: false },
-              ...(ex.notes || [])
-            ]
-          };
-        })
-      });
-      // Auto-expand notes for this exercise
-      setExpandedExerciseNotes(prev => ({ ...prev, [replacingExerciseId]: true }));
-    }
-    setExerciseNoteModalOpen(false);
-    setReplacingExerciseId(null);
-    setCurrentExerciseNote("");
-  };
-
-  const handlePinExerciseNote = (exId: string, noteId: string) => {
-    const exercise = findExerciseDeep(currentWorkout.exercises, exId);
-    if (!exercise) return;
-
-    // Update the workout
-    handleWorkoutUpdate({
-      ...currentWorkout,
-      exercises: updateExercisesDeep(currentWorkout.exercises, exId, (ex) => {
-        if (ex.type === 'group') return ex;
-        const updatedNotes = (ex.notes || []).map((n: Note) =>
-          n.id === noteId ? { ...n, pinned: !n.pinned } : n
-        );
-
-        // If pinning, also save to library
-        const pinnedNote = updatedNotes.find((n: Note) => n.id === noteId);
-        if (pinnedNote && pinnedNote.pinned && ex.exerciseId) {
-          // Get current pinned notes from library
-          const libraryExercise = exercisesLibrary.find(libEx => libEx.id === ex.exerciseId);
-          const currentPinnedNotes = libraryExercise?.pinnedNotes || [];
-
-          // Add this note to library's pinned notes
-          updateExerciseInLibrary(ex.exerciseId, {
-            pinnedNotes: [...currentPinnedNotes, pinnedNote]
-          });
-        } else if (pinnedNote && !pinnedNote.pinned && ex.exerciseId) {
-          // If unpinning, remove from library
-          const libraryExercise = exercisesLibrary.find(libEx => libEx.id === ex.exerciseId);
-          const currentPinnedNotes = libraryExercise?.pinnedNotes || [];
-
-          updateExerciseInLibrary(ex.exerciseId, {
-            pinnedNotes: currentPinnedNotes.filter((n: Note) => n.id !== noteId)
-          });
-        }
-
-        return {
-          ...ex,
-          notes: updatedNotes
-        };
-      })
-    });
-  };
-
-  const handleRemoveExerciseNote = (exId: string, noteId: string) => {
-    handleWorkoutUpdate({
-      ...currentWorkout,
-      exercises: updateExercisesDeep(currentWorkout.exercises, exId, (ex) => {
-        if (ex.type === 'group') return ex;
-        return {
-          ...ex,
-          notes: (ex.notes || []).filter((n: Note) => n.id !== noteId)
-        };
-      })
-    });
-  };
-
-  const handleUpdateExerciseNote = (exId: string, updatedNote: Note) => {
-    handleWorkoutUpdate({
-      ...currentWorkout,
-      exercises: updateExercisesDeep(currentWorkout.exercises, exId, (ex) => {
-        if (ex.type === 'group') return ex;
-        return {
-          ...ex,
-          notes: (ex.notes || []).map((n: Note) => n.id === updatedNote.id ? updatedNote : n)
-        };
-      })
-    });
-  };
-
-  const toggleExerciseNotes = (exId: string) => {
-    setExpandedExerciseNotes(prev => ({ ...prev, [exId]: !prev[exId] }));
+    handleOpenExerciseNote(instanceId);
   };
 
   // --- Superset Handlers ---
@@ -1430,7 +1267,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                     <TouchableOpacity
                       onPress={() => {
                         if (!ex.notes || ex.notes.length === 0) {
-                          handleOpenExerciseNote(ex.instanceId);
+                          handleOpenExerciseNoteWrapper(ex.instanceId);
                         } else {
                           toggleExerciseNotes(ex.instanceId);
                         }
@@ -1479,7 +1316,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                   <SavedNoteItem
                     key={note.id}
                     note={note}
-                    onPin={(noteId) => handlePinExerciseNote(ex.instanceId, noteId)}
+                    onPin={(noteId) => handlePinExerciseNote(ex.instanceId, noteId, exercisesLibrary, updateExerciseInLibrary)}
                     onRemove={(noteId) => handleRemoveExerciseNote(ex.instanceId, noteId)}
                     onUpdate={(updatedNote) => handleUpdateExerciseNote(ex.instanceId, updatedNote)}
                   />
@@ -1488,7 +1325,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                 <View style={styles.expandedNotesActions}>
                   <View style={styles.expandedNotesLeftActions}>
                     <TouchableOpacity
-                      onPress={() => handleOpenExerciseNote(ex.instanceId)}
+                      onPress={() => handleOpenExerciseNoteWrapper(ex.instanceId)}
                       style={styles.exerciseAddNoteButton}
                     >
                       <Text style={styles.exerciseAddNoteButtonText}>Add note</Text>
@@ -2636,87 +2473,25 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
         categories={CATEGORIES as ExerciseCategory[]}
       />
 
-      <Modal visible={isNoteModalOpen} transparent animationType="fade" onRequestClose={() => setIsNoteModalOpen(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Add Note</Text>
-            <TextInput
-              style={styles.noteInput}
-              placeholder="Write your note here..."
-              placeholderTextColor={COLORS.slate[400]}
-              multiline
-              numberOfLines={3}
-              value={newNote}
-              onChangeText={setNewNote}
-              autoFocus
-            />
-            <View style={styles.dateInputContainer}>
-              {/* Native Date Picker would be better, but for parity with web code using text input type='date' logic or similar */}
-              <TextInput
-                style={styles.dateInput}
-                value={newNoteDate}
-                onChangeText={setNewNoteDate}
-                placeholder="YYYY-MM-DD"
-              />
-              <CalendarDays size={18} color={COLORS.slate[400]} style={styles.dateIcon} />
-            </View>
-            <View style={styles.modalActions}>
-              <TouchableOpacity onPress={() => setIsNoteModalOpen(false)} style={styles.modalCancel}>
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleAddNote}
-                disabled={!newNote.trim()}
-                style={[styles.modalAdd, !newNote.trim() && styles.modalAddDisabled]}
-              >
-                <Text style={styles.modalAddText}>Add Note</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      <Modal visible={exerciseNoteModalOpen} transparent animationType="fade" onRequestClose={() => setExerciseNoteModalOpen(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Exercise Note</Text>
-            <TextInput
-              style={styles.noteInput}
-              placeholder="Add a note for this exercise..."
-              placeholderTextColor={COLORS.slate[400]}
-              multiline
-              numberOfLines={3}
-              value={currentExerciseNote}
-              onChangeText={setCurrentExerciseNote}
-              autoFocus
-            />
-            <View style={styles.modalActions}>
-              <TouchableOpacity onPress={() => setExerciseNoteModalOpen(false)} style={styles.modalCancel}>
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleSaveExerciseNote}
-                style={styles.modalAdd}
-              >
-                <Text style={styles.modalAddText}>Save Note</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      <FinishWorkoutModal
-        visible={finishModalOpen}
-        onClose={() => setFinishModalOpen(false)}
+      <WorkoutModals
+        isNoteModalOpen={isNoteModalOpen}
+        setIsNoteModalOpen={setIsNoteModalOpen}
+        newNote={newNote}
+        setNewNote={setNewNote}
+        newNoteDate={newNoteDate}
+        setNewNoteDate={setNewNoteDate}
+        onAddNote={handleAddNote}
+        exerciseNoteModalOpen={exerciseNoteModalOpen}
+        setExerciseNoteModalOpen={setExerciseNoteModalOpen}
+        currentExerciseNote={currentExerciseNote}
+        setCurrentExerciseNote={setCurrentExerciseNote}
+        onSaveExerciseNote={handleSaveExerciseNote}
+        finishModalOpen={finishModalOpen}
+        setFinishModalOpen={setFinishModalOpen}
+        cancelModalOpen={cancelModalOpen}
+        setCancelModalOpen={setCancelModalOpen}
         onFinish={handleFinish}
-        styles={styles}
-      />
-
-      <CancelWorkoutModal
-        visible={cancelModalOpen}
-        onClose={() => setCancelModalOpen(false)}
-        onConfirm={confirmCancel}
-        styles={styles}
+        onConfirmCancel={confirmCancel}
       />
 
       <RestTimerInputModal
@@ -2758,7 +2533,6 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
         setActiveRestTimer={setActiveRestTimer}
         currentWorkout={currentWorkout}
         handleWorkoutUpdate={handleWorkoutUpdate}
-        styles={styles}
       />
 
       {/* Superset Selection Mode Overlay */}
