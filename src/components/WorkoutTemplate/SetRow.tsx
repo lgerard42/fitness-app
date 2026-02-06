@@ -337,112 +337,113 @@ const SetRow: React.FC<SetRowProps> = ({
                   }
                 })()
               ) : (
-                <TouchableOpacity
-                  ref={indexContainerRef}
-                  onPress={() => {
-                    if (!readOnly && !isRestTimerSelectionMode && onPressSetNumber && indexContainerRef.current) {
-                      indexContainerRef.current.measure((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
-                        onPressSetNumber(pageX, pageY, width, height);
-                      });
-                    }
-                  }}
-                  disabled={readOnly || isRestTimerSelectionMode}
-                  pointerEvents={isRestTimerSelectionMode ? 'none' : 'auto'}
-                  style={[
-                    styles.indexBadge,
-                    set.completed && styles.indexBadge__completed
-                  ]}
-                >
-                  {(set.isWarmup || set.isFailure) && (
-                    <View style={[
-                      styles.indexBadge__border,
-                      set.isWarmup && styles.indexBadge__border__warmup,
-                      set.isFailure && styles.indexBadge__border__failure
-                    ]} />
-                  )}
-                  {warmupIndex ? (
-                    warmupIndex.subIndex !== null ? (
-                      warmupIndex.subIndex === 1 ? (
-                        // First set in dropset: show only primary index
+                <View pointerEvents={isRestTimerSelectionMode ? 'none' : 'auto'}>
+                  <TouchableOpacity
+                    ref={indexContainerRef}
+                    onPress={() => {
+                      if (!readOnly && !isRestTimerSelectionMode && onPressSetNumber && indexContainerRef.current) {
+                        indexContainerRef.current.measure((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
+                          onPressSetNumber(pageX, pageY, width, height);
+                        });
+                      }
+                    }}
+                    disabled={readOnly || isRestTimerSelectionMode}
+                    style={[
+                      styles.indexBadge,
+                      set.completed && styles.indexBadge__completed
+                    ]}
+                  >
+                    {(set.isWarmup || set.isFailure) && (
+                      <View style={[
+                        styles.indexBadge__border,
+                        set.isWarmup && styles.indexBadge__border__warmup,
+                        set.isFailure && styles.indexBadge__border__failure
+                      ]} />
+                    )}
+                    {warmupIndex ? (
+                      warmupIndex.subIndex !== null ? (
+                        warmupIndex.subIndex === 1 ? (
+                          // First set in dropset: show only primary index
+                          <Text style={[
+                            styles.indexText,
+                            set.isWarmup && { color: COLORS.orange[500] },
+                            set.isFailure && { color: COLORS.red[500] }
+                          ]}>{warmupIndex.group}</Text>
+                        ) : (
+                          // Subsequent sets: show only subIndex with "."
+                          <Text style={[
+                            styles.indexText__groupSub,
+                            set.isWarmup && { color: COLORS.orange[350] },
+                            set.isFailure && { color: COLORS.red[350] },
+                            !set.isWarmup && !set.isFailure && (
+                              groupColorScheme ? { color: groupColorScheme[350] } : { color: COLORS.slate[350] }
+                            )
+                          ]}>.{warmupIndex.subIndex}</Text>
+                        )
+                      ) : (
                         <Text style={[
                           styles.indexText,
-                          set.isWarmup && { color: COLORS.orange[500] },
-                          set.isFailure && { color: COLORS.red[500] }
+                          ...(set.isWarmup ? [{ color: COLORS.orange[550] }] : []),
+                          ...(set.isFailure ? [{ color: COLORS.red[550] }] : [])
                         ]}>{warmupIndex.group}</Text>
-                      ) : (
-                        // Subsequent sets: show only subIndex with "."
-                        <Text style={[
-                          styles.indexText__groupSub,
-                          set.isWarmup && { color: COLORS.orange[350] },
-                          set.isFailure && { color: COLORS.red[350] },
-                          !set.isWarmup && !set.isFailure && (
-                            groupColorScheme ? { color: groupColorScheme[350] } : { color: COLORS.slate[350] }
-                          )
-                        ]}>.{warmupIndex.subIndex}</Text>
                       )
-                    ) : (
-                      <Text style={[
-                        styles.indexText,
-                        ...(set.isWarmup ? [{ color: COLORS.orange[550] }] : []),
-                        ...(set.isFailure ? [{ color: COLORS.red[550] }] : [])
-                      ]}>{warmupIndex.group}</Text>
-                    )
-                  ) : workingIndex ? (
-                    workingIndex.subIndex !== null ? (
-                      workingIndex.subIndex === 1 ? (
-                        // First set in dropset: show only primary index
+                    ) : workingIndex ? (
+                      workingIndex.subIndex !== null ? (
+                        workingIndex.subIndex === 1 ? (
+                          // First set in dropset: show only primary index
+                          <Text style={[
+                            styles.indexText,
+                            set.isWarmup && { color: COLORS.orange[550] },
+                            set.isFailure && { color: COLORS.red[550] }
+                          ]}>{workingIndex.group}</Text>
+                        ) : (
+                          // Subsequent sets: show only subIndex with "."
+                          <Text style={[
+                            styles.indexText__groupSub,
+                            set.isWarmup && { color: COLORS.orange[350] },
+                            set.isFailure && { color: COLORS.red[350] },
+                            !set.isWarmup && !set.isFailure && (
+                              { color: COLORS.slate[350] }
+                            )
+                          ]}>.{workingIndex.subIndex}</Text>
+                        )
+                      ) : (
                         <Text style={[
                           styles.indexText,
-                          set.isWarmup && { color: COLORS.orange[550] },
-                          set.isFailure && { color: COLORS.red[550] }
+                          ...(set.isWarmup ? [{ color: COLORS.orange[550] }] : []),
+                          ...(set.isFailure ? [{ color: COLORS.red[550] }] : [])
                         ]}>{workingIndex.group}</Text>
-                      ) : (
-                        // Subsequent sets: show only subIndex with "."
-                        <Text style={[
-                          styles.indexText__groupSub,
-                          set.isWarmup && { color: COLORS.orange[350] },
-                          set.isFailure && { color: COLORS.red[350] },
-                          !set.isWarmup && !set.isFailure && (
-                            { color: COLORS.slate[350] }
-                          )
-                        ]}>.{workingIndex.subIndex}</Text>
                       )
                     ) : (
-                      <Text style={[
-                        styles.indexText,
-                        ...(set.isWarmup ? [{ color: COLORS.orange[550] }] : []),
-                        ...(set.isFailure ? [{ color: COLORS.red[550] }] : [])
-                      ]}>{workingIndex.group}</Text>
-                    )
-                  ) : (
-                    dropSetId ? (
-                      indexInGroup === 1 ? (
-                        // First set in dropset: show only primary index
+                      dropSetId ? (
+                        indexInGroup === 1 ? (
+                          // First set in dropset: show only primary index
+                          <Text style={[
+                            styles.indexText,
+                            set.isWarmup && { color: COLORS.orange[550] },
+                            set.isFailure && { color: COLORS.red[550] }
+                          ]}>{groupSetNumber}</Text>
+                        ) : (
+                          // Subsequent sets: show only subIndex with "."
+                          <Text style={[
+                            styles.indexText__groupSub,
+                            set.isWarmup && { color: COLORS.orange[350] },
+                            set.isFailure && { color: COLORS.red[350] },
+                            !set.isWarmup && !set.isFailure && (
+                              { color: COLORS.slate[350] }
+                            )
+                          ]}>.{indexInGroup}</Text>
+                        )
+                      ) : (
                         <Text style={[
                           styles.indexText,
-                          set.isWarmup && { color: COLORS.orange[550] },
-                          set.isFailure && { color: COLORS.red[550] }
-                        ]}>{groupSetNumber}</Text>
-                      ) : (
-                        // Subsequent sets: show only subIndex with "."
-                        <Text style={[
-                          styles.indexText__groupSub,
-                          set.isWarmup && { color: COLORS.orange[350] },
-                          set.isFailure && { color: COLORS.red[350] },
-                          !set.isWarmup && !set.isFailure && (
-                            { color: COLORS.slate[350] }
-                          )
-                        ]}>.{indexInGroup}</Text>
+                          ...(set.isWarmup ? [{ color: COLORS.orange[550] }] : []),
+                          ...(set.isFailure ? [{ color: COLORS.red[550] }] : [])
+                        ]}>{overallSetNumber}</Text>
                       )
-                    ) : (
-                      <Text style={[
-                        styles.indexText,
-                        ...(set.isWarmup ? [{ color: COLORS.orange[550] }] : []),
-                        ...(set.isFailure ? [{ color: COLORS.red[550] }] : [])
-                      ]}>{overallSetNumber}</Text>
-                    )
-                  )}
-                </TouchableOpacity>
+                    )}
+                  </TouchableOpacity>
+                </View>
               )}
 
               <View style={styles.previousContainer}>
@@ -522,7 +523,6 @@ const SetRow: React.FC<SetRowProps> = ({
                         onUpdate({ ...set, [isLift ? 'weight' : 'duration']: text });
                       }
                     }}
-                    editable={!readOnly}
                   />
                 </View>
               </View>
@@ -600,22 +600,22 @@ const SetRow: React.FC<SetRowProps> = ({
                         onUpdate({ ...set, [isLift || !isCardio ? 'reps' : 'distance']: text });
                       }
                     }}
-                    editable={!readOnly}
                   />
                 </View>
               </View>
 
-              <TouchableOpacity
-                onPress={readOnly || isRestTimerSelectionMode ? undefined : onToggle}
-                disabled={readOnly || isMissingValue || isRestTimerSelectionMode}
-                pointerEvents={isRestTimerSelectionMode ? 'none' : 'auto'}
-                style={[
-                  styles.checkButton,
-                  (readOnly || isMissingValue) ? styles.checkButtonDisabled : (set.completed ? styles.checkButtonCompleted : styles.checkButtonIncomplete)
-                ]}
-              >
-                <Check size={16} color={(readOnly || isMissingValue) ? COLORS.slate[300] : (set.completed ? COLORS.white : COLORS.slate[400])} strokeWidth={3} />
-              </TouchableOpacity>
+              <View pointerEvents={isRestTimerSelectionMode ? 'none' : 'auto'}>
+                <TouchableOpacity
+                  onPress={readOnly || isRestTimerSelectionMode ? undefined : onToggle}
+                  disabled={readOnly || isMissingValue || isRestTimerSelectionMode}
+                  style={[
+                    styles.checkButton,
+                    (readOnly || isMissingValue) ? styles.checkButtonDisabled : (set.completed ? styles.checkButtonCompleted : styles.checkButtonIncomplete)
+                  ]}
+                >
+                  <Check size={16} color={(readOnly || isMissingValue) ? COLORS.slate[300] : (set.completed ? COLORS.white : COLORS.slate[400])} strokeWidth={3} />
+                </TouchableOpacity>
+              </View>
             </View>
           </Pressable>
         </View>
