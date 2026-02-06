@@ -9,7 +9,7 @@ import { formatDuration } from '@/constants/data';
 import SetRow from './SetRow';
 import SavedNoteItem from '@/components/SavedNoteItem';
 import ExercisePicker from './modals/ExercisePicker/ExercisePickerIndex';
-import NewExercise from './modals/NewExercise';
+import EditExercise from './modals/EditExercise';
 import { CATEGORIES } from '@/constants/data';
 import {
   updateExercisesDeep,
@@ -17,6 +17,7 @@ import {
   findExerciseDeep,
   formatRestTime,
   parseRestTimeInput,
+  parseDurationInput,
   findExerciseSuperset,
   isExerciseInSuperset,
   convertWorkoutUnits,
@@ -244,6 +245,15 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     }
   }, [collapsedGroupId, dragItems, alignAfterCollapse, pendingDragItemId, isDragging]);
 
+  // Ensure layout is measured on initial render to fix spacing issue
+  useEffect(() => {
+    if (listContainerRef.current && !isDragging) {
+      // Trigger layout measurement on mount
+      listContainerRef.current.measureInWindow?.((_, pageY) => {
+        setListLayoutY(pageY);
+      });
+    }
+  }, [isDragging]);
 
   // Custom Keyboard State
   const [customKeyboardVisible, setCustomKeyboardVisible] = useState(false);
@@ -427,7 +437,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     const newExerciseId = addExerciseToLibrary(newExData);
     // Set the newly created exercise ID to auto-select it in ExercisePicker
     setNewlyCreatedExerciseId(newExerciseId);
-    // Close the NewExercise modal
+    // Close the EditExercise modal
     setIsCreateModalOpen(false);
     // Reopen the ExercisePicker so user can see the newly created exercise selected
     // Use requestAnimationFrame for fastest possible transition
@@ -620,9 +630,21 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
       setRestTimerInput('');
     }
     setCustomKeyboardTarget({ exerciseId, setId, field });
-    setCustomKeyboardValue(value || '');
+
+    // For duration, if value is in mm:ss format, convert to raw seconds for editing
+    let rawValue = value || '';
+    if (field === 'duration' && value && value.includes(':')) {
+      const parts = value.split(':');
+      if (parts.length === 2) {
+        const mins = parseInt(parts[0], 10) || 0;
+        const secs = parseInt(parts[1], 10) || 0;
+        rawValue = String(mins * 60 + secs);
+      }
+    }
+
+    setCustomKeyboardValue(rawValue);
     // If there's an existing value, text will be selected due to selectTextOnFocus={true}
-    const hasValue = !!(value && value.trim() !== '');
+    const hasValue = !!(rawValue && rawValue.trim() !== '');
     customKeyboardTextSelectedRef.current = hasValue;
     setCustomKeyboardShouldSelectAll(false);
     setCustomKeyboardVisible(true);
@@ -682,6 +704,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     if (exercise) {
       const set = exercise.sets.find(s => s.id === setId);
       if (set) {
+        // Store raw value directly - don't parse duration until blur (handled in SetRow)
         handleUpdateSet(exerciseId, { ...set, [field]: newValue });
       }
     }
@@ -703,6 +726,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     if (exercise) {
       const set = exercise.sets.find(s => s.id === setId);
       if (set) {
+        // Store raw value directly - don't parse duration until blur (handled in SetRow)
         handleUpdateSet(exerciseId, { ...set, [field]: value });
       }
     }
@@ -1082,6 +1106,32 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
 
   const hasExercises = currentWorkout.exercises.length > 0;
 
+  // Helper function to determine which columns should be visible for an exercise
+  const getVisibleColumns = (exercise: Exercise, libraryExercise?: ExerciseLibraryItem): {
+    showDuration: boolean;
+    showDistance: boolean;
+    showWeight: boolean;
+    showReps: boolean;
+  } => {
+    // Use exercise instance fields first, fallback to library exercise if needed
+    const trackDuration = exercise.trackDuration ?? (libraryExercise?.trackDuration as boolean | undefined) ?? false;
+    const trackReps = exercise.trackReps ?? (libraryExercise?.trackReps as boolean | undefined) ?? false;
+    const trackDistance = exercise.trackDistance ?? (libraryExercise?.trackDistance as boolean | undefined) ?? false;
+    const weightEquipTags = exercise.weightEquipTags ?? (libraryExercise?.weightEquipTags as string[] | undefined) ?? [];
+    const hasWeightEquip = Array.isArray(weightEquipTags) && weightEquipTags.length > 0;
+
+    return {
+      // Show duration if category is Cardio OR trackDuration is true
+      showDuration: exercise.category === 'Cardio' || trackDuration === true,
+      // Show distance for Cardio OR for Training if trackDistance is true
+      showDistance: exercise.category === 'Cardio' || (exercise.category === 'Training' && trackDistance === true),
+      // Show weight for Lifts always, OR for Cardio/Training if weightEquipTags is used
+      showWeight: exercise.category === 'Lifts' || (hasWeightEquip && (exercise.category === 'Cardio' || exercise.category === 'Training')),
+      // Show reps for Lifts always, OR for Training if trackReps is true
+      showReps: exercise.category === 'Lifts' || (exercise.category === 'Training' && trackReps === true)
+    };
+  };
+
   const renderExerciseCard = (ex: Exercise, isGroupChild: boolean = false, isLastChild: boolean = false, parentGroupType: GroupType | null = null, parentGroupId: string | null = null, isFirstChild: boolean = false) => {
     const historyEntries = exerciseStats[ex.exerciseId]?.history || [];
     const groupColorScheme = isGroupChild && parentGroupType
@@ -1355,23 +1405,45 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
           </View>
         </View>
         <View style={styles.exerciseContent}>
-          <View style={styles.columnHeaders}>
-            <View style={styles.colIndex}><Text style={styles.colHeaderText}>Set</Text></View>
-            <View style={styles.colPrevious}><Text style={styles.colHeaderText}>Previous</Text></View>
-            <TouchableOpacity
-              style={styles.colWeight}
-              onPress={(e) => !readOnly && ex.category === "Lifts" && handleColumnHeaderPress(ex.instanceId, e)}
-              disabled={readOnly || ex.category !== "Lifts"}
-            >
-              <Text style={styles.colHeaderText}>
-                {ex.category === "Lifts" ? `Weight (${ex.weightUnit || 'lbs'})` : "Time"}
-              </Text>
-            </TouchableOpacity>
-            <View style={styles.colReps}>
-              <Text style={styles.colHeaderText}>{ex.category === "Lifts" ? "Reps" : "Dist/Reps"}</Text>
-            </View>
-            <View style={styles.colCheck}><Text style={styles.colHeaderText}>-</Text></View>
-          </View>
+          {(() => {
+            // Get library exercise for configuration lookup if needed
+            const libraryExercise = exercisesLibrary.find(libEx => libEx.id === ex.exerciseId);
+            const visibleColumns = getVisibleColumns(ex, libraryExercise);
+
+            return (
+              <View style={styles.columnHeaders}>
+                <View style={styles.colIndex}><Text style={styles.colHeaderText}>Set</Text></View>
+                <View style={styles.colPrevious}><Text style={styles.colHeaderText}>Previous</Text></View>
+                {visibleColumns.showDuration && (
+                  <View style={styles.colDuration}>
+                    <Text style={styles.colHeaderText}>Duration</Text>
+                  </View>
+                )}
+                {visibleColumns.showDistance && (
+                  <View style={styles.colDistance}>
+                    <Text style={styles.colHeaderText}>Distance</Text>
+                  </View>
+                )}
+                {visibleColumns.showWeight && (
+                  <TouchableOpacity
+                    style={styles.colWeight}
+                    onPress={(e) => !readOnly && handleColumnHeaderPress(ex.instanceId, e)}
+                    disabled={readOnly}
+                  >
+                    <Text style={styles.colHeaderText}>
+                      {`${ex.weightUnit || 'lbs'}`}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                {visibleColumns.showReps && (
+                  <View style={styles.colReps}>
+                    <Text style={styles.colHeaderText}>Reps</Text>
+                  </View>
+                )}
+                <View style={styles.colCheck}><Text style={styles.colHeaderText}>-</Text></View>
+              </View>
+            );
+          })()}
           <View style={styles.setsContainer}>
             {ex.sets.map((set, idx) => {
               // Calculate separate indices for warmup vs working sets
@@ -1512,6 +1584,10 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                 });
               };
 
+              // Get visible columns for this exercise
+              const libraryExercise = exercisesLibrary.find(libEx => libEx.id === ex.exerciseId);
+              const visibleColumns = getVisibleColumns(ex, libraryExercise);
+
               const setRowProps = {
                 index: idx,
                 set,
@@ -1542,13 +1618,17 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                 isGroupChild,
                 parentGroupType,
                 readOnly,
-                shouldFocus: focusNextSet?.setId === set.id ? (focusNextSet.field === 'weight' || focusNextSet.field === 'reps' ? focusNextSet.field : null) : null,
+                shouldFocus: focusNextSet?.setId === set.id ? (focusNextSet.field === 'weight' || focusNextSet.field === 'reps' || focusNextSet.field === 'duration' || focusNextSet.field === 'distance' ? focusNextSet.field : null) : null,
                 onFocusHandled: () => setFocusNextSet(null),
-                onCustomKeyboardOpen: !readOnly && !restTimerSelectionMode && (ex.category === 'Lifts' || ex.category === 'Cardio') ? ({ field, value }: { field: 'weight' | 'reps' | 'duration' | 'distance'; value: string }) => handleCustomKeyboardOpen(ex.instanceId, set.id, field, value) : null,
+                onCustomKeyboardOpen: !readOnly && !restTimerSelectionMode ? ({ field, value }: { field: 'weight' | 'reps' | 'duration' | 'distance'; value: string }) => handleCustomKeyboardOpen(ex.instanceId, set.id, field, value) : null,
                 customKeyboardActive: customKeyboardTarget?.exerciseId === ex.instanceId && customKeyboardTarget?.setId === set.id,
                 customKeyboardField: customKeyboardTarget?.exerciseId === ex.instanceId && customKeyboardTarget?.setId === set.id ? (customKeyboardTarget.field === 'weight' || customKeyboardTarget.field === 'reps' || customKeyboardTarget.field === 'duration' || customKeyboardTarget.field === 'distance' ? customKeyboardTarget.field : null) : null,
                 customKeyboardShouldSelectAll: customKeyboardTarget?.exerciseId === ex.instanceId && customKeyboardTarget?.setId === set.id ? customKeyboardShouldSelectAll : false,
                 onLongPressRow: () => startSetDrag(ex),
+                showDuration: visibleColumns.showDuration,
+                showDistance: visibleColumns.showDistance,
+                showWeight: visibleColumns.showWeight,
+                showReps: visibleColumns.showReps,
               };
 
               const restTimerBarProps = {
@@ -2072,7 +2152,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
           renderItem={renderDragItem}
           contentContainerStyle={[
             styles.dragListContent,
-            preCollapsePaddingTop !== null && { paddingTop: preCollapsePaddingTop },
+            { paddingTop: preCollapsePaddingTop ?? 0 },
           ]}
           ListHeaderComponent={notesHeaderComponent}
           ListFooterComponent={
@@ -2361,7 +2441,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
         }}
         onAdd={handleAddExercisesFromPicker}
         onCreate={() => {
-          // Close ExercisePicker before opening NewExercise (React Native doesn't support nested modals)
+          // Close ExercisePicker before opening EditExercise (React Native doesn't support nested modals)
           // Use requestAnimationFrame for fastest possible transition
           setShowPicker(false);
           requestAnimationFrame(() => {
@@ -2374,7 +2454,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
         newlyCreatedId={newlyCreatedExerciseId}
       />
 
-      <NewExercise
+      <EditExercise
         isOpen={isCreateModalOpen}
         onClose={() => {
           setIsCreateModalOpen(false);
@@ -2929,6 +3009,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   colPrevious: {
+    flex: 1,
+    flexBasis: 0, // Force equal width distribution
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 0,
+  },
+  colDuration: {
+    width: 76, // Fixed width for duration column header (matches input width)
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  colDistance: {
     flex: 1,
     flexBasis: 0, // Force equal width distribution
     alignItems: 'center',

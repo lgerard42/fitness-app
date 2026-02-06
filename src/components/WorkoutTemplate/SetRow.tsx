@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, Pressable, StyleSheet } from '
 import { Check, Plus } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { useSetRowLogic } from './hooks/useSetRowLogic';
-import { getGroupColorScheme } from '@/utils/workoutHelpers';
+import { getGroupColorScheme, parseRestTimeInput, formatRestTime, parseDurationInput, formatDurationTime } from '@/utils/workoutHelpers';
 import SwipeToDelete from '@/components/common/SwipeToDelete';
 import type { Set, ExerciseCategory, WeightUnit } from '@/types/workout';
 
@@ -49,6 +49,10 @@ interface SetRowProps {
   customKeyboardField?: 'weight' | 'reps' | 'duration' | 'distance' | null;
   customKeyboardShouldSelectAll?: boolean;
   onLongPressRow?: () => void;
+  showDuration?: boolean;
+  showDistance?: boolean;
+  showWeight?: boolean;
+  showReps?: boolean;
 }
 
 const SetRow: React.FC<SetRowProps> = ({
@@ -87,10 +91,20 @@ const SetRow: React.FC<SetRowProps> = ({
   customKeyboardActive = false,
   customKeyboardField = null,
   customKeyboardShouldSelectAll = false,
-  onLongPressRow
+  onLongPressRow,
+  showDuration = false,
+  showDistance = false,
+  showWeight = false,
+  showReps = false
 }) => {
   const isLift = category === 'Lifts';
   const isCardio = category === 'Cardio';
+
+  // Use visibility props if provided, otherwise fallback to category-based logic for backward compatibility
+  const shouldShowDuration = showDuration !== undefined ? showDuration : isCardio;
+  const shouldShowDistance = showDistance !== undefined ? showDistance : isCardio;
+  const shouldShowWeight = showWeight !== undefined ? showWeight : isLift;
+  const shouldShowReps = showReps !== undefined ? showReps : (isLift || category === 'Training');
 
   // Determine group color scheme
   const groupColorScheme = isGroupChild && parentGroupType
@@ -98,23 +112,59 @@ const SetRow: React.FC<SetRowProps> = ({
     : null;
 
   // Check if required values are missing (individually)
-  const isMissingWeight = isLift
-    ? (!set.weight || set.weight.trim() === '')
-    : (!set.duration || set.duration.trim() === '');
+  const isMissingWeight = shouldShowWeight && (!set.weight || set.weight.trim() === '');
+  const isMissingReps = shouldShowReps && (!set.reps || set.reps.trim() === '');
+  const isMissingDuration = shouldShowDuration && (!set.duration || set.duration.trim() === '');
+  const isMissingDistance = shouldShowDistance && (!set.distance || set.distance.trim() === '');
 
-  const isMissingReps = isLift || !isCardio
-    ? (!set.reps || set.reps.trim() === '')
-    : (!set.distance || set.distance.trim() === '');
-
-  const isMissingValue = isMissingWeight || isMissingReps;
+  const isMissingValue = isMissingWeight || isMissingReps || isMissingDuration || isMissingDistance;
 
   // Track selection for cursor positioning after custom keyboard updates
+  const [durationInputSelection, setDurationInputSelection] = useState<{ start: number; end: number } | null>(null);
+  const [distanceInputSelection, setDistanceInputSelection] = useState<{ start: number; end: number } | null>(null);
+  const [weightInputSelection, setWeightInputSelection] = useState<{ start: number; end: number } | null>(null);
+  const [repsInputSelection, setRepsInputSelection] = useState<{ start: number; end: number } | null>(null);
+
+  // Duration: while focused show raw number, when blurred show formatted time
+  const [durationIsFocused, setDurationIsFocused] = useState<boolean>(false);
+
+  const durationInputInitialFocusRef = useRef<boolean>(false);
+  const distanceInputInitialFocusRef = useRef<boolean>(false);
+  const weightInputInitialFocusRef = useRef<boolean>(false);
+  const repsInputInitialFocusRef = useRef<boolean>(false);
+
+  const durationInputInitialValueRef = useRef<string | null>(null);
+  const distanceInputInitialValueRef = useRef<string | null>(null);
+  const weightInputInitialValueRef = useRef<string | null>(null);
+  const repsInputInitialValueRef = useRef<string | null>(null);
+
+  // Legacy refs for backward compatibility - keep for useSetRowLogic hook
   const [firstInputSelection, setFirstInputSelection] = useState<{ start: number; end: number } | null>(null);
   const [secondInputSelection, setSecondInputSelection] = useState<{ start: number; end: number } | null>(null);
   const firstInputInitialFocusRef = useRef<boolean>(false);
   const secondInputInitialFocusRef = useRef<boolean>(false);
   const firstInputInitialValueRef = useRef<string | null>(null);
   const secondInputInitialValueRef = useRef<string | null>(null);
+
+  // When focused, show raw number directly (like weight/reps). When blurred, show formatted time.
+  const getDurationDisplayValue = (): string => {
+    if (durationIsFocused) {
+      // While editing, show the raw value directly — just like weight/reps
+      return set.duration || '';
+    }
+    // When not editing, format stored seconds as time
+    if (!set.duration || set.duration === '') return '';
+    if (set.duration.includes(':')) return set.duration; // legacy
+    const seconds = parseInt(set.duration, 10);
+    if (isNaN(seconds) || seconds <= 0) return '';
+    return formatDurationTime(seconds);
+  };
+
+  // Create refs for each input type
+  const durationInputRef = useRef<TextInput>(null);
+  const distanceInputRef = useRef<TextInput>(null);
+  const weightInputRef = useRef<TextInput>(null);
+  const repsInputRef = useRef<TextInput>(null);
 
   const {
     focusedInput,
@@ -133,67 +183,90 @@ const SetRow: React.FC<SetRowProps> = ({
     readOnly
   });
 
-  // Set cursor position or selection when value changes from custom keyboard
-  // Only update selection when explicitly needed (after +/- or after user input), not on initial focus
+  // Set cursor position or selection when value changes from custom keyboard for each input type
   useEffect(() => {
-    const expectedField = isLift ? 'weight' : (isCardio ? 'duration' : null);
-    if (customKeyboardActive && customKeyboardField === expectedField) {
-      const value = isLift ? (set.weight || "") : (set.duration || "");
+    if (customKeyboardActive && customKeyboardField === 'duration' && shouldShowDuration) {
+      const value = set.duration || "";
       const length = value.length;
-      const initialValue = firstInputInitialValueRef.current;
+      const initialValue = durationInputInitialValueRef.current;
 
-      // If shouldSelectAll is true (from +/- operations), select entire value
       if (customKeyboardShouldSelectAll && length > 0) {
-        setFirstInputSelection({ start: 0, end: length });
-        firstInputInitialFocusRef.current = false;
-        firstInputInitialValueRef.current = value;
+        setDurationInputSelection({ start: 0, end: length });
+        durationInputInitialFocusRef.current = false;
+        durationInputInitialValueRef.current = value;
+      } else if (value !== initialValue) {
+        setDurationInputSelection({ start: length, end: length });
+        durationInputInitialFocusRef.current = true;
+        durationInputInitialValueRef.current = value;
       }
-      // If value has changed from initial value, user has typed - position cursor at end
-      else if (value !== initialValue) {
-        // Value changed, so position cursor at end
-        setFirstInputSelection({ start: length, end: length });
-        // Mark that user has interacted (so future updates position cursor at end)
-        firstInputInitialFocusRef.current = true;
-        // Update the initial value ref to current value
-        firstInputInitialValueRef.current = value;
-      }
-      // If value hasn't changed and ref is false, this is initial focus - don't override selection
-    } else {
-      // Reset when keyboard becomes inactive
-      firstInputInitialFocusRef.current = false;
-      firstInputInitialValueRef.current = null;
+    } else if (!customKeyboardActive || customKeyboardField !== 'duration') {
+      durationInputInitialFocusRef.current = false;
+      durationInputInitialValueRef.current = null;
     }
-  }, [set.weight, set.duration, customKeyboardActive, customKeyboardField, customKeyboardShouldSelectAll, isLift, isCardio]);
+  }, [set.duration, customKeyboardActive, customKeyboardField, customKeyboardShouldSelectAll, shouldShowDuration]);
 
   useEffect(() => {
-    const expectedField = isLift ? 'reps' : (isCardio ? 'distance' : null);
-    if (customKeyboardActive && customKeyboardField === expectedField) {
-      const value = isLift ? (set.reps || "") : isCardio ? (set.distance || "") : (set.reps || "");
+    if (customKeyboardActive && customKeyboardField === 'distance' && shouldShowDistance) {
+      const value = set.distance || "";
       const length = value.length;
-      const initialValue = secondInputInitialValueRef.current;
+      const initialValue = distanceInputInitialValueRef.current;
 
-      // If shouldSelectAll is true (from +/- operations), select entire value
       if (customKeyboardShouldSelectAll && length > 0) {
-        setSecondInputSelection({ start: 0, end: length });
-        secondInputInitialFocusRef.current = false;
-        secondInputInitialValueRef.current = value;
+        setDistanceInputSelection({ start: 0, end: length });
+        distanceInputInitialFocusRef.current = false;
+        distanceInputInitialValueRef.current = value;
+      } else if (value !== initialValue) {
+        setDistanceInputSelection({ start: length, end: length });
+        distanceInputInitialFocusRef.current = true;
+        distanceInputInitialValueRef.current = value;
       }
-      // If value has changed from initial value, user has typed - position cursor at end
-      else if (value !== initialValue) {
-        // Value changed, so position cursor at end
-        setSecondInputSelection({ start: length, end: length });
-        // Mark that user has interacted (so future updates position cursor at end)
-        secondInputInitialFocusRef.current = true;
-        // Update the initial value ref to current value
-        secondInputInitialValueRef.current = value;
-      }
-      // If value hasn't changed and ref is false, this is initial focus - don't override selection
-    } else {
-      // Reset when keyboard becomes inactive
-      secondInputInitialFocusRef.current = false;
-      secondInputInitialValueRef.current = null;
+    } else if (!customKeyboardActive || customKeyboardField !== 'distance') {
+      distanceInputInitialFocusRef.current = false;
+      distanceInputInitialValueRef.current = null;
     }
-  }, [set.reps, set.distance, customKeyboardActive, customKeyboardField, customKeyboardShouldSelectAll, isLift, isCardio]);
+  }, [set.distance, customKeyboardActive, customKeyboardField, customKeyboardShouldSelectAll, shouldShowDistance]);
+
+  useEffect(() => {
+    if (customKeyboardActive && customKeyboardField === 'weight' && shouldShowWeight) {
+      const value = set.weight || "";
+      const length = value.length;
+      const initialValue = weightInputInitialValueRef.current;
+
+      if (customKeyboardShouldSelectAll && length > 0) {
+        setWeightInputSelection({ start: 0, end: length });
+        weightInputInitialFocusRef.current = false;
+        weightInputInitialValueRef.current = value;
+      } else if (value !== initialValue) {
+        setWeightInputSelection({ start: length, end: length });
+        weightInputInitialFocusRef.current = true;
+        weightInputInitialValueRef.current = value;
+      }
+    } else if (!customKeyboardActive || customKeyboardField !== 'weight') {
+      weightInputInitialFocusRef.current = false;
+      weightInputInitialValueRef.current = null;
+    }
+  }, [set.weight, customKeyboardActive, customKeyboardField, customKeyboardShouldSelectAll, shouldShowWeight]);
+
+  useEffect(() => {
+    if (customKeyboardActive && customKeyboardField === 'reps' && shouldShowReps) {
+      const value = set.reps || "";
+      const length = value.length;
+      const initialValue = repsInputInitialValueRef.current;
+
+      if (customKeyboardShouldSelectAll && length > 0) {
+        setRepsInputSelection({ start: 0, end: length });
+        repsInputInitialFocusRef.current = false;
+        repsInputInitialValueRef.current = value;
+      } else if (value !== initialValue) {
+        setRepsInputSelection({ start: length, end: length });
+        repsInputInitialFocusRef.current = true;
+        repsInputInitialValueRef.current = value;
+      }
+    } else if (!customKeyboardActive || customKeyboardField !== 'reps') {
+      repsInputInitialFocusRef.current = false;
+      repsInputInitialValueRef.current = null;
+    }
+  }, [set.reps, customKeyboardActive, customKeyboardField, customKeyboardShouldSelectAll, shouldShowReps]);
 
   const getInputStyle = (value: string | null | undefined) => {
     if (!set.completed) return null;
@@ -209,7 +282,30 @@ const SetRow: React.FC<SetRowProps> = ({
       previousSetIsFromOlderHistory && styles.previousText__italic
     ];
 
-    if (isLift) {
+    const parts: string[] = [];
+
+    // Build previous display based on visible columns
+    if (shouldShowDuration && previousSet.duration) {
+      parts.push(previousSet.duration);
+    }
+    if (shouldShowDistance && previousSet.distance) {
+      parts.push(previousSet.distance);
+    }
+    if (shouldShowWeight && previousSet.weight) {
+      const weightText = previousSet.weight + (weightUnit === 'lbs' ? 'lb' : (weightUnit || 'lb'));
+      parts.push(weightText);
+    }
+    if (shouldShowReps && previousSet.reps) {
+      parts.push(previousSet.reps);
+    }
+
+    if (parts.length === 0) {
+      return <Text style={textStyle}>-</Text>;
+    }
+
+    // Format based on what's shown
+    if (shouldShowWeight && shouldShowReps && parts.length >= 2) {
+      // Weight x Reps format
       return (
         <Text style={textStyle}>
           {previousSet.weight || '-'}
@@ -219,11 +315,13 @@ const SetRow: React.FC<SetRowProps> = ({
           x {previousSet.reps || '-'}
         </Text>
       );
-    }
-    if (isCardio) {
+    } else if (shouldShowDuration && shouldShowDistance && parts.length >= 2) {
+      // Duration / Distance format
       return <Text style={textStyle}>{`${previousSet.duration || '-'} / ${previousSet.distance || '-'}`}</Text>;
+    } else {
+      // Single value or custom combination
+      return <Text style={textStyle}>{parts.join(' / ')}</Text>;
     }
-    return <Text style={textStyle}>{`${previousSet.reps || '-'}`}</Text>;
   };
 
   return (
@@ -450,159 +548,297 @@ const SetRow: React.FC<SetRowProps> = ({
                 {renderPrevious()}
               </View>
 
-              <View style={styles.weightContainer} pointerEvents={isRestTimerSelectionMode ? 'none' : 'auto'}>
-                <View style={styles.weightInputWrapper}>
-                  <TextInput
-                    numberOfLines={1}
-                    ref={firstInputRef}
-                    style={[
-                      styles.weightInput,
-                      getInputStyle(isLift ? set.weight : set.duration),
-                      (focusedInput === 'first' || (customKeyboardActive && (customKeyboardField === 'weight' || customKeyboardField === 'duration'))) && styles.inputFocused,
-                      isMissingWeight && styles.inputCompletedEmpty
-                    ]}
-                    selectTextOnFocus={true}
-                    showSoftInputOnFocus={!onCustomKeyboardOpen}
-                    editable={!readOnly && !isRestTimerSelectionMode}
-                    pointerEvents={isRestTimerSelectionMode ? 'none' : 'auto'}
-                    onFocus={() => {
-                      if (!readOnly && !isRestTimerSelectionMode) {
-                        const val = isLift ? (set.weight || "") : (set.duration || "");
-                        if (onCustomKeyboardOpen) {
-                          if (isLift) {
-                            onCustomKeyboardOpen({ field: 'weight', value: val });
-                          } else if (isCardio) {
+              {shouldShowDuration && (
+                <View style={styles.durationContainer} pointerEvents={isRestTimerSelectionMode ? 'none' : 'auto'}>
+                  <View style={styles.durationInputWrapper}>
+                    <TextInput
+                      numberOfLines={1}
+                      ref={durationInputRef}
+                      style={[
+                        styles.durationInput,
+                        getInputStyle(set.duration),
+                        (customKeyboardActive && customKeyboardField === 'duration') && styles.inputFocused,
+                        isMissingDuration && styles.inputCompletedEmpty
+                      ]}
+                      selectTextOnFocus={true}
+                      showSoftInputOnFocus={!onCustomKeyboardOpen}
+                      editable={!readOnly && !isRestTimerSelectionMode}
+                      pointerEvents={isRestTimerSelectionMode ? 'none' : 'auto'}
+                      onFocus={() => {
+                        if (!readOnly && !isRestTimerSelectionMode) {
+                          setDurationIsFocused(true);
+                          const storedValue = set.duration || "";
+                          // If stored value is seconds (number), convert to raw format for editing
+                          // Otherwise, use as-is (already raw or legacy format)
+                          let rawValue = storedValue;
+                          if (storedValue && !storedValue.includes(':')) {
+                            const seconds = parseInt(storedValue, 10);
+                            if (!isNaN(seconds) && seconds > 0) {
+                              // Convert seconds to raw input format
+                              const hrs = Math.floor(seconds / 3600);
+                              const mins = Math.floor((seconds % 3600) / 60);
+                              const secs = seconds % 60;
+                              if (hrs > 0) {
+                                rawValue = String(hrs * 10000 + mins * 100 + secs);
+                              } else {
+                                rawValue = String(mins * 100 + secs);
+                              }
+                              // Update to raw format only if different
+                              if (rawValue !== storedValue) {
+                                onUpdate({ ...set, duration: rawValue });
+                              }
+                            }
+                          }
+                          const val = rawValue || "";
+                          if (onCustomKeyboardOpen) {
                             onCustomKeyboardOpen({ field: 'duration', value: val });
+                            durationInputInitialFocusRef.current = false;
+                            durationInputInitialValueRef.current = val;
+                            setDurationInputSelection(null);
+                          } else {
+                            handleFocus(durationInputRef as React.RefObject<TextInput>, val, 'first');
                           }
-                          // On initial focus, ref should be false - don't override selection yet
-                          // Text will be selected by selectTextOnFocus
-                          firstInputInitialFocusRef.current = false;
-                          // Store the initial value to detect when it changes
-                          firstInputInitialValueRef.current = val;
-                          // Clear any existing selection state to let selectTextOnFocus work
-                          setFirstInputSelection(null);
-                        } else {
-                          handleFocus(firstInputRef, val, 'first');
                         }
-                      }
-                    }}
-                    onBlur={() => {
-                      const expectedField = isLift ? 'weight' : (isCardio ? 'duration' : null);
-                      if (!customKeyboardActive || customKeyboardField !== expectedField) {
-                        if (!onCustomKeyboardOpen || (!isLift && !isCardio)) {
-                          // Focus cleared by hook
+                      }}
+                      onBlur={() => {
+                        setDurationIsFocused(false);
+                        // On blur, parse the raw value and save as seconds
+                        const raw = set.duration || '';
+                        if (raw && !raw.includes(':')) {
+                          const seconds = parseDurationInput(raw);
+                          if (seconds > 0) {
+                            onUpdate({ ...set, duration: String(seconds) });
+                          } else {
+                            onUpdate({ ...set, duration: '' });
+                          }
                         }
-                      }
-                    }}
-                    placeholder={isLift ? "" : "mm:ss"}
-                    placeholderTextColor={COLORS.slate[400]}
-                    keyboardType={isLift ? "decimal-pad" : "default"}
-                    value={isLift ? (set.weight || "") : (set.duration || "")}
-                    selection={firstInputSelection || undefined}
-                    onSelectionChange={(e) => {
-                      // Only update selection if not from custom keyboard
-                      const expectedField = isLift ? 'weight' : (isCardio ? 'duration' : null);
-                      if (!customKeyboardActive || customKeyboardField !== expectedField) {
-                        setFirstInputSelection(e.nativeEvent.selection);
-                      }
-                    }}
-                    onChangeText={(text) => {
-                      if (!readOnly) {
-                        // Clear selection when user types normally
-                        const expectedField = isLift ? 'weight' : (isCardio ? 'duration' : null);
-                        if (!customKeyboardActive || customKeyboardField !== expectedField) {
-                          setFirstInputSelection(null);
-                        } else {
-                          // User has typed via custom keyboard, mark that initial focus is done
-                          // This will allow useEffect to position cursor at end on next value change
-                          firstInputInitialFocusRef.current = true;
-                          // Immediately position cursor at end after typing
-                          const length = text.length;
-                          setFirstInputSelection({ start: length, end: length });
+                        if (!customKeyboardActive || customKeyboardField !== 'duration') {
+                          if (!onCustomKeyboardOpen) {
+                            // Focus cleared by hook
+                          }
                         }
-                        onUpdate({ ...set, [isLift ? 'weight' : 'duration']: text });
-                      }
-                    }}
-                  />
-                </View>
-              </View>
+                      }}
+                      placeholder="mm:ss"
+                      placeholderTextColor={COLORS.slate[400]}
+                      keyboardType="numeric"
+                      value={getDurationDisplayValue()}
+                      selection={durationInputSelection || undefined}
+                      onSelectionChange={(e) => {
+                        if (!customKeyboardActive || customKeyboardField !== 'duration') {
+                          setDurationInputSelection(e.nativeEvent.selection);
+                        }
+                      }}
+                      onChangeText={(text) => {
+                        if (!readOnly) {
+                          // Extract only numeric characters
+                          const numericOnly = text.replace(/[^0-9]/g, '');
 
-              <View style={styles.repsContainer} pointerEvents={isRestTimerSelectionMode ? 'none' : 'auto'}>
-                <View style={styles.repsInputWrapper}>
-                  <TextInput
-                    numberOfLines={1}
-                    ref={secondInputRef}
-                    style={[
-                      styles.repsInput,
-                      getInputStyle(isLift ? set.reps : isCardio ? set.distance : set.reps),
-                      (focusedInput === 'second' || (customKeyboardActive && customKeyboardField === 'reps')) && styles.inputFocused,
-                      isMissingReps && styles.inputCompletedEmpty
-                    ]}
-                    selectTextOnFocus={true}
-                    showSoftInputOnFocus={!onCustomKeyboardOpen}
-                    editable={!readOnly && !isRestTimerSelectionMode}
-                    pointerEvents={isRestTimerSelectionMode ? 'none' : 'auto'}
-                    onFocus={() => {
-                      if (!readOnly && !isRestTimerSelectionMode) {
-                        const val = isLift ? (set.reps || "") : isCardio ? (set.distance || "") : (set.reps || "");
-                        if (onCustomKeyboardOpen) {
-                          if (isLift) {
-                            onCustomKeyboardOpen({ field: 'reps', value: val });
-                          } else if (isCardio) {
-                            onCustomKeyboardOpen({ field: 'distance', value: val });
+                          // Update cursor position
+                          if (!customKeyboardActive || customKeyboardField !== 'duration') {
+                            setDurationInputSelection(null);
+                          } else {
+                            durationInputInitialFocusRef.current = true;
+                            const length = numericOnly.length;
+                            setDurationInputSelection({ start: length, end: length });
                           }
-                          // On initial focus, ref should be false - don't override selection yet
-                          // Text will be selected by selectTextOnFocus
-                          secondInputInitialFocusRef.current = false;
-                          // Store the initial value to detect when it changes
-                          secondInputInitialValueRef.current = val;
-                          // Clear any existing selection state to let selectTextOnFocus work
-                          setSecondInputSelection(null);
-                        } else {
-                          handleFocus(secondInputRef, val, 'second');
+
+                          // Save raw numbers directly - NO parsing until blur
+                          onUpdate({ ...set, duration: numericOnly });
                         }
-                      }
-                    }}
-                    onBlur={() => {
-                      const expectedField = isLift ? 'reps' : (isCardio ? 'distance' : null);
-                      if (!customKeyboardActive || customKeyboardField !== expectedField) {
-                        if (!onCustomKeyboardOpen || (!isLift && !isCardio)) {
-                          // Focus cleared by hook
-                        }
-                      }
-                    }}
-                    placeholder={isLift ? "" : isCardio ? "km" : ""}
-                    placeholderTextColor={COLORS.slate[400]}
-                    keyboardType="decimal-pad"
-                    value={isLift ? (set.reps || "") : isCardio ? (set.distance || "") : (set.reps || "")}
-                    selection={secondInputSelection || undefined}
-                    onSelectionChange={(e) => {
-                      // Only update selection if not from custom keyboard
-                      const expectedField = isLift ? 'reps' : (isCardio ? 'distance' : null);
-                      if (!customKeyboardActive || customKeyboardField !== expectedField) {
-                        setSecondInputSelection(e.nativeEvent.selection);
-                      }
-                    }}
-                    onChangeText={(text) => {
-                      if (!readOnly) {
-                        // Clear selection when user types normally
-                        const expectedField = isLift ? 'reps' : (isCardio ? 'distance' : null);
-                        if (!customKeyboardActive || customKeyboardField !== expectedField) {
-                          setSecondInputSelection(null);
-                        } else {
-                          // User has typed via custom keyboard, mark that initial focus is done
-                          // This will allow useEffect to position cursor at end on next value change
-                          secondInputInitialFocusRef.current = true;
-                          // Immediately position cursor at end after typing
-                          const length = text.length;
-                          setSecondInputSelection({ start: length, end: length });
-                        }
-                        onUpdate({ ...set, [isLift || !isCardio ? 'reps' : 'distance']: text });
-                      }
-                    }}
-                  />
+                      }}
+                    />
+                  </View>
                 </View>
-              </View>
+              )}
+
+              {shouldShowDistance && (
+                <View style={styles.distanceContainer} pointerEvents={isRestTimerSelectionMode ? 'none' : 'auto'}>
+                  <View style={styles.distanceInputWrapper}>
+                    <TextInput
+                      numberOfLines={1}
+                      ref={distanceInputRef}
+                      style={[
+                        styles.distanceInput,
+                        getInputStyle(set.distance),
+                        (customKeyboardActive && customKeyboardField === 'distance') && styles.inputFocused,
+                        isMissingDistance && styles.inputCompletedEmpty
+                      ]}
+                      selectTextOnFocus={true}
+                      showSoftInputOnFocus={!onCustomKeyboardOpen}
+                      editable={!readOnly && !isRestTimerSelectionMode}
+                      pointerEvents={isRestTimerSelectionMode ? 'none' : 'auto'}
+                      onFocus={() => {
+                        if (!readOnly && !isRestTimerSelectionMode) {
+                          const val = set.distance || "";
+                          if (onCustomKeyboardOpen) {
+                            onCustomKeyboardOpen({ field: 'distance', value: val });
+                            distanceInputInitialFocusRef.current = false;
+                            distanceInputInitialValueRef.current = val;
+                            setDistanceInputSelection(null);
+                          } else {
+                            handleFocus(distanceInputRef as React.RefObject<TextInput>, val, 'second');
+                          }
+                        }
+                      }}
+                      onBlur={() => {
+                        if (!customKeyboardActive || customKeyboardField !== 'distance') {
+                          if (!onCustomKeyboardOpen) {
+                            // Focus cleared by hook
+                          }
+                        }
+                      }}
+                      placeholder="km"
+                      placeholderTextColor={COLORS.slate[400]}
+                      keyboardType="decimal-pad"
+                      value={set.distance || ""}
+                      selection={distanceInputSelection || undefined}
+                      onSelectionChange={(e) => {
+                        if (!customKeyboardActive || customKeyboardField !== 'distance') {
+                          setDistanceInputSelection(e.nativeEvent.selection);
+                        }
+                      }}
+                      onChangeText={(text) => {
+                        if (!readOnly) {
+                          if (!customKeyboardActive || customKeyboardField !== 'distance') {
+                            setDistanceInputSelection(null);
+                          } else {
+                            distanceInputInitialFocusRef.current = true;
+                            const length = text.length;
+                            setDistanceInputSelection({ start: length, end: length });
+                          }
+                          onUpdate({ ...set, distance: text });
+                        }
+                      }}
+                    />
+                  </View>
+                </View>
+              )}
+
+              {shouldShowWeight && (
+                <View style={styles.weightContainer} pointerEvents={isRestTimerSelectionMode ? 'none' : 'auto'}>
+                  <View style={styles.weightInputWrapper}>
+                    <TextInput
+                      numberOfLines={1}
+                      ref={weightInputRef}
+                      style={[
+                        styles.weightInput,
+                        getInputStyle(set.weight),
+                        (customKeyboardActive && customKeyboardField === 'weight') && styles.inputFocused,
+                        isMissingWeight && styles.inputCompletedEmpty
+                      ]}
+                      selectTextOnFocus={true}
+                      showSoftInputOnFocus={!onCustomKeyboardOpen}
+                      editable={!readOnly && !isRestTimerSelectionMode}
+                      pointerEvents={isRestTimerSelectionMode ? 'none' : 'auto'}
+                      onFocus={() => {
+                        if (!readOnly && !isRestTimerSelectionMode) {
+                          const val = set.weight || "";
+                          if (onCustomKeyboardOpen) {
+                            onCustomKeyboardOpen({ field: 'weight', value: val });
+                            weightInputInitialFocusRef.current = false;
+                            weightInputInitialValueRef.current = val;
+                            setWeightInputSelection(null);
+                          } else {
+                            handleFocus(weightInputRef as React.RefObject<TextInput>, val, 'first');
+                          }
+                        }
+                      }}
+                      onBlur={() => {
+                        if (!customKeyboardActive || customKeyboardField !== 'weight') {
+                          if (!onCustomKeyboardOpen) {
+                            // Focus cleared by hook
+                          }
+                        }
+                      }}
+                      placeholder=""
+                      placeholderTextColor={COLORS.slate[400]}
+                      keyboardType="decimal-pad"
+                      value={set.weight || ""}
+                      selection={weightInputSelection || undefined}
+                      onSelectionChange={(e) => {
+                        if (!customKeyboardActive || customKeyboardField !== 'weight') {
+                          setWeightInputSelection(e.nativeEvent.selection);
+                        }
+                      }}
+                      onChangeText={(text) => {
+                        if (!readOnly) {
+                          if (!customKeyboardActive || customKeyboardField !== 'weight') {
+                            setWeightInputSelection(null);
+                          } else {
+                            weightInputInitialFocusRef.current = true;
+                            const length = text.length;
+                            setWeightInputSelection({ start: length, end: length });
+                          }
+                          onUpdate({ ...set, weight: text });
+                        }
+                      }}
+                    />
+                  </View>
+                </View>
+              )}
+
+              {shouldShowReps && (
+                <View style={styles.repsContainer} pointerEvents={isRestTimerSelectionMode ? 'none' : 'auto'}>
+                  <View style={styles.repsInputWrapper}>
+                    <TextInput
+                      numberOfLines={1}
+                      ref={repsInputRef}
+                      style={[
+                        styles.repsInput,
+                        getInputStyle(set.reps),
+                        (customKeyboardActive && customKeyboardField === 'reps') && styles.inputFocused,
+                        isMissingReps && styles.inputCompletedEmpty
+                      ]}
+                      selectTextOnFocus={true}
+                      showSoftInputOnFocus={!onCustomKeyboardOpen}
+                      editable={!readOnly && !isRestTimerSelectionMode}
+                      pointerEvents={isRestTimerSelectionMode ? 'none' : 'auto'}
+                      onFocus={() => {
+                        if (!readOnly && !isRestTimerSelectionMode) {
+                          const val = set.reps || "";
+                          if (onCustomKeyboardOpen) {
+                            onCustomKeyboardOpen({ field: 'reps', value: val });
+                            repsInputInitialFocusRef.current = false;
+                            repsInputInitialValueRef.current = val;
+                            setRepsInputSelection(null);
+                          } else {
+                            handleFocus(repsInputRef as React.RefObject<TextInput>, val, 'second');
+                          }
+                        }
+                      }}
+                      onBlur={() => {
+                        if (!customKeyboardActive || customKeyboardField !== 'reps') {
+                          if (!onCustomKeyboardOpen) {
+                            // Focus cleared by hook
+                          }
+                        }
+                      }}
+                      placeholder=""
+                      placeholderTextColor={COLORS.slate[400]}
+                      keyboardType="decimal-pad"
+                      value={set.reps || ""}
+                      selection={repsInputSelection || undefined}
+                      onSelectionChange={(e) => {
+                        if (!customKeyboardActive || customKeyboardField !== 'reps') {
+                          setRepsInputSelection(e.nativeEvent.selection);
+                        }
+                      }}
+                      onChangeText={(text) => {
+                        if (!readOnly) {
+                          if (!customKeyboardActive || customKeyboardField !== 'reps') {
+                            setRepsInputSelection(null);
+                          } else {
+                            repsInputInitialFocusRef.current = true;
+                            const length = text.length;
+                            setRepsInputSelection({ start: length, end: length });
+                          }
+                          onUpdate({ ...set, reps: text });
+                        }
+                      }}
+                    />
+                  </View>
+                </View>
+              )}
 
               <View pointerEvents={isRestTimerSelectionMode ? 'none' : 'auto'}>
                 <TouchableOpacity
@@ -747,6 +983,56 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minWidth: 0,
+  },
+  durationContainer: {
+    width: 76, // Fixed width for duration column
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  durationInputWrapper: {
+    width: '100%',
+    position: 'relative',
+    maxWidth: '100%',
+  },
+  durationInput: {
+    width: '100%',
+    maxWidth: '100%',
+    backgroundColor: COLORS.slate[150],
+    borderRadius: 8,
+    paddingVertical: 2,
+    paddingHorizontal: 4,
+    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: COLORS.slate[900],
+    borderWidth: 2,
+    borderColor: COLORS.slate[150],
+  },
+  distanceContainer: {
+    flex: 1,
+    flexBasis: 0, // Force equal width distribution
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 0,
+  },
+  distanceInputWrapper: {
+    width: '100%',
+    position: 'relative',
+    maxWidth: '100%',
+  },
+  distanceInput: {
+    width: '100%',
+    maxWidth: '100%',
+    backgroundColor: COLORS.slate[150],
+    borderRadius: 8,
+    paddingVertical: 2,
+    paddingHorizontal: 4,
+    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: COLORS.slate[900],
+    borderWidth: 2,
+    borderColor: COLORS.slate[150],
   },
   weightContainer: {
     flex: 1,

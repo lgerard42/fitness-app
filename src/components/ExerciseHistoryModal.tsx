@@ -1,20 +1,26 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { View, Text, Modal, TouchableOpacity, ScrollView, StyleSheet, PanResponder, Animated } from 'react-native';
-import { X, Calendar, Trophy } from 'lucide-react-native';
+import { X, Calendar, Trophy, Pencil } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '@/constants/colors';
 import type { ExerciseLibraryItem, ExerciseStats } from '@/types/workout';
+
+type TabKey = 'Records' | 'History' | 'About';
 
 interface ExerciseHistoryModalProps {
   visible: boolean;
   onClose: () => void;
   exercise: ExerciseLibraryItem | null;
   stats: ExerciseStats | {};
+  onEdit?: (exercise: ExerciseLibraryItem) => void;
 }
 
-const ExerciseHistoryModal: React.FC<ExerciseHistoryModalProps> = ({ visible, onClose, exercise, stats }) => {
+const TABS: TabKey[] = ['Records', 'History', 'About'];
+
+const ExerciseHistoryModal: React.FC<ExerciseHistoryModalProps> = ({ visible, onClose, exercise, stats, onEdit }) => {
   const insets = useSafeAreaInsets();
   const pan = useRef(new Animated.ValueXY()).current;
+  const [activeTab, setActiveTab] = useState<TabKey>('History');
 
   const panResponder = useRef(
     PanResponder.create({
@@ -43,6 +49,7 @@ const ExerciseHistoryModal: React.FC<ExerciseHistoryModalProps> = ({ visible, on
   React.useEffect(() => {
     if (visible) {
       pan.setValue({ x: 0, y: 0 });
+      setActiveTab('History');
     }
   }, [visible, pan]);
 
@@ -76,47 +83,93 @@ const ExerciseHistoryModal: React.FC<ExerciseHistoryModalProps> = ({ visible, on
             </TouchableOpacity>
           </View>
 
-          {pr > 0 && (
-            <View style={styles.prContainer}>
-              <Trophy size={20} color={COLORS.amber[500]} />
-              <Text style={styles.prText}>Personal Record: {pr} {exercise.category === 'Lifts' ? 'lbs' : ''}</Text>
+          {/* Tabs + Edit Button Row */}
+          <View style={styles.tabRow}>
+            <View style={styles.tabContainer}>
+              {TABS.map(tab => (
+                <TouchableOpacity
+                  key={tab}
+                  onPress={() => setActiveTab(tab)}
+                  style={[styles.tabButton, activeTab === tab ? styles.tabButtonSelected : styles.tabButtonUnselected]}
+                >
+                  <Text style={[styles.tabText, activeTab === tab ? styles.tabTextSelected : styles.tabTextUnselected]}>
+                    {tab}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
+            {onEdit && (
+              <TouchableOpacity
+                onPress={() => onEdit(exercise)}
+                style={styles.editButton}
+              >
+                <Pencil size={14} color={COLORS.white} strokeWidth={2.5} />
+                <Text style={styles.editButtonText}>Edit</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {activeTab === 'History' && (
+            <>
+              {pr > 0 && (
+                <View style={styles.prContainer}>
+                  <Trophy size={20} color={COLORS.amber[500]} />
+                  <Text style={styles.prText}>Personal Record: {pr} {exercise.category === 'Lifts' ? 'lbs' : ''}</Text>
+                </View>
+              )}
+
+              <ScrollView contentContainerStyle={styles.content}>
+                {history.length === 0 ? (
+                  <View style={styles.emptyState}>
+                    <Text style={styles.emptyText}>No history recorded yet.</Text>
+                  </View>
+                ) : (
+                  history.map((session, index) => (
+                    <View key={index} style={styles.sessionCard}>
+                      <View style={styles.sessionHeader}>
+                        <Calendar size={16} color={COLORS.slate[500]} />
+                        <Text style={styles.sessionDate}>{session.date}</Text>
+                      </View>
+                      <View style={styles.setsContainer}>
+                        <View style={styles.setRowHeader}>
+                          <Text style={styles.colSet}>Set</Text>
+                          <Text style={styles.colMetric}>{exercise.category === 'Lifts' ? 'Weight' : 'Time'}</Text>
+                          <Text style={styles.colMetric}>{exercise.category === 'Lifts' ? 'Reps' : 'Distance'}</Text>
+                        </View>
+                        {session.sets.map((set, setIndex) => (
+                          <View key={setIndex} style={styles.setRow}>
+                            <Text style={styles.colSet}>{setIndex + 1}</Text>
+                            <Text style={styles.colMetric}>
+                              {set.weight || set.duration || '-'}
+                            </Text>
+                            <Text style={styles.colMetric}>
+                              {set.reps || set.distance || '-'}
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  ))
+                )}
+              </ScrollView>
+            </>
           )}
 
-          <ScrollView contentContainerStyle={styles.content}>
-            {history.length === 0 ? (
+          {activeTab === 'Records' && (
+            <ScrollView contentContainerStyle={styles.content}>
               <View style={styles.emptyState}>
-                <Text style={styles.emptyText}>No history recorded yet.</Text>
+                <Text style={styles.emptyText}>Records coming soon.</Text>
               </View>
-            ) : (
-              history.map((session, index) => (
-                <View key={index} style={styles.sessionCard}>
-                  <View style={styles.sessionHeader}>
-                    <Calendar size={16} color={COLORS.slate[500]} />
-                    <Text style={styles.sessionDate}>{session.date}</Text>
-                  </View>
-                  <View style={styles.setsContainer}>
-                    <View style={styles.setRowHeader}>
-                      <Text style={styles.colSet}>Set</Text>
-                      <Text style={styles.colMetric}>{exercise.category === 'Lifts' ? 'Weight' : 'Time'}</Text>
-                      <Text style={styles.colMetric}>{exercise.category === 'Lifts' ? 'Reps' : 'Distance'}</Text>
-                    </View>
-                    {session.sets.map((set, setIndex) => (
-                      <View key={setIndex} style={styles.setRow}>
-                        <Text style={styles.colSet}>{setIndex + 1}</Text>
-                        <Text style={styles.colMetric}>
-                          {set.weight || set.duration || '-'}
-                        </Text>
-                        <Text style={styles.colMetric}>
-                          {set.reps || set.distance || '-'}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              ))
-            )}
-          </ScrollView>
+            </ScrollView>
+          )}
+
+          {activeTab === 'About' && (
+            <ScrollView contentContainerStyle={styles.content}>
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyText}>About coming soon.</Text>
+              </View>
+            </ScrollView>
+          )}
         </Animated.View>
       </View>
     </Modal>
@@ -152,7 +205,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   title: {
     fontSize: 24,
@@ -166,6 +219,60 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     padding: 4,
+  },
+  tabRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 20,
+  },
+  tabContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: COLORS.slate[100],
+    padding: 4,
+    borderRadius: 12,
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  tabButtonSelected: {
+    backgroundColor: COLORS.white,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  tabButtonUnselected: {
+    backgroundColor: 'transparent',
+  },
+  tabText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  tabTextSelected: {
+    color: COLORS.slate[900],
+  },
+  tabTextUnselected: {
+    color: COLORS.slate[500],
+  },
+  editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: COLORS.blue[600],
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  editButtonText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: COLORS.white,
   },
   prContainer: {
     flexDirection: 'row',

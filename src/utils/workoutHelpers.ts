@@ -81,6 +81,17 @@ export const formatRestTime = (seconds: number): string => {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 };
 
+export const formatDurationTime = (seconds: number): string => {
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  
+  if (hrs > 0) {
+    return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
 export const parseRestTimeInput = (input: string): number => {
   const num = parseInt(input, 10);
   if (isNaN(num) || num <= 0) return 0;
@@ -95,6 +106,71 @@ export const parseRestTimeInput = (input: string): number => {
       return rest * 60 + lastTwo;
     } else {
       return num;
+    }
+  }
+};
+
+export const parseDurationInput = (input: string): number => {
+  const num = parseInt(input, 10);
+  if (isNaN(num) || num <= 0) return 0;
+  
+  // Handle different input lengths:
+  // 1-2 digits: seconds (e.g., "85" = 85 seconds)
+  // 3-4 digits: MMSS format (e.g., "1234" = 12:34 = 12 minutes 34 seconds)
+  // 5+ digits: HHMMSS format (e.g., "12345" = 1:23:45 = 1 hour 23 minutes 45 seconds)
+  
+  if (num <= 99) {
+    // 1-2 digits: treat as seconds
+    return num;
+  } else if (num <= 9999) {
+    // 3-4 digits: MMSS format
+    const lastTwo = num % 100; // seconds
+    const rest = Math.floor(num / 100); // minutes
+    
+    if (lastTwo < 60) {
+      return rest * 60 + lastTwo;
+    } else {
+      // If seconds >= 60, treat entire number as seconds
+      return num;
+    }
+  } else {
+    // 5+ digits: parse based on length
+    const inputStr = input.replace(/[^0-9]/g, '');
+    const numDigits = inputStr.length;
+    
+    if (numDigits === 5) {
+      // 5 digits: HMMSS format (e.g., "94500" = 9:45:00)
+      // Extract: first digit = hours, next 2 digits = minutes, last 2 digits = seconds
+      const lastTwo = num % 100; // seconds (last 2 digits)
+      const middleTwo = Math.floor((num % 10000) / 100); // minutes (digits 2-3)
+      const firstDigit = Math.floor(num / 10000); // hours (first digit)
+      
+      if (lastTwo < 60 && middleTwo < 60) {
+        return firstDigit * 3600 + middleTwo * 60 + lastTwo;
+      } else if (lastTwo < 60) {
+        // If minutes invalid, treat as MMSS format
+        const mins = Math.floor(num / 100);
+        return mins * 60 + lastTwo;
+      } else {
+        // If seconds invalid, treat entire number as seconds
+        return num;
+      }
+    } else {
+      // 6+ digits: HHMMSS format (e.g., "123456" = 12:34:56)
+      const lastTwo = num % 100; // seconds
+      const middleTwo = Math.floor((num % 10000) / 100); // minutes
+      const rest = Math.floor(num / 10000); // hours
+      
+      if (lastTwo < 60 && middleTwo < 60) {
+        return rest * 3600 + middleTwo * 60 + lastTwo;
+      } else if (lastTwo < 60) {
+        // If only seconds are valid, treat as MMSS format
+        const mins = Math.floor(num / 100);
+        return mins * 60 + lastTwo;
+      } else {
+        // If seconds >= 60, treat entire number as seconds
+        return num;
+      }
     }
   }
 };

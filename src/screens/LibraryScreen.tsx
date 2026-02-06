@@ -5,25 +5,43 @@ import { Plus } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { CATEGORIES } from '@/constants/data';
 import { useWorkout } from '@/context/WorkoutContext';
-import NewExercise from '@/components/WorkoutTemplate/modals/NewExercise';
+import EditExercise from '@/components/WorkoutTemplate/modals/EditExercise';
 import ExerciseHistoryModal from '@/components/ExerciseHistoryModal';
 import type { ExerciseLibraryItem } from '@/types/workout';
 
 const LibraryScreen: React.FC = () => {
   const [search, setSearch] = useState("");
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [editingExercise, setEditingExercise] = useState<ExerciseLibraryItem | null>(null);
   const [selectedExercise, setSelectedExercise] = useState<ExerciseLibraryItem | null>(null);
-  const { exercisesLibrary, addExerciseToLibrary, exerciseStats, activeWorkout } = useWorkout();
+  const { exercisesLibrary, addExerciseToLibrary, updateExerciseInLibrary, exerciseStats, activeWorkout } = useWorkout();
 
   const filteredExercises = exercisesLibrary.filter(ex => ex.name.toLowerCase().includes(search.toLowerCase()));
 
-  const handleSaveExercise = (newEx: ExerciseLibraryItem) => {
+  const handleSaveNewExercise = (newEx: ExerciseLibraryItem) => {
     addExerciseToLibrary(newEx);
-    setIsModalOpen(false);
+    setIsCreateModalOpen(false);
+  };
+
+  const handleUpdateExercise = (updatedEx: ExerciseLibraryItem) => {
+    updateExerciseInLibrary(updatedEx.id, updatedEx);
+    setEditingExercise(null);
+    // Also update the selectedExercise so the history modal reflects changes
+    setSelectedExercise(updatedEx);
   };
 
   const handleExerciseClick = (exercise: ExerciseLibraryItem) => {
     setSelectedExercise(exercise);
+  };
+
+  const handleEditFromHistory = (exercise: ExerciseLibraryItem) => {
+    // Close the history modal first, then open EditExercise
+    setSelectedExercise(null);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setEditingExercise(exercise);
+      });
+    });
   };
 
   return (
@@ -34,7 +52,7 @@ const LibraryScreen: React.FC = () => {
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <Text style={styles.title}>Exercise Library</Text>
-          <TouchableOpacity onPress={() => setIsModalOpen(true)} style={styles.addButton}>
+          <TouchableOpacity onPress={() => setIsCreateModalOpen(true)} style={styles.addButton}>
             <Plus size={14} color={COLORS.white} strokeWidth={3} />
             <Text style={styles.addButtonText}>ADD NEW</Text>
           </TouchableOpacity>
@@ -66,11 +84,32 @@ const LibraryScreen: React.FC = () => {
         )}
       />
 
-      <NewExercise 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        onSave={handleSaveExercise} 
+      {/* Create new exercise modal */}
+      <EditExercise 
+        isOpen={isCreateModalOpen} 
+        onClose={() => setIsCreateModalOpen(false)} 
+        onSave={handleSaveNewExercise} 
         categories={CATEGORIES} 
+      />
+
+      {/* Edit existing exercise modal */}
+      <EditExercise
+        isOpen={!!editingExercise}
+        onClose={() => {
+          setEditingExercise(null);
+          // Reopen history modal with the exercise that was being edited
+          if (editingExercise) {
+            const currentExercise = exercisesLibrary.find(ex => ex.id === editingExercise.id) || editingExercise;
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                setSelectedExercise(currentExercise);
+              });
+            });
+          }
+        }}
+        onSave={handleUpdateExercise}
+        categories={CATEGORIES}
+        exercise={editingExercise}
       />
 
       <ExerciseHistoryModal
@@ -78,6 +117,7 @@ const LibraryScreen: React.FC = () => {
         onClose={() => setSelectedExercise(null)}
         exercise={selectedExercise}
         stats={selectedExercise ? (exerciseStats[selectedExercise.id] || {}) : {}}
+        onEdit={handleEditFromHistory}
       />
     </SafeAreaView>
   );

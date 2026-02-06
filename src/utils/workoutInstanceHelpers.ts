@@ -37,7 +37,12 @@ export const createExerciseInstance = (
     type: 'exercise',
     sets: sets,
     notes: [...pinnedNotes], // Include pinned notes from library
-    collapsed: false
+    collapsed: false,
+    // Copy configuration fields from library item
+    ...(ex.trackDuration !== undefined && { trackDuration: ex.trackDuration }),
+    ...(ex.trackReps !== undefined && { trackReps: ex.trackReps }),
+    ...(ex.trackDistance !== undefined && { trackDistance: ex.trackDistance }),
+    ...(ex.weightEquipTags && ex.weightEquipTags.length > 0 && { weightEquipTags: ex.weightEquipTags })
   };
 };
 
@@ -82,6 +87,11 @@ export const createExerciseInstanceWithSetGroups = (
     type: 'exercise',
     sets: sets,
     notes: [...pinnedNotes], // Include pinned notes from library
-    collapsed: false
+    collapsed: false,
+    // Copy configuration fields from library item
+    ...(ex.trackDuration !== undefined && { trackDuration: ex.trackDuration }),
+    ...(ex.trackReps !== undefined && { trackReps: ex.trackReps }),
+    ...(ex.trackDistance !== undefined && { trackDistance: ex.trackDistance }),
+    ...(ex.weightEquipTags && ex.weightEquipTags.length > 0 && { weightEquipTags: ex.weightEquipTags })
   };
 };

@@ -1,342 +1,213 @@
-# Refactoring Plan: ExercisePicker Component Suite
+# Refactor Plan: Dynamic Column Headers Based on Exercise Configuration
 
-## Model Information
-Running as Claude 3.5 Sonnet
+## Current State Analysis
 
-## 1. Current State Analysis
+### Existing Structure
+- **Column Headers**: Currently conditionally rendered based on `category`:
+  - For "Lifts": Shows "Set", "Previous", "Weight (lbs/kg)", "Reps", "-"
+  - For "Cardio": Shows "Set", "Previous", "Time", "Dist/Reps", "-"
+  - For "Training": Shows "Set", "Previous", "Time", "Dist/Reps", "-"
 
-### Files Analyzed
-- `src/components/WorkoutTemplate/modals/ExercisePicker/index.tsx` (668 lines)
-- `src/components/WorkoutTemplate/modals/ExercisePicker/DragAndDropModal.tsx` (2351 lines)
-- `src/components/WorkoutTemplate/modals/ExercisePicker/Filters.tsx` (238 lines)
-- `src/components/WorkoutTemplate/modals/ExercisePicker/FilterDropdown.tsx` (183 lines)
-- `src/components/WorkoutTemplate/modals/ExercisePicker/HeaderTopRow.tsx` (211 lines)
-- `src/components/WorkoutTemplate/modals/ExercisePicker/SearchBar.tsx` (51 lines)
-- `src/components/WorkoutTemplate/modals/ExercisePicker/SecondaryMuscleFilter.tsx` (67 lines)
-- `src/components/WorkoutTemplate/modals/ExercisePicker/SelectedInGlossary.tsx` (168 lines)
-- `src/components/WorkoutTemplate/modals/ExercisePicker/UnselectedListScrollbar.tsx` (160 lines)
-- `src/components/WorkoutTemplate/modals/ExercisePicker/ExerciseListItem/index.tsx` (350+ lines)
-- `src/utils/workoutHelpers.ts` (150 lines)
-- `src/constants/data.js` (138 lines)
-- `src/constants/colors.js` (286 lines)
-- `src/constants/defaultStyles.js` (6 lines)
+- **SetRow Component**: Uses conditional logic to render inputs based on category:
+  - `isLift` determines if weight/reps are shown
+  - `isCardio` determines if duration/distance are shown
+  - Training exercises use duration and reps
 
-### Identified Issues
+- **Exercise Configuration Fields** (from EditExercise.tsx):
+  - `trackDuration`: boolean - "Track duration by default" toggle
+  - `trackReps`: boolean - "Track reps" toggle (inside Weight Equip. for Training)
+  - `weightEquipTags`: string[] - Array of equipment tags (if populated, Weight Equip. is utilized)
 
-#### 1.1 Identical Logic Duplication
+- **Exercise Type**: Currently only stores `category`, `name`, `exerciseId`, `sets`, etc. Does NOT store `trackDuration`, `trackReps`, or `weightEquipTags`
 
-**Issue A: Secondary Muscle Retrieval Logic**
-- **Location 1**: `src/components/WorkoutTemplate/modals/ExercisePicker/index.tsx` lines 87-95
-  ```typescript
-  const getAvailableSecondaryMuscles = (): string[] => {
-    if (filterMuscle.length === 0) return [];
-    const secondarySet = new Set<string>();
-    filterMuscle.forEach(primary => {
-      const secondaries = (PRIMARY_TO_SECONDARY_MAP as Record<string, string[]>)[primary] || [];
-      secondaries.forEach((sec: string) => secondarySet.add(sec));
-    });
-    return Array.from(secondarySet).sort();
-  };
-  ```
-- **Location 2**: `src/constants/data.js` lines 124-129
-  ```javascript
-  export const getAvailableSecondaryMuscles = (primary) => {
-    if (PRIMARY_TO_SECONDARY_MAP[primary]) {
-      return PRIMARY_TO_SECONDARY_MAP[primary].sort();
-    }
-    return [];
-  };
-  ```
-- **Problem**: Two different implementations - one takes array, one takes single value. Need unified utility.
+- **Library Lookup Pattern**: Codebase already uses `exercisesLibrary.find(libEx => libEx.id === ex.exerciseId)` to access library exercise data
 
-**Issue B: Alphabetical Grouping Logic**
-- **Location**: `src/components/WorkoutTemplate/modals/ExercisePicker/SelectedInGlossary.tsx` lines 38-46
-  ```typescript
-  const sections = useMemo(() => {
-    const grouped: Record<string, ExerciseLibraryItem[]> = {};
-    exercises.forEach(ex => {
-      const letter = ex.name.charAt(0).toUpperCase();
-      if (!grouped[letter]) grouped[letter] = [];
-      grouped[letter].push(ex);
-    });
-    return Object.keys(grouped).sort().map(letter => ({ title: letter, data: grouped[letter] }));
-  }, [exercises]);
-  ```
-- **Problem**: This pattern could be reused elsewhere. Should be extracted to `workoutHelpers.ts`.
+### Relevant Files
+1. `src/components/WorkoutTemplate/WorkoutTemplateIndex.tsx` (3778 lines)
+   - Contains column header rendering logic (lines ~1367-1383)
+   - Renders SetRow components with props
+   - Has access to `exercisesLibrary` prop
 
-**Issue C: Exercise Filtering Logic**
-- **Location**: `src/components/WorkoutTemplate/modals/ExercisePicker/index.tsx` lines 97-111
-  ```typescript
-  const filtered = exercises.filter(ex => {
-    const matchesSearch = ex.name.toLowerCase().includes(search.toLowerCase());
-    const matchesCategory = filterCategory.length === 0 || filterCategory.includes(ex.category);
-    const primaryMuscles = (ex.primaryMuscles as string[]) || [];
-    const matchesPrimaryMuscle = filterMuscle.length === 0 ||
-      filterMuscle.some(muscle => primaryMuscles.includes(muscle));
-    const secondaryMuscles = (ex.secondaryMuscles as string[]) || [];
-    const matchesSecondaryMuscle = filterSecondaryMuscle.length === 0 ||
-      (ex.secondaryMuscles && filterSecondaryMuscle.some(muscle => secondaryMuscles.includes(muscle)));
-    const weightEquipTags = (ex.weightEquipTags as string[]) || [];
-    const matchesEquip = filterEquip.length === 0 ||
-      (ex.weightEquipTags && filterEquip.some(equip => weightEquipTags.includes(equip)));
-    return matchesSearch && matchesCategory && matchesPrimaryMuscle && matchesSecondaryMuscle && matchesEquip;
-  });
-  ```
-- **Problem**: Complex filtering logic should be extracted to a utility function with proper memoization.
+2. `src/components/WorkoutTemplate/SetRow.tsx` (887 lines)
+   - Renders individual set rows with inputs
+   - Currently uses `category` prop to determine which inputs to show
+   - Has logic for weight/reps vs duration/distance
 
-#### 1.2 Redundant Styling
+3. `src/types/workout.ts`
+   - Defines `Exercise` type
+   - Defines `ExerciseLibraryItem` type (has `[key: string]: unknown` for flexibility)
 
-**Issue D: Empty Style Objects**
-Based on `STYLING_CONDITION_TREES.md` findings:
-- `SelectedExercisesSection.js`: `header_expanded`, `header_collapsed`, `headerText_expanded`, `headerText_collapsed`, `listContainer_expanded`, `listContainer_collapsed` all apply `{}`
-- `FilterDropdown.tsx`: `optionText_selected` applies same style as base (`color: COLORS.white`)
-- `Filters.tsx`: Selected filter option text applies same style as base
-- `ExerciseListItem/index.tsx`: Multiple redundant empty condition variables
-- `ActionButtons.tsx`: Multiple redundant empty condition variables
-- `ExerciseTags.tsx`: Multiple redundant empty condition variables for `showAddMore`
+4. `src/utils/workoutInstanceHelpers.ts`
+   - `createExerciseInstance()` - Creates exercise instances from library items
+   - Currently only copies `id`, `name`, `category`
 
-**Issue E: Magic Numbers**
-- Z-index values scattered: `zIndex: 85`, `zIndex: 90`, `zIndex: 100`, `zIndex: 101`, `zIndex: 102`, `zIndex: 200`, `zIndex: 999`, `zIndex: 9999`
-- Padding values: `paddingHorizontal: 12`, `paddingVertical: 8`, `paddingHorizontal: 16`, `paddingVertical: 6`
-- Border radius: `borderRadius: 8`, `borderRadius: 6`, `borderRadius: 12`, `borderRadius: 999`
-- Should be extracted to constants file
+## Proposed Changes (Step-by-Step)
 
-#### 1.3 Dead Code
-
-**Issue F: Unused Props/Interfaces**
-- Need to verify all props in interfaces are actually used
-- Check for commented-out code blocks
-
-**Issue G: Redundant Condition Variables**
-- Many condition variables are defined but apply empty objects or duplicate base styles
-- These add cognitive overhead without value
-
-### Dependencies & Coupling
-- `index.tsx` imports from all child components
-- `Filters.tsx` depends on `FilterDropdown.tsx` and `SecondaryMuscleFilter.tsx`
-- `SelectedInGlossary.tsx` depends on `ExerciseListItem` and `UnselectedListScrollbar`
-- All components depend on `@/constants/colors` and `@/constants/defaultStyles`
-
-### Current Patterns
-- Conditional styling using boolean variables (e.g., `button_active`, `container_selected`)
-- Inline filtering logic in components
-- Direct state management in parent component
-- No centralized utility for common operations
-
----
-
-## 2. Proposed Changes (Step-by-Step)
-
-### Phase 1: Extract Shared Utilities
-
-#### Step 1.1: Create Exercise Filtering Utility
-**File**: `src/utils/exerciseFilters.ts` (NEW)
-- Extract filtering logic from `index.tsx`
-- Create `filterExercises` function with proper TypeScript types
-- Accept filters object and exercises array
-- Return filtered array
-
-**Dependencies**: None
-**Estimated Lines**: ~50
-
-#### Step 1.2: Create Secondary Muscle Utility
-**File**: `src/utils/exerciseFilters.ts` (EXTEND)
-- Create `getAvailableSecondaryMusclesForPrimaries(primaries: string[]): string[]`
-- Consolidate logic from `index.tsx` and `data.js`
-- Use existing `PRIMARY_TO_SECONDARY_MAP` from constants
-
-**Dependencies**: `src/constants/data.js`
-**Estimated Lines**: ~15
-
-#### Step 1.3: Create Alphabetical Grouping Utility
-**File**: `src/utils/workoutHelpers.ts` (EXTEND)
-- Add `groupExercisesAlphabetically<T extends { name: string }>(items: T[]): Array<{ title: string; data: T[] }>`
-- Extract from `SelectedInGlossary.tsx`
-
-**Dependencies**: None
-**Estimated Lines**: ~15
-
-### Phase 2: Extract Style Constants
-
-#### Step 2.1: Create Layout Constants
-**File**: `src/constants/layout.ts` (NEW)
-- Extract z-index values
-- Extract common padding values
-- Extract border radius values
-- Extract spacing values
-
-**Dependencies**: None
-**Estimated Lines**: ~40
-
-#### Step 2.2: Update Components to Use Constants
-**Files**: All ExercisePicker component files
-- Replace magic numbers with constants
-- Import from `@/constants/layout`
-
-**Dependencies**: `src/constants/layout.ts`
-**Estimated Lines**: ~100 (across all files)
-
-### Phase 3: Remove Redundant Styling
-
-#### Step 3.1: Clean FilterDropdown.tsx
-**File**: `src/components/WorkoutTemplate/modals/ExercisePicker/FilterDropdown.tsx`
-- Remove `optionText_selected` condition (applies same style as base)
-- Remove unused condition variables
-
-**Dependencies**: None
-**Estimated Lines**: ~10 removed
-
-#### Step 3.2: Clean Filters.tsx
-**File**: `src/components/WorkoutTemplate/modals/ExercisePicker/Filters.tsx`
-- Remove redundant `filterOptionTextSelected` style (same as base)
-- Clean up empty condition checks
-
-**Dependencies**: None
-**Estimated Lines**: ~5 removed
-
-#### Step 3.3: Clean ExerciseListItem Components
-**Files**: 
-- `src/components/WorkoutTemplate/modals/ExercisePicker/ExerciseListItem/index.tsx`
-- `src/components/WorkoutTemplate/modals/ExercisePicker/ExerciseListItem/ActionButtons.tsx`
-- `src/components/WorkoutTemplate/modals/ExercisePicker/ExerciseListItem/ExerciseTags.tsx`
-
-- Remove all empty style object conditions
-- Remove redundant condition variables that duplicate base styles
-- Simplify condition chains
-
-**Dependencies**: None
-**Estimated Lines**: ~50 removed
-
-### Phase 4: Performance Optimization
-
-#### Step 4.1: Memoize Filtered Exercises
-**File**: `src/components/WorkoutTemplate/modals/ExercisePicker/index.tsx`
-- Wrap `filtered` calculation in `useMemo`
-- Dependencies: `exercises`, `search`, `filterCategory`, `filterMuscle`, `filterSecondaryMuscle`, `filterEquip`
-
-**Dependencies**: `src/utils/exerciseFilters.ts`
-**Estimated Lines**: ~5 modified
-
-#### Step 4.2: Memoize Alphabetical Sections
-**File**: `src/components/WorkoutTemplate/modals/ExercisePicker/SelectedInGlossary.tsx`
-- Already using `useMemo` - verify dependencies are correct
-- Use new utility function from `workoutHelpers.ts`
-
-**Dependencies**: `src/utils/workoutHelpers.ts`
-**Estimated Lines**: ~5 modified
-
-#### Step 4.3: Memoize Secondary Muscles
-**File**: `src/components/WorkoutTemplate/modals/ExercisePicker/index.tsx`
-- Wrap `getAvailableSecondaryMuscles` result in `useMemo`
-- Dependencies: `filterMuscle`
-
-**Dependencies**: `src/utils/exerciseFilters.ts`
-**Estimated Lines**: ~5 modified
-
-### Phase 5: TypeScript Cleanup
-
-#### Step 5.1: Verify Type Definitions
+### Step 1: Update Exercise Type Definition
 **File**: `src/types/workout.ts`
-- Check for unused properties in interfaces
-- Ensure all extracted utilities have proper types
+**Changes**:
+- Add optional fields to `Exercise` interface:
+  - `trackDuration?: boolean`
+  - `trackReps?: boolean`
+  - `weightEquipTags?: string[]`
+**Why**: Need to store configuration fields on Exercise instances for column visibility logic
+**Lines**: ~25-35
 
-**Dependencies**: None
-**Estimated Lines**: ~10 reviewed
+### Step 2: Update Exercise Instance Creation
+**File**: `src/utils/workoutInstanceHelpers.ts`
+**Changes**:
+- Update `createExerciseInstance()` to copy configuration fields:
+  - `trackDuration` from library item
+  - `trackReps` from library item
+  - `weightEquipTags` from library item
+- Update `createExerciseInstanceWithSetGroups()` similarly
+**Why**: Ensure new exercise instances include configuration data
+**Lines**: ~10-42, ~51-87
 
-#### Step 5.2: Add Strict Types to Utilities
-**Files**: 
-- `src/utils/exerciseFilters.ts`
-- `src/utils/workoutHelpers.ts` (extended)
+### Step 3: Create Column Visibility Helper Function
+**File**: `src/components/WorkoutTemplate/WorkoutTemplateIndex.tsx`
+**Changes**:
+- Create helper function `getVisibleColumns(exercise: Exercise, libraryExercise?: ExerciseLibraryItem)` that returns:
+  ```typescript
+  {
+    showDuration: boolean;
+    showDistance: boolean;
+    showWeight: boolean;
+    showReps: boolean;
+  }
+  ```
+- Logic:
+  - `showDuration`: category === 'Cardio' OR trackDuration === true
+  - `showDistance`: category === 'Cardio'
+  - `showWeight`: category === 'Lifts' OR (category === 'Cardio' | 'Training' AND weightEquipTags?.length > 0)
+  - `showReps`: category === 'Lifts' OR (category === 'Training' AND trackReps === true)
+**Why**: Centralize column visibility logic for reuse
+**Lines**: ~1095-1100 (near renderExerciseCard)
 
-- Ensure all functions have explicit return types
-- Use proper generic types where applicable
+### Step 4: Update Column Headers Rendering
+**File**: `src/components/WorkoutTemplate/WorkoutTemplateIndex.tsx`
+**Changes**:
+- Replace conditional column header rendering with individual columns:
+  - Always show: "Set", "Previous", "-"
+  - Conditionally show: "Duration", "Distance", "Weight", "Reps" based on `getVisibleColumns()`
+- Update column header styles to handle variable number of columns
+- Use flex layout to distribute columns evenly
+**Why**: Support flexible column display based on exercise configuration
+**Lines**: ~1367-1383
 
-**Dependencies**: `src/types/workout.ts`
-**Estimated Lines**: ~20
+### Step 5: Update SetRow Component Props
+**File**: `src/components/WorkoutTemplate/SetRow.tsx`
+**Changes**:
+- Add new props:
+  - `showDuration?: boolean`
+  - `showDistance?: boolean`
+  - `showWeight?: boolean`
+  - `showReps?: boolean`
+- Keep `category` prop for backward compatibility and other logic
+**Why**: Allow parent to control which columns are visible
+**Lines**: ~15-52 (interface)
 
----
+### Step 6: Update SetRow Rendering Logic
+**File**: `src/components/WorkoutTemplate/SetRow.tsx`
+**Changes**:
+- Replace conditional rendering based on `isLift`/`isCardio` with conditional rendering based on new props
+- Always render: Set index, Previous, Checkbox
+- Conditionally render: Duration input, Distance input, Weight input, Reps input
+- Update input focus logic to work with new column structure
+- Update custom keyboard logic to handle all field types
+**Why**: Support flexible column display
+**Lines**: ~229-625 (render logic)
 
-## 3. Potential Risks or Edge Cases
+### Step 7: Update SetRow Props Passing
+**File**: `src/components/WorkoutTemplate/WorkoutTemplateIndex.tsx`
+**Changes**:
+- In `renderExerciseCard()`, get visible columns using helper function
+- Pass column visibility props to SetRow component
+- Look up library exercise if needed for configuration fields
+**Why**: Connect column visibility logic to SetRow component
+**Lines**: ~1524-1561 (setRowProps)
+
+### Step 8: Update Column Width Calculations
+**File**: `src/components/WorkoutTemplate/WorkoutTemplateIndex.tsx` and `SetRow.tsx`
+**Changes**:
+- Update flex styles to handle variable number of columns
+- Ensure columns distribute evenly regardless of which ones are visible
+- Update `colWeight`, `colReps`, etc. styles to be conditional
+**Why**: Maintain proper layout with variable columns
+**Lines**: Styles sections
+
+### Step 9: Handle Distance Unit Display
+**File**: `src/components/WorkoutTemplate/SetRow.tsx`
+**Changes**:
+- Update distance input placeholder/label to support both US (miles) and metric (km) systems
+- May need to check if there's a global unit preference or use a default
+**Why**: User requirement mentions distance needs to support both systems
+**Lines**: ~574 (placeholder)
+
+### Step 10: Update Previous Set Display Logic
+**File**: `src/components/WorkoutTemplate/SetRow.tsx`
+**Changes**:
+- Update `renderPrevious()` to handle all possible column combinations
+- Show appropriate previous values based on visible columns
+**Why**: Previous column should show relevant historical data
+**Lines**: ~204-227
+
+## Potential Risks or Edge Cases
 
 ### Breaking Changes
-1. **Filter Logic Changes**: If filtering logic is extracted incorrectly, exercises may not filter properly
-   - **Mitigation**: Test all filter combinations thoroughly
-   - **Verification**: Ensure filtered results match before/after
+1. **Exercise Type Extension**: Adding optional fields to `Exercise` type should be backward compatible (optional fields)
+2. **SetRow Props**: Adding new optional props maintains backward compatibility
+3. **Column Layout**: Changing from fixed columns to dynamic may affect layout calculations
 
-2. **Secondary Muscle Logic**: Consolidating two different implementations may break existing behavior
-   - **Mitigation**: Test with all primary muscle combinations
-   - **Verification**: Compare results from old vs new implementation
-
-3. **Alphabetical Grouping**: If grouping logic changes, section headers may appear in wrong order
-   - **Mitigation**: Test with various exercise name patterns (special characters, numbers)
-   - **Verification**: Ensure sections are sorted correctly
-
-### Dependencies Affected
-1. **WorkoutContext**: No changes - remains single source of truth
-2. **Component Props**: Some props may be removed if unused, but interfaces remain compatible
-3. **Import Paths**: New utility files require import updates
+### Dependencies
+1. **Library Exercise Lookup**: Need to ensure `exercisesLibrary` is always available when rendering exercises
+2. **Exercise Instance Creation**: Must update all places where exercises are created to include new fields
+3. **Exercise Replacement**: When replacing exercises, need to preserve or update configuration fields
 
 ### State Management Considerations
-- No state management changes - all state remains in parent component
-- Memoization improvements should not affect state updates
+1. **Exercise Updates**: Configuration fields should be read-only (from library), but need to ensure they're preserved during updates
+2. **Workout Persistence**: Need to ensure configuration fields are saved/loaded correctly
 
 ### UI/UX Impacts
-- **Positive**: Performance improvements may make filtering feel faster
-- **Positive**: Cleaner code reduces chance of styling bugs
-- **Neutral**: No visual changes expected
+1. **Column Width**: Variable columns may cause layout shifts - need to ensure smooth transitions
+2. **Input Focus**: Custom keyboard logic needs to handle all field types correctly
+3. **Previous Column**: May show different data formats depending on visible columns
 
 ### Performance Implications
-- **Positive**: Memoization prevents unnecessary recalculations
-- **Positive**: Extracted utilities can be optimized independently
-- **Risk**: Over-memoization could cause memory issues (unlikely at this scale)
+1. **Library Lookup**: Looking up library exercise for each render could be expensive - consider memoization or storing on Exercise instance
+2. **Re-renders**: Column visibility changes shouldn't cause unnecessary re-renders
 
 ### Backward Compatibility
-- All changes are internal refactoring
-- No API changes
-- Component interfaces remain the same
-- Should be fully backward compatible
+1. **Existing Workouts**: Old workouts without configuration fields should default to current behavior (category-based)
+2. **Migration**: May need migration logic for existing exercise instances
 
----
+## Thinking: ExerciseItem Discriminated Union Impact Analysis
 
-## 3a. Thinking Block: ExerciseItem Discriminated Union Analysis
-
-### Current Structure
+**Current Structure:**
 - `ExerciseItem = Exercise | ExerciseGroup`
 - `Exercise.type = 'exercise'`
-- `ExerciseGroup.type = 'group'`
+- `ExerciseGroup.type = 'group'` (contains children: Exercise[])
 
-### Proposed Change Impact
+**Proposed Change Impact:**
+- **Exercise Type**: Adding optional configuration fields (`trackDuration`, `trackReps`, `weightEquipTags`) does NOT affect the discriminated union structure
+- **ExerciseGroup Type**: No changes needed - groups contain Exercise instances, so they inherit the new fields indirectly
+- **Type Narrowing**: No impact - we're adding optional fields, not changing the type structure
+- **Utility Functions**: 
+  - `findExerciseDeep()` - No changes needed (searches by instanceId)
+  - `updateExercisesDeep()` - No changes needed (updates Exercise properties)
+  - `deleteExerciseDeep()` - No changes needed
+- **Impact on Existing Code**: Minimal - all code that processes `ExerciseItem[]` will continue to work since we're only adding optional fields
 
-**No Direct Impact**: The refactoring focuses on:
-1. Utility function extraction (filtering, grouping)
-2. Style cleanup
-3. Performance optimization
+**Conclusion**: This change is safe and does not require updates to discriminated union handling logic.
 
-These changes do NOT modify the `ExerciseItem` union structure or how it's processed.
+## User Approval Request
 
-**Indirect Considerations**:
-- Filtering utilities will work with `ExerciseLibraryItem[]`, not `ExerciseItem[]`
-- Alphabetical grouping utility is generic and works with any object with `name` property
-- No changes to `flattenExercises` or `reconstructExercises` functions
-- No changes to type narrowing logic
+This plan refactors the column header system to be dynamic based on exercise configuration rather than category alone. The changes will:
 
-**Type Guard Requirements**: None - utilities work with `ExerciseLibraryItem` which is separate from `ExerciseItem`
+1. Add configuration fields to Exercise type
+2. Update exercise creation to include configuration
+3. Create flexible column visibility system
+4. Update both column headers and SetRow to support dynamic columns
+5. Maintain backward compatibility with existing workouts
 
-**Utility Function Updates**: None required - existing utilities in `workoutHelpers.ts` remain unchanged
-
-**Conclusion**: This refactoring does not affect the `ExerciseItem` discriminated union. All changes are at the ExercisePicker/ExerciseLibrary level, which uses `ExerciseLibraryItem[]`, not `ExerciseItem[]`.
-
----
-
-## 4. User Approval Request
-
-This refactoring plan addresses:
-- ✅ De-duplication of identical logic (secondary muscles, alphabetical grouping, filtering)
-- ✅ Removal of redundant styling (empty objects, duplicate conditions)
-- ✅ Performance optimization (memoization of expensive calculations)
-- ✅ Code cleanliness (extracted utilities, constants for magic numbers)
-- ✅ TypeScript excellence (strict types, proper interfaces)
-
-**Execution Strategy**: Proceed module-by-module, starting with utilities, then constants, then component cleanup, ensuring each phase is tested before moving to the next.
-
-**Please approve this plan before I proceed with implementation.**
+**Please review and approve this plan before I proceed with implementation.**

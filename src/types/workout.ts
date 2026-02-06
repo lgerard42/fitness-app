@@ -32,6 +32,10 @@ export interface Exercise {
   notes?: Note[];
   weightUnit?: WeightUnit;
   collapsed?: boolean;
+  trackDuration?: boolean;
+  trackReps?: boolean;
+  trackDistance?: boolean;
+  weightEquipTags?: string[];
 }
 
 export interface ExerciseGroup {
