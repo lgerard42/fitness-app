@@ -227,7 +227,7 @@ export const useExerciseNotes = (
     expandedExerciseNotes,
     setExpandedExerciseNotes,
     handleOpenExerciseNote,
-    handleSaveExerciseNote: () => handleSaveExerciseNote(replacingExerciseId || ''),
+    handleSaveExerciseNote,
     handlePinExerciseNote,
     handleRemoveExerciseNote,
     handleUpdateExerciseNote,
