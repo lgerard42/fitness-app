@@ -71,6 +71,71 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
     return sections.map(s => s.title);
   }, [sections]);
 
+  // Memoized helper to get exercise instances - prevents stale closures during rapid selections
+  const getExerciseInstances = useCallback((
+    item: ExerciseLibraryItem,
+    selectedIds: string[],
+    selectedOrder: string[],
+    exerciseSetGroups: Record<string, SetGroup[]>,
+    exerciseInstanceSetGroups: Record<string, SetGroup[]>
+  ) => {
+    const isAlreadySelected = selectedIds.includes(item.id);
+    const exerciseInstances: Array<{ orderIndex: number; instanceKey: string; setGroups: SetGroup[] | undefined }> = [];
+
+    // First, check exerciseInstanceSetGroups for instance-based entries
+    Object.keys(exerciseInstanceSetGroups).forEach(instanceKey => {
+      const [exerciseId, orderIndexStr] = instanceKey.split('::');
+      if (exerciseId === item.id) {
+        const orderIndex = parseInt(orderIndexStr, 10);
+        const setGroups = exerciseInstanceSetGroups[instanceKey];
+        exerciseInstances.push({ orderIndex, instanceKey, setGroups });
+      }
+    });
+
+    // If no instance-based entries found, fall back to exerciseSetGroups or create default
+    // IMPORTANT: Find ALL occurrences, not just the first one, to handle multiple instances correctly
+    if (exerciseInstances.length === 0 && isAlreadySelected) {
+      // Find all occurrences of this exercise in selectedOrder
+      selectedOrder.forEach((id, orderIndex) => {
+        if (id === item.id) {
+          const instanceKey = `${item.id}::${orderIndex}`;
+          // Check if this instance already exists in exerciseInstanceSetGroups (might have been created by useEffect)
+          const existingSetGroups = exerciseInstanceSetGroups[instanceKey];
+          const setGroups = existingSetGroups || exerciseSetGroups[item.id] || [{
+            id: `sg-${item.id}-${orderIndex}-default`,
+            count: 1,
+            isDropset: false,
+          }];
+          exerciseInstances.push({
+            orderIndex,
+            instanceKey,
+            setGroups
+          });
+        }
+      });
+    }
+
+    return exerciseInstances;
+  }, []);
+
+  // Memoized map of exercise instances - prevents expensive recalculations during rapid selections
+  const exerciseInstancesMap = useMemo(() => {
+    const map = new Map<string, Array<{ orderIndex: number; instanceKey: string; setGroups: SetGroup[] | undefined }>>();
+
+    exercises.forEach(item => {
+      const instances = getExerciseInstances(
+        item,
+        selectedIds,
+        selectedOrder,
+        exerciseSetGroups,
+        exerciseInstanceSetGroups
+      );
+      map.set(item.id, instances);
+    });
+
+    return map;
+  }, [exercises, selectedIds, selectedOrder, exerciseSetGroups, exerciseInstanceSetGroups, getExerciseInstances]);
+
   const scrollToLetter = useCallback((letter: string) => {
     const sectionIndex = sections.findIndex(s => s.title === letter);
     if (sectionIndex !== -1 && sectionListRef.current) {
@@ -203,41 +268,14 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
   }, [openMenuExerciseId, openMenuSetGroupId, onIncrementSetGroup, onDecrementSetGroup, onToggleDropset, onToggleWarmup, onToggleFailure, onInsertRow, onDeleteRow]);
 
   const renderItem = useCallback(({ item }: { item: ExerciseLibraryItem }) => {
-    const isAlreadySelected = selectedIds.includes(item.id);
+    // Capture item.id immediately to ensure we always use the correct item
+    const itemId = item.id;
+    const isAlreadySelected = selectedIds.includes(itemId);
 
-    // Find all instances of this exercise by looking at exerciseInstanceSetGroups keys
-    // Each key represents one card/instance from the drag and drop modal
-    const exerciseInstances: Array<{ orderIndex: number; instanceKey: string; setGroups: SetGroup[] | undefined }> = [];
-
-    // First, check exerciseInstanceSetGroups for instance-based entries
-    Object.keys(exerciseInstanceSetGroups).forEach(instanceKey => {
-      const [exerciseId, orderIndexStr] = instanceKey.split('::');
-      if (exerciseId === item.id) {
-        const orderIndex = parseInt(orderIndexStr, 10);
-        const setGroups = exerciseInstanceSetGroups[instanceKey];
-        exerciseInstances.push({ orderIndex, instanceKey, setGroups });
-      }
-    });
-
-    // If no instance-based entries found, fall back to exerciseSetGroups or create default
-    if (exerciseInstances.length === 0 && isAlreadySelected) {
-      // Find the first occurrence in selectedOrder to use as the orderIndex
-      const firstOrderIndex = selectedOrder.findIndex(id => id === item.id);
-      if (firstOrderIndex !== -1) {
-        const instanceKey = `${item.id}::${firstOrderIndex}`;
-        // Use exerciseSetGroups if available, otherwise create a default setGroup
-        const setGroups = exerciseSetGroups[item.id] || [{
-          id: `sg-${item.id}-${firstOrderIndex}-default`,
-          count: 1,
-          isDropset: false,
-        }];
-        exerciseInstances.push({
-          orderIndex: firstOrderIndex,
-          instanceKey,
-          setGroups
-        });
-      }
-    }
+    // Use memoized exercise instances map instead of recalculating on every render
+    // This prevents stale closures and expensive recalculations during rapid selections
+    // Always use itemId (captured from render props) to prevent stale closures
+    const exerciseInstances = exerciseInstancesMap.get(itemId) || [];
 
     // Check if any instance has multiple rows (but not if there's only 1 instance with 1 row)
     const hasAnyExpandedInstance = exerciseInstances.some(instance => {
@@ -259,13 +297,18 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
 
       const hasOnlyOneSet = setGroup.count === 1;
 
+      // Capture the instanceKey and setGroupId to prevent stale closures
+      const currentInstanceKey = instance.instanceKey;
+      const currentSetGroupId = setGroup.id;
+
       return (
-        <View style={styles.inlineExerciseContainer}>
+        <View key={`inline-${itemId}`} style={styles.inlineExerciseContainer}>
           <TouchableOpacity
             onPress={() => {
               if (hasOnlyOneSet) {
                 // If only 1 set, clicking the exercise reduces sets by 1 (which unselects it)
-                onDecrementSetGroup?.(instance.instanceKey, setGroup.id);
+                // Use captured values to ensure we're operating on the correct exercise
+                onDecrementSetGroup?.(currentInstanceKey, currentSetGroupId);
               }
               // Otherwise, do nothing - clicking on selected exercises shouldn't toggle them
             }}
@@ -304,7 +347,7 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
             <View style={styles.inlineSetGroupControls}>
               {!hasOnlyOneSet && (
                 <TouchableOpacity
-                  onPress={() => onDecrementSetGroup?.(instance.instanceKey, setGroup.id)}
+                  onPress={() => onDecrementSetGroup?.(currentInstanceKey, currentSetGroupId)}
                   style={styles.inlineSetGroupButton}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
@@ -312,7 +355,7 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
                 </TouchableOpacity>
               )}
               <TouchableOpacity
-                onPress={() => onIncrementSetGroup?.(instance.instanceKey, setGroup.id)}
+                onPress={() => onIncrementSetGroup?.(currentInstanceKey, currentSetGroupId)}
                 style={styles.inlineSetGroupButton}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
@@ -321,23 +364,23 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
               <TouchableOpacity
                 ref={(ref) => {
                   if (ref) {
-                    menuButtonRefs.current.set(`${instance.instanceKey}-${setGroup.id}`, ref);
+                    menuButtonRefs.current.set(`${currentInstanceKey}-${currentSetGroupId}`, ref);
                   } else {
-                    menuButtonRefs.current.delete(`${instance.instanceKey}-${setGroup.id}`);
+                    menuButtonRefs.current.delete(`${currentInstanceKey}-${currentSetGroupId}`);
                   }
                 }}
                 onPress={() => {
-                  const isMenuOpen = openMenuExerciseId === instance.instanceKey && openMenuSetGroupId === setGroup.id;
+                  const isMenuOpen = openMenuExerciseId === currentInstanceKey && openMenuSetGroupId === currentSetGroupId;
                   if (isMenuOpen) {
                     setOpenMenuExerciseId(null);
                     setOpenMenuSetGroupId(null);
                     setMenuPosition(null);
                   } else {
-                    setOpenMenuExerciseId(instance.instanceKey);
-                    setOpenMenuSetGroupId(setGroup.id);
+                    setOpenMenuExerciseId(currentInstanceKey);
+                    setOpenMenuSetGroupId(currentSetGroupId);
                     // Measure button position with a delay to ensure ref is available
                     const measureButton = () => {
-                      const buttonRef = menuButtonRefs.current.get(`${instance.instanceKey}-${setGroup.id}`);
+                      const buttonRef = menuButtonRefs.current.get(`${currentInstanceKey}-${currentSetGroupId}`);
                       if (buttonRef) {
                         buttonRef.measureInWindow((x: number, y: number, width: number, height: number) => {
                           const dropdownWidth = 180;
@@ -378,7 +421,7 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
     // If selected and has any expanded instance, show expanded view for all instances in one card
     if (isAlreadySelected && hasAnyExpandedInstance && exerciseInstances.length > 0) {
       return (
-        <View style={styles.expandedExerciseContainer}>
+        <View key={`expanded-${itemId}`} style={styles.expandedExerciseContainer}>
           {/* Exercise header - shown once for all instances */}
           <TouchableOpacity
             onPress={() => {
@@ -422,17 +465,20 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
 
     // For unselected exercises or simple selected exercises that don't meet the simple case criteria,
     // show the regular list item without the +/- buttons
+    // Wrap in View with explicit key to prevent React from reusing components incorrectly
     return (
-      <ExerciseListItem
-        item={item}
-        isSelected={isAlreadySelected}
-        isLastSelected={false}
-        onToggle={onToggleSelect}
-        showAddMore={false}
-        renderingSection="glossary"
-      />
+      <View key={`list-item-${itemId}`}>
+        <ExerciseListItem
+          item={item}
+          isSelected={isAlreadySelected}
+          isLastSelected={false}
+          onToggle={onToggleSelect}
+          showAddMore={false}
+          renderingSection="glossary"
+        />
+      </View>
     );
-  }, [onToggleSelect, selectedIds, selectedOrder, onAddSet, onRemoveSet, exerciseSetGroups, exerciseInstanceSetGroups, renderSetGroupRow, openMenuExerciseId, openMenuSetGroupId, onIncrementSetGroup, onDecrementSetGroup, onToggleDropset, onToggleWarmup, onToggleFailure, onInsertRow]);
+  }, [selectedIds, exerciseInstancesMap, renderSetGroupRow, openMenuExerciseId, openMenuSetGroupId, onToggleSelect, onIncrementSetGroup, onDecrementSetGroup, onToggleDropset, onToggleWarmup, onToggleFailure, onInsertRow]);
 
   // Helper to render menu content
   const renderMenuContent = useCallback((setGroup: SetGroup, instanceKey: string, isExpanded: boolean = false, canDeleteRow: boolean = false) => {
