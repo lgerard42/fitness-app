@@ -164,7 +164,8 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
     setGroup: SetGroup,
     setGroupIndex: number,
     totalSetGroups: number,
-    isOnlyDefaultRow: boolean
+    isOnlyDefaultRow: boolean,
+    exerciseName: string
   ) => {
     const isMenuOpen = openMenuExerciseId === instanceKey && openMenuSetGroupId === setGroup.id;
     const isFirstRow = setGroupIndex === 0;
@@ -179,87 +180,95 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
           isLastRow && styles.setGroupRowLast,
         ]}
       >
-        {/* Set count and type indicators */}
-        <View style={styles.setGroupLeft}>
-          {setGroup.isDropset && (
-            <View style={styles.dropsetIndicator} />
-          )}
-          <Text style={[
-            styles.setGroupCount,
-            setGroup.isWarmup && { color: COLORS.orange[500] },
-            setGroup.isFailure && { color: COLORS.red[500] },
-          ]}>{setGroup.count}</Text>
-          <Text style={styles.setGroupX}> x </Text>
-        </View>
+        {/* Exercise name */}
+        <Text style={styles.setGroupExerciseName}>{exerciseName}</Text>
 
-        {/* Controls */}
-        <View style={styles.setGroupControls}>
-          <TouchableOpacity
-            onPress={() => onDecrementSetGroup?.(instanceKey, setGroup.id)}
-            disabled={setGroup.count <= 1}
-            style={[
-              styles.setGroupButton,
-              setGroup.count <= 1 && styles.setGroupButtonDisabled,
-            ]}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Minus size={14} color={setGroup.count <= 1 ? COLORS.slate[300] : COLORS.slate[600]} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => onIncrementSetGroup?.(instanceKey, setGroup.id)}
-            style={styles.setGroupButton}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Plus size={14} color={COLORS.slate[600]} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            ref={(ref) => {
-              if (ref) {
-                menuButtonRefs.current.set(`${instanceKey}-${setGroup.id}`, ref);
-              } else {
-                menuButtonRefs.current.delete(`${instanceKey}-${setGroup.id}`);
-              }
-            }}
-            onPress={() => {
-              if (isMenuOpen) {
-                setOpenMenuExerciseId(null);
-                setOpenMenuSetGroupId(null);
-                setMenuPosition(null);
-              } else {
-                setOpenMenuExerciseId(instanceKey);
-                setOpenMenuSetGroupId(setGroup.id);
-                // Measure button position with a delay to ensure ref is available
-                const measureButton = () => {
-                  const buttonRef = menuButtonRefs.current.get(`${instanceKey}-${setGroup.id}`);
-                  if (buttonRef) {
-                    buttonRef.measureInWindow((x: number, y: number, width: number, height: number) => {
-                      const dropdownWidth = 180;
-                      const padding = 16;
-                      // Align dropdown to the right edge of the button
-                      let menuX = x + width - dropdownWidth;
-                      // Ensure dropdown doesn't go off the right edge
-                      if (menuX + dropdownWidth > screenWidth - padding) {
-                        menuX = screenWidth - dropdownWidth - padding;
-                      }
-                      // Ensure dropdown doesn't go off the left edge
-                      if (menuX < padding) {
-                        menuX = padding;
-                      }
-                      setMenuPosition({ x: menuX, y: y + height + 4 });
-                    });
+        {/* Right side content */}
+        <View style={styles.setGroupRight}>
+          {/* Set count and type indicators */}
+          <View style={styles.setGroupLeft}>
+            {setGroup.isDropset && (
+              <View style={styles.dropsetIndicator} />
+            )}
+            <Text style={[
+              styles.setGroupCount,
+              setGroup.isWarmup && { color: COLORS.orange[500] },
+              setGroup.isFailure && { color: COLORS.red[500] },
+            ]}>{setGroup.count}</Text>
+            <Text style={styles.setGroupX}> x </Text>
+          </View>
+
+          {/* Controls */}
+          <View style={styles.setGroupControlsContainer}>
+            <View style={styles.setGroupControls}>
+              <TouchableOpacity
+                onPress={() => onDecrementSetGroup?.(instanceKey, setGroup.id)}
+                disabled={setGroup.count <= 1}
+                style={[
+                  styles.setGroupControlButton,
+                  setGroup.count <= 1 && styles.setGroupButtonDisabled,
+                ]}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Minus size={14} color={setGroup.count <= 1 ? COLORS.slate[300] : COLORS.slate[600]} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => onIncrementSetGroup?.(instanceKey, setGroup.id)}
+                style={styles.setGroupControlButton}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Plus size={14} color={COLORS.slate[600]} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                ref={(ref) => {
+                  if (ref) {
+                    menuButtonRefs.current.set(`${instanceKey}-${setGroup.id}`, ref);
                   } else {
-                    // Retry if ref not available yet
-                    setTimeout(measureButton, 10);
+                    menuButtonRefs.current.delete(`${instanceKey}-${setGroup.id}`);
                   }
-                };
-                setTimeout(measureButton, 0);
-              }
-            }}
-            style={styles.setGroupButton}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <MoreVertical size={14} color={COLORS.blue[600]} />
-          </TouchableOpacity>
+                }}
+                onPress={() => {
+                  if (isMenuOpen) {
+                    setOpenMenuExerciseId(null);
+                    setOpenMenuSetGroupId(null);
+                    setMenuPosition(null);
+                  } else {
+                    setOpenMenuExerciseId(instanceKey);
+                    setOpenMenuSetGroupId(setGroup.id);
+                    // Measure button position with a delay to ensure ref is available
+                    const measureButton = () => {
+                      const buttonRef = menuButtonRefs.current.get(`${instanceKey}-${setGroup.id}`);
+                      if (buttonRef) {
+                        buttonRef.measureInWindow((x: number, y: number, width: number, height: number) => {
+                          const dropdownWidth = 180;
+                          const padding = 16;
+                          // Align dropdown to the right edge of the button
+                          let menuX = x + width - dropdownWidth;
+                          // Ensure dropdown doesn't go off the right edge
+                          if (menuX + dropdownWidth > screenWidth - padding) {
+                            menuX = screenWidth - dropdownWidth - padding;
+                          }
+                          // Ensure dropdown doesn't go off the left edge
+                          if (menuX < padding) {
+                            menuX = padding;
+                          }
+                          setMenuPosition({ x: menuX, y: y + height + 4 });
+                        });
+                      } else {
+                        // Retry if ref not available yet
+                        setTimeout(measureButton, 10);
+                      }
+                    };
+                    setTimeout(measureButton, 0);
+                  }
+                }}
+                style={styles.setGroupMenuButton}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <MoreVertical size={14} color={COLORS.blue[600]} />
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
 
         {/* Menu trigger - actual menu rendered in Modal at root level */}
@@ -341,14 +350,14 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
             <View style={styles.inlineSetGroupControls}>
               <TouchableOpacity
                 onPress={() => onDecrementSetGroup?.(currentInstanceKey, currentSetGroupId)}
-                style={styles.inlineSetGroupButton}
+                style={styles.inlineSetGroupControlButton}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
                 <Minus size={14} color={COLORS.slate[600]} />
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => onIncrementSetGroup?.(currentInstanceKey, currentSetGroupId)}
-                style={styles.inlineSetGroupButton}
+                style={styles.inlineSetGroupControlButton}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
                 <Plus size={14} color={COLORS.slate[600]} />
@@ -397,7 +406,7 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
                     setTimeout(measureButton, 0);
                   }
                 }}
-                style={styles.inlineSetGroupButton}
+                style={styles.inlineSetGroupMenuButton}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
                 <MoreVertical size={14} color={COLORS.blue[600]} />
@@ -446,7 +455,7 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
             return (
               <View key={instance.instanceKey} style={styles.setGroupsContainer}>
                 {setGroups.map((setGroup, index) =>
-                  renderSetGroupRow(instance.instanceKey, setGroup, index, setGroups.length, setGroups.length === 1)
+                  renderSetGroupRow(instance.instanceKey, setGroup, index, setGroups.length, setGroups.length === 1, item.name)
                 )}
               </View>
             );
@@ -697,20 +706,20 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   setGroupsContainer: {
-    backgroundColor: COLORS.blue[200],
-    marginHorizontal: 12,
-    marginBottom: 8,
-    borderRadius: 6,
+    overflow: 'visible',
     borderWidth: 2,
     borderColor: COLORS.blue[200],
-    overflow: 'visible',
+    backgroundColor: COLORS.blue[200],
+    marginHorizontal: 4,
+    borderRadius: 6,
+    marginBottom: 4,
   },
   setGroupRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingRight: 8,
-    paddingLeft: 12,
+    paddingLeft: 50,
     paddingVertical: 4,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.blue[150],
@@ -721,6 +730,17 @@ const styles = StyleSheet.create({
   setGroupRowLast: {
     borderBottomWidth: 0,
   },
+  setGroupExerciseName: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    fontStyle: 'italic',
+    color: COLORS.slate[350],
+  },
+  setGroupRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   setGroupLeft: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -728,11 +748,11 @@ const styles = StyleSheet.create({
   },
   dropsetIndicator: {
     width: 3,
-    backgroundColor: COLORS.indigo[400],
+    backgroundColor: COLORS.slate[500],
     position: 'absolute',
     left: -12,
-    top: -10,
-    bottom: -10,
+    top: 0,
+    bottom: 0,
   },
   setGroupCount: {
     fontSize: 15,
@@ -743,16 +763,32 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: COLORS.slate[500],
   },
-  setGroupControls: {
+  setGroupControlsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    position: 'relative',
+    zIndex: 1,
   },
-  setGroupButton: {
+  setGroupControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  setGroupControlButton: {
     width: 28,
     height: 28,
     borderRadius: 6,
     backgroundColor: COLORS.slate[100],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  setGroupMenuButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    backgroundColor: 'transparent',
+    marginRight: -6,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -873,7 +909,7 @@ const styles = StyleSheet.create({
   },
   inlineDropsetIndicator: {
     width: 3,
-    backgroundColor: COLORS.indigo[400],
+    backgroundColor: COLORS.slate[500],
     position: 'absolute',
     left: -12,
     top: -10,
@@ -891,13 +927,22 @@ const styles = StyleSheet.create({
   inlineSetGroupControls: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 4,
   },
-  inlineSetGroupButton: {
+  inlineSetGroupControlButton: {
     width: 28,
     height: 28,
     borderRadius: 6,
     backgroundColor: COLORS.slate[100],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inlineSetGroupMenuButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    backgroundColor: 'transparent',
+    marginRight: -14,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -1588,7 +1588,8 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
     groupColorScheme: typeof defaultSupersetColorScheme | typeof defaultHiitColorScheme | null,
     isFirstInGroup: boolean,
     isLastInGroup: boolean,
-    isActive: boolean
+    isActive: boolean,
+    drag?: () => void
   ) => {
     const showTrash = swipedItemId === item.id;
 
@@ -1631,11 +1632,14 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           ]}
         >
           <TouchableOpacity
+            onLongPress={drag}
             onPress={() => {
               if (showTrash) {
                 closeTrashIcon();
               }
             }}
+            disabled={isActive}
+            delayLongPress={150}
             activeOpacity={1}
             style={{ flex: 1, flexDirection: 'row', alignItems: 'stretch' }}
           >
@@ -1814,20 +1818,9 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
 
     if (isGroupChild) {
       return (
-        <TouchableOpacity
-          onLongPress={drag}
-          onPress={() => {
-            // Close trash icon if visible on any card
-            if (swipedItemId) {
-              closeTrashIcon();
-            }
-          }}
-          disabled={isActive}
-          delayLongPress={150}
-          activeOpacity={1}
-        >
-          {renderExerciseContent(item, groupColorScheme, isFirstInGroup, isLastInGroup, isActive)}
-        </TouchableOpacity>
+        <View>
+          {renderExerciseContent(item, groupColorScheme, isFirstInGroup, isLastInGroup, isActive, drag)}
+        </View>
       );
     }
 
