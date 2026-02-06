@@ -2092,7 +2092,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
 
       {customHeader ? customHeader : (
         <View style={styles.header}>
