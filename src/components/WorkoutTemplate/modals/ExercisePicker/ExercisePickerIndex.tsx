@@ -242,8 +242,11 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
 
         if (!targetGroup) return prev;
 
-        // If count is 1, remove the exercise entirely
-        if (targetGroup.count === 1) {
+        // Decrement the count
+        const newCount = targetGroup.count - 1;
+
+        // If count reaches 0 or below, remove the exercise entirely
+        if (newCount <= 0) {
           // Remove from selectedOrder and selectedIds
           // Use the specific orderIndex from instanceKey, not lastIndexOf
           setSelectedOrder(prevOrder => {
@@ -279,11 +282,11 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
           delete updated[instanceKey];
           return updated;
         } else {
-          // Decrement count
+          // Decrement count normally
           return {
             ...prev,
             [instanceKey]: groups.map(sg =>
-              sg.id === setGroupId ? { ...sg, count: sg.count - 1 } : sg
+              sg.id === setGroupId ? { ...sg, count: newCount } : sg
             )
           };
         }
@@ -296,8 +299,11 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
 
         if (!targetGroup) return prev;
 
-        // If count is 1, remove the exercise entirely
-        if (targetGroup.count === 1) {
+        // Decrement the count
+        const newCount = targetGroup.count - 1;
+
+        // If count reaches 0 or below, remove the exercise entirely
+        if (newCount <= 0) {
           // Remove from selectedOrder and selectedIds
           // Use the specific orderIndex from instanceKey, not lastIndexOf
           setSelectedOrder(prevOrder => {
@@ -339,11 +345,11 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
           delete updated[exerciseId];
           return updated;
         } else {
-          // Decrement count
+          // Decrement count normally
           return {
             ...prev,
             [exerciseId]: groups.map(sg =>
-              sg.id === setGroupId ? { ...sg, count: sg.count - 1 } : sg
+              sg.id === setGroupId ? { ...sg, count: newCount } : sg
             )
           };
         }

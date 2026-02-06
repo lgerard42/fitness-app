@@ -295,8 +295,6 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
       const instance = exerciseInstances[0];
       const setGroup = instance.setGroups![0];
 
-      const hasOnlyOneSet = setGroup.count === 1;
-
       // Capture the instanceKey and setGroupId to prevent stale closures
       const currentInstanceKey = instance.instanceKey;
       const currentSetGroupId = setGroup.id;
@@ -305,12 +303,8 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
         <View key={`inline-${itemId}`} style={styles.inlineExerciseContainer}>
           <TouchableOpacity
             onPress={() => {
-              if (hasOnlyOneSet) {
-                // If only 1 set, clicking the exercise reduces sets by 1 (which unselects it)
-                // Use captured values to ensure we're operating on the correct exercise
-                onDecrementSetGroup?.(currentInstanceKey, currentSetGroupId);
-              }
-              // Otherwise, do nothing - clicking on selected exercises shouldn't toggle them
+              // Do nothing - clicking on selected exercises shouldn't toggle them
+              // User should use the +/- buttons to modify sets
             }}
             style={styles.inlineExerciseContent}
           >
@@ -345,15 +339,13 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
 
             {/* Controls */}
             <View style={styles.inlineSetGroupControls}>
-              {!hasOnlyOneSet && (
-                <TouchableOpacity
-                  onPress={() => onDecrementSetGroup?.(currentInstanceKey, currentSetGroupId)}
-                  style={styles.inlineSetGroupButton}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Minus size={14} color={COLORS.slate[600]} />
-                </TouchableOpacity>
-              )}
+              <TouchableOpacity
+                onPress={() => onDecrementSetGroup?.(currentInstanceKey, currentSetGroupId)}
+                style={styles.inlineSetGroupButton}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Minus size={14} color={COLORS.slate[600]} />
+              </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => onIncrementSetGroup?.(currentInstanceKey, currentSetGroupId)}
                 style={styles.inlineSetGroupButton}
