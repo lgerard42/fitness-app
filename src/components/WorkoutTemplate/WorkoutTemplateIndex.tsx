@@ -572,6 +572,15 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
             } else {
               fieldToFocus = 'distance';
             }
+          } else if (exercise.category === 'Training') {
+            // Training exercises use duration and reps
+            if (!nextSet.duration || nextSet.duration === '') {
+              fieldToFocus = 'duration';
+            } else if (!nextSet.reps || nextSet.reps === '') {
+              fieldToFocus = 'reps';
+            } else {
+              fieldToFocus = 'reps';
+            }
           }
           setFocusNextSet({ exerciseId: exInstanceId, setId: nextSet.id, field: fieldToFocus });
         }
@@ -2942,7 +2951,7 @@ const styles = StyleSheet.create({
   },
   colCheck: {
     width: 26, // Match checkButton width
-    alignItems: 'flex-end', // Right align
+    alignItems: 'center', // Right align
     justifyContent: 'center',
   },
   colHeaderText: {

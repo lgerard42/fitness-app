@@ -1,6 +1,6 @@
 export type SetType = 'Working' | 'Warmup' | 'Failure';
 export type WeightUnit = 'lbs' | 'kg';
-export type ExerciseCategory = 'Lifts' | 'Cardio' | 'Bodyweight' | 'HIIT';
+export type ExerciseCategory = 'Lifts' | 'Cardio' | 'Training';
 export type WorkoutMode = 'live' | 'edit' | 'readonly';
 export type GroupType = 'Superset' | 'HIIT';
 export type GroupSetType = 'warmup' | 'dropset' | 'failure' | null;

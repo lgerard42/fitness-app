@@ -28,15 +28,17 @@ interface NewExerciseState {
 }
 
 const NewExercise: React.FC<NewExerciseProps> = ({ isOpen, onClose, onSave, categories }) => {
-  const [newExercise, setNewExercise] = useState<NewExerciseState>({ 
-    name: "", category: "", primaryMuscles: [], secondaryMuscles: [], 
-    cardioType: "", trainingFocus: "", weightEquipTags: [], description: "", trackDuration: false 
+  const [newExercise, setNewExercise] = useState<NewExerciseState>({
+    name: "", category: "", primaryMuscles: [], secondaryMuscles: [],
+    cardioType: "", trainingFocus: "", weightEquipTags: [], description: "", trackDuration: false
   });
-  const [secondaryMusclesEnabled, setSecondaryMusclesEnabled] = useState(true);
+  const [secondaryMusclesEnabled, setSecondaryMusclesEnabled] = useState(false);
   const [activePrimaryForPopup, setActivePrimaryForPopup] = useState<string | null>(null);
   const [showDescription, setShowDescription] = useState(false);
   const [showSecondEquip, setShowSecondEquip] = useState(false);
   const [showWeightEquip, setShowWeightEquip] = useState(false);
+  const [showTrainingCardioType, setShowTrainingCardioType] = useState(false);
+  const [showTrainingMuscleGroups, setShowTrainingMuscleGroups] = useState(false);
 
   const toggleSelection = (field: keyof NewExerciseState, value: string) => {
     setNewExercise(prev => {
@@ -67,18 +69,19 @@ const NewExercise: React.FC<NewExerciseProps> = ({ isOpen, onClose, onSave, cate
       const currentSpecials = prev.primaryMuscles.filter(m => ["Full Body", "Olympic"].includes(m));
       const hasSpecialSelected = currentSpecials.length > 0;
       let newPrimaries: string[] = [], newSecondaries = prev.secondaryMuscles;
-      
+
       if (isSelected) {
         newPrimaries = prev.primaryMuscles.filter(m => m !== muscle);
-        const secondariesToRemove = PRIMARY_TO_SECONDARY_MAP[muscle] || [];
+        const secondariesToRemove = (PRIMARY_TO_SECONDARY_MAP as Record<string, string[]>)[muscle] || [];
         newSecondaries = prev.secondaryMuscles.filter(s => !secondariesToRemove.includes(s));
       } else {
-        if (isSpecial) { newPrimaries = [muscle]; newSecondaries = []; } 
+        if (isSpecial) { newPrimaries = [muscle]; newSecondaries = []; }
         else {
-           if (hasSpecialSelected) { newPrimaries = [muscle]; newSecondaries = []; } 
-           else { newPrimaries = [...prev.primaryMuscles, muscle]; }
+          if (hasSpecialSelected) { newPrimaries = [muscle]; newSecondaries = []; }
+          else { newPrimaries = [...prev.primaryMuscles, muscle]; }
         }
-        const hasSecondaries = PRIMARY_TO_SECONDARY_MAP[muscle] && PRIMARY_TO_SECONDARY_MAP[muscle].length > 0;
+        const muscleMap = PRIMARY_TO_SECONDARY_MAP as Record<string, string[]>;
+        const hasSecondaries = muscleMap[muscle] && muscleMap[muscle].length > 0;
         if (secondaryMusclesEnabled && hasSecondaries) setActivePrimaryForPopup(muscle);
       }
       return { ...prev, primaryMuscles: newPrimaries, secondaryMuscles: newSecondaries };
@@ -87,13 +90,16 @@ const NewExercise: React.FC<NewExerciseProps> = ({ isOpen, onClose, onSave, cate
 
   const handleCategoryChange = (cat: ExerciseCategory) => {
     setNewExercise(prev => ({ ...prev, category: cat, primaryMuscles: [], secondaryMuscles: [], cardioType: "", trainingFocus: "", weightEquipTags: [] }));
+    setSecondaryMusclesEnabled(cat === 'Lifts');
     setShowWeightEquip(false);
+    setShowTrainingCardioType(false);
+    setShowTrainingMuscleGroups(false);
   };
 
   const handleSave = () => {
     if (!newExercise.name || !newExercise.category) return;
     if (newExercise.category === 'Lifts' && newExercise.primaryMuscles.length === 0) return;
-    
+
     const exerciseToSave: ExerciseLibraryItem = {
       id: `ex-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       name: newExercise.name,
@@ -106,16 +112,19 @@ const NewExercise: React.FC<NewExerciseProps> = ({ isOpen, onClose, onSave, cate
       ...(newExercise.description && { description: newExercise.description }),
       ...(newExercise.trackDuration && { trackDuration: newExercise.trackDuration }),
     };
-    
+
     onSave(exerciseToSave);
     setNewExercise({ name: "", category: "", primaryMuscles: [], secondaryMuscles: [], cardioType: "", trainingFocus: "", weightEquipTags: [], description: "", trackDuration: false });
-    setSecondaryMusclesEnabled(true);
+    setSecondaryMusclesEnabled(false);
     setShowDescription(false); setShowSecondEquip(false); setShowWeightEquip(false);
+    setShowTrainingCardioType(false);
+    setShowTrainingMuscleGroups(false);
   };
 
   const getAvailableSecondaryMuscles = (primary: string): string[] => {
-    if (PRIMARY_TO_SECONDARY_MAP[primary]) {
-      return PRIMARY_TO_SECONDARY_MAP[primary].sort();
+    const muscleMap = PRIMARY_TO_SECONDARY_MAP as Record<string, string[]>;
+    if (muscleMap[primary]) {
+      return muscleMap[primary].sort();
     }
     return [];
   };
@@ -129,23 +138,42 @@ const NewExercise: React.FC<NewExerciseProps> = ({ isOpen, onClose, onSave, cate
 
         <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>EXERCISE NAME</Text>
-            <TextInput 
+            <View style={styles.rowBetween}>
+              <Text style={[styles.label, { marginBottom: 0 }]}>EXERCISE NAME <Text style={styles.required}>*</Text></Text>
+              <TouchableOpacity onPress={() => setShowDescription(!showDescription)} style={styles.rowGap}>
+                <Text style={[styles.label, { marginBottom: 0, color: newExercise.description ? COLORS.blue[600] : COLORS.slate[400] }]}>Description</Text>
+                <ChevronDown size={16} color={showDescription ? COLORS.blue[600] : COLORS.slate[400]} style={{ transform: [{ rotate: showDescription ? '180deg' : '0deg' }] }} />
+              </TouchableOpacity>
+            </View>
+            <TextInput
               style={styles.input}
               placeholder="e.g. Bulgarian Split Squat"
               placeholderTextColor={COLORS.slate[400]}
               value={newExercise.name}
-              onChangeText={text => setNewExercise({...newExercise, name: text})}
+              onChangeText={text => setNewExercise({ ...newExercise, name: text })}
             />
+            {showDescription && (
+              <View style={{ marginTop: 8, marginBottom: 10 }}>
+                <TextInput
+                  style={styles.textArea}
+                  placeholder="Add notes about form, cues, or setup..."
+                  placeholderTextColor={COLORS.slate[400]}
+                  multiline
+                  numberOfLines={3}
+                  value={newExercise.description}
+                  onChangeText={text => setNewExercise({ ...newExercise, description: text })}
+                />
+              </View>
+            )}
           </View>
 
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>CATEGORY <Text style={styles.required}>*</Text></Text>
             <View style={styles.categoryContainer}>
               {categories.map(cat => (
-                <TouchableOpacity 
-                  key={cat} 
-                  onPress={() => handleCategoryChange(cat)} 
+                <TouchableOpacity
+                  key={cat}
+                  onPress={() => handleCategoryChange(cat)}
                   style={[styles.categoryButton, newExercise.category === cat ? styles.categoryButtonSelected : styles.categoryButtonUnselected]}
                 >
                   <Text style={[styles.categoryText, newExercise.category === cat ? styles.categoryTextSelected : styles.categoryTextUnselected]}>
@@ -159,201 +187,298 @@ const NewExercise: React.FC<NewExerciseProps> = ({ isOpen, onClose, onSave, cate
           {newExercise.category === 'Lifts' && (
             <View style={styles.section}>
               <View style={styles.fieldGroup}>
-                <Text style={styles.label}>MUSCLE GROUPS</Text>
-                <View style={styles.rowBetween}>
-                  <Text style={styles.subLabel}>PRIMARY <Text style={styles.required}>*</Text></Text>
-                  <TouchableOpacity 
-                    style={styles.toggleContainer} 
-                    onPress={() => { 
-                      const newVal = !secondaryMusclesEnabled; 
-                      setSecondaryMusclesEnabled(newVal); 
-                      if (!newVal) setNewExercise(prev => ({...prev, secondaryMuscles: []})); 
+                <View style={styles.labelToggleRow}>
+                  <Text style={[styles.label, { marginBottom: 0 }]}>PRIMARY MUSCLE GROUPS <Text style={styles.required}>*</Text></Text>
+                  <TouchableOpacity
+                    style={styles.toggleContainer}
+                    onPress={() => {
+                      const newVal = !secondaryMusclesEnabled;
+                      setSecondaryMusclesEnabled(newVal);
+                      if (!newVal) setNewExercise(prev => ({ ...prev, secondaryMuscles: [] }));
                     }}
                   >
                     <Text style={[styles.toggleLabel, secondaryMusclesEnabled ? styles.textBlue : styles.textSlate]}>SECONDARY</Text>
-                    {secondaryMusclesEnabled ? <ToggleRight size={28} color={COLORS.blue[600]} /> : <ToggleLeft size={28} color={COLORS.slate[300]} />}
+                    {secondaryMusclesEnabled ? <ToggleRight size={24} color={COLORS.blue[600]} /> : <ToggleLeft size={24} color={COLORS.slate[300]} />}
                   </TouchableOpacity>
                 </View>
                 <View style={styles.chipsContainer}>
                   {PRIMARY_MUSCLES.map(m => (
-                    <Chip 
-                      key={m} 
-                      label={m} 
-                      selected={newExercise.primaryMuscles.includes(m)} 
-                      isPrimary={newExercise.primaryMuscles[0] === m} 
-                      isSpecial={["Full Body", "Olympic"].includes(m)} 
-                      onClick={() => handlePrimaryMuscleToggle(m)} 
-                      onMakePrimary={() => handleMakePrimary(m)} 
+                    <Chip
+                      key={m}
+                      label={m}
+                      selected={newExercise.primaryMuscles.includes(m)}
+                      isPrimary={newExercise.primaryMuscles[0] === m}
+                      isSpecial={["Full Body", "Olympic"].includes(m)}
+                      onClick={() => handlePrimaryMuscleToggle(m)}
+                      onMakePrimary={() => handleMakePrimary(m)}
                     />
                   ))}
                 </View>
               </View>
 
-              <View style={styles.divider} />
-
               <View style={styles.fieldGroup}>
-                <View style={styles.rowBetween}>
-                  <Text style={styles.label}>WEIGHT EQUIP.</Text>
-                  <View style={styles.rowGap}>
-                    <TouchableOpacity style={styles.toggleContainer} onPress={() => setNewExercise(prev => ({ ...prev, trackDuration: !prev.trackDuration }))}>
-                      <Text style={[styles.toggleLabel, newExercise.trackDuration ? styles.textBlue : styles.textSlate]}>DURATION</Text>
-                      {newExercise.trackDuration ? <ToggleRight size={28} color={COLORS.blue[600]} /> : <ToggleLeft size={28} color={COLORS.slate[300]} />}
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={styles.toggleContainer} 
-                      onPress={() => { 
-                        const newVal = !showSecondEquip; 
-                        setShowSecondEquip(newVal); 
-                        if (!newVal) setNewExercise(prev => ({...prev, weightEquipTags: [prev.weightEquipTags[0]].filter(Boolean)})); 
-                      }}
-                    >
-                      <Text style={[styles.toggleLabel, showSecondEquip ? styles.textBlue : styles.textSlate]}>ADD 2ND</Text>
-                      {showSecondEquip ? <ToggleRight size={28} color={COLORS.blue[600]} /> : <ToggleLeft size={28} color={COLORS.slate[300]} />}
-                    </TouchableOpacity>
-                  </View>
+                <View style={styles.labelToggleRow}>
+                  <Text style={[styles.label, { marginBottom: 0 }]}>WEIGHT EQUIP.</Text>
+                  <TouchableOpacity
+                    style={styles.toggleContainer}
+                    onPress={() => {
+                      const newVal = !showSecondEquip;
+                      setShowSecondEquip(newVal);
+                      if (!newVal) setNewExercise(prev => ({ ...prev, weightEquipTags: [prev.weightEquipTags[0]].filter(Boolean) }));
+                    }}
+                  >
+                    <Text style={[styles.toggleLabel, showSecondEquip ? styles.textBlue : styles.textSlate]}>ADD 2ND</Text>
+                    {showSecondEquip ? <ToggleRight size={24} color={COLORS.blue[600]} /> : <ToggleLeft size={24} color={COLORS.slate[300]} />}
+                  </TouchableOpacity>
                 </View>
                 <View style={styles.dropdownStack}>
-                  <CustomDropdown 
-                    value={newExercise.weightEquipTags[0] || ""} 
-                    onChange={(val) => handleEquipChange(0, val)} 
-                    options={WEIGHT_EQUIP_TAGS} 
-                    placeholder="Select Equipment..." 
+                  <CustomDropdown
+                    value={newExercise.weightEquipTags[0] || ""}
+                    onChange={(val) => handleEquipChange(0, val)}
+                    options={WEIGHT_EQUIP_TAGS}
+                    placeholder="Select Equipment..."
                   />
                   {showSecondEquip && (
-                    <CustomDropdown 
-                      value={newExercise.weightEquipTags[1] || ""} 
-                      onChange={(val) => handleEquipChange(1, val)} 
-                      options={WEIGHT_EQUIP_TAGS} 
-                      placeholder="Select 2nd Equipment..." 
+                    <CustomDropdown
+                      value={newExercise.weightEquipTags[1] || ""}
+                      onChange={(val) => handleEquipChange(1, val)}
+                      options={WEIGHT_EQUIP_TAGS}
+                      placeholder="Select 2nd Equipment..."
                     />
                   )}
                 </View>
               </View>
+
+              <View style={styles.additionalSettings}>
+                <Text style={styles.label}>ADDITIONAL SETTINGS:</Text>
+              </View>
+
+              {newExercise.category === 'Lifts' && (
+                <View style={styles.fieldGroup}>
+                  <View style={styles.labelToggleRow}>
+                    <Text style={[styles.label, { marginBottom: 0, color: newExercise.trackDuration ? COLORS.slate[500] : COLORS.slate[400] }]}>TRACK DURATION BY DEFAULT</Text>
+                    <TouchableOpacity
+                      style={styles.toggleContainer}
+                      onPress={() => setNewExercise(prev => ({ ...prev, trackDuration: !prev.trackDuration }))}
+                    >
+                      <Text style={[styles.toggleLabel, newExercise.trackDuration ? styles.textBlue : styles.textSlate]}>TRACK DURATION</Text>
+                      {newExercise.trackDuration ? <ToggleRight size={24} color={COLORS.blue[600]} /> : <ToggleLeft size={24} color={COLORS.slate[400]} />}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
             </View>
           )}
 
           {newExercise.category === 'Cardio' && (
             <View style={styles.section}>
               <View style={styles.fieldGroup}>
-                <Text style={styles.label}>CARDIO TYPE</Text>
-                <CustomDropdown 
-                  value={newExercise.cardioType} 
-                  onChange={(val) => setNewExercise({...newExercise, cardioType: val})} 
-                  options={CARDIO_TYPES} 
-                  placeholder="Select Cardio Type..." 
+                <Text style={styles.label}>INTENSITY PROFILE</Text>
+                <CustomDropdown
+                  value={newExercise.cardioType}
+                  onChange={(val) => setNewExercise({ ...newExercise, cardioType: val })}
+                  options={CARDIO_TYPES}
+                  placeholder="Select Intensity Profile..."
                 />
               </View>
-              <View style={styles.divider} />
-              <TouchableOpacity onPress={() => setShowWeightEquip(!showWeightEquip)} style={styles.rowBetween}>
-                <Text style={styles.label}>WEIGHT EQUIP.</Text>
-                <View style={styles.rowGap}>
-                  <Text style={[styles.toggleLabel, showWeightEquip ? styles.textBlue : styles.textSlate]}>{showWeightEquip ? "HIDE" : "ADD"}</Text>
-                  <ChevronDown size={16} color={showWeightEquip ? COLORS.blue[600] : COLORS.slate[400]} style={{ transform: [{ rotate: showWeightEquip ? '180deg' : '0deg' }] }} />
-                </View>
-              </TouchableOpacity>
-              {showWeightEquip && (
-                <View style={styles.marginTop}>
-                   <View style={[styles.rowBetween, { marginBottom: 12 }]}>
-                      <View />
-                      <TouchableOpacity 
-                        style={styles.toggleContainer} 
-                        onPress={() => { 
-                          const newVal = !showSecondEquip; 
-                          setShowSecondEquip(newVal); 
-                          if (!newVal) setNewExercise(prev => ({...prev, weightEquipTags: [prev.weightEquipTags[0]].filter(Boolean)})); 
+              <View style={styles.additionalSettings}>
+                <Text style={styles.label}>ADDITIONAL SETTINGS:</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowWeightEquip(!showWeightEquip)} style={styles.collapsibleLabelToggleRow}>
+                {(() => {
+                  const isActive = showWeightEquip || newExercise.weightEquipTags.some(tag => tag);
+                  const disabledColor = COLORS.slate[400];
+                  const activeColor = COLORS.slate[400];
+                  return (
+                    <>
+                      <View style={styles.rowGap}>
+                        <Text style={[styles.label, { marginBottom: 0, color: isActive ? COLORS.slate[500] : disabledColor }]}>WEIGHT EQUIP.</Text>
+                        <ChevronDown size={16} color={isActive ? COLORS.blue[600] : disabledColor} style={{ transform: [{ rotate: showWeightEquip ? '180deg' : '0deg' }] }} />
+                      </View>
+                      <TouchableOpacity
+                        style={styles.toggleContainer}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          const newVal = !showSecondEquip;
+                          setShowSecondEquip(newVal);
+                          if (!newVal) setNewExercise(prev => ({ ...prev, weightEquipTags: [prev.weightEquipTags[0]].filter(Boolean) }));
                         }}
                       >
-                        <Text style={[styles.toggleLabel, showSecondEquip ? styles.textBlue : styles.textSlate]}>ADD 2ND</Text>
-                        {showSecondEquip ? <ToggleRight size={28} color={COLORS.blue[600]} /> : <ToggleLeft size={28} color={COLORS.slate[300]} />}
+                        <Text style={[styles.toggleLabel, { color: isActive ? (showSecondEquip ? COLORS.blue[600] : COLORS.slate[400]) : disabledColor }]}>ADD 2ND</Text>
+                        {showSecondEquip ? <ToggleRight size={24} color={isActive ? COLORS.blue[600] : disabledColor} /> : <ToggleLeft size={24} color={disabledColor} />}
                       </TouchableOpacity>
-                   </View>
-                   <View style={styles.dropdownStack}>
-                      <CustomDropdown value={newExercise.weightEquipTags[0] || ""} onChange={(val) => handleEquipChange(0, val)} options={WEIGHT_EQUIP_TAGS} placeholder="Select Equipment..." />
-                      {showSecondEquip && <CustomDropdown value={newExercise.weightEquipTags[1] || ""} onChange={(val) => handleEquipChange(1, val)} options={WEIGHT_EQUIP_TAGS} placeholder="Select 2nd Equipment..." />}
-                   </View>
+                    </>
+                  );
+                })()}
+              </TouchableOpacity>
+              {showWeightEquip && (
+                <View style={{ marginBottom: 24 }}>
+                  <View style={styles.dropdownStack}>
+                    <CustomDropdown value={newExercise.weightEquipTags[0] || ""} onChange={(val) => handleEquipChange(0, val)} options={WEIGHT_EQUIP_TAGS} placeholder="Select Equipment..." />
+                    {showSecondEquip && <CustomDropdown value={newExercise.weightEquipTags[1] || ""} onChange={(val) => handleEquipChange(1, val)} options={WEIGHT_EQUIP_TAGS} placeholder="Select 2nd Equipment..." />}
+                  </View>
                 </View>
               )}
             </View>
           )}
 
           {newExercise.category === 'Training' && (
-             <View style={styles.section}>
-                <View style={styles.fieldGroup}>
-                  <Text style={styles.label}>TRAINING FOCUS</Text>
-                  <CustomDropdown value={newExercise.trainingFocus} onChange={(val) => setNewExercise({...newExercise, trainingFocus: val})} options={TRAINING_FOCUS} placeholder="Select Training Focus..." />
-                </View>
-                <View style={styles.divider} />
-                <TouchableOpacity onPress={() => setShowWeightEquip(!showWeightEquip)} style={styles.rowBetween}>
-                  <Text style={styles.label}>WEIGHT EQUIP.</Text>
-                  <View style={styles.rowGap}>
-                    <Text style={[styles.toggleLabel, showWeightEquip ? styles.textBlue : styles.textSlate]}>{showWeightEquip ? "HIDE" : "ADD"}</Text>
-                    <ChevronDown size={16} color={showWeightEquip ? COLORS.blue[600] : COLORS.slate[400]} style={{ transform: [{ rotate: showWeightEquip ? '180deg' : '0deg' }] }} />
-                  </View>
-                </TouchableOpacity>
-                {showWeightEquip && (
-                  <View style={styles.marginTop}>
-                     <View style={[styles.rowBetween, { marginBottom: 12 }]}>
-                        <View />
-                        <View style={styles.rowGap}>
-                          <TouchableOpacity style={styles.toggleContainer} onPress={() => setNewExercise(prev => ({ ...prev, trackDuration: !prev.trackDuration }))}>
-                            <Text style={[styles.toggleLabel, newExercise.trackDuration ? styles.textBlue : styles.textSlate]}>DURATION</Text>
-                            {newExercise.trackDuration ? <ToggleRight size={28} color={COLORS.blue[600]} /> : <ToggleLeft size={28} color={COLORS.slate[300]} />}
-                          </TouchableOpacity>
-                          <TouchableOpacity 
-                            style={styles.toggleContainer} 
-                            onPress={() => { 
-                              const newVal = !showSecondEquip; 
-                              setShowSecondEquip(newVal); 
-                              if (!newVal) setNewExercise(prev => ({...prev, weightEquipTags: [prev.weightEquipTags[0]].filter(Boolean)})); 
-                            }}
-                          >
-                            <Text style={[styles.toggleLabel, showSecondEquip ? styles.textBlue : styles.textSlate]}>ADD 2ND</Text>
-                            {showSecondEquip ? <ToggleRight size={28} color={COLORS.blue[600]} /> : <ToggleLeft size={28} color={COLORS.slate[300]} />}
-                          </TouchableOpacity>
-                        </View>
-                     </View>
-                     <View style={styles.dropdownStack}>
-                        <CustomDropdown value={newExercise.weightEquipTags[0] || ""} onChange={(val) => handleEquipChange(0, val)} options={WEIGHT_EQUIP_TAGS} placeholder="Select Equipment..." />
-                        {showSecondEquip && <CustomDropdown value={newExercise.weightEquipTags[1] || ""} onChange={(val) => handleEquipChange(1, val)} options={WEIGHT_EQUIP_TAGS} placeholder="Select 2nd Equipment..." />}
-                     </View>
-                  </View>
-                )}
-             </View>
-          )}
-
-          {newExercise.category && (
             <View style={styles.section}>
-               <View style={styles.divider} />
-               <TouchableOpacity onPress={() => setShowDescription(!showDescription)} style={styles.rowBetween}>
-                  <Text style={styles.label}>DESCRIPTION</Text>
-                  <View style={styles.rowGap}>
-                    <Text style={[styles.toggleLabel, showDescription ? styles.textBlue : styles.textSlate]}>{showDescription ? "HIDE" : "ADD"}</Text>
-                    <ChevronDown size={16} color={showDescription ? COLORS.blue[600] : COLORS.slate[400]} style={{ transform: [{ rotate: showDescription ? '180deg' : '0deg' }] }} />
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>TRAINING FOCUS</Text>
+                <CustomDropdown value={newExercise.trainingFocus} onChange={(val) => setNewExercise({ ...newExercise, trainingFocus: val })} options={TRAINING_FOCUS} placeholder="Select Training Focus..." />
+              </View>
+
+              <View style={styles.additionalSettings}>
+                <Text style={styles.label}>ADDITIONAL SETTINGS:</Text>
+              </View>
+
+              {/* Intensity Profile Toggle for Training */}
+              <TouchableOpacity onPress={() => {
+                setShowTrainingCardioType(!showTrainingCardioType);
+              }} style={styles.collapsibleLabelToggleRow}>
+                {(() => {
+                  const isActive = showTrainingCardioType || newExercise.cardioType;
+                  const disabledColor = COLORS.slate[400];
+                  const activeColor = COLORS.slate[400];
+                  const hasSelection = !showTrainingCardioType && newExercise.cardioType;
+                  return (
+                    <>
+                      <View style={styles.rowGap}>
+                        <Text style={[styles.label, { marginBottom: 0, color: isActive ? COLORS.slate[500] : disabledColor }]}>INTENSITY PROFILE</Text>
+                        <ChevronDown size={16} color={isActive ? COLORS.blue[600] : disabledColor} style={{ transform: [{ rotate: showTrainingCardioType ? '180deg' : '0deg' }] }} />
+                        {hasSelection && (
+                          <Text style={[styles.toggleLabel, { color: isActive ? COLORS.slate[500] : disabledColor }]} numberOfLines={1} ellipsizeMode="tail">
+                            {newExercise.cardioType}
+                          </Text>
+                        )}
+                      </View>
+                      <View style={{ width: 100 }} />
+                    </>
+                  );
+                })()}
+              </TouchableOpacity>
+              {showTrainingCardioType && (
+                <View style={{ marginBottom: 24 }}>
+                  <CustomDropdown
+                    value={newExercise.cardioType}
+                    onChange={(val) => setNewExercise({ ...newExercise, cardioType: val })}
+                    options={CARDIO_TYPES}
+                    placeholder="Select Intensity Profile..."
+                  />
+                </View>
+              )}
+
+
+              {/* Muscle Groups Toggle for Training */}
+              <TouchableOpacity onPress={() => {
+                setShowTrainingMuscleGroups(!showTrainingMuscleGroups);
+              }} style={styles.collapsibleLabelToggleRow}>
+                {(() => {
+                  const isActive = showTrainingMuscleGroups || newExercise.primaryMuscles.length > 0 || newExercise.secondaryMuscles.length > 0 || secondaryMusclesEnabled;
+                  const disabledColor = COLORS.slate[400];
+                  const activeColor = COLORS.slate[400];
+                  return (
+                    <>
+                      <View style={styles.rowGap}>
+                        <Text style={[styles.label, { marginBottom: 0, color: isActive ? COLORS.slate[500] : disabledColor }]}>PRIMARY MUSCLE GROUPS</Text>
+                        <ChevronDown size={16} color={isActive ? COLORS.blue[600] : disabledColor} style={{ transform: [{ rotate: showTrainingMuscleGroups ? '180deg' : '0deg' }] }} />
+                      </View>
+                      <TouchableOpacity
+                        style={styles.toggleContainer}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          const newVal = !secondaryMusclesEnabled;
+                          setSecondaryMusclesEnabled(newVal);
+                          if (!newVal) setNewExercise(prev => ({ ...prev, secondaryMuscles: [] }));
+                        }}
+                      >
+                        <Text style={[styles.toggleLabel, { color: isActive ? (secondaryMusclesEnabled ? COLORS.blue[600] : activeColor) : disabledColor }]}>SECONDARY</Text>
+                        {secondaryMusclesEnabled ? <ToggleRight size={24} color={isActive ? COLORS.blue[600] : disabledColor} /> : <ToggleLeft size={24} color={disabledColor} />}
+                      </TouchableOpacity>
+                    </>
+                  );
+                })()}
+              </TouchableOpacity>
+              {showTrainingMuscleGroups && (
+                <View style={{ marginBottom: 24 }}>
+                  <View style={styles.chipsContainer}>
+                    {PRIMARY_MUSCLES.map(m => (
+                      <Chip
+                        key={m}
+                        label={m}
+                        selected={newExercise.primaryMuscles.includes(m)}
+                        isPrimary={newExercise.primaryMuscles[0] === m}
+                        isSpecial={["Full Body", "Olympic"].includes(m)}
+                        onClick={() => handlePrimaryMuscleToggle(m)}
+                        onMakePrimary={() => handleMakePrimary(m)}
+                      />
+                    ))}
                   </View>
-               </TouchableOpacity>
-               {showDescription && (
-                 <View style={styles.marginTop}>
-                   <TextInput 
-                     style={styles.textArea}
-                     placeholder="Add notes about form, cues, or setup..."
-                     placeholderTextColor={COLORS.slate[400]}
-                     multiline
-                     numberOfLines={3}
-                     value={newExercise.description}
-                     onChangeText={text => setNewExercise({...newExercise, description: text})}
-                   />
-                 </View>
-               )}
+                </View>
+              )}
+
+              <TouchableOpacity onPress={() => setShowWeightEquip(!showWeightEquip)} style={styles.collapsibleLabelToggleRow}>
+                {(() => {
+                  const isActive = showWeightEquip || newExercise.weightEquipTags.some(tag => tag) || showSecondEquip;
+                  const disabledColor = COLORS.slate[400];
+                  const activeColor = COLORS.slate[400];
+                  return (
+                    <>
+                      <View style={styles.rowGap}>
+                        <Text style={[styles.label, { marginBottom: 0, color: isActive ? COLORS.slate[500] : disabledColor }]}>WEIGHT EQUIP.</Text>
+                        <ChevronDown size={16} color={isActive ? COLORS.blue[600] : disabledColor} style={{ transform: [{ rotate: showWeightEquip ? '180deg' : '0deg' }] }} />
+                      </View>
+                      <TouchableOpacity
+                        style={styles.toggleContainer}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          const newVal = !showSecondEquip;
+                          setShowSecondEquip(newVal);
+                          if (!newVal) setNewExercise(prev => ({ ...prev, weightEquipTags: [prev.weightEquipTags[0]].filter(Boolean) }));
+                        }}
+                      >
+                        <Text style={[styles.toggleLabel, { color: isActive ? (showSecondEquip ? COLORS.blue[600] : activeColor) : disabledColor }]}>ADD 2ND</Text>
+                        {showSecondEquip ? <ToggleRight size={24} color={isActive ? COLORS.blue[600] : disabledColor} /> : <ToggleLeft size={24} color={disabledColor} />}
+                      </TouchableOpacity>
+                    </>
+                  );
+                })()}
+              </TouchableOpacity>
+              {showWeightEquip && (
+                <View style={{ marginBottom: 24 }}>
+                  <View style={styles.dropdownStack}>
+                    <CustomDropdown value={newExercise.weightEquipTags[0] || ""} onChange={(val) => handleEquipChange(0, val)} options={WEIGHT_EQUIP_TAGS} placeholder="Select Equipment..." />
+                    {showSecondEquip && <CustomDropdown value={newExercise.weightEquipTags[1] || ""} onChange={(val) => handleEquipChange(1, val)} options={WEIGHT_EQUIP_TAGS} placeholder="Select 2nd Equipment..." />}
+                  </View>
+                </View>
+              )}
+
+              {newExercise.category === 'Training' && (
+                <View style={styles.fieldGroup}>
+                  <View style={styles.labelToggleRow}>
+                    <Text style={[styles.label, { marginBottom: 0, color: newExercise.trackDuration ? COLORS.slate[500] : COLORS.slate[400] }]}>TRACK DURATION BY DEFAULT</Text>
+                    <TouchableOpacity
+                      style={styles.toggleContainer}
+                      onPress={() => setNewExercise(prev => ({ ...prev, trackDuration: !prev.trackDuration }))}
+                    >
+                      <Text style={[styles.toggleLabel, newExercise.trackDuration ? styles.textBlue : styles.textSlate]}>TRACK DURATION</Text>
+                      {newExercise.trackDuration ? <ToggleRight size={24} color={COLORS.blue[600]} /> : <ToggleLeft size={24} color={COLORS.slate[400]} />}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
             </View>
           )}
+
         </ScrollView>
 
         <View style={styles.footer}>
           <TouchableOpacity onPress={onClose} style={styles.cancelButton}>
             <Text style={styles.cancelButtonText}>Cancel</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
-            onPress={handleSave} 
+          <TouchableOpacity
+            onPress={handleSave}
             disabled={!newExercise.name || !newExercise.category || (newExercise.category === 'Lifts' && newExercise.primaryMuscles.length === 0)}
             style={[styles.saveButton, (!newExercise.name || !newExercise.category || (newExercise.category === 'Lifts' && newExercise.primaryMuscles.length === 0)) && styles.saveButtonDisabled]}
           >
@@ -362,22 +487,22 @@ const NewExercise: React.FC<NewExerciseProps> = ({ isOpen, onClose, onSave, cate
         </View>
 
         <Modal visible={!!activePrimaryForPopup} transparent animationType="fade" onRequestClose={() => setActivePrimaryForPopup(null)}>
-           <TouchableOpacity style={styles.popupOverlay} activeOpacity={1} onPress={() => setActivePrimaryForPopup(null)}>
-              <View style={styles.popupContent} onStartShouldSetResponder={() => true}>
-                 <View style={styles.popupHeader}>
-                    <Text style={styles.popupTitle}>{activePrimaryForPopup} <Text style={styles.popupSubtitle}>Secondary Muscles</Text></Text>
-                    <TouchableOpacity onPress={() => setActivePrimaryForPopup(null)}><Text style={styles.popupSkip}>Skip</Text></TouchableOpacity>
-                 </View>
-                 <View style={styles.popupChips}>
-                    {getAvailableSecondaryMuscles(activePrimaryForPopup || '').map(m => (
-                       <Chip key={m} label={m} selected={newExercise.secondaryMuscles.includes(m)} onClick={() => toggleSelection('secondaryMuscles', m)} />
-                    ))}
-                 </View>
-                 <TouchableOpacity onPress={() => setActivePrimaryForPopup(null)} style={styles.popupDoneButton}>
-                    <Text style={styles.popupDoneText}>Done</Text>
-                 </TouchableOpacity>
+          <TouchableOpacity style={styles.popupOverlay} activeOpacity={1} onPress={() => setActivePrimaryForPopup(null)}>
+            <View style={styles.popupContent} onStartShouldSetResponder={() => true}>
+              <View style={styles.popupHeader}>
+                <Text style={styles.popupTitle}>{activePrimaryForPopup} <Text style={styles.popupSubtitle}>Secondary Muscles</Text></Text>
+                <TouchableOpacity onPress={() => setActivePrimaryForPopup(null)}><Text style={styles.popupSkip}>Skip</Text></TouchableOpacity>
               </View>
-           </TouchableOpacity>
+              <View style={styles.popupChips}>
+                {getAvailableSecondaryMuscles(activePrimaryForPopup || '').map(m => (
+                  <Chip key={m} label={m} selected={newExercise.secondaryMuscles.includes(m)} onClick={() => toggleSelection('secondaryMuscles', m)} />
+                ))}
+              </View>
+              <TouchableOpacity onPress={() => setActivePrimaryForPopup(null)} style={styles.popupDoneButton}>
+                <Text style={styles.popupDoneText}>Done</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
         </Modal>
       </SafeAreaView>
     </Modal>
@@ -408,6 +533,10 @@ const styles = StyleSheet.create({
   },
   fieldGroup: {
     marginBottom: 24,
+  },
+  additionalSettings: {
+    marginBottom: 6,
+    marginTop: 10,
   },
   label: {
     fontSize: 12,
@@ -471,6 +600,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
+  labelToggleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  collapsibleLabelToggleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+    minHeight: 26,
+  },
   subLabel: {
     fontSize: 12,
     fontWeight: 'bold',
@@ -494,12 +636,7 @@ const styles = StyleSheet.create({
   chipsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginTop: 8,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: COLORS.slate[100],
-    marginVertical: 16,
+    marginTop: 0,
   },
   rowGap: {
     flexDirection: 'row',

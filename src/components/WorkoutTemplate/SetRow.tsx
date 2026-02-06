@@ -494,7 +494,7 @@ const SetRow: React.FC<SetRowProps> = ({
                         }
                       }
                     }}
-                    placeholder={isLift ? "" : "min:sec"}
+                    placeholder={isLift ? "" : "mm:ss"}
                     placeholderTextColor={COLORS.slate[400]}
                     keyboardType={isLift ? "decimal-pad" : "default"}
                     value={isLift ? (set.weight || "") : (set.duration || "")}

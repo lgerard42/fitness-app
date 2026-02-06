@@ -12,7 +12,7 @@ export const TRAINING_FOCUS = [
 ];
 
 export const WEIGHT_EQUIP_TAGS = [
-  "Barbell", "Bands", "Bodyweight (Calisthenics) / Reps", "Cable", "Dumbbells", "Kettlebell", "Machine", "Other"
+  "Barbell", "Bands", "Bodyweight (Calisthenics)", "Reps","Cable", "Dumbbells", "Kettlebell", "Machine", "Weighted Vest", "Other"
 ];
 
 export const PRIMARY_TO_SECONDARY_MAP = {
