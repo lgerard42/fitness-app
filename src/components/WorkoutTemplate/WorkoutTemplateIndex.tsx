@@ -1492,6 +1492,86 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
 
               const isRestTimerSelected = restTimerSelectedSetIds.has(set.id);
               const shouldWrapInSelectionBorder = restTimerSelectionMode;
+              const isRestTimerDropSetStart = !!(set.dropSetId && (idx === 0 || ex.sets[idx - 1]?.dropSetId !== set.dropSetId));
+              const isRestTimerDropSetEnd = !!(set.dropSetId && (idx === ex.sets.length - 1 || ex.sets[idx + 1]?.dropSetId !== set.dropSetId));
+              const toggleRestTimerSelection = () => {
+                setRestTimerSelectedSetIds((prev: globalThis.Set<string>) => {
+                  const newSet = new globalThis.Set<string>(prev);
+                  if (newSet.has(set.id)) {
+                    newSet.delete(set.id);
+                  } else {
+                    newSet.add(set.id);
+                  }
+                  return newSet;
+                });
+              };
+
+              const setRowProps = {
+                index: idx,
+                set,
+                category: ex.category,
+                weightUnit: ex.weightUnit,
+                previousSet: previousData ? convertPreviousSet(previousData) : null,
+                previousSetIsFromOlderHistory: previousData?.isFromOlderHistory || false,
+                onUpdate: (s: Set) => handleUpdateSet(ex.instanceId, s),
+                onToggle: () => handleToggleComplete(ex.instanceId, set),
+                onDelete: () => handleDeleteSet(ex.instanceId, set.id),
+                isLast: idx === ex.sets.length - 1,
+                onPressSetNumber: (pageX: number, pageY: number, width: number, height: number) => handleSetNumberPress(ex.instanceId, set.id, pageX, pageY, width, height),
+                isSelectionMode: selectionMode?.exerciseId === ex.instanceId,
+                isSelected: selectedSetIds.has(set.id),
+                onToggleSelection: (isAddToGroupAction?: boolean) => handleToggleSetSelection(set.id, isAddToGroupAction),
+                isRestTimerSelectionMode: restTimerSelectionMode,
+                isRestTimerSelected: restTimerSelectedSetIds.has(set.id),
+                onToggleRestTimerSelection: toggleRestTimerSelection,
+                dropSetId: set.dropSetId,
+                isDropSetStart: !!(set.dropSetId && (idx === 0 || ex.sets[idx - 1].dropSetId !== set.dropSetId)),
+                isDropSetEnd: !!(set.dropSetId && (idx === ex.sets.length - 1 || ex.sets[idx + 1]?.dropSetId !== set.dropSetId) && !set.restPeriodSeconds),
+                groupSetNumber: groupSetNumber ?? 0,
+                indexInGroup: indexInGroup ?? 0,
+                overallSetNumber: overallSetNumber,
+                warmupIndex,
+                workingIndex,
+                editingGroupId: selectionMode?.editingGroupId,
+                isGroupChild,
+                parentGroupType,
+                readOnly,
+                shouldFocus: focusNextSet?.setId === set.id ? (focusNextSet.field === 'weight' || focusNextSet.field === 'reps' ? focusNextSet.field : null) : null,
+                onFocusHandled: () => setFocusNextSet(null),
+                onCustomKeyboardOpen: !readOnly && !restTimerSelectionMode && (ex.category === 'Lifts' || ex.category === 'Cardio') ? ({ field, value }: { field: 'weight' | 'reps' | 'duration' | 'distance'; value: string }) => handleCustomKeyboardOpen(ex.instanceId, set.id, field, value) : null,
+                customKeyboardActive: customKeyboardTarget?.exerciseId === ex.instanceId && customKeyboardTarget?.setId === set.id,
+                customKeyboardField: customKeyboardTarget?.exerciseId === ex.instanceId && customKeyboardTarget?.setId === set.id ? (customKeyboardTarget.field === 'weight' || customKeyboardTarget.field === 'reps' || customKeyboardTarget.field === 'duration' || customKeyboardTarget.field === 'distance' ? customKeyboardTarget.field : null) : null,
+                customKeyboardShouldSelectAll: customKeyboardTarget?.exerciseId === ex.instanceId && customKeyboardTarget?.setId === set.id ? customKeyboardShouldSelectAll : false,
+                onLongPressRow: () => startSetDrag(ex),
+              };
+
+              const restTimerBarProps = {
+                set,
+                exerciseId: ex.instanceId,
+                currentWorkout,
+                handleWorkoutUpdate,
+                activeRestTimer,
+                setActiveRestTimer,
+                setRestPeriodSetInfo,
+                setRestTimerInput,
+                setRestPeriodModalOpen,
+                setRestTimerPopupOpen,
+                isRestTimerDropSetStart,
+                isRestTimerDropSetEnd,
+                displayGroupSetType: displayGroupSetType as GroupSetType,
+                isBeingEdited: restPeriodSetInfo?.setId === set.id && restPeriodModalOpen,
+                onClearInputFocus: closeCustomKeyboard,
+                isRestTimerSelectionMode: restTimerSelectionMode,
+                isRestTimerSelected,
+                onToggleRestTimerSelection: toggleRestTimerSelection,
+              };
+
+              const setRowAndTimer = (
+                <>
+                  <SetRow {...setRowProps} />
+                  {showRestTimer && <RestTimerBar {...restTimerBarProps} />}
+                </>
+              );
 
               return (
                 <React.Fragment key={set.id}>
@@ -1500,182 +1580,10 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                       styles.restTimerSelectionWrapper,
                       isRestTimerSelected && styles.restTimerSelectionWrapper__selected
                     ]}>
-                      <SetRow index={idx} set={set} category={ex.category}
-                        weightUnit={ex.weightUnit}
-                        previousSet={previousData ? convertPreviousSet(previousData) : null}
-                        previousSetIsFromOlderHistory={previousData?.isFromOlderHistory || false}
-                        onUpdate={(s) => handleUpdateSet(ex.instanceId, s)}
-                        onToggle={() => handleToggleComplete(ex.instanceId, set)}
-                        onDelete={() => handleDeleteSet(ex.instanceId, set.id)}
-                        isLast={idx === ex.sets.length - 1}
-                        onPressSetNumber={(pageX, pageY, width, height) => handleSetNumberPress(ex.instanceId, set.id, pageX, pageY, width, height)}
-                        isSelectionMode={selectionMode?.exerciseId === ex.instanceId}
-                        isSelected={selectedSetIds.has(set.id)}
-                        onToggleSelection={(isAddToGroupAction) => handleToggleSetSelection(set.id, isAddToGroupAction)}
-                        isRestTimerSelectionMode={restTimerSelectionMode}
-                        isRestTimerSelected={restTimerSelectedSetIds.has(set.id)}
-                        onToggleRestTimerSelection={() => {
-                          setRestTimerSelectedSetIds((prev: globalThis.Set<string>) => {
-                            const newSet = new globalThis.Set<string>(prev);
-                            if (newSet.has(set.id)) {
-                              newSet.delete(set.id);
-                            } else {
-                              newSet.add(set.id);
-                            }
-                            return newSet;
-                          });
-                        }}
-                        dropSetId={set.dropSetId}
-                        isDropSetStart={!!(set.dropSetId && (idx === 0 || ex.sets[idx - 1].dropSetId !== set.dropSetId))}
-                        isDropSetEnd={!!(set.dropSetId && (idx === ex.sets.length - 1 || ex.sets[idx + 1]?.dropSetId !== set.dropSetId) && !set.restPeriodSeconds)}
-                        groupSetNumber={groupSetNumber ?? 0}
-                        indexInGroup={indexInGroup ?? 0}
-                        overallSetNumber={overallSetNumber}
-                        warmupIndex={warmupIndex}
-                        workingIndex={workingIndex}
-                        editingGroupId={selectionMode?.editingGroupId}
-                        isGroupChild={isGroupChild}
-                        parentGroupType={parentGroupType}
-                        readOnly={readOnly}
-                        shouldFocus={focusNextSet?.setId === set.id ? (focusNextSet.field === 'weight' || focusNextSet.field === 'reps' ? focusNextSet.field : null) : null}
-                        onFocusHandled={() => setFocusNextSet(null)}
-                        onCustomKeyboardOpen={!readOnly && !restTimerSelectionMode && (ex.category === 'Lifts' || ex.category === 'Cardio') ? ({ field, value }) => handleCustomKeyboardOpen(ex.instanceId, set.id, field, value) : null}
-                        customKeyboardActive={customKeyboardTarget?.exerciseId === ex.instanceId && customKeyboardTarget?.setId === set.id}
-                        customKeyboardField={customKeyboardTarget?.exerciseId === ex.instanceId && customKeyboardTarget?.setId === set.id ? (customKeyboardTarget.field === 'weight' || customKeyboardTarget.field === 'reps' || customKeyboardTarget.field === 'duration' || customKeyboardTarget.field === 'distance' ? customKeyboardTarget.field : null) : null}
-                        customKeyboardShouldSelectAll={customKeyboardTarget?.exerciseId === ex.instanceId && customKeyboardTarget?.setId === set.id ? customKeyboardShouldSelectAll : false}
-                        onLongPressRow={() => startSetDrag(ex)}
-                      />
-
-                      {/* Rest Timer Bar */}
-                      {showRestTimer && (() => {
-                        // Determine if this rest timer is at the start of a dropset
-                        const isRestTimerDropSetStart = !!(set.dropSetId && (idx === 0 || ex.sets[idx - 1]?.dropSetId !== set.dropSetId));
-                        // Determine if this rest timer is at the end of a dropset
-                        const isRestTimerDropSetEnd = !!(set.dropSetId && (idx === ex.sets.length - 1 || ex.sets[idx + 1]?.dropSetId !== set.dropSetId));
-
-                        return (
-                          <RestTimerBar
-                            set={set}
-                            exerciseId={ex.instanceId}
-                            currentWorkout={currentWorkout}
-                            handleWorkoutUpdate={handleWorkoutUpdate}
-                            activeRestTimer={activeRestTimer}
-                            setActiveRestTimer={setActiveRestTimer}
-                            setRestPeriodSetInfo={setRestPeriodSetInfo}
-                            setRestTimerInput={setRestTimerInput}
-                            setRestPeriodModalOpen={setRestPeriodModalOpen}
-                            setRestTimerPopupOpen={setRestTimerPopupOpen}
-                            isRestTimerDropSetStart={isRestTimerDropSetStart}
-                            isRestTimerDropSetEnd={isRestTimerDropSetEnd}
-                            displayGroupSetType={displayGroupSetType as GroupSetType}
-                            isBeingEdited={restPeriodSetInfo?.setId === set.id && restPeriodModalOpen}
-                            isRestTimerSelectionMode={restTimerSelectionMode}
-                            isRestTimerSelected={isRestTimerSelected}
-                            onClearInputFocus={closeCustomKeyboard}
-                            onToggleRestTimerSelection={() => {
-                              setRestTimerSelectedSetIds((prev: globalThis.Set<string>) => {
-                                const newSet = new globalThis.Set<string>(prev);
-                                if (newSet.has(set.id)) {
-                                  newSet.delete(set.id);
-                                } else {
-                                  newSet.add(set.id);
-                                }
-                                return newSet;
-                              });
-                            }}
-                          />
-                        );
-                      })()}
+                      {setRowAndTimer}
                     </View>
                   ) : (
-                    <>
-                      <SetRow index={idx} set={set} category={ex.category}
-                        weightUnit={ex.weightUnit}
-                        previousSet={previousData ? convertPreviousSet(previousData) : null}
-                        previousSetIsFromOlderHistory={previousData?.isFromOlderHistory || false}
-                        onUpdate={(s) => handleUpdateSet(ex.instanceId, s)}
-                        onToggle={() => handleToggleComplete(ex.instanceId, set)}
-                        onDelete={() => handleDeleteSet(ex.instanceId, set.id)}
-                        isLast={idx === ex.sets.length - 1}
-                        onPressSetNumber={(pageX, pageY, width, height) => handleSetNumberPress(ex.instanceId, set.id, pageX, pageY, width, height)}
-                        isSelectionMode={selectionMode?.exerciseId === ex.instanceId}
-                        isSelected={selectedSetIds.has(set.id)}
-                        onToggleSelection={(isAddToGroupAction) => handleToggleSetSelection(set.id, isAddToGroupAction)}
-                        isRestTimerSelectionMode={restTimerSelectionMode}
-                        isRestTimerSelected={restTimerSelectedSetIds.has(set.id)}
-                        onToggleRestTimerSelection={() => {
-                          setRestTimerSelectedSetIds((prev: globalThis.Set<string>) => {
-                            const newSet = new globalThis.Set<string>(prev);
-                            if (newSet.has(set.id)) {
-                              newSet.delete(set.id);
-                            } else {
-                              newSet.add(set.id);
-                            }
-                            return newSet;
-                          });
-                        }}
-                        dropSetId={set.dropSetId}
-                        isDropSetStart={!!(set.dropSetId && (idx === 0 || ex.sets[idx - 1].dropSetId !== set.dropSetId))}
-                        isDropSetEnd={!!(set.dropSetId && (idx === ex.sets.length - 1 || ex.sets[idx + 1]?.dropSetId !== set.dropSetId) && !set.restPeriodSeconds)}
-                        groupSetNumber={groupSetNumber ?? 0}
-                        indexInGroup={indexInGroup ?? 0}
-                        overallSetNumber={overallSetNumber}
-                        warmupIndex={warmupIndex}
-                        workingIndex={workingIndex}
-                        editingGroupId={selectionMode?.editingGroupId}
-                        isGroupChild={isGroupChild}
-                        parentGroupType={parentGroupType}
-                        readOnly={readOnly}
-                        shouldFocus={focusNextSet?.setId === set.id ? (focusNextSet.field === 'weight' || focusNextSet.field === 'reps' ? focusNextSet.field : null) : null}
-                        onFocusHandled={() => setFocusNextSet(null)}
-                        onCustomKeyboardOpen={!readOnly && !restTimerSelectionMode && (ex.category === 'Lifts' || ex.category === 'Cardio') ? ({ field, value }) => handleCustomKeyboardOpen(ex.instanceId, set.id, field, value) : null}
-                        customKeyboardActive={customKeyboardTarget?.exerciseId === ex.instanceId && customKeyboardTarget?.setId === set.id}
-                        customKeyboardField={customKeyboardTarget?.exerciseId === ex.instanceId && customKeyboardTarget?.setId === set.id ? (customKeyboardTarget.field === 'weight' || customKeyboardTarget.field === 'reps' || customKeyboardTarget.field === 'duration' || customKeyboardTarget.field === 'distance' ? customKeyboardTarget.field : null) : null}
-                        customKeyboardShouldSelectAll={customKeyboardTarget?.exerciseId === ex.instanceId && customKeyboardTarget?.setId === set.id ? customKeyboardShouldSelectAll : false}
-                        onLongPressRow={() => startSetDrag(ex)}
-                      />
-
-                      {/* Rest Timer Bar */}
-                      {showRestTimer && (() => {
-                        // Determine if this rest timer is at the start of a dropset
-                        const isRestTimerDropSetStart = !!(set.dropSetId && (idx === 0 || ex.sets[idx - 1]?.dropSetId !== set.dropSetId));
-                        // Determine if this rest timer is at the end of a dropset
-                        const isRestTimerDropSetEnd = !!(set.dropSetId && (idx === ex.sets.length - 1 || ex.sets[idx + 1]?.dropSetId !== set.dropSetId));
-
-                        return (
-                          <RestTimerBar
-                            set={set}
-                            exerciseId={ex.instanceId}
-                            currentWorkout={currentWorkout}
-                            handleWorkoutUpdate={handleWorkoutUpdate}
-                            activeRestTimer={activeRestTimer}
-                            setActiveRestTimer={setActiveRestTimer}
-                            setRestPeriodSetInfo={setRestPeriodSetInfo}
-                            setRestTimerInput={setRestTimerInput}
-                            setRestPeriodModalOpen={setRestPeriodModalOpen}
-                            setRestTimerPopupOpen={setRestTimerPopupOpen}
-                            isRestTimerDropSetStart={isRestTimerDropSetStart}
-                            isRestTimerDropSetEnd={isRestTimerDropSetEnd}
-                            displayGroupSetType={displayGroupSetType as GroupSetType}
-                            isBeingEdited={restPeriodSetInfo?.setId === set.id && restPeriodModalOpen}
-                            onClearInputFocus={closeCustomKeyboard}
-                            isRestTimerSelectionMode={restTimerSelectionMode}
-                            isRestTimerSelected={restTimerSelectedSetIds.has(set.id)}
-                            onToggleRestTimerSelection={() => {
-                              setRestTimerSelectedSetIds((prev: globalThis.Set<string>) => {
-                                const newSet = new globalThis.Set<string>(prev);
-                                if (newSet.has(set.id)) {
-                                  newSet.delete(set.id);
-                                } else {
-                                  newSet.add(set.id);
-                                }
-                                return newSet;
-                              });
-                            }}
-                          />
-                        );
-                      })()}
-                    </>
+                    setRowAndTimer
                   )}
                 </React.Fragment>
               );
@@ -3292,88 +3200,6 @@ const styles = StyleSheet.create({
     color: COLORS.slate[600],
   },
   restPeriodQuickOptionText__selected: {
-    color: COLORS.white,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  modalContent: {
-    backgroundColor: COLORS.white,
-    borderRadius: 16,
-    padding: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: COLORS.slate[900],
-    marginBottom: 16,
-  },
-  noteInput: {
-    backgroundColor: COLORS.slate[50],
-    borderWidth: 1,
-    borderColor: COLORS.slate[200],
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 14,
-    color: COLORS.slate[900],
-    textAlignVertical: 'top',
-    marginBottom: 16,
-  },
-  dateInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.slate[50],
-    borderWidth: 1,
-    borderColor: COLORS.slate[200],
-    borderRadius: 12,
-    marginBottom: 16,
-  },
-  dateInput: {
-    flex: 1,
-    padding: 12,
-    fontSize: 14,
-    color: COLORS.slate[600],
-  },
-  dateIcon: {
-    marginRight: 12,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  modalCancel: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderRadius: 12,
-    backgroundColor: COLORS.transparent,
-  },
-  modalCancelText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: COLORS.slate[500],
-  },
-  modalAdd: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderRadius: 12,
-    backgroundColor: COLORS.blue[600],
-  },
-  modalAddDisabled: {
-    opacity: 0.5,
-  },
-  modalAddText: {
-    fontSize: 16,
-    fontWeight: 'bold',
     color: COLORS.white,
   },
   setPopupMenuContainer: {
