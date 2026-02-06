@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { View, Text, TextInput, TouchableOpacity, Pressable, ScrollView, StyleSheet, Modal, Animated, Keyboard } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
-import { ChevronDown, ChevronLeft, ChevronRight, Calendar, Clock, FileText, Plus, Dumbbell, Layers, MoreVertical, Trash2, RefreshCw, Scale, X, Flame, Zap, Check, Timer, Pause, Play } from 'lucide-react-native';
+import { ChevronDown, ChevronLeft, ChevronRight, Calendar, Clock, FileText, Plus, Dumbbell, Layers, MoreVertical, Trash2, RefreshCw, Scale, X, Flame, Zap, Check, Timer } from 'lucide-react-native';
 import type { NavigationProp } from '@react-navigation/native';
 import { COLORS } from '@/constants/colors';
 import { formatDuration } from '@/constants/data';
