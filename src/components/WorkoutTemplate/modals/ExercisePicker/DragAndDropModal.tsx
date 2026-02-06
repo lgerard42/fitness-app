@@ -1453,15 +1453,13 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
     const isLastRow = setGroupIndex === item.setGroups.length - 1;
     const isFirstRowInCard = isFirstRow && isFirstInGroup;
     const isLastRowInCard = isLastRow && isLastInGroup;
+    const hasMultipleRows = item.setGroups.length > 1;
 
     return (
       <View
         key={setGroup.id}
         style={[
           styles.setGroupRow,
-          groupColorScheme && {
-            borderBottomColor: setGroupIndex < item.setGroups.length - 1 ? groupColorScheme[200] : 'transparent',
-          },
           isFirstRowInCard && styles.setGroupRow__first,
           isLastRowInCard && styles.setGroupRow__last,
         ]}
@@ -1469,13 +1467,14 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
         <View style={[
           styles.exerciseCardContent,
           styles.exerciseCardContent__groupChild,
+          hasMultipleRows && styles.exerciseCardContent__groupChild__multiRow,
+          hasMultipleRows && isFirstRow && styles.exerciseCardContent__groupChild__multiRow__first,
+          hasMultipleRows && isLastRow && styles.exerciseCardContent__groupChild__multiRow__last,
           groupColorScheme && {
             backgroundColor: groupColorScheme[50],
-            borderBottomColor: setGroupIndex < item.setGroups.length - 1 ? groupColorScheme[200] : 'transparent',
             borderColor: groupColorScheme[150]
           },
           isFirstRowInCard && styles.exerciseCardContent__groupChild__first,
-          isFirstRowInCard && groupColorScheme && { borderTopColor: groupColorScheme[200] },
           isLastRowInCard && styles.exerciseCardContent__groupChild__last,
         ]}>
           <View style={styles.exerciseInfo}>
@@ -1495,7 +1494,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
               </View>
               <Text style={[
                 styles.exerciseName,
-                !showExerciseName && { color: COLORS.slate[150] }
+                !showExerciseName && { color: groupColorScheme ? groupColorScheme[150] : COLORS.slate[150] }
               ]}>{item.exercise.name}</Text>
             </View>
           </View>
@@ -1617,6 +1616,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           style={[
             styles.exerciseCard,
             styles.exerciseCard__groupChild,
+            item.setGroups.length > 1 && styles.exerciseCard__groupChild__multiRow,
             groupColorScheme && {
               borderColor: groupColorScheme[200],
               backgroundColor: groupColorScheme[100],
@@ -1841,6 +1841,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           style={[
             styles.exerciseCard,
             styles.exerciseCard__standalone,
+            (!item.setGroups || item.setGroups.length === 0 ? 1 : item.setGroups.length) > 1 && styles.exerciseCard__standalone__multiRow,
             isActive && styles.exerciseCard__active,
             isSelected && styles.exerciseCard__selected,
             isSelectable && !isSelected && styles.exerciseCard__selectable,
@@ -1864,114 +1865,131 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
             style={{ flex: 1 }}
           >
             <View style={{ flex: 1 }}>
-              {(!item.setGroups || item.setGroups.length === 0 ? [{
+              {((!item.setGroups || item.setGroups.length === 0 ? [{
                 id: `setgroup-${item.exercise.id}-${item.orderIndex}-0`,
                 count: item.count || 1,
                 isDropset: item.isDropset || false,
-              }] : item.setGroups).map((setGroup, index) => (
-                <View
-                  key={setGroup.id}
-                  style={[
-                    styles.setGroupRow,
-                    styles.setGroupRow__standalone,
-                    index < item.setGroups.length - 1 && { borderBottomWidth: 1, borderBottomColor: COLORS.slate[200] },
-                  ]}
-                >
-                  <View style={[styles.exerciseCardContent, styles.exerciseCardContent__standalone]}>
-                    <View style={styles.exerciseInfo}>
-                      <View style={styles.exerciseNameRow}>
-                        <View style={styles.setCountContainer}>
-                          {setGroup.isDropset && (
-                            <View style={styles.dropsetIndicator} />
-                          )}
-                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            <Text style={[
-                              styles.setCountText,
-                              setGroup.isWarmup && { color: COLORS.orange[500] },
-                              setGroup.isFailure && { color: COLORS.red[500] },
-                            ]}>{setGroup.count}</Text>
-                            <Text style={styles.setCountPrefix}> x </Text>
+              }] : item.setGroups) as SetGroup[]).map((setGroup, index) => {
+                const setGroupsArray = !item.setGroups || item.setGroups.length === 0 ? [{
+                  id: `setgroup-${item.exercise.id}-${item.orderIndex}-0`,
+                  count: item.count || 1,
+                  isDropset: item.isDropset || false,
+                }] : item.setGroups;
+                const hasMultipleRows = setGroupsArray.length > 1;
+                const isFirstRow = index === 0;
+                const isLastRow = index === setGroupsArray.length - 1;
+
+                return (
+                  <View
+                    key={setGroup.id}
+                    style={[
+                      styles.setGroupRow,
+                      styles.setGroupRow__standalone,
+                      index < setGroupsArray.length - 1 && styles.setGroupRow__standalone__notLast,
+                    ]}
+                  >
+                    <View style={[
+                      styles.exerciseCardContent,
+                      styles.exerciseCardContent__standalone,
+                      hasMultipleRows && styles.exerciseCardContent__standalone__multiRow,
+                      hasMultipleRows && isFirstRow && styles.exerciseCardContent__standalone__multiRow__first,
+                      hasMultipleRows && isLastRow && styles.exerciseCardContent__standalone__multiRow__last,
+                    ]}>
+                      <View style={styles.exerciseInfo}>
+                        <View style={styles.exerciseNameRow}>
+                          <View style={styles.setCountContainer}>
+                            {setGroup.isDropset && (
+                              <View style={styles.dropsetIndicator} />
+                            )}
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                              <Text style={[
+                                styles.setCountText,
+                                setGroup.isWarmup && { color: COLORS.orange[500] },
+                                setGroup.isFailure && { color: COLORS.red[500] },
+                              ]}>{setGroup.count}</Text>
+                              <Text style={styles.setCountPrefix}> x </Text>
+                            </View>
                           </View>
+                          <Text style={[
+                            styles.exerciseName,
+                            index !== 0 && { color: COLORS.slate[150] }
+                          ]}>{item.exercise.name}</Text>
                         </View>
-                        <Text style={[
-                          styles.exerciseName,
-                          index !== 0 && { color: COLORS.slate[150] }
-                        ]}>{item.exercise.name}</Text>
+                      </View>
+
+                      <View style={styles.exerciseRight}>
+                        {!isSelectionMode && (
+                          <View style={styles.setControls}>
+                            <TouchableOpacity
+                              onPress={() => handleDecrementSetGroup(item, setGroup.id)}
+                              disabled={isActive || setGroup.count <= 1}
+                              style={[
+                                styles.setControlButton,
+                                (isActive || setGroup.count <= 1) && styles.setControlButton__disabled,
+                              ]}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            >
+                              <Minus size={16} color={setGroup.count <= 1 ? COLORS.slate[300] : COLORS.slate[700]} />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              onPress={() => handleIncrementSetGroup(item, setGroup.id)}
+                              disabled={isActive}
+                              style={[
+                                styles.setControlButton,
+                                isActive && styles.setControlButton__disabled,
+                              ]}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            >
+                              <Plus size={16} color={isActive ? COLORS.slate[300] : COLORS.slate[700]} />
+                            </TouchableOpacity>
+                          </View>
+                        )}
+                        {isSelected && index === 0 && (
+                          <View style={styles.selectedIndicator}>
+                            <Check size={20} color={COLORS.green[600]} />
+                          </View>
+                        )}
+                        {!isSelectionMode && (
+                          <View
+                            ref={(ref) => {
+                              if (ref) {
+                                const refKey = `${item.id}-${setGroup.id}`;
+                                buttonRefsMap.current.set(refKey, ref);
+                                // Also store with old key format for first set group (backward compatibility)
+                                if (index === 0) {
+                                  buttonRefsMap.current.set(item.id, ref);
+                                }
+                              } else {
+                                buttonRefsMap.current.delete(`${item.id}-${setGroup.id}`);
+                                if (index === 0) {
+                                  buttonRefsMap.current.delete(item.id);
+                                }
+                              }
+                            }}
+                            collapsable={false}
+                          >
+                            <TouchableOpacity
+                              onPress={() => {
+                                if (swipedItemId) {
+                                  closeTrashIcon();
+                                }
+                                setExerciseToEdit(item);
+                                setClickedSetGroupId(setGroup.id);
+                                setShowEditModal(true);
+                              }}
+                              disabled={isActive}
+                              style={styles.groupIconButton}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            >
+                              <MoreVertical size={18} color={COLORS.blue[600]} />
+                            </TouchableOpacity>
+                          </View>
+                        )}
                       </View>
                     </View>
-
-                    <View style={styles.exerciseRight}>
-                      {!isSelectionMode && (
-                        <View style={styles.setControls}>
-                          <TouchableOpacity
-                            onPress={() => handleDecrementSetGroup(item, setGroup.id)}
-                            disabled={isActive || setGroup.count <= 1}
-                            style={[
-                              styles.setControlButton,
-                              (isActive || setGroup.count <= 1) && styles.setControlButton__disabled,
-                            ]}
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                          >
-                            <Minus size={16} color={setGroup.count <= 1 ? COLORS.slate[300] : COLORS.slate[700]} />
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            onPress={() => handleIncrementSetGroup(item, setGroup.id)}
-                            disabled={isActive}
-                            style={[
-                              styles.setControlButton,
-                              isActive && styles.setControlButton__disabled,
-                            ]}
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                          >
-                            <Plus size={16} color={isActive ? COLORS.slate[300] : COLORS.slate[700]} />
-                          </TouchableOpacity>
-                        </View>
-                      )}
-                      {isSelected && index === 0 && (
-                        <View style={styles.selectedIndicator}>
-                          <Check size={20} color={COLORS.green[600]} />
-                        </View>
-                      )}
-                      {!isSelectionMode && (
-                        <View
-                          ref={(ref) => {
-                            if (ref) {
-                              const refKey = `${item.id}-${setGroup.id}`;
-                              buttonRefsMap.current.set(refKey, ref);
-                              // Also store with old key format for first set group (backward compatibility)
-                              if (index === 0) {
-                                buttonRefsMap.current.set(item.id, ref);
-                              }
-                            } else {
-                              buttonRefsMap.current.delete(`${item.id}-${setGroup.id}`);
-                              if (index === 0) {
-                                buttonRefsMap.current.delete(item.id);
-                              }
-                            }
-                          }}
-                          collapsable={false}
-                        >
-                          <TouchableOpacity
-                            onPress={() => {
-                              if (swipedItemId) {
-                                closeTrashIcon();
-                              }
-                              setExerciseToEdit(item);
-                              setClickedSetGroupId(setGroup.id);
-                              setShowEditModal(true);
-                            }}
-                            disabled={isActive}
-                            style={styles.groupIconButton}
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                          >
-                            <MoreVertical size={18} color={COLORS.blue[600]} />
-                          </TouchableOpacity>
-                        </View>
-                      )}
-                    </View>
                   </View>
-                </View>
-              ))}
+                );
+              })}
             </View>
           </TouchableOpacity>
         </View>
@@ -2446,9 +2464,15 @@ const styles = StyleSheet.create({
     marginVertical: 2,
     marginHorizontal: 0,
   },
+  exerciseCard__standalone__multiRow: {
+    // Container style for standalone exercises with multiple set rows
+  },
   exerciseCard__groupChild: {
     marginHorizontal: 0,
     borderWidth: 0,
+  },
+  exerciseCard__groupChild__multiRow: {
+    // Container style for group child exercises with multiple set rows
   },
   exerciseCard__groupChild__first: {},
   exerciseCard__groupChild__last: {},
@@ -2463,7 +2487,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 6,
     elevation: 10,
-    transform: [{ scale: 1.02 }],
+    transform: [{ scale: 1.0 }],
     zIndex: 999,
   },
   exerciseCard__groupChild__active: {
@@ -2471,7 +2495,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 6,
     elevation: 6,
-    transform: [{ scale: 1.02 }],
+    transform: [{ scale: 1.0 }],
     borderRadius: 8,
     zIndex: 999,
   },
@@ -2493,23 +2517,55 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   exerciseCardContent__standalone: {
-    paddingVertical: 8,
+  },
+  exerciseCardContent__standalone__multiRow: {
+    borderBottomWidth: 0,
+    borderBottomColor: COLORS.slate[200],
+    paddingVertical: 4,
+  },
+  exerciseCardContent__standalone__multiRow__first: {
+    // First row in standalone multi-row exercise
+    paddingTop: 8,
+    borderTopLeftRadius: 6,
+    borderTopRightRadius: 6,
+  },
+  exerciseCardContent__standalone__multiRow__last: {
+    // Last row in standalone multi-row exercise
+    borderBottomWidth: 0,
+    borderBottomLeftRadius: 6,
+    borderBottomRightRadius: 6,
+    paddingBottom: 8,
   },
   exerciseCardContent__groupChild: {
     marginHorizontal: 4,
     borderRadius: 0,
     marginVertical: 0,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.red[500],
+    borderTopWidth: 0,
+  },
+  exerciseCardContent__groupChild__multiRow: {
+    // Base style for individual rows in group child exercises with multiple rows
+    paddingVertical: 4,
+    borderBottomWidth: 0,
+  },
+  exerciseCardContent__groupChild__multiRow__first: {
+    // First row in group child multi-row exercise
+    paddingTop: 8,
+  },
+  exerciseCardContent__groupChild__multiRow__last: {
+    // Last row in group child multi-row exercise
+    paddingBottom: 8,
+    borderBottomWidth: 1,
   },
   exerciseCardContent__groupChild__first: {
     borderTopLeftRadius: 6,
     borderTopRightRadius: 6,
+    borderTopWidth: 0,
   },
   exerciseCardContent__groupChild__last: {
     borderBottomLeftRadius: 6,
     borderBottomRightRadius: 6,
-    borderBottomColor: 'transparent',
+    borderBottomWidth: 0,
   },
   exerciseCardContent__active: {
     borderRadius: 6,
@@ -2781,7 +2837,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   setGroupRow: {
-    borderBottomWidth: 1,
+    borderBottomWidth: 0,
   },
   setGroupRow__first: {
     borderTopWidth: 0,
@@ -2791,6 +2847,10 @@ const styles = StyleSheet.create({
   },
   setGroupRow__standalone: {
     borderBottomWidth: 0,
+  },
+  setGroupRow__standalone__notLast: {
+    borderBottomWidth: 0,
+    borderBottomColor: COLORS.slate[200],
   },
 });
 
