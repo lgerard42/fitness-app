@@ -1686,7 +1686,12 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                       {(() => {
                         const weightCalcMode = ex.weightCalcMode || (ex.multiplyWeightBy2 ? '2x' : '1x');
                         if (weightCalcMode === '2x') {
-                          return `${ex.weightUnit || 'lbs'} (x2)*`;
+                          return (
+                            <>
+                              {ex.weightUnit || 'lbs'}
+                              <Text style={{ textTransform: 'none' }}> x 2*</Text>
+                            </>
+                          );
                         }
                         return ex.weightUnit || 'lbs';
                       })()}
@@ -1708,9 +1713,19 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                       {(() => {
                         const repsConfigMode = ex.repsConfigMode || (ex.alternatingRepsBy2 ? '2x' : '1x');
                         if (repsConfigMode === 'lrSplit') {
-                          return 'Reps (L/R)*';
+                          return (
+                            <>
+                              Reps
+                              <Text style={{ textTransform: 'none' }}> - L/R*</Text>
+                            </>
+                          );
                         } else if (repsConfigMode === '2x') {
-                          return 'Reps (x2)*';
+                          return (
+                            <>
+                              Reps
+                              <Text style={{ textTransform: 'none' }}> x 2*</Text>
+                            </>
+                          );
                         }
                         return 'Reps';
                       })()}

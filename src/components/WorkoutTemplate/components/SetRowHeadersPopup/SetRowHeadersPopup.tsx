@@ -76,7 +76,7 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
     popupKey
 }) => {
     const [infoPopupVisible, setInfoPopupVisible] = useState(false);
-    const [infoPopupSection, setInfoPopupSection] = useState<'Weight Units' | 'Total Weight Config' | 'Total Reps Config' | 'Dist. Measurement Units'>('Weight Units');
+    const [infoPopupSection, setInfoPopupSection] = useState<'Duration' | 'Distance' | 'Weight' | 'Reps'>('Weight');
 
     if (!visible || !columnHeaderMenu) return null;
 
@@ -591,14 +591,14 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
                                     <View style={styles.columnHeaderPopupRowOptionsLabelWrapper}>
                                         <TouchableOpacity
                                             onPress={() => {
-                                                const sectionMap: Record<string, 'Weight Units' | 'Total Weight Config' | 'Total Reps Config' | 'Dist. Measurement Units'> = {
-                                                    'Weight Units': 'Weight Units',
-                                                    'Total Weight Config': 'Total Weight Config',
-                                                    'Total Reps Config': 'Total Reps Config',
-                                                    'Dist. Measurement Units': 'Dist. Measurement Units',
-                                                    'Unit Type': 'Dist. Measurement Units'
+                                                const sectionMap: Record<string, 'Duration' | 'Distance' | 'Weight' | 'Reps'> = {
+                                                    'Weight Units': 'Weight',
+                                                    'Total Weight Config': 'Weight',
+                                                    'Total Reps Config': 'Reps',
+                                                    'Dist. Measurement Units': 'Distance',
+                                                    'Unit Type': 'Distance'
                                                 };
-                                                setInfoPopupSection(sectionMap[option.label || ''] || 'Weight Units');
+                                                setInfoPopupSection(sectionMap[option.label || ''] || 'Weight');
                                                 setInfoPopupVisible(true);
                                             }}
                                             style={styles.columnHeaderPopupRowOptionsLabelContainer}

@@ -5,23 +5,23 @@ import { COLORS } from '@/constants/colors';
 interface SetRowHeadersInformationProps {
     visible: boolean;
     onClose: () => void;
-    initialSection?: 'Weight Units' | 'Total Weight Config' | 'Total Reps Config' | 'Dist. Measurement Units';
+    initialSection?: 'Duration' | 'Distance' | 'Weight' | 'Reps';
 }
 
 const SetRowHeadersInformation: React.FC<SetRowHeadersInformationProps> = ({
     visible,
     onClose,
-    initialSection = 'Weight Units'
+    initialSection = 'Weight'
 }) => {
-    const [activeSection, setActiveSection] = useState<'Weight Units' | 'Total Weight Config' | 'Total Reps Config' | 'Dist. Measurement Units'>(initialSection || 'Weight Units');
+    const [activeSection, setActiveSection] = useState<'Duration' | 'Distance' | 'Weight' | 'Reps'>(initialSection || 'Weight');
 
     useEffect(() => {
         if (visible) {
-            setActiveSection(initialSection || 'Weight Units');
+            setActiveSection(initialSection || 'Weight');
         }
     }, [visible, initialSection]);
 
-    const sections: Array<'Weight Units' | 'Total Weight Config' | 'Total Reps Config' | 'Dist. Measurement Units'> = ['Weight Units', 'Total Weight Config', 'Total Reps Config', 'Dist. Measurement Units'];
+    const sections: Array<'Duration' | 'Distance' | 'Weight' | 'Reps'> = ['Duration', 'Distance', 'Weight', 'Reps'];
 
     return (
         <Modal
@@ -72,11 +72,71 @@ const SetRowHeadersInformation: React.FC<SetRowHeadersInformationProps> = ({
                         bounces={true}
                         scrollEventThrottle={16}
                     >
-                        {activeSection === 'Weight Units' && (
+                        {activeSection === 'Duration' && (
                             <View style={styles.infoSection}>
-                                <Text style={styles.infoSectionTitle}>Weight Units</Text>
+                                <Text style={styles.infoSectionTitle}>Duration</Text>
                                 <Text style={styles.infoSectionText}>
-                                    The Weight Units option allows you to switch between kilograms (KG) and pounds (LBS) for displaying and tracking weight values.
+                                    The Duration column allows you to track the time spent performing an exercise or set.
+                                </Text>
+                                <Text style={styles.infoSectionText}>
+                                    You can toggle the Duration column on or off in the Set Inputs menu. When enabled, you can enter time values in hours, minutes, and seconds format (e.g., 1:30:00 for 1 hour 30 minutes).
+                                </Text>
+                                <Text style={styles.infoSectionText}>
+                                    Duration is particularly useful for cardio exercises, timed sets, or tracking rest periods between sets.
+                                </Text>
+                            </View>
+                        )}
+
+                        {activeSection === 'Distance' && (
+                            <View style={styles.infoSection}>
+                                <Text style={styles.infoSectionTitle}>Distance</Text>
+                                <Text style={styles.infoSectionText}>
+                                    The Distance column allows you to track distance values for exercises like running, cycling, or swimming.
+                                </Text>
+                                <Text style={styles.infoSectionText}>
+                                    <Text style={styles.infoBold}>Dist. Measurement Units:</Text> Choose between Metric and US/Imperial systems for displaying distances.
+                                </Text>
+                                <View style={styles.infoBulletPoint}>
+                                    <Text style={styles.infoBullet}>•</Text>
+                                    <Text style={styles.infoSectionText}>
+                                        <Text style={styles.infoBold}>Metric:</Text> Displays distances in meters (m) and kilometers (km). This is the metric system used in most countries worldwide.
+                                    </Text>
+                                </View>
+                                <View style={styles.infoBulletPoint}>
+                                    <Text style={styles.infoBullet}>•</Text>
+                                    <Text style={styles.infoSectionText}>
+                                        <Text style={styles.infoBold}>US / Imperial:</Text> Displays distances in feet (ft), yards (yd), and miles (mi). This is the imperial system commonly used in the United States. Miles is the default unit.
+                                    </Text>
+                                </View>
+                                <Text style={styles.infoSectionText}>
+                                    <Text style={styles.infoBold}>Unit Type:</Text> After selecting your measurement system, you can choose a specific unit type:
+                                </Text>
+                                <View style={styles.infoBulletPoint}>
+                                    <Text style={styles.infoBullet}>•</Text>
+                                    <Text style={styles.infoSectionText}>
+                                        <Text style={styles.infoBold}>For Metric:</Text> Meters or Kilometers
+                                    </Text>
+                                </View>
+                                <View style={styles.infoBulletPoint}>
+                                    <Text style={styles.infoBullet}>•</Text>
+                                    <Text style={styles.infoSectionText}>
+                                        <Text style={styles.infoBold}>For US / Imperial:</Text> Feet, Yards, or Miles
+                                    </Text>
+                                </View>
+                                <Text style={styles.infoSectionText}>
+                                    When you switch systems or units, all distance values for this exercise will be converted automatically.
+                                </Text>
+                            </View>
+                        )}
+
+                        {activeSection === 'Weight' && (
+                            <View style={styles.infoSection}>
+                                <Text style={styles.infoSectionTitle}>Weight</Text>
+                                <Text style={styles.infoSectionText}>
+                                    The Weight column allows you to track the weight used for each set. You can configure weight units and how total weight is calculated.
+                                </Text>
+                                <Text style={styles.infoSectionText}>
+                                    <Text style={styles.infoBold}>Weight Units:</Text> Choose between kilograms (KG) and pounds (LBS) for displaying and tracking weight values. LBS is the default.
                                 </Text>
                                 <View style={styles.infoBulletPoint}>
                                     <Text style={styles.infoBullet}>•</Text>
@@ -91,40 +151,34 @@ const SetRowHeadersInformation: React.FC<SetRowHeadersInformationProps> = ({
                                     </Text>
                                 </View>
                                 <Text style={styles.infoSectionText}>
-                                    When you switch units, all weight values for this exercise will be converted automatically.
-                                </Text>
-                            </View>
-                        )}
-
-                        {activeSection === 'Total Weight Config' && (
-                            <View style={styles.infoSection}>
-                                <Text style={styles.infoSectionTitle}>Total Weight Config</Text>
-                                <Text style={styles.infoSectionText}>
-                                    The Total Weight Config option allows you to adjust how total weight is calculated for exercises that use paired equipment.
+                                    <Text style={styles.infoBold}>Total Weight Config:</Text> Adjust how total weight is calculated for exercises that use paired equipment.
                                 </Text>
                                 <View style={styles.infoBulletPoint}>
                                     <Text style={styles.infoBullet}>•</Text>
                                     <Text style={styles.infoSectionText}>
-                                        <Text style={styles.infoBold}>1 x Input:</Text> The total weight equals the input value. This is the default for most exercises.
+                                        <Text style={styles.infoBold}>1x:</Text> The total weight equals the input value. This is the default for most exercises.
                                     </Text>
                                 </View>
                                 <View style={styles.infoBulletPoint}>
                                     <Text style={styles.infoBullet}>•</Text>
                                     <Text style={styles.infoSectionText}>
-                                        <Text style={styles.infoBold}>2 x Input:</Text> The total weight is multiplied by 2. This is useful for exercises like dumbbell work where you're using two weights (e.g., 25lb dumbbells = 50lb total).
+                                        <Text style={styles.infoBold}>2x:</Text> The total weight is multiplied by 2. This is useful for exercises like dumbbell work where you're using two weights (e.g., 25lb dumbbells = 50lb total). When both weight and reps are configured with multipliers, the weight multiplier is automatically adjusted to prevent double-counting.
                                     </Text>
                                 </View>
                                 <Text style={styles.infoSectionText}>
-                                    The adjustment affects how totals are displayed and calculated in your workout summary.
+                                    When you switch units, all weight values for this exercise will be converted automatically. The total weight configuration affects how totals are displayed and calculated in your workout summary.
                                 </Text>
                             </View>
                         )}
 
-                        {activeSection === 'Total Reps Config' && (
+                        {activeSection === 'Reps' && (
                             <View style={styles.infoSection}>
-                                <Text style={styles.infoSectionTitle}>Total Reps Config</Text>
+                                <Text style={styles.infoSectionTitle}>Reps</Text>
                                 <Text style={styles.infoSectionText}>
-                                    The Total Reps Config option allows you to adjust how total reps are calculated for exercises.
+                                    The Reps column allows you to track the number of repetitions performed for each set. You can configure how total reps are calculated.
+                                </Text>
+                                <Text style={styles.infoSectionText}>
+                                    <Text style={styles.infoBold}>Total Reps Config:</Text> Adjust how total reps are calculated for exercises.
                                 </Text>
                                 <View style={styles.infoBulletPoint}>
                                     <Text style={styles.infoBullet}>•</Text>
@@ -141,35 +195,11 @@ const SetRowHeadersInformation: React.FC<SetRowHeadersInformationProps> = ({
                                 <View style={styles.infoBulletPoint}>
                                     <Text style={styles.infoBullet}>•</Text>
                                     <Text style={styles.infoSectionText}>
-                                        <Text style={styles.infoBold}>L/R Split:</Text> Two separate inputs are shown for left and right sides. The total reps equals the sum of both inputs. This is useful for tracking each side independently.
+                                        <Text style={styles.infoBold}>L/R Split:</Text> Two separate inputs are shown for left and right sides. The total reps equals the sum of both inputs. This is useful for tracking each side independently. When L/R Split is selected, the header will display "Reps - L/R*" and each input will show an "L" or "R" indicator.
                                     </Text>
                                 </View>
                                 <Text style={styles.infoSectionText}>
-                                    The adjustment affects how totals are displayed and calculated in your workout summary.
-                                </Text>
-                            </View>
-                        )}
-
-                        {activeSection === 'Dist. Measurement Units' && (
-                            <View style={styles.infoSection}>
-                                <Text style={styles.infoSectionTitle}>Dist. Measurement Units</Text>
-                                <Text style={styles.infoSectionText}>
-                                    The Dist. Measurement Units option allows you to switch between Metric and US/Imperial systems for displaying and tracking distance values.
-                                </Text>
-                                <View style={styles.infoBulletPoint}>
-                                    <Text style={styles.infoBullet}>•</Text>
-                                    <Text style={styles.infoSectionText}>
-                                        <Text style={styles.infoBold}>Metric:</Text> Displays distances in meters (m) and kilometers (km). This is the metric system used in most countries worldwide.
-                                    </Text>
-                                </View>
-                                <View style={styles.infoBulletPoint}>
-                                    <Text style={styles.infoBullet}>•</Text>
-                                    <Text style={styles.infoSectionText}>
-                                        <Text style={styles.infoBold}>US / Imperial:</Text> Displays distances in feet (ft), yards (yd), and miles (mi). This is the imperial system commonly used in the United States.
-                                    </Text>
-                                </View>
-                                <Text style={styles.infoSectionText}>
-                                    When you switch systems, all distance values for this exercise will be converted automatically. You can also select specific units (meters, kilometers, feet, yards, or miles) after choosing your preferred system.
+                                    The adjustment affects how totals are displayed and calculated in your workout summary. When both weight and reps are configured with multipliers, the weight multiplier is automatically adjusted to prevent double-counting.
                                 </Text>
                             </View>
                         )}

@@ -184,6 +184,18 @@ const SetRow: React.FC<SetRowProps> = ({
   const repsInputRef = useRef<TextInput>(null);
   const reps2InputRef = useRef<TextInput>(null);
 
+  // Map weight2/reps2 to weight/reps for the hook which doesn't support the split variants
+  const mappedShouldFocus: 'weight' | 'reps' | 'duration' | 'distance' | null =
+    shouldFocus === 'weight2' ? 'weight' :
+      shouldFocus === 'reps2' ? 'reps' :
+        (shouldFocus === 'weight' || shouldFocus === 'reps' || shouldFocus === 'duration' || shouldFocus === 'distance') ? shouldFocus :
+          null;
+  const mappedCustomKeyboardField: 'weight' | 'reps' | 'duration' | 'distance' | null =
+    customKeyboardField === 'weight2' ? 'weight' :
+      customKeyboardField === 'reps2' ? 'reps' :
+        (customKeyboardField === 'weight' || customKeyboardField === 'reps' || customKeyboardField === 'duration' || customKeyboardField === 'distance') ? customKeyboardField :
+          null;
+
   const {
     focusedInput,
     firstInputRef,
@@ -193,11 +205,11 @@ const SetRow: React.FC<SetRowProps> = ({
   } = useSetRowLogic({
     set,
     category,
-    shouldFocus: shouldFocus || null,
+    shouldFocus: mappedShouldFocus || null,
     onFocusHandled,
     onCustomKeyboardOpen,
     customKeyboardActive,
-    customKeyboardField: customKeyboardField || null,
+    customKeyboardField: mappedCustomKeyboardField || null,
     readOnly
   });
 
@@ -1359,7 +1371,7 @@ const styles = StyleSheet.create({
     right: -2,
     fontSize: 8,
     fontWeight: '700',
-    color: COLORS.slate[400],
+    color: COLORS.slate[350],
     zIndex: 10,
     backgroundColor: 'transparent',
   },
@@ -1367,9 +1379,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -2,
     right: -2,
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '700',
-    color: COLORS.slate[400],
+    color: COLORS.slate[350],
     zIndex: 10,
     backgroundColor: 'transparent',
   },
