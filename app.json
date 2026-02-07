@@ -19,7 +19,9 @@
       "bundleIdentifier": "com.lgerard42.fitnessapp",
       "newArchEnabled": true,
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "This app needs access to your camera to take profile pictures.",
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to select profile pictures."
       }
     },
     "android": {
@@ -37,7 +39,8 @@
       "expo-asset",
       "expo-font",
       "@react-native-community/datetimepicker",
-      "expo-dev-client"
+      "expo-dev-client",
+      "expo-image-picker"
     ],
     "extra": {
       "eas": {
