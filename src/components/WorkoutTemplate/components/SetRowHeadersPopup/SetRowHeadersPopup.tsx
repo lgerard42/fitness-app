@@ -598,7 +598,8 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
                             style={[
                                 styles.columnHeaderPopupOption,
                                 isLast && styles.columnHeaderPopupOptionLast,
-                                option.isActive && styles.columnHeaderPopupOptionActive
+                                option.isActive && styles.columnHeaderPopupOptionActive,
+                                option.isLocked && styles.columnHeaderPopupOptionLocked
                             ]}
                             onPress={option.onPress || (() => { })}
                             disabled={option.disabled}
@@ -701,6 +702,10 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.red[600],
     },
     columnHeaderPopupOptionDeleteDisabled: {
+        backgroundColor: COLORS.slate[600],
+        opacity: 0.6,
+    },
+    columnHeaderPopupOptionLocked: {
         backgroundColor: COLORS.slate[600],
         opacity: 0.6,
     },
