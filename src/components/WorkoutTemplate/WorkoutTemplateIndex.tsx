@@ -2583,14 +2583,14 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                     isLocked?: boolean;
                     onPress?: () => void;
                     disabled?: boolean;
-                    type?: 'toggle-container' | 'delete-option' | 'configure-container';
+                    type?: 'toggle-container' | 'delete-option' | 'set-inputs-container';
                     toggles?: Array<{
                       id: string;
                       label: string;
                       isActive: boolean;
                       onPress: () => void;
                     }>;
-                    configureOption?: {
+                    setInputsOption?: {
                       label: string;
                       icon: React.ReactNode;
                       onPress: () => void;
@@ -2674,7 +2674,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                       options.push({
                         id: 'weight-unit-toggle-container',
                         type: 'toggle-container',
-                        label: 'Weight units',
+                        label: 'Weight Units',
                         show: true,
                         toggles: [
                           {
@@ -2794,7 +2794,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                         options.push({
                           id: 'weight-unit-toggle-container-reps',
                           type: 'toggle-container',
-                          label: 'Weight units',
+                          label: 'Weight Units',
                           show: true,
                           toggles: [
                             {
@@ -2826,7 +2826,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                         options.push({
                           id: 'x2-totals-toggle-container-reps',
                           type: 'toggle-container',
-                          label: '2x Multiplier Adj',
+                          label: 'x2 Totals Adj.',
                           show: true,
                           toggles: [
                             {
@@ -3033,14 +3033,14 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                       return false;
                     })();
 
-                    // Configure tracking and Delete column container (always last, shown for all fields)
+                    // "Set inputs" and Delete column container (always last, shown for all fields)
                     options.push({
-                      id: 'configure-tracking-container',
-                      type: 'configure-container',
+                      id: 'set-inputs-container',
+                      type: 'set-inputs-container',
                       show: true,
                       isLast: true,
-                      configureOption: {
-                        label: 'Configure tracking',
+                      setInputsOption: {
+                        label: 'Set inputs',
                         icon: <Settings size={18} color={COLORS.white} />,
                         onPress: () => setColumnHeaderMenuPage('configure')
                       },
@@ -3067,13 +3067,15 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                     <>
                       {visibleOptions.map((option, index) => {
                         const isLast = index === lastIndex || option.isLast;
+                        const isNotFirstOption = index > 0;
 
                         // Toggle container type
                         if (option.type === 'toggle-container' && option.toggles) {
                           return (
                             <View key={option.id} style={[
                               styles.columnHeaderPopupOption,
-                              isLast && styles.columnHeaderPopupOptionLast
+                              isLast && styles.columnHeaderPopupOptionLast,
+                              isNotFirstOption && styles.columnHeaderPopupOptionNoTopPadding
                             ]}>
                               <Text style={styles.columnHeaderPopupToggleLabel}>{option.label}</Text>
                               <View style={styles.columnHeaderPopupToggleContainer}>
@@ -3099,33 +3101,33 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                           );
                         }
 
-                        // Configure container type (Configure tracking + Delete column)
-                        if (option.type === 'configure-container' && option.configureOption && option.deleteOption) {
+                        // Set inputs container type (Set inputs + Delete)
+                        if (option.type === 'set-inputs-container' && option.setInputsOption && option.deleteOption) {
                           return (
-                            <View key={option.id} style={styles.columnHeaderPopupConfigureWrapper}>
-                              {/* Configure tracking option container */}
+                            <View key={option.id} style={[
+                              styles.columnHeaderPopupOptionWrapper,
+                              isLast && styles.columnHeaderPopupOptionLast
+                            ]}>
                               <TouchableOpacity
                                 style={[
                                   styles.columnHeaderPopupOption,
-                                  styles.columnHeaderPopupConfigureButton,
+                                  styles.columnHeaderPopupOptionFlex,
                                   styles.columnHeaderPopupOptionWithBorder
                                 ]}
-                                onPress={option.configureOption.onPress}
+                                onPress={option.setInputsOption.onPress}
                               >
                                 <View style={styles.columnHeaderPopupOptionContent}>
-                                  {option.configureOption.icon}
+                                  {option.setInputsOption.icon}
                                   <Text style={styles.columnHeaderPopupOptionText}>
-                                    {option.configureOption.label}
+                                    {option.setInputsOption.label}
                                   </Text>
                                 </View>
                               </TouchableOpacity>
-                              {/* Delete button option container */}
                               <TouchableOpacity
                                 style={[
                                   styles.columnHeaderPopupOption,
-                                  styles.columnHeaderPopupDeleteButton,
-                                  isLast && styles.columnHeaderPopupOptionLast,
                                   styles.columnHeaderPopupOptionDelete,
+                                  styles.columnHeaderPopupOptionDeleteFixed,
                                   option.deleteOption.isLocked && styles.columnHeaderPopupOptionDeleteDisabled
                                 ]}
                                 onPress={option.deleteOption.onPress}
@@ -3139,7 +3141,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                           );
                         }
 
-                        // Delete option type
+                        // Delete option type (standalone, should not appear but keeping for safety)
                         if (option.type === 'delete-option') {
                           return (
                             <TouchableOpacity
@@ -3155,12 +3157,6 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                             >
                               <View style={styles.columnHeaderPopupOptionContent}>
                                 {option.icon}
-                                <Text style={[
-                                  styles.columnHeaderPopupOptionText,
-                                  option.isLocked && { opacity: 0.6 }
-                                ]}>
-                                  {option.label}
-                                </Text>
                               </View>
                             </TouchableOpacity>
                           );
@@ -4150,11 +4146,11 @@ const styles = StyleSheet.create({
   columnHeaderPopupOption: {
     paddingVertical: 12,
     paddingHorizontal: 16,
-    borderBottomWidth: 0,
+    borderBottomWidth: 1,
     borderBottomColor: COLORS.slate[600],
   },
   columnHeaderPopupOptionLast: {
-    borderTopWidth: 0,
+    borderBottomWidth: 0,
   },
   columnHeaderPopupOptionContent: {
     flexDirection: 'row',
@@ -4196,20 +4192,17 @@ const styles = StyleSheet.create({
     color: COLORS.white,
   },
   columnHeaderPopupToggleLabel: {
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: 'bold',
     color: COLORS.slate[300],
-    marginBottom: 4,
-    textTransform: 'uppercase',
-    //textAlign: 'center',
+    marginBottom: 8,
+    marginLeft: 4,
   },
   columnHeaderPopupToggleContainer: {
     flexDirection: 'row',
     backgroundColor: COLORS.slate[100],
-    padding: 0,
+    padding: 4,
     borderRadius: 12,
-    gap: 0,
-    marginHorizontal: -8,
   },
   columnHeaderPopupToggleButton: {
     flex: 1,
@@ -4219,7 +4212,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   columnHeaderPopupToggleButtonActive: {
-    backgroundColor: COLORS.blue[600],
+    backgroundColor: COLORS.white,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
@@ -4232,7 +4225,25 @@ const styles = StyleSheet.create({
     color: COLORS.slate[500],
   },
   columnHeaderPopupToggleTextActive: {
-    color: COLORS.white,
+    color: COLORS.slate[900],
+  },
+  columnHeaderPopupOptionNoTopPadding: {
+    paddingTop: 0,
+  },
+  columnHeaderPopupOptionWrapper: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    padding: 0,
+  },
+  columnHeaderPopupOptionFlex: {
+    flex: 1,
+  },
+  columnHeaderPopupOptionWithBorder: {
+    borderRightWidth: 1,
+    borderRightColor: COLORS.slate[600],
+  },
+  columnHeaderPopupOptionDeleteFixed: {
+    width: 56,
   },
   columnHeaderPopupOptionDelete: {
     backgroundColor: COLORS.red[600],
@@ -4240,21 +4251,6 @@ const styles = StyleSheet.create({
   columnHeaderPopupOptionDeleteDisabled: {
     backgroundColor: COLORS.slate[600],
     opacity: 0.6,
-  },
-  columnHeaderPopupConfigureWrapper: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-  },
-  columnHeaderPopupConfigureButton: {
-    flex: 1,
-    borderRightWidth: 1,
-    borderRightColor: COLORS.slate[600],
-  },
-  columnHeaderPopupDeleteButton: {
-    width: 56,
-  },
-  columnHeaderPopupOptionWithBorder: {
-    borderBottomWidth: 0,
   },
   optionDestructive: {
     color: COLORS.red[500],
