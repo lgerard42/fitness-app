@@ -1098,7 +1098,26 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
             return {
               ...ex,
               children: ex.children.map(child => {
-                if (child.multiplyWeightBy2) {
+                // Handle reps calculation first to determine if we should multiply weight
+                let repsConfigMode: '1x' | '2x' | 'lrSplit' | undefined = child.repsConfigMode;
+                // Handle migration from old '1x2' value to new '2x' value
+                if (repsConfigMode === '1x2' as any) {
+                  repsConfigMode = '2x';
+                }
+                // Migrate from old alternatingRepsBy2 field
+                if (!repsConfigMode && child.alternatingRepsBy2) {
+                  // If alternatingRepsBy2 was true but no repsConfigMode, default to '2x'
+                  repsConfigMode = '2x';
+                }
+                if (!repsConfigMode) {
+                  repsConfigMode = '1x';
+                }
+
+                // Handle weight calculation
+                // Only multiply weight by 2 if weightCalcMode is 2x AND repsConfigMode is 1x
+                // If reps are also being multiplied (2x or lrSplit), skip weight multiplication to avoid double counting
+                const weightCalcMode = child.weightCalcMode || (child.multiplyWeightBy2 ? '2x' : '1x');
+                if (weightCalcMode === '2x' && repsConfigMode === '1x') {
                   return {
                     ...child,
                     sets: child.sets.map(set => ({
@@ -1107,33 +1126,53 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                       weight2: set.weight2 && set.weight2 !== '' ? String((parseFloat(set.weight2) || 0) * 2) : set.weight2
                     }))
                   };
-                } else if (child.alternatingRepsBy2) {
+                }
+                if (repsConfigMode === 'lrSplit') {
                   return {
                     ...child,
                     sets: child.sets.map(set => {
-                      if (child.repsConfigMode === 'lrSplit') {
-                        // Sum reps and reps2 for L/R Split
-                        const reps1 = set.reps && set.reps !== '' ? parseFloat(set.reps) || 0 : 0;
-                        const reps2 = set.reps2 && set.reps2 !== '' ? parseFloat(set.reps2) || 0 : 0;
-                        return {
-                          ...set,
-                          reps: String(reps1 + reps2)
-                        };
-                      } else {
-                        // Multiply by 2 for 1x2 mode
-                        return {
-                          ...set,
-                          reps: set.reps && set.reps !== '' ? String((parseFloat(set.reps) || 0) * 2) : set.reps
-                        };
-                      }
+                      // Sum reps and reps2 for L/R Split
+                      const reps1 = set.reps && set.reps !== '' ? parseFloat(set.reps) || 0 : 0;
+                      const reps2 = set.reps2 && set.reps2 !== '' ? parseFloat(set.reps2) || 0 : 0;
+                      return {
+                        ...set,
+                        reps: String(reps1 + reps2)
+                      };
                     })
+                  };
+                } else if (repsConfigMode === '2x') {
+                  return {
+                    ...child,
+                    sets: child.sets.map(set => ({
+                      ...set,
+                      reps: set.reps && set.reps !== '' ? String((parseFloat(set.reps) || 0) * 2) : set.reps
+                    }))
                   };
                 }
                 return child;
               })
             };
           } else {
-            if (ex.multiplyWeightBy2) {
+            // Handle reps calculation first to determine if we should multiply weight
+            let repsConfigMode: '1x' | '2x' | 'lrSplit' | undefined = ex.repsConfigMode;
+            // Handle migration from old '1x2' value to new '2x' value
+            if (repsConfigMode === '1x2' as any) {
+              repsConfigMode = '2x';
+            }
+            // Migrate from old alternatingRepsBy2 field
+            if (!repsConfigMode && ex.alternatingRepsBy2) {
+              // If alternatingRepsBy2 was true but no repsConfigMode, default to '2x'
+              repsConfigMode = '2x';
+            }
+            if (!repsConfigMode) {
+              repsConfigMode = '1x';
+            }
+
+            // Handle weight calculation
+            // Only multiply weight by 2 if weightCalcMode is 2x AND repsConfigMode is 1x
+            // If reps are also being multiplied (2x or lrSplit), skip weight multiplication to avoid double counting
+            const weightCalcMode = ex.weightCalcMode || (ex.multiplyWeightBy2 ? '2x' : '1x');
+            if (weightCalcMode === '2x' && repsConfigMode === '1x') {
               return {
                 ...ex,
                 sets: ex.sets.map(set => ({
@@ -1142,26 +1181,27 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                   weight2: set.weight2 && set.weight2 !== '' ? String((parseFloat(set.weight2) || 0) * 2) : set.weight2
                 }))
               };
-            } else if (ex.alternatingRepsBy2) {
+            }
+            if (repsConfigMode === 'lrSplit') {
               return {
                 ...ex,
                 sets: ex.sets.map(set => {
-                  if (ex.repsConfigMode === 'lrSplit') {
-                    // Sum reps and reps2 for L/R Split
-                    const reps1 = set.reps && set.reps !== '' ? parseFloat(set.reps) || 0 : 0;
-                    const reps2 = set.reps2 && set.reps2 !== '' ? parseFloat(set.reps2) || 0 : 0;
-                    return {
-                      ...set,
-                      reps: String(reps1 + reps2)
-                    };
-                  } else {
-                    // Multiply by 2 for 1x2 mode
-                    return {
-                      ...set,
-                      reps: set.reps && set.reps !== '' ? String((parseFloat(set.reps) || 0) * 2) : set.reps
-                    };
-                  }
+                  // Sum reps and reps2 for L/R Split
+                  const reps1 = set.reps && set.reps !== '' ? parseFloat(set.reps) || 0 : 0;
+                  const reps2 = set.reps2 && set.reps2 !== '' ? parseFloat(set.reps2) || 0 : 0;
+                  return {
+                    ...set,
+                    reps: String(reps1 + reps2)
+                  };
                 })
+              };
+            } else if (repsConfigMode === '2x') {
+              return {
+                ...ex,
+                sets: ex.sets.map(set => ({
+                  ...set,
+                  reps: set.reps && set.reps !== '' ? String((parseFloat(set.reps) || 0) * 2) : set.reps
+                }))
               };
             }
           }
@@ -1595,7 +1635,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
               (!!(libraryExercise?.weightEquipTags) && (libraryExercise.weightEquipTags as string[]).length > 1);
 
             // Determine if exercise has L/R Split reps
-            const hasLRSplitReps: boolean = ex.alternatingRepsBy2 === true && ex.repsConfigMode === 'lrSplit';
+            const hasLRSplitReps: boolean = ex.repsConfigMode === 'lrSplit';
 
             return (
               <View style={styles.columnHeaders}>
@@ -1643,7 +1683,13 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                     disabled={readOnly}
                   >
                     <Text style={styles.colHeaderText}>
-                      {`${ex.weightUnit || 'lbs'}${ex.multiplyWeightBy2 ? ' (x2)' : ''}`}
+                      {(() => {
+                        const weightCalcMode = ex.weightCalcMode || (ex.multiplyWeightBy2 ? '2x' : '1x');
+                        if (weightCalcMode === '2x') {
+                          return `${ex.weightUnit || 'lbs'} (x2)*`;
+                        }
+                        return ex.weightUnit || 'lbs';
+                      })()}
                     </Text>
                   </TouchableOpacity>
                 )}
@@ -1659,7 +1705,15 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                     disabled={readOnly}
                   >
                     <Text style={styles.colHeaderText}>
-                      {`Reps${ex.alternatingRepsBy2 ? ' (x2)' : ''}`}
+                      {(() => {
+                        const repsConfigMode = ex.repsConfigMode || (ex.alternatingRepsBy2 ? '2x' : '1x');
+                        if (repsConfigMode === 'lrSplit') {
+                          return 'Reps (L/R)*';
+                        } else if (repsConfigMode === '2x') {
+                          return 'Reps (x2)*';
+                        }
+                        return 'Reps';
+                      })()}
                     </Text>
                   </TouchableOpacity>
                 )}
@@ -1816,7 +1870,11 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                 (!!(libraryExercise?.weightEquipTags) && (libraryExercise.weightEquipTags as string[]).length > 1);
 
               // Determine if exercise has L/R Split reps
-              const hasLRSplitReps: boolean = ex.alternatingRepsBy2 === true && ex.repsConfigMode === 'lrSplit';
+              const hasLRSplitReps: boolean = ex.repsConfigMode === 'lrSplit';
+
+              // Get weight and reps config modes
+              const weightCalcMode = ex.weightCalcMode || (ex.multiplyWeightBy2 ? '2x' : '1x');
+              const repsConfigMode = ex.repsConfigMode || (ex.alternatingRepsBy2 ? '2x' : '1x');
 
               const setRowProps = {
                 index: idx,
@@ -1855,6 +1913,8 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                 customKeyboardField: customKeyboardTarget?.exerciseId === ex.instanceId && customKeyboardTarget?.setId === set.id ? (customKeyboardTarget.field === 'weight' || customKeyboardTarget.field === 'weight2' || customKeyboardTarget.field === 'reps' || customKeyboardTarget.field === 'reps2' || customKeyboardTarget.field === 'duration' || customKeyboardTarget.field === 'distance' ? customKeyboardTarget.field : null) : null,
                 hasSecondWeight,
                 hasLRSplitReps,
+                weightCalcMode,
+                repsConfigMode,
                 customKeyboardShouldSelectAll: customKeyboardTarget?.exerciseId === ex.instanceId && customKeyboardTarget?.setId === set.id ? customKeyboardShouldSelectAll : false,
                 onLongPressRow: () => startSetDrag(ex),
                 showDuration: visibleColumns.showDuration,

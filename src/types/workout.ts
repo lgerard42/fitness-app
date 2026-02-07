@@ -42,9 +42,10 @@ export interface Exercise {
   trackReps?: boolean;
   trackDistance?: boolean;
   weightEquipTags?: string[];
-  multiplyWeightBy2?: boolean;
-  alternatingRepsBy2?: boolean;
-  repsConfigMode?: '1x2' | 'lrSplit';
+  multiplyWeightBy2?: boolean; // Deprecated: use weightCalcMode instead
+  alternatingRepsBy2?: boolean; // Deprecated: use repsConfigMode instead
+  weightCalcMode?: '1x' | '2x';
+  repsConfigMode?: '1x' | '2x' | 'lrSplit';
   distanceUnitSystem?: DistanceUnitSystem;
   distanceUnit?: DistanceUnit;
 }

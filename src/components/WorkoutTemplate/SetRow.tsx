@@ -49,6 +49,8 @@ interface SetRowProps {
   customKeyboardField?: 'weight' | 'weight2' | 'reps' | 'reps2' | 'duration' | 'distance' | null;
   hasSecondWeight?: boolean;
   hasLRSplitReps?: boolean;
+  weightCalcMode?: '1x' | '2x';
+  repsConfigMode?: '1x' | '2x' | 'lrSplit';
   customKeyboardShouldSelectAll?: boolean;
   onLongPressRow?: () => void;
   showDuration?: boolean;
@@ -99,7 +101,9 @@ const SetRow: React.FC<SetRowProps> = ({
   showWeight = false,
   showReps = false,
   hasSecondWeight = false,
-  hasLRSplitReps = false
+  hasLRSplitReps = false,
+  weightCalcMode,
+  repsConfigMode
 }) => {
   const isLift = category === 'Lifts';
   const isCardio = category === 'Cardio';
@@ -796,6 +800,9 @@ const SetRow: React.FC<SetRowProps> = ({
                 ]} pointerEvents={isRestTimerSelectionMode ? 'none' : 'auto'}>
                   <View style={[styles.weightInputWrapper, hasSecondWeight && styles.weightInputWrapper__row]}>
                     <View style={[styles.weightInputSingleWrapper, hasSecondWeight && styles.weightInputSingleWrapper__half]}>
+                      {(weightCalcMode === '2x' || repsConfigMode === '2x') && (
+                        <Text style={styles.inputX2IndicatorAsterisk}>*</Text>
+                      )}
                       <TextInput
                         numberOfLines={1}
                         ref={weightInputRef}
@@ -855,6 +862,9 @@ const SetRow: React.FC<SetRowProps> = ({
                     </View>
                     {hasSecondWeight && (
                       <View style={[styles.weight2InputWrapper, styles.weightInputSingleWrapper__half]}>
+                        {(weightCalcMode === '2x' || repsConfigMode === '2x') && (
+                          <Text style={styles.inputX2IndicatorAsterisk}>*</Text>
+                        )}
                         <TextInput
                           numberOfLines={1}
                           ref={weight2InputRef}
@@ -926,6 +936,11 @@ const SetRow: React.FC<SetRowProps> = ({
                 ]} pointerEvents={isRestTimerSelectionMode ? 'none' : 'auto'}>
                   <View key={hasLRSplitReps ? 'reps-split' : 'reps-single'} style={[styles.repsInputWrapper, hasLRSplitReps && styles.repsInputWrapper__row]}>
                     <View style={[styles.repsInputSingleWrapper, hasLRSplitReps && styles.repsInputSingleWrapper__half]}>
+                      {repsConfigMode === 'lrSplit' ? (
+                        <Text style={styles.inputX2Indicator}>L</Text>
+                      ) : (weightCalcMode === '2x' || repsConfigMode === '2x') ? (
+                        <Text style={styles.inputX2IndicatorAsterisk}>*</Text>
+                      ) : null}
                       <TextInput
                         numberOfLines={1}
                         ref={repsInputRef}
@@ -985,6 +1000,11 @@ const SetRow: React.FC<SetRowProps> = ({
                     </View>
                     {hasLRSplitReps && (
                       <View style={[styles.reps2InputWrapper, styles.repsInputSingleWrapper__half]}>
+                        {repsConfigMode === 'lrSplit' ? (
+                          <Text style={styles.inputX2Indicator}>R</Text>
+                        ) : (weightCalcMode === '2x' || repsConfigMode === '2x') ? (
+                          <Text style={styles.inputX2IndicatorAsterisk}>*</Text>
+                        ) : null}
                         <TextInput
                           numberOfLines={1}
                           ref={reps2InputRef}
@@ -1332,6 +1352,26 @@ const styles = StyleSheet.create({
     minWidth: 0,
     width: 'auto' as any,
     maxWidth: undefined as any,
+  },
+  inputX2Indicator: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    fontSize: 8,
+    fontWeight: '700',
+    color: COLORS.slate[400],
+    zIndex: 10,
+    backgroundColor: 'transparent',
+  },
+  inputX2IndicatorAsterisk: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.slate[400],
+    zIndex: 10,
+    backgroundColor: 'transparent',
   },
   reps2InputWrapper: {
     position: 'relative',

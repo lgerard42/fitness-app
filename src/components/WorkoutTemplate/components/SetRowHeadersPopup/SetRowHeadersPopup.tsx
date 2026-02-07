@@ -76,7 +76,7 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
     popupKey
 }) => {
     const [infoPopupVisible, setInfoPopupVisible] = useState(false);
-    const [infoPopupSection, setInfoPopupSection] = useState<'Weight Units' | 'Multiply x2' | 'Distance Unit'>('Weight Units');
+    const [infoPopupSection, setInfoPopupSection] = useState<'Weight Units' | 'Total Weight Config' | 'Total Reps Config' | 'Dist. Measurement Units'>('Weight Units');
 
     if (!visible || !columnHeaderMenu) return null;
 
@@ -144,22 +144,20 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
             {
                 id: `kg-toggle${idSuffix}`,
                 label: 'KG',
-                isActive: currentExercise?.weightUnit === 'kg' || false,
+                isActive: currentExercise?.weightUnit === 'kg',
                 onPress: () => {
                     if (currentExercise?.weightUnit !== 'kg') {
                         handleToggleUnit(columnHeaderMenu.exerciseId);
-                        onClose();
                     }
                 }
             },
             {
                 id: `lbs-toggle${idSuffix}`,
                 label: 'LBS',
-                isActive: currentExercise?.weightUnit === 'lbs' || false,
+                isActive: currentExercise?.weightUnit === 'lbs' || !currentExercise?.weightUnit,
                 onPress: () => {
                     if (currentExercise?.weightUnit !== 'lbs') {
                         handleToggleUnit(columnHeaderMenu.exerciseId);
-                        onClose();
                     }
                 }
             }
@@ -170,7 +168,7 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
     const createDistanceMeasurementUnitsOptions = () => ({
         id: 'distance-measurement-unit-row',
         type: 'row-options' as const,
-        label: 'Distance Unit',
+        label: 'Dist. Measurement Units',
         show: true,
         rowOptions: [
             {
@@ -191,14 +189,13 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
                                 };
                             })
                         });
-                        onClose();
                     }
                 }
             },
             {
                 id: 'imperial-toggle',
                 label: 'US / Imperial',
-                isActive: currentSystem === 'US',
+                isActive: currentSystem === 'US' || !currentExercise?.distanceUnitSystem,
                 onPress: () => {
                     if (currentSystem !== 'US') {
                         const defaultUnit: DistanceUnit = 'mi';
@@ -213,55 +210,116 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
                                 };
                             })
                         });
-                        onClose();
                     }
                 }
             }
         ]
     });
 
-    // Helper function to create distance unit option
-    const createDistanceUnitOption = (unit: DistanceUnit, label: string) => {
-        // Choose icon based on unit
-        let icon;
-        if (unit === 'ft') {
-            icon = <Footprints size={18} color={COLORS.white} />;
-        } else if (unit === 'yd') {
-            icon = <Goal size={18} color={COLORS.white} />;
+    // Helper function to create Measurement Unit row options
+    const createMeasurementUnitOptions = () => {
+        const rowOptions = [];
+
+        if (currentSystem === 'US') {
+            // US/Imperial units
+            rowOptions.push(
+                {
+                    id: 'ft-toggle',
+                    label: 'Feet',
+                    isActive: currentUnit === 'ft',
+                    onPress: () => {
+                        handleWorkoutUpdate({
+                            ...currentWorkout,
+                            exercises: updateExercisesDeep(currentWorkout.exercises, columnHeaderMenu.exerciseId, (ex) => {
+                                if (ex.type === 'group') return ex;
+                                return { ...ex, distanceUnit: 'ft' };
+                            })
+                        });
+                    }
+                },
+                {
+                    id: 'yd-toggle',
+                    label: 'Yards',
+                    isActive: currentUnit === 'yd',
+                    onPress: () => {
+                        handleWorkoutUpdate({
+                            ...currentWorkout,
+                            exercises: updateExercisesDeep(currentWorkout.exercises, columnHeaderMenu.exerciseId, (ex) => {
+                                if (ex.type === 'group') return ex;
+                                return { ...ex, distanceUnit: 'yd' };
+                            })
+                        });
+                    }
+                },
+                {
+                    id: 'mi-toggle',
+                    label: 'Miles',
+                    isActive: currentUnit === 'mi' || (!currentExercise?.distanceUnit && currentSystem === 'US'),
+                    onPress: () => {
+                        handleWorkoutUpdate({
+                            ...currentWorkout,
+                            exercises: updateExercisesDeep(currentWorkout.exercises, columnHeaderMenu.exerciseId, (ex) => {
+                                if (ex.type === 'group') return ex;
+                                return { ...ex, distanceUnit: 'mi' };
+                            })
+                        });
+                    }
+                }
+            );
         } else {
-            icon = <Ruler size={18} color={COLORS.white} />;
+            // Metric units
+            rowOptions.push(
+                {
+                    id: 'm-toggle',
+                    label: 'Meters',
+                    isActive: currentUnit === 'm',
+                    onPress: () => {
+                        handleWorkoutUpdate({
+                            ...currentWorkout,
+                            exercises: updateExercisesDeep(currentWorkout.exercises, columnHeaderMenu.exerciseId, (ex) => {
+                                if (ex.type === 'group') return ex;
+                                return { ...ex, distanceUnit: 'm' };
+                            })
+                        });
+                    }
+                },
+                {
+                    id: 'km-toggle',
+                    label: 'Kilometers',
+                    isActive: currentUnit === 'km',
+                    onPress: () => {
+                        handleWorkoutUpdate({
+                            ...currentWorkout,
+                            exercises: updateExercisesDeep(currentWorkout.exercises, columnHeaderMenu.exerciseId, (ex) => {
+                                if (ex.type === 'group') return ex;
+                                return { ...ex, distanceUnit: 'km' };
+                            })
+                        });
+                    }
+                }
+            );
         }
 
         return {
-            id: `distance-${unit}`,
-            label,
-            icon,
+            id: 'measurement-unit-row',
+            type: 'row-options' as const,
+            label: 'Unit Type',
             show: true,
-            isActive: currentUnit === unit,
-            onPress: () => {
-                handleWorkoutUpdate({
-                    ...currentWorkout,
-                    exercises: updateExercisesDeep(currentWorkout.exercises, columnHeaderMenu.exerciseId, (ex) => {
-                        if (ex.type === 'group') return ex;
-                        return { ...ex, distanceUnit: unit };
-                    })
-                });
-                onClose();
-            }
+            rowOptions
         };
     };
 
-    // Helper function to create x2 Totals Adj. row options
-    const createX2TotalsAdjOptions = (idSuffix: string = '') => ({
-        id: `x2-totals-row${idSuffix}`,
+    // Helper function to create Total Weight Calc row options
+    const createTotalWeightCalcOptions = (idSuffix: string = '') => ({
+        id: `total-weight-calc-row${idSuffix}`,
         type: 'row-options' as const,
-        label: 'Multiply x2',
+        label: 'Total Weight Config',
         show: true,
         rowOptions: [
             {
-                id: `dumbbells-toggle${idSuffix}`,
-                label: 'Weight',
-                isActive: currentExercise?.multiplyWeightBy2 || false,
+                id: `1x-input-toggle${idSuffix}`,
+                label: '1x',
+                isActive: (currentExercise?.weightCalcMode || '1x') === '1x',
                 onPress: () => {
                     handleWorkoutUpdate({
                         ...currentWorkout,
@@ -269,35 +327,31 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
                             if (ex.type === 'group') return ex;
                             return {
                                 ...ex,
-                                multiplyWeightBy2: !ex.multiplyWeightBy2,
-                                alternatingRepsBy2: false,
-                                repsConfigMode: undefined
+                                weightCalcMode: '1x',
+                                // Clear deprecated field
+                                multiplyWeightBy2: false
                             };
                         })
                     });
-                    onClose();
                 }
             },
             {
-                id: `alternating-toggle${idSuffix}`,
-                label: 'Reps',
-                isActive: currentExercise?.alternatingRepsBy2 || false,
+                id: `2x-input-toggle${idSuffix}`,
+                label: '2x',
+                isActive: currentExercise?.weightCalcMode === '2x',
                 onPress: () => {
                     handleWorkoutUpdate({
                         ...currentWorkout,
                         exercises: updateExercisesDeep(currentWorkout.exercises, columnHeaderMenu.exerciseId, (ex) => {
                             if (ex.type === 'group') return ex;
-                            const newAlternatingRepsBy2 = !ex.alternatingRepsBy2;
                             return {
                                 ...ex,
-                                alternatingRepsBy2: newAlternatingRepsBy2,
-                                multiplyWeightBy2: false,
-                                // Reset repsConfigMode to default when disabling
-                                repsConfigMode: newAlternatingRepsBy2 ? (ex.repsConfigMode || '1x2') : undefined
+                                weightCalcMode: '2x',
+                                // Clear deprecated field
+                                multiplyWeightBy2: false
                             };
                         })
                     });
-                    onClose();
                 }
             }
         ]
@@ -307,13 +361,13 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
     const createRepsConfigOptions = (idSuffix: string = '') => ({
         id: `reps-config-row${idSuffix}`,
         type: 'row-options' as const,
-        label: 'Reps Config',
+        label: 'Total Reps Config',
         show: true,
         rowOptions: [
             {
-                id: `1x2-toggle${idSuffix}`,
-                label: '1x2',
-                isActive: (currentExercise?.repsConfigMode || '1x2') === '1x2',
+                id: `1x-toggle${idSuffix}`,
+                label: '1x',
+                isActive: (currentExercise?.repsConfigMode || '1x') === '1x',
                 onPress: () => {
                     handleWorkoutUpdate({
                         ...currentWorkout,
@@ -321,11 +375,31 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
                             if (ex.type === 'group') return ex;
                             return {
                                 ...ex,
-                                repsConfigMode: '1x2'
+                                repsConfigMode: '1x',
+                                // Clear deprecated field
+                                alternatingRepsBy2: false
                             };
                         })
                     });
-                    onClose();
+                }
+            },
+            {
+                id: `2x-toggle${idSuffix}`,
+                label: '2x',
+                isActive: currentExercise?.repsConfigMode === '2x',
+                onPress: () => {
+                    handleWorkoutUpdate({
+                        ...currentWorkout,
+                        exercises: updateExercisesDeep(currentWorkout.exercises, columnHeaderMenu.exerciseId, (ex) => {
+                            if (ex.type === 'group') return ex;
+                            return {
+                                ...ex,
+                                repsConfigMode: '2x',
+                                // Clear deprecated field
+                                alternatingRepsBy2: false
+                            };
+                        })
+                    });
                 }
             },
             {
@@ -339,11 +413,12 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
                             if (ex.type === 'group') return ex;
                             return {
                                 ...ex,
-                                repsConfigMode: 'lrSplit'
+                                repsConfigMode: 'lrSplit',
+                                // Clear deprecated field
+                                alternatingRepsBy2: false
                             };
                         })
                     });
-                    onClose();
                 }
             }
         ]
@@ -417,29 +492,14 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
             // Weight unit row options
             options.push(createWeightUnitsOptions());
 
-            // x2 Totals Adj. row options
-            if (visibleColumns.showReps) {
-                options.push(createX2TotalsAdjOptions());
-
-                // Reps Config row options (only show when Reps is selected in Multiply x2)
-                if (currentExercise?.alternatingRepsBy2) {
-                    options.push(createRepsConfigOptions());
-                }
-            }
+            // Total Weight Calc row options
+            options.push(createTotalWeightCalcOptions());
         }
 
         // Reps field options
         if (field === 'reps' && visibleColumns.showReps) {
-            // Only show weight-related options if weight column is also visible
-            if (visibleColumns.showWeight && hasWeightUnit) {
-                // x2 Totals Adj. row options
-                options.push(createX2TotalsAdjOptions('-reps'));
-
-                // Reps Config row options (only show when Reps is selected in Multiply x2)
-                if (currentExercise?.alternatingRepsBy2) {
-                    options.push(createRepsConfigOptions('-reps'));
-                }
-            }
+            // Reps Config row options (always show)
+            options.push(createRepsConfigOptions());
         }
 
         // Distance field options
@@ -447,14 +507,8 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
             // Distance Distance Unit row options
             options.push(createDistanceMeasurementUnitsOptions());
 
-            if (currentSystem === 'US') {
-                options.push(createDistanceUnitOption('ft', 'Feet'));
-                options.push(createDistanceUnitOption('yd', 'Yards'));
-                options.push(createDistanceUnitOption('mi', 'Miles'));
-            } else {
-                options.push(createDistanceUnitOption('m', 'Meters'));
-                options.push(createDistanceUnitOption('km', 'Kilometers'));
-            }
+            // Measurement Unit row options
+            options.push(createMeasurementUnitOptions());
         }
 
         // Determine if current field is locked
@@ -486,7 +540,6 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
                     if (!isCurrentFieldLocked) {
                         const field = columnHeaderMenu.field;
                         handleToggleColumn(field as 'duration' | 'distance' | 'weight' | 'reps', false);
-                        onClose();
                     }
                 }
             }
@@ -525,6 +578,7 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
                 {visibleOptions.map((option, index) => {
                     const isLast = index === lastIndex || option.isLast;
                     const isNotFirstOption = index > 0;
+                    const isFirstOption = index === 0;
 
                     // Row options type (no padding, options in a row)
                     if (option.type === 'row-options' && option.rowOptions) {
@@ -537,10 +591,12 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
                                     <View style={styles.columnHeaderPopupRowOptionsLabelWrapper}>
                                         <TouchableOpacity
                                             onPress={() => {
-                                                const sectionMap: Record<string, 'Weight Units' | 'Multiply x2' | 'Distance Unit'> = {
+                                                const sectionMap: Record<string, 'Weight Units' | 'Total Weight Config' | 'Total Reps Config' | 'Dist. Measurement Units'> = {
                                                     'Weight Units': 'Weight Units',
-                                                    'Multiply x2': 'Multiply x2',
-                                                    'Distance Unit': 'Distance Unit'
+                                                    'Total Weight Config': 'Total Weight Config',
+                                                    'Total Reps Config': 'Total Reps Config',
+                                                    'Dist. Measurement Units': 'Dist. Measurement Units',
+                                                    'Unit Type': 'Dist. Measurement Units'
                                                 };
                                                 setInfoPopupSection(sectionMap[option.label || ''] || 'Weight Units');
                                                 setInfoPopupVisible(true);
@@ -554,33 +610,34 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
                                         </TouchableOpacity>
                                     </View>
                                 )}
-                                {option.rowOptions.map((rowOption, rowIndex) => (
-                                    <TouchableOpacity
-                                        key={rowOption.id}
-                                        style={[
-                                            styles.columnHeaderPopupRowOption,
-                                            styles.columnHeaderPopupRowOptionInactive,
-                                            rowIndex < option.rowOptions!.length - 1 && styles.columnHeaderPopupRowOptionBorder,
-                                            rowOption.isActive && styles.columnHeaderPopupRowOptionActive,
-                                            option.label === 'Distance Unit' && { paddingTop: 24 }
-                                        ]}
-                                        onPress={rowOption.onPress}
-                                    >
-                                        <Text style={[
-                                            styles.columnHeaderPopupRowOptionText,
-                                            styles.columnHeaderPopupRowOptionTextInactive,
-                                            rowOption.isActive && styles.columnHeaderPopupRowOptionTextActive,
-                                            rowOption.label === 'KG' && { paddingRight: 35 },
-                                            rowOption.label === 'LBS' && { paddingLeft: 35 },
-                                            rowOption.label === 'Weight' && { paddingRight: 25 },
-                                            rowOption.label === 'Reps' && { paddingLeft: 30 },
-                                            rowOption.label === 'Metric' && { paddingRight: 0 },
-                                            rowOption.label === 'US / Imperial' && { paddingLeft: 0 }
-                                        ]}>
-                                            {rowOption.label}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
+                                {option.rowOptions.map((rowOption, rowIndex) => {
+                                    const isFirstRowOption = rowIndex === 0;
+                                    const isLastRowOption = rowIndex === option.rowOptions!.length - 1;
+                                    return (
+                                        <TouchableOpacity
+                                            key={rowOption.id}
+                                            style={[
+                                                styles.columnHeaderPopupRowOption,
+                                                styles.columnHeaderPopupRowOptionInactive,
+                                                rowIndex < option.rowOptions!.length - 1 && styles.columnHeaderPopupRowOptionBorder,
+                                                rowOption.isActive && styles.columnHeaderPopupRowOptionActive,
+                                                isFirstOption && isFirstRowOption && { borderTopLeftRadius: 8 },
+                                                isFirstOption && isLastRowOption && { borderTopRightRadius: 8 },
+                                                isLast && isFirstRowOption && { borderBottomLeftRadius: 8 },
+                                                isLast && isLastRowOption && { borderBottomRightRadius: 8 }
+                                            ]}
+                                            onPress={rowOption.onPress}
+                                        >
+                                            <Text style={[
+                                                styles.columnHeaderPopupRowOptionText,
+                                                styles.columnHeaderPopupRowOptionTextInactive,
+                                                rowOption.isActive && styles.columnHeaderPopupRowOptionTextActive
+                                            ]}>
+                                                {rowOption.label}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
                             </View>
                         );
                     }
@@ -597,7 +654,9 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
                                         styles.columnHeaderPopupOption,
                                         styles.columnHeaderPopupOptionFlex,
                                         styles.columnHeaderPopupOptionWithBorder,
-                                        isLast && styles.columnHeaderPopupOptionLast
+                                        isLast && styles.columnHeaderPopupOptionLast,
+                                        isFirstOption && { borderTopLeftRadius: 8 },
+                                        isLast && { borderBottomLeftRadius: 8 }
                                     ]}
                                     onPress={option.setInputsOption.onPress}
                                 >
@@ -614,7 +673,9 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
                                         styles.columnHeaderPopupOptionDelete,
                                         styles.columnHeaderPopupOptionDeleteFixed,
                                         option.deleteOption.isLocked && styles.columnHeaderPopupOptionDeleteDisabled,
-                                        isLast && styles.columnHeaderPopupOptionLast
+                                        isLast && styles.columnHeaderPopupOptionLast,
+                                        isFirstOption && { borderTopRightRadius: 8 },
+                                        isLast && { borderBottomRightRadius: 8 }
                                     ]}
                                     onPress={option.deleteOption.onPress}
                                     disabled={option.deleteOption.disabled}
@@ -656,7 +717,9 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
                                 styles.columnHeaderPopupOption,
                                 isLast && styles.columnHeaderPopupOptionLast,
                                 option.isActive && styles.columnHeaderPopupOptionActive,
-                                option.isLocked && styles.columnHeaderPopupOptionLocked
+                                option.isLocked && styles.columnHeaderPopupOptionLocked,
+                                isFirstOption && { borderTopLeftRadius: 8, borderTopRightRadius: 8 },
+                                isLast && { borderBottomLeftRadius: 8, borderBottomRightRadius: 8 }
                             ]}
                             onPress={option.onPress || (() => { })}
                             disabled={option.disabled}
@@ -705,7 +768,7 @@ const styles = StyleSheet.create({
         shadowRadius: 8,
         elevation: 8,
         zIndex: 999,
-        overflow: 'hidden',
+        overflow: 'visible',
         borderWidth: 1,
         borderColor: COLORS.slate[200],
     },
@@ -753,7 +816,8 @@ const styles = StyleSheet.create({
         borderRightColor: COLORS.slate[600],
     },
     columnHeaderPopupOptionDeleteFixed: {
-        width: 56,
+        width: 50,
+        borderBottomRightRadius: 6,
     },
     columnHeaderPopupOptionDelete: {
         backgroundColor: COLORS.red[600],
@@ -790,12 +854,10 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.slate[700],
         padding: 2,
         paddingHorizontal: 6,
-        borderBottomLeftRadius: 4,
-        borderBottomRightRadius: 4,
-        borderLeftWidth: 1,
-        borderRightWidth: 1,
-        borderBottomWidth: 1,
+        borderRadius: 6,
+        borderWidth: 1,
         borderColor: COLORS.slate[500],
+        marginTop: -8,// Approximately half the label container height to center on border
     },
     columnHeaderPopupRowOptionsLabel: {
         fontSize: 10,
@@ -806,7 +868,7 @@ const styles = StyleSheet.create({
     columnHeaderPopupRowOption: {
         flex: 1,
         paddingBottom: 12,
-        paddingTop: 12,
+        paddingTop: 16,
         alignItems: 'center',
         justifyContent: 'center',
     },

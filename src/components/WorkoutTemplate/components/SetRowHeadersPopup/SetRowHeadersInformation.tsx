@@ -5,7 +5,7 @@ import { COLORS } from '@/constants/colors';
 interface SetRowHeadersInformationProps {
     visible: boolean;
     onClose: () => void;
-    initialSection?: 'Weight Units' | 'Multiply x2' | 'Distance Unit';
+    initialSection?: 'Weight Units' | 'Total Weight Config' | 'Total Reps Config' | 'Dist. Measurement Units';
 }
 
 const SetRowHeadersInformation: React.FC<SetRowHeadersInformationProps> = ({
@@ -13,7 +13,7 @@ const SetRowHeadersInformation: React.FC<SetRowHeadersInformationProps> = ({
     onClose,
     initialSection = 'Weight Units'
 }) => {
-    const [activeSection, setActiveSection] = useState<'Weight Units' | 'Multiply x2' | 'Distance Unit'>(initialSection || 'Weight Units');
+    const [activeSection, setActiveSection] = useState<'Weight Units' | 'Total Weight Config' | 'Total Reps Config' | 'Dist. Measurement Units'>(initialSection || 'Weight Units');
 
     useEffect(() => {
         if (visible) {
@@ -21,7 +21,7 @@ const SetRowHeadersInformation: React.FC<SetRowHeadersInformationProps> = ({
         }
     }, [visible, initialSection]);
 
-    const sections: Array<'Weight Units' | 'Multiply x2' | 'Distance Unit'> = ['Weight Units', 'Multiply x2', 'Distance Unit'];
+    const sections: Array<'Weight Units' | 'Total Weight Config' | 'Total Reps Config' | 'Dist. Measurement Units'> = ['Weight Units', 'Total Weight Config', 'Total Reps Config', 'Dist. Measurement Units'];
 
     return (
         <Modal
@@ -96,35 +96,65 @@ const SetRowHeadersInformation: React.FC<SetRowHeadersInformationProps> = ({
                             </View>
                         )}
 
-                        {activeSection === 'Multiply x2' && (
+                        {activeSection === 'Total Weight Config' && (
                             <View style={styles.infoSection}>
-                                <Text style={styles.infoSectionTitle}>Multiply x2</Text>
+                                <Text style={styles.infoSectionTitle}>Total Weight Config</Text>
                                 <Text style={styles.infoSectionText}>
-                                    The Multiply x2 option allows you to adjust how totals are calculated for exercises that use paired equipment or alternating patterns.
+                                    The Total Weight Config option allows you to adjust how total weight is calculated for exercises that use paired equipment.
                                 </Text>
                                 <View style={styles.infoBulletPoint}>
                                     <Text style={styles.infoBullet}>•</Text>
                                     <Text style={styles.infoSectionText}>
-                                        <Text style={styles.infoBold}>Weight:</Text> When enabled, the total weight is multiplied by 2. This is useful for exercises like dumbbell work where you're using two weights (e.g., 25lb dumbbells = 50lb total).
+                                        <Text style={styles.infoBold}>1 x Input:</Text> The total weight equals the input value. This is the default for most exercises.
                                     </Text>
                                 </View>
                                 <View style={styles.infoBulletPoint}>
                                     <Text style={styles.infoBullet}>•</Text>
                                     <Text style={styles.infoSectionText}>
-                                        <Text style={styles.infoBold}>Reps:</Text> When enabled, the total reps are multiplied by 2. This is useful for alternating exercises where each side counts separately (e.g., 10 reps per side = 20 total reps).
+                                        <Text style={styles.infoBold}>2 x Input:</Text> The total weight is multiplied by 2. This is useful for exercises like dumbbell work where you're using two weights (e.g., 25lb dumbbells = 50lb total).
                                     </Text>
                                 </View>
                                 <Text style={styles.infoSectionText}>
-                                    Only one option can be active at a time. The adjustment affects how totals are displayed and calculated in your workout summary.
+                                    The adjustment affects how totals are displayed and calculated in your workout summary.
                                 </Text>
                             </View>
                         )}
 
-                        {activeSection === 'Distance Unit' && (
+                        {activeSection === 'Total Reps Config' && (
                             <View style={styles.infoSection}>
-                                <Text style={styles.infoSectionTitle}>Distance Unit</Text>
+                                <Text style={styles.infoSectionTitle}>Total Reps Config</Text>
                                 <Text style={styles.infoSectionText}>
-                                    The Distance Unit option allows you to switch between Metric and US/Imperial systems for displaying and tracking distance values.
+                                    The Total Reps Config option allows you to adjust how total reps are calculated for exercises.
+                                </Text>
+                                <View style={styles.infoBulletPoint}>
+                                    <Text style={styles.infoBullet}>•</Text>
+                                    <Text style={styles.infoSectionText}>
+                                        <Text style={styles.infoBold}>1x:</Text> The total reps equals the input value. This is the default for most exercises.
+                                    </Text>
+                                </View>
+                                <View style={styles.infoBulletPoint}>
+                                    <Text style={styles.infoBullet}>•</Text>
+                                    <Text style={styles.infoSectionText}>
+                                        <Text style={styles.infoBold}>2x:</Text> The total reps are multiplied by 2. This is useful for alternating exercises where each side counts separately (e.g., 10 reps per side = 20 total reps).
+                                    </Text>
+                                </View>
+                                <View style={styles.infoBulletPoint}>
+                                    <Text style={styles.infoBullet}>•</Text>
+                                    <Text style={styles.infoSectionText}>
+                                        <Text style={styles.infoBold}>L/R Split:</Text> Two separate inputs are shown for left and right sides. The total reps equals the sum of both inputs. This is useful for tracking each side independently.
+                                    </Text>
+                                </View>
+                                <Text style={styles.infoSectionText}>
+                                    The adjustment affects how totals are displayed and calculated in your workout summary.
+                                </Text>
+                            </View>
+                        )}
+
+                        {activeSection === 'Dist. Measurement Units' && (
+                            <View style={styles.infoSection}>
+                                <Text style={styles.infoSectionTitle}>Dist. Measurement Units</Text>
+                                <Text style={styles.infoSectionText}>
+                                    The Dist. Measurement Units option allows you to switch between Metric and US/Imperial systems for displaying and tracking distance values.
                                 </Text>
                                 <View style={styles.infoBulletPoint}>
                                     <Text style={styles.infoBullet}>•</Text>
