@@ -151,3 +151,75 @@ export interface ExerciseLibraryItem {
 }
 
 export type ExerciseStatsMap = Record<string, ExerciseStats>;
+
+// ─── Profile & Settings Types ───────────────────────────────────────────────
+
+export interface UserSettings {
+  distanceUnit: DistanceUnitSystem;
+  weightUnit: WeightUnit;
+  weightCalcMode: '1x' | '2x';
+  repsConfigMode: '1x' | '2x' | 'lrSplit';
+  defaultRestTimerSeconds: number;
+  vibrateOnTimerFinish: boolean;
+  keepScreenAwake: boolean;
+}
+
+export interface BodyMeasurement {
+  id: string;
+  date: string; // ISO string
+  weight?: number;
+  bodyFatPercent?: number;
+  neck?: number;
+  chest?: number;
+  waist?: number;
+  leftArm?: number;
+  rightArm?: number;
+  leftThigh?: number;
+  rightThigh?: number;
+  unit: WeightUnit;
+  circumferenceUnit: 'in' | 'cm';
+}
+
+export type GoalType = 'strength' | 'consistency';
+
+export interface UserGoal {
+  id: string;
+  type: GoalType;
+  // Strength goal fields
+  exerciseId?: string;
+  exerciseName?: string;
+  targetWeight?: number;
+  targetWeightUnit?: WeightUnit;
+  // Consistency goal fields
+  targetWorkoutsPerWeek?: number;
+  // Common
+  createdAt: string;
+  completed: boolean;
+}
+
+export interface PersonalRecord {
+  exerciseId: string;
+  exerciseName: string;
+  weight: number;
+  weightUnit: WeightUnit;
+  date: string;
+}
+
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  address?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    country?: string;
+  };
+  profilePictureUri?: string; // Local URI for the profile picture
+  dateOfBirth?: string; // ISO date string
+  bio?: string;
+  createdAt: string;
+  updatedAt: string;
+}

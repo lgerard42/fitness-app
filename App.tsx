@@ -9,6 +9,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Play, Calendar, Book, User, CircleDashed } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { WorkoutProvider } from '@/context/WorkoutContext';
+import { UserSettingsProvider } from '@/context/UserSettingsContext';
 import ActiveWorkoutBanner from '@/components/ActiveWorkoutBanner';
 import type { Workout } from '@/types/workout';
 
@@ -17,6 +18,7 @@ import HistoryScreen from '@/screens/HistoryScreen';
 import LibraryScreen from '@/screens/LibraryScreen';
 import LiveWorkoutScreen from '@/screens/LiveWorkoutScreen';
 import EditWorkoutScreen from '@/screens/EditWorkoutScreen';
+import ProfileIndex from '@/screens/ProfileTab/ProfileIndex';
 
 export type RootStackParamList = {
   Main: undefined;
@@ -27,11 +29,7 @@ export type RootStackParamList = {
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-const ProfileScreen: React.FC = () => (
-  <SafeAreaProvider style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.slate[50] }}>
-    <User size={48} color={COLORS.slate[300]} />
-  </SafeAreaProvider>
-);
+// ProfileScreen placeholder removed — now using ProfileIndex
 
 const ComingSoonScreen: React.FC = () => (
   <SafeAreaProvider style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.slate[50] }}>
@@ -88,7 +86,7 @@ const MainTabs: React.FC = () => {
         />
         <Tab.Screen 
           name="Profile" 
-          component={ProfileScreen} 
+          component={ProfileIndex} 
           options={{
             tabBarLabel: 'Profile',
             tabBarIcon: ({ color, size }) => <User size={size} color={color} />,
@@ -111,29 +109,31 @@ const AppContent: React.FC = () => {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <WorkoutProvider>
-          <NavigationContainer>
-            <Stack.Navigator screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="Main" component={MainTabs} />
-              <Stack.Screen 
-                name="LiveWorkout" 
-                component={LiveWorkoutScreen} 
-                options={{ 
-                  presentation: 'fullScreenModal',
-                  gestureEnabled: false,
-                }} 
-              />
-              <Stack.Screen 
-                name="EditWorkout" 
-                component={EditWorkoutScreen} 
-                options={{ 
-                  presentation: 'fullScreenModal',
-                  gestureEnabled: false,
-                }} 
-              />
-            </Stack.Navigator>
-          </NavigationContainer>
-        </WorkoutProvider>
+        <UserSettingsProvider>
+          <WorkoutProvider>
+            <NavigationContainer>
+              <Stack.Navigator screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="Main" component={MainTabs} />
+                <Stack.Screen 
+                  name="LiveWorkout" 
+                  component={LiveWorkoutScreen} 
+                  options={{ 
+                    presentation: 'fullScreenModal',
+                    gestureEnabled: false,
+                  }} 
+                />
+                <Stack.Screen 
+                  name="EditWorkout" 
+                  component={EditWorkoutScreen} 
+                  options={{ 
+                    presentation: 'fullScreenModal',
+                    gestureEnabled: false,
+                  }} 
+                />
+              </Stack.Navigator>
+            </NavigationContainer>
+          </WorkoutProvider>
+        </UserSettingsProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
