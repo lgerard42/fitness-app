@@ -34,7 +34,7 @@ import ActiveRestTimerPopup from './modals/ActiveRestTimerPopup';
 import CustomNumberKeyboard from './modals/CustomNumberKeyboard';
 import SetDragModal from './modals/SetDragModal';
 import WorkoutModals from './components/WorkoutModals';
-import SetRowHeadersPopup from './components/SetRowHeadersPopup';
+import SetRowHeadersPopup from './components/SetRowHeadersPopup/SetRowHeadersPopup';
 import { useSetDragAndDrop } from './hooks/useSetDragAndDrop';
 import { useWorkoutNotes, useExerciseNotes } from './hooks/useWorkoutNotes';
 import { createExerciseInstance, createExerciseInstanceWithSetGroups } from '@/utils/workoutInstanceHelpers';

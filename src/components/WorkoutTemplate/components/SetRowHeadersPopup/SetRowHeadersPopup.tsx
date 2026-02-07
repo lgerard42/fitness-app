@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Pressable, StyleSheet } from 'react-native';
-import { ChevronLeft, ArrowLeftRight, Lock, Ruler, Settings, Trash2, Timer, Hash, Scale } from 'lucide-react-native';
+import { ChevronLeft, ArrowLeftRight, Lock, Ruler, Settings, Trash2, Timer, Hash, Scale, Info } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { updateExercisesDeep, findExerciseDeep } from '@/utils/workoutHelpers';
 import type { Workout, ExerciseLibraryItem, Exercise, DistanceUnitSystem, DistanceUnit } from '@/types/workout';
+import SetRowHeadersInformation from './SetRowHeadersInformation';
 
 interface SetRowHeadersPopupProps {
     visible: boolean;
@@ -34,10 +35,17 @@ type PopupOption = {
     isLocked?: boolean;
     onPress?: () => void;
     disabled?: boolean;
-    type?: 'toggle-container' | 'delete-option' | 'set-inputs-container';
+    type?: 'toggle-container' | 'delete-option' | 'set-inputs-container' | 'row-options';
     toggles?: Array<{
         id: string;
         label: string;
+        isActive: boolean;
+        onPress: () => void;
+    }>;
+    rowOptions?: Array<{
+        id: string;
+        label: string;
+        subtext?: string;
         isActive: boolean;
         onPress: () => void;
     }>;
@@ -67,6 +75,9 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
     getVisibleColumns,
     popupKey
 }) => {
+    const [infoPopupVisible, setInfoPopupVisible] = useState(false);
+    const [infoPopupSection, setInfoPopupSection] = useState<'Weight Units' | 'Multiply x2'>('Weight Units');
+
     if (!visible || !columnHeaderMenu) return null;
 
     const currentExercise = findExerciseDeep(currentWorkout.exercises, columnHeaderMenu.exerciseId);
@@ -122,6 +133,105 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
     };
 
     const options: PopupOption[] = [];
+
+    // Helper function to create Weight Units row options
+    const createWeightUnitsOptions = (idSuffix: string = '') => ({
+        id: `weight-unit-row${idSuffix}`,
+        type: 'row-options' as const,
+        label: 'Weight Units',
+        show: true,
+        rowOptions: [
+            {
+                id: `kg-toggle${idSuffix}`,
+                label: 'KG',
+                isActive: currentExercise?.weightUnit === 'kg' || false,
+                onPress: () => {
+                    if (currentExercise?.weightUnit !== 'kg') {
+                        handleToggleUnit(columnHeaderMenu.exerciseId);
+                        onClose();
+                    }
+                }
+            },
+            {
+                id: `lbs-toggle${idSuffix}`,
+                label: 'LBS',
+                isActive: currentExercise?.weightUnit === 'lbs' || false,
+                onPress: () => {
+                    if (currentExercise?.weightUnit !== 'lbs') {
+                        handleToggleUnit(columnHeaderMenu.exerciseId);
+                        onClose();
+                    }
+                }
+            }
+        ]
+    });
+
+    // Helper function to create distance unit option
+    const createDistanceUnitOption = (unit: DistanceUnit, label: string) => ({
+        id: `distance-${unit}`,
+        label,
+        icon: <Ruler size={18} color={COLORS.white} />,
+        show: true,
+        isActive: currentUnit === unit,
+        onPress: () => {
+            handleWorkoutUpdate({
+                ...currentWorkout,
+                exercises: updateExercisesDeep(currentWorkout.exercises, columnHeaderMenu.exerciseId, (ex) => {
+                    if (ex.type === 'group') return ex;
+                    return { ...ex, distanceUnit: unit };
+                })
+            });
+            onClose();
+        }
+    });
+
+    // Helper function to create x2 Totals Adj. row options
+    const createX2TotalsAdjOptions = (idSuffix: string = '') => ({
+        id: `x2-totals-row${idSuffix}`,
+        type: 'row-options' as const,
+        label: 'Multiply x2',
+        show: true,
+        rowOptions: [
+            {
+                id: `dumbbells-toggle${idSuffix}`,
+                label: 'Weight',
+                isActive: currentExercise?.multiplyWeightBy2 || false,
+                onPress: () => {
+                    handleWorkoutUpdate({
+                        ...currentWorkout,
+                        exercises: updateExercisesDeep(currentWorkout.exercises, columnHeaderMenu.exerciseId, (ex) => {
+                            if (ex.type === 'group') return ex;
+                            return {
+                                ...ex,
+                                multiplyWeightBy2: !ex.multiplyWeightBy2,
+                                alternatingRepsBy2: false
+                            };
+                        })
+                    });
+                    onClose();
+                }
+            },
+            {
+                id: `alternating-toggle${idSuffix}`,
+                label: 'Reps',
+                isActive: currentExercise?.alternatingRepsBy2 || false,
+                onPress: () => {
+                    handleWorkoutUpdate({
+                        ...currentWorkout,
+                        exercises: updateExercisesDeep(currentWorkout.exercises, columnHeaderMenu.exerciseId, (ex) => {
+                            if (ex.type === 'group') return ex;
+                            return {
+                                ...ex,
+                                alternatingRepsBy2: !ex.alternatingRepsBy2,
+                                multiplyWeightBy2: false
+                            };
+                        })
+                    });
+                    onClose();
+                }
+            }
+        ]
+    });
 
     // CONFIGURE PAGE OPTIONS
     if (columnHeaderMenuPage === 'configure') {
@@ -188,119 +298,12 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
 
         // Weight field options
         if (field === 'weight' && visibleColumns.showWeight && hasWeightUnit) {
-            // Weight unit toggle container
-            options.push({
-                id: 'weight-unit-toggle-container',
-                type: 'toggle-container',
-                label: 'Weight Units',
-                show: true,
-                toggles: [
-                    {
-                        id: 'kg-toggle',
-                        label: 'KG',
-                        isActive: currentExercise?.weightUnit === 'kg' || false,
-                        onPress: () => {
-                            if (currentExercise?.weightUnit !== 'kg') {
-                                handleToggleUnit(columnHeaderMenu.exerciseId);
-                                onClose();
-                            }
-                        }
-                    },
-                    {
-                        id: 'lbs-toggle',
-                        label: 'LBS',
-                        isActive: currentExercise?.weightUnit === 'lbs' || false,
-                        onPress: () => {
-                            if (currentExercise?.weightUnit !== 'lbs') {
-                                handleToggleUnit(columnHeaderMenu.exerciseId);
-                                onClose();
-                            }
-                        }
-                    }
-                ]
-            });
+            // Weight unit row options
+            options.push(createWeightUnitsOptions());
 
-            // x2 Totals Adj. toggle container
+            // x2 Totals Adj. row options
             if (visibleColumns.showReps) {
-                options.push({
-                    id: 'x2-totals-toggle-container',
-                    type: 'toggle-container',
-                    label: 'x2 Totals Adj.',
-                    show: true,
-                    toggles: [
-                        {
-                            id: 'dumbbells-toggle',
-                            label: 'Dumbbells',
-                            isActive: currentExercise?.multiplyWeightBy2 || false,
-                            onPress: () => {
-                                handleWorkoutUpdate({
-                                    ...currentWorkout,
-                                    exercises: updateExercisesDeep(currentWorkout.exercises, columnHeaderMenu.exerciseId, (ex) => {
-                                        if (ex.type === 'group') return ex;
-                                        return {
-                                            ...ex,
-                                            multiplyWeightBy2: !ex.multiplyWeightBy2,
-                                            alternatingRepsBy2: false
-                                        };
-                                    })
-                                });
-                                onClose();
-                            }
-                        },
-                        {
-                            id: 'alternating-toggle',
-                            label: 'Alternating',
-                            isActive: currentExercise?.alternatingRepsBy2 || false,
-                            onPress: () => {
-                                handleWorkoutUpdate({
-                                    ...currentWorkout,
-                                    exercises: updateExercisesDeep(currentWorkout.exercises, columnHeaderMenu.exerciseId, (ex) => {
-                                        if (ex.type === 'group') return ex;
-                                        return {
-                                            ...ex,
-                                            alternatingRepsBy2: !ex.alternatingRepsBy2,
-                                            multiplyWeightBy2: false
-                                        };
-                                    })
-                                });
-                                onClose();
-                            }
-                        }
-                    ]
-                });
-            } else {
-                // If reps column not visible, show only Dumbbells option as regular option
-                options.push({
-                    id: 'multiply-weight',
-                    label: 'Dumbbells (Weight x 2)',
-                    icon: (
-                        <View style={[
-                            styles.multiplyIconWrapper,
-                            currentExercise?.multiplyWeightBy2 && styles.multiplyIconWrapperActive
-                        ]}>
-                            <Text style={[
-                                styles.multiplyIconText,
-                                currentExercise?.multiplyWeightBy2 && styles.multiplyIconTextActive
-                            ]}>x2</Text>
-                        </View>
-                    ),
-                    show: true,
-                    isActive: currentExercise?.multiplyWeightBy2,
-                    onPress: () => {
-                        handleWorkoutUpdate({
-                            ...currentWorkout,
-                            exercises: updateExercisesDeep(currentWorkout.exercises, columnHeaderMenu.exerciseId, (ex) => {
-                                if (ex.type === 'group') return ex;
-                                return {
-                                    ...ex,
-                                    multiplyWeightBy2: !ex.multiplyWeightBy2,
-                                    alternatingRepsBy2: false
-                                };
-                            })
-                        });
-                        onClose();
-                    }
-                });
+                options.push(createX2TotalsAdjOptions());
             }
         }
 
@@ -308,118 +311,11 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
         if (field === 'reps' && visibleColumns.showReps) {
             // Only show weight-related options if weight column is also visible
             if (visibleColumns.showWeight && hasWeightUnit) {
-                // Weight unit toggle container
-                options.push({
-                    id: 'weight-unit-toggle-container-reps',
-                    type: 'toggle-container',
-                    label: 'Weight Units',
-                    show: true,
-                    toggles: [
-                        {
-                            id: 'kg-toggle-reps',
-                            label: 'KG',
-                            isActive: currentExercise?.weightUnit === 'kg' || false,
-                            onPress: () => {
-                                if (currentExercise?.weightUnit !== 'kg') {
-                                    handleToggleUnit(columnHeaderMenu.exerciseId);
-                                    onClose();
-                                }
-                            }
-                        },
-                        {
-                            id: 'lbs-toggle-reps',
-                            label: 'LBS',
-                            isActive: currentExercise?.weightUnit === 'lbs' || false,
-                            onPress: () => {
-                                if (currentExercise?.weightUnit !== 'lbs') {
-                                    handleToggleUnit(columnHeaderMenu.exerciseId);
-                                    onClose();
-                                }
-                            }
-                        }
-                    ]
-                });
+                // Weight unit row options
+                options.push(createWeightUnitsOptions('-reps'));
 
-                // x2 Totals Adj. toggle container
-                options.push({
-                    id: 'x2-totals-toggle-container-reps',
-                    type: 'toggle-container',
-                    label: 'x2 Totals Adj.',
-                    show: true,
-                    toggles: [
-                        {
-                            id: 'dumbbells-toggle-reps',
-                            label: 'Dumbbells',
-                            isActive: currentExercise?.multiplyWeightBy2 || false,
-                            onPress: () => {
-                                handleWorkoutUpdate({
-                                    ...currentWorkout,
-                                    exercises: updateExercisesDeep(currentWorkout.exercises, columnHeaderMenu.exerciseId, (ex) => {
-                                        if (ex.type === 'group') return ex;
-                                        return {
-                                            ...ex,
-                                            multiplyWeightBy2: !ex.multiplyWeightBy2,
-                                            alternatingRepsBy2: false
-                                        };
-                                    })
-                                });
-                                onClose();
-                            }
-                        },
-                        {
-                            id: 'alternating-toggle-reps',
-                            label: 'Alternating',
-                            isActive: currentExercise?.alternatingRepsBy2 || false,
-                            onPress: () => {
-                                handleWorkoutUpdate({
-                                    ...currentWorkout,
-                                    exercises: updateExercisesDeep(currentWorkout.exercises, columnHeaderMenu.exerciseId, (ex) => {
-                                        if (ex.type === 'group') return ex;
-                                        return {
-                                            ...ex,
-                                            alternatingRepsBy2: !ex.alternatingRepsBy2,
-                                            multiplyWeightBy2: false
-                                        };
-                                    })
-                                });
-                                onClose();
-                            }
-                        }
-                    ]
-                });
-            } else {
-                // If weight column not visible, show only Alternating option as regular option
-                options.push({
-                    id: 'alternating-reps',
-                    label: 'Alternating (Reps x 2)',
-                    icon: (
-                        <View style={[
-                            styles.multiplyIconWrapper,
-                            currentExercise?.alternatingRepsBy2 && styles.multiplyIconWrapperActive
-                        ]}>
-                            <Text style={[
-                                styles.multiplyIconText,
-                                currentExercise?.alternatingRepsBy2 && styles.multiplyIconTextActive
-                            ]}>x2</Text>
-                        </View>
-                    ),
-                    show: true,
-                    isActive: currentExercise?.alternatingRepsBy2,
-                    onPress: () => {
-                        handleWorkoutUpdate({
-                            ...currentWorkout,
-                            exercises: updateExercisesDeep(currentWorkout.exercises, columnHeaderMenu.exerciseId, (ex) => {
-                                if (ex.type === 'group') return ex;
-                                return {
-                                    ...ex,
-                                    alternatingRepsBy2: !ex.alternatingRepsBy2,
-                                    multiplyWeightBy2: false
-                                };
-                            })
-                        });
-                        onClose();
-                    }
-                });
+                // x2 Totals Adj. row options
+                options.push(createX2TotalsAdjOptions('-reps'));
             }
         }
 
@@ -449,95 +345,12 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
             });
 
             if (currentSystem === 'US') {
-                options.push({
-                    id: 'distance-ft',
-                    label: 'Feet',
-                    icon: <Ruler size={18} color={COLORS.white} />,
-                    show: true,
-                    isActive: currentUnit === 'ft',
-                    onPress: () => {
-                        handleWorkoutUpdate({
-                            ...currentWorkout,
-                            exercises: updateExercisesDeep(currentWorkout.exercises, columnHeaderMenu.exerciseId, (ex) => {
-                                if (ex.type === 'group') return ex;
-                                return { ...ex, distanceUnit: 'ft' };
-                            })
-                        });
-                        onClose();
-                    }
-                });
-
-                options.push({
-                    id: 'distance-yd',
-                    label: 'Yards',
-                    icon: <Ruler size={18} color={COLORS.white} />,
-                    show: true,
-                    isActive: currentUnit === 'yd',
-                    onPress: () => {
-                        handleWorkoutUpdate({
-                            ...currentWorkout,
-                            exercises: updateExercisesDeep(currentWorkout.exercises, columnHeaderMenu.exerciseId, (ex) => {
-                                if (ex.type === 'group') return ex;
-                                return { ...ex, distanceUnit: 'yd' };
-                            })
-                        });
-                        onClose();
-                    }
-                });
-
-                options.push({
-                    id: 'distance-mi',
-                    label: 'Miles',
-                    icon: <Ruler size={18} color={COLORS.white} />,
-                    show: true,
-                    isActive: currentUnit === 'mi',
-                    onPress: () => {
-                        handleWorkoutUpdate({
-                            ...currentWorkout,
-                            exercises: updateExercisesDeep(currentWorkout.exercises, columnHeaderMenu.exerciseId, (ex) => {
-                                if (ex.type === 'group') return ex;
-                                return { ...ex, distanceUnit: 'mi' };
-                            })
-                        });
-                        onClose();
-                    }
-                });
+                options.push(createDistanceUnitOption('ft', 'Feet'));
+                options.push(createDistanceUnitOption('yd', 'Yards'));
+                options.push(createDistanceUnitOption('mi', 'Miles'));
             } else {
-                options.push({
-                    id: 'distance-m',
-                    label: 'Meters',
-                    icon: <Ruler size={18} color={COLORS.white} />,
-                    show: true,
-                    isActive: currentUnit === 'm',
-                    onPress: () => {
-                        handleWorkoutUpdate({
-                            ...currentWorkout,
-                            exercises: updateExercisesDeep(currentWorkout.exercises, columnHeaderMenu.exerciseId, (ex) => {
-                                if (ex.type === 'group') return ex;
-                                return { ...ex, distanceUnit: 'm' };
-                            })
-                        });
-                        onClose();
-                    }
-                });
-
-                options.push({
-                    id: 'distance-km',
-                    label: 'Kilometers',
-                    icon: <Ruler size={18} color={COLORS.white} />,
-                    show: true,
-                    isActive: currentUnit === 'km',
-                    onPress: () => {
-                        handleWorkoutUpdate({
-                            ...currentWorkout,
-                            exercises: updateExercisesDeep(currentWorkout.exercises, columnHeaderMenu.exerciseId, (ex) => {
-                                if (ex.type === 'group') return ex;
-                                return { ...ex, distanceUnit: 'km' };
-                            })
-                        });
-                        onClose();
-                    }
-                });
+                options.push(createDistanceUnitOption('m', 'Meters'));
+                options.push(createDistanceUnitOption('km', 'Kilometers'));
             }
         }
 
@@ -610,34 +423,53 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
                     const isLast = index === lastIndex || option.isLast;
                     const isNotFirstOption = index > 0;
 
-                    // Toggle container type
-                    if (option.type === 'toggle-container' && option.toggles) {
+                    // Row options type (no padding, options in a row)
+                    if (option.type === 'row-options' && option.rowOptions) {
                         return (
                             <View key={option.id} style={[
-                                styles.columnHeaderPopupOption,
-                                isLast && styles.columnHeaderPopupOptionLast,
-                                isNotFirstOption && styles.columnHeaderPopupOptionNoTopPadding
+                                styles.columnHeaderPopupRowOptions,
+                                isLast && styles.columnHeaderPopupOptionLast
                             ]}>
-                                <Text style={styles.columnHeaderPopupToggleLabel}>{option.label}</Text>
-                                <View style={styles.columnHeaderPopupToggleContainer}>
-                                    {option.toggles.map((toggle) => (
+                                {option.label && (
+                                    <View style={styles.columnHeaderPopupRowOptionsLabelWrapper}>
                                         <TouchableOpacity
-                                            key={toggle.id}
-                                            style={[
-                                                styles.columnHeaderPopupToggleButton,
-                                                toggle.isActive && styles.columnHeaderPopupToggleButtonActive
-                                            ]}
-                                            onPress={toggle.onPress}
+                                            onPress={() => {
+                                                setInfoPopupSection(option.label as 'Weight Units' | 'Multiply x2');
+                                                setInfoPopupVisible(true);
+                                            }}
+                                            style={styles.columnHeaderPopupRowOptionsLabelContainer}
                                         >
-                                            <Text style={[
-                                                styles.columnHeaderPopupToggleText,
-                                                toggle.isActive && styles.columnHeaderPopupToggleTextActive
-                                            ]}>
-                                                {toggle.label}
+                                            <Text style={styles.columnHeaderPopupRowOptionsLabel}>
+                                                {option.label}
                                             </Text>
+                                            <Info size={12} color={COLORS.slate[300]} />
                                         </TouchableOpacity>
-                                    ))}
-                                </View>
+                                    </View>
+                                )}
+                                {option.rowOptions.map((rowOption, rowIndex) => (
+                                    <TouchableOpacity
+                                        key={rowOption.id}
+                                        style={[
+                                            styles.columnHeaderPopupRowOption,
+                                            styles.columnHeaderPopupRowOptionInactive,
+                                            rowIndex < option.rowOptions!.length - 1 && styles.columnHeaderPopupRowOptionBorder,
+                                            rowOption.isActive && styles.columnHeaderPopupRowOptionActive
+                                        ]}
+                                        onPress={rowOption.onPress}
+                                    >
+                                        <Text style={[
+                                            styles.columnHeaderPopupRowOptionText,
+                                            styles.columnHeaderPopupRowOptionTextInactive,
+                                            rowOption.isActive && styles.columnHeaderPopupRowOptionTextActive,
+                                            rowOption.label === 'KG' && { paddingRight: 35 },
+                                            rowOption.label === 'LBS' && { paddingLeft: 35 },
+                                            rowOption.label === 'Weight' && { paddingRight: 25 },
+                                            rowOption.label === 'Reps' && { paddingLeft: 30 }
+                                        ]}>
+                                            {rowOption.label}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
                             </View>
                         );
                     }
@@ -732,6 +564,12 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
                     );
                 })}
             </Pressable>
+
+            <SetRowHeadersInformation
+                visible={infoPopupVisible}
+                onClose={() => setInfoPopupVisible(false)}
+                initialSection={infoPopupSection}
+            />
         </>
     );
 };
@@ -760,8 +598,6 @@ const styles = StyleSheet.create({
     columnHeaderPopupOption: {
         paddingVertical: 12,
         paddingHorizontal: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: COLORS.slate[600],
     },
     columnHeaderPopupOptionLast: {
         borderBottomWidth: 0,
@@ -785,64 +621,6 @@ const styles = StyleSheet.create({
         color: COLORS.white,
         fontWeight: '600',
     },
-    multiplyIconWrapper: {
-        width: 18,
-        height: 18,
-        borderRadius: 4,
-        backgroundColor: COLORS.slate[600],
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    multiplyIconWrapperActive: {
-        backgroundColor: COLORS.blue[600],
-    },
-    multiplyIconText: {
-        fontSize: 10,
-        fontWeight: '700',
-        color: COLORS.white,
-    },
-    multiplyIconTextActive: {
-        color: COLORS.white,
-    },
-    columnHeaderPopupToggleLabel: {
-        fontSize: 12,
-        fontWeight: 'bold',
-        color: COLORS.slate[300],
-        marginBottom: 8,
-        marginLeft: 4,
-    },
-    columnHeaderPopupToggleContainer: {
-        flexDirection: 'row',
-        backgroundColor: COLORS.slate[100],
-        padding: 4,
-        borderRadius: 12,
-    },
-    columnHeaderPopupToggleButton: {
-        flex: 1,
-        paddingVertical: 8,
-        alignItems: 'center',
-        borderRadius: 8,
-        backgroundColor: 'transparent',
-    },
-    columnHeaderPopupToggleButtonActive: {
-        backgroundColor: COLORS.white,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 2,
-    },
-    columnHeaderPopupToggleText: {
-        fontSize: 12,
-        fontWeight: 'bold',
-        color: COLORS.slate[500],
-    },
-    columnHeaderPopupToggleTextActive: {
-        color: COLORS.slate[900],
-    },
-    columnHeaderPopupOptionNoTopPadding: {
-        paddingTop: 0,
-    },
     columnHeaderPopupOptionWrapper: {
         flexDirection: 'row',
         alignItems: 'stretch',
@@ -864,6 +642,72 @@ const styles = StyleSheet.create({
     columnHeaderPopupOptionDeleteDisabled: {
         backgroundColor: COLORS.slate[600],
         opacity: 0.6,
+    },
+    columnHeaderPopupRowOptions: {
+        flexDirection: 'row',
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.slate[500],
+        position: 'relative',
+    },
+    columnHeaderPopupRowOptionsLabelWrapper: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1,
+        pointerEvents: 'box-none',
+        backgroundColor: 'transparent',
+    },
+    columnHeaderPopupRowOptionsLabelContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: COLORS.slate[700],
+        padding: 2,
+        paddingHorizontal: 6,
+        borderBottomLeftRadius: 4,
+        borderBottomRightRadius: 4,
+        borderLeftWidth: 1,
+        borderRightWidth: 1,
+        borderBottomWidth: 1,
+        borderColor: COLORS.slate[500],
+    },
+    columnHeaderPopupRowOptionsLabel: {
+        fontSize: 10,
+        fontWeight: 'normal',
+        color: COLORS.slate[300],
+        paddingTop: 0,
+    },
+    columnHeaderPopupRowOption: {
+        flex: 1,
+        paddingBottom: 12,
+        paddingTop: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    columnHeaderPopupRowOptionBorder: {
+        borderRightWidth: 1,
+        borderRightColor: COLORS.slate[550],
+    },
+    columnHeaderPopupRowOptionInactive: {
+        backgroundColor: COLORS.slate[650],
+    },
+    columnHeaderPopupRowOptionActive: {
+        backgroundColor: COLORS.blue[500],
+    },
+    columnHeaderPopupRowOptionText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: COLORS.white,
+    },
+    columnHeaderPopupRowOptionTextInactive: {
+        color: COLORS.slate[300],
+    },
+    columnHeaderPopupRowOptionTextActive: {
+        color: COLORS.white,
+        fontWeight: '600',
     },
 });
 
