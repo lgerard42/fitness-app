@@ -16,6 +16,7 @@ export interface Set {
   weight: string;
   weight2?: string;
   reps: string;
+  reps2?: string;
   duration: string;
   distance: string;
   completed: boolean;
@@ -43,6 +44,7 @@ export interface Exercise {
   weightEquipTags?: string[];
   multiplyWeightBy2?: boolean;
   alternatingRepsBy2?: boolean;
+  repsConfigMode?: '1x2' | 'lrSplit';
   distanceUnitSystem?: DistanceUnitSystem;
   distanceUnit?: DistanceUnit;
 }
@@ -118,7 +120,7 @@ export interface RestPeriodSetInfo {
 export interface FocusNextSet {
   exerciseId: string;
   setId: string;
-  field: 'weight' | 'weight2' | 'reps' | 'duration' | 'distance';
+  field: 'weight' | 'weight2' | 'reps' | 'reps2' | 'duration' | 'distance';
 }
 
 export interface ExerciseStats {

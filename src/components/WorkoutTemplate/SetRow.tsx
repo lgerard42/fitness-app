@@ -42,12 +42,13 @@ interface SetRowProps {
   isGroupChild?: boolean;
   parentGroupType?: 'HIIT' | 'Superset' | null;
   readOnly?: boolean;
-  shouldFocus?: 'weight' | 'weight2' | 'reps' | 'duration' | 'distance' | null;
+  shouldFocus?: 'weight' | 'weight2' | 'reps' | 'reps2' | 'duration' | 'distance' | null;
   onFocusHandled?: () => void;
-  onCustomKeyboardOpen?: ((params: { field: 'weight' | 'weight2' | 'reps' | 'duration' | 'distance'; value: string }) => void) | null;
+  onCustomKeyboardOpen?: ((params: { field: 'weight' | 'weight2' | 'reps' | 'reps2' | 'duration' | 'distance'; value: string }) => void) | null;
   customKeyboardActive?: boolean;
-  customKeyboardField?: 'weight' | 'weight2' | 'reps' | 'duration' | 'distance' | null;
+  customKeyboardField?: 'weight' | 'weight2' | 'reps' | 'reps2' | 'duration' | 'distance' | null;
   hasSecondWeight?: boolean;
+  hasLRSplitReps?: boolean;
   customKeyboardShouldSelectAll?: boolean;
   onLongPressRow?: () => void;
   showDuration?: boolean;
@@ -97,7 +98,8 @@ const SetRow: React.FC<SetRowProps> = ({
   showDistance = false,
   showWeight = false,
   showReps = false,
-  hasSecondWeight = false
+  hasSecondWeight = false,
+  hasLRSplitReps = false
 }) => {
   const isLift = category === 'Lifts';
   const isCardio = category === 'Cardio';
@@ -117,10 +119,11 @@ const SetRow: React.FC<SetRowProps> = ({
   const isMissingWeight = shouldShowWeight && (!set.weight || set.weight.trim() === '');
   const isMissingWeight2 = hasSecondWeight && shouldShowWeight && (!set.weight2 || set.weight2.trim() === '');
   const isMissingReps = shouldShowReps && (!set.reps || set.reps.trim() === '');
+  const isMissingReps2 = hasLRSplitReps && shouldShowReps && (!set.reps2 || set.reps2.trim() === '');
   const isMissingDuration = shouldShowDuration && (!set.duration || set.duration.trim() === '');
   const isMissingDistance = shouldShowDistance && (!set.distance || set.distance.trim() === '');
 
-  const isMissingValue = isMissingWeight || isMissingWeight2 || isMissingReps || isMissingDuration || isMissingDistance;
+  const isMissingValue = isMissingWeight || isMissingWeight2 || isMissingReps || isMissingReps2 || isMissingDuration || isMissingDistance;
 
   // Track selection for cursor positioning after custom keyboard updates
   const [durationInputSelection, setDurationInputSelection] = useState<{ start: number; end: number } | null>(null);
@@ -128,6 +131,7 @@ const SetRow: React.FC<SetRowProps> = ({
   const [weightInputSelection, setWeightInputSelection] = useState<{ start: number; end: number } | null>(null);
   const [weight2InputSelection, setWeight2InputSelection] = useState<{ start: number; end: number } | null>(null);
   const [repsInputSelection, setRepsInputSelection] = useState<{ start: number; end: number } | null>(null);
+  const [reps2InputSelection, setReps2InputSelection] = useState<{ start: number; end: number } | null>(null);
 
   // Duration: while focused show raw number, when blurred show formatted time
   const [durationIsFocused, setDurationIsFocused] = useState<boolean>(false);
@@ -137,12 +141,14 @@ const SetRow: React.FC<SetRowProps> = ({
   const weightInputInitialFocusRef = useRef<boolean>(false);
   const weight2InputInitialFocusRef = useRef<boolean>(false);
   const repsInputInitialFocusRef = useRef<boolean>(false);
+  const reps2InputInitialFocusRef = useRef<boolean>(false);
 
   const durationInputInitialValueRef = useRef<string | null>(null);
   const distanceInputInitialValueRef = useRef<string | null>(null);
   const weightInputInitialValueRef = useRef<string | null>(null);
   const weight2InputInitialValueRef = useRef<string | null>(null);
   const repsInputInitialValueRef = useRef<string | null>(null);
+  const reps2InputInitialValueRef = useRef<string | null>(null);
 
   // Legacy refs for backward compatibility - keep for useSetRowLogic hook
   const [firstInputSelection, setFirstInputSelection] = useState<{ start: number; end: number } | null>(null);
@@ -172,6 +178,7 @@ const SetRow: React.FC<SetRowProps> = ({
   const weightInputRef = useRef<TextInput>(null);
   const weight2InputRef = useRef<TextInput>(null);
   const repsInputRef = useRef<TextInput>(null);
+  const reps2InputRef = useRef<TextInput>(null);
 
   const {
     focusedInput,
@@ -274,6 +281,27 @@ const SetRow: React.FC<SetRowProps> = ({
       weight2InputInitialValueRef.current = null;
     }
   }, [set.weight2, customKeyboardActive, customKeyboardField, customKeyboardShouldSelectAll, shouldShowWeight, hasSecondWeight]);
+
+  useEffect(() => {
+    if (customKeyboardActive && customKeyboardField === 'reps2' && shouldShowReps && hasLRSplitReps) {
+      const value = set.reps2 || "";
+      const length = value.length;
+      const initialValue = reps2InputInitialValueRef.current;
+
+      if (customKeyboardShouldSelectAll && length > 0) {
+        setReps2InputSelection({ start: 0, end: length });
+        reps2InputInitialFocusRef.current = false;
+        reps2InputInitialValueRef.current = value;
+      } else if (value !== initialValue) {
+        setReps2InputSelection({ start: length, end: length });
+        reps2InputInitialFocusRef.current = true;
+        reps2InputInitialValueRef.current = value;
+      }
+    } else if (!customKeyboardActive || customKeyboardField !== 'reps2') {
+      reps2InputInitialFocusRef.current = false;
+      reps2InputInitialValueRef.current = null;
+    }
+  }, [set.reps2, customKeyboardActive, customKeyboardField, customKeyboardShouldSelectAll, shouldShowReps, hasLRSplitReps]);
 
   useEffect(() => {
     if (customKeyboardActive && customKeyboardField === 'reps' && shouldShowReps) {
@@ -760,7 +788,12 @@ const SetRow: React.FC<SetRowProps> = ({
               )}
 
               {shouldShowWeight && (
-                <View style={[styles.weightContainer, hasSecondWeight && styles.weightContainer__twoInputs]} pointerEvents={isRestTimerSelectionMode ? 'none' : 'auto'}>
+                <View style={[
+                  styles.weightContainer,
+                  hasSecondWeight && hasLRSplitReps && styles.weightContainer__bothSplit,
+                  hasSecondWeight && !hasLRSplitReps && styles.weightContainer__twoInputs,
+                  !hasSecondWeight && hasLRSplitReps && styles.weightContainer__twoRepsInputs
+                ]} pointerEvents={isRestTimerSelectionMode ? 'none' : 'auto'}>
                   <View style={[styles.weightInputWrapper, hasSecondWeight && styles.weightInputWrapper__row]}>
                     <View style={[styles.weightInputSingleWrapper, hasSecondWeight && styles.weightInputSingleWrapper__half]}>
                       <TextInput
@@ -885,64 +918,131 @@ const SetRow: React.FC<SetRowProps> = ({
               )}
 
               {shouldShowReps && (
-                <View style={[styles.repsContainer, hasSecondWeight && styles.repsContainer__twoWeightInputs]} pointerEvents={isRestTimerSelectionMode ? 'none' : 'auto'}>
-                  <View style={styles.repsInputWrapper}>
-                    <TextInput
-                      numberOfLines={1}
-                      ref={repsInputRef}
-                      style={[
-                        styles.repsInput,
-                        getInputStyle(set.reps),
-                        (customKeyboardActive && customKeyboardField === 'reps') && styles.inputFocused,
-                        isMissingReps && styles.inputCompletedEmpty
-                      ]}
-                      selectTextOnFocus={true}
-                      showSoftInputOnFocus={!onCustomKeyboardOpen}
-                      editable={!readOnly && !isRestTimerSelectionMode}
-                      pointerEvents={isRestTimerSelectionMode ? 'none' : 'auto'}
-                      onFocus={() => {
-                        if (!readOnly && !isRestTimerSelectionMode) {
-                          const val = set.reps || "";
-                          if (onCustomKeyboardOpen) {
-                            onCustomKeyboardOpen({ field: 'reps', value: val });
-                            repsInputInitialFocusRef.current = false;
-                            repsInputInitialValueRef.current = val;
-                            setRepsInputSelection(null);
-                          } else {
-                            handleFocus(repsInputRef as React.RefObject<TextInput>, val, 'second');
+                <View style={[
+                  styles.repsContainer,
+                  hasSecondWeight && hasLRSplitReps && styles.repsContainer__bothSplit,
+                  hasSecondWeight && !hasLRSplitReps && styles.repsContainer__twoWeightInputs,
+                  !hasSecondWeight && hasLRSplitReps && styles.repsContainer__twoRepsInputs
+                ]} pointerEvents={isRestTimerSelectionMode ? 'none' : 'auto'}>
+                  <View key={hasLRSplitReps ? 'reps-split' : 'reps-single'} style={[styles.repsInputWrapper, hasLRSplitReps && styles.repsInputWrapper__row]}>
+                    <View style={[styles.repsInputSingleWrapper, hasLRSplitReps && styles.repsInputSingleWrapper__half]}>
+                      <TextInput
+                        numberOfLines={1}
+                        ref={repsInputRef}
+                        style={[
+                          styles.repsInput,
+                          getInputStyle(set.reps),
+                          (customKeyboardActive && customKeyboardField === 'reps') && styles.inputFocused,
+                          isMissingReps && styles.inputCompletedEmpty
+                        ]}
+                        selectTextOnFocus={true}
+                        showSoftInputOnFocus={!onCustomKeyboardOpen}
+                        editable={!readOnly && !isRestTimerSelectionMode}
+                        pointerEvents={isRestTimerSelectionMode ? 'none' : 'auto'}
+                        onFocus={() => {
+                          if (!readOnly && !isRestTimerSelectionMode) {
+                            const val = set.reps || "";
+                            if (onCustomKeyboardOpen) {
+                              onCustomKeyboardOpen({ field: 'reps', value: val });
+                              repsInputInitialFocusRef.current = false;
+                              repsInputInitialValueRef.current = val;
+                              setRepsInputSelection(null);
+                            } else {
+                              handleFocus(repsInputRef as React.RefObject<TextInput>, val, hasLRSplitReps ? 'first' : 'second');
+                            }
                           }
-                        }
-                      }}
-                      onBlur={() => {
-                        if (!customKeyboardActive || customKeyboardField !== 'reps') {
-                          if (!onCustomKeyboardOpen) {
-                            // Focus cleared by hook
-                          }
-                        }
-                      }}
-                      placeholder=""
-                      placeholderTextColor={COLORS.slate[400]}
-                      keyboardType="decimal-pad"
-                      value={set.reps || ""}
-                      selection={repsInputSelection || undefined}
-                      onSelectionChange={(e) => {
-                        if (!customKeyboardActive || customKeyboardField !== 'reps') {
-                          setRepsInputSelection(e.nativeEvent.selection);
-                        }
-                      }}
-                      onChangeText={(text) => {
-                        if (!readOnly) {
+                        }}
+                        onBlur={() => {
                           if (!customKeyboardActive || customKeyboardField !== 'reps') {
-                            setRepsInputSelection(null);
-                          } else {
-                            repsInputInitialFocusRef.current = true;
-                            const length = text.length;
-                            setRepsInputSelection({ start: length, end: length });
+                            if (!onCustomKeyboardOpen) {
+                              // Focus cleared by hook
+                            }
                           }
-                          onUpdate({ ...set, reps: text });
-                        }
-                      }}
-                    />
+                        }}
+                        placeholder=""
+                        placeholderTextColor={COLORS.slate[400]}
+                        keyboardType="decimal-pad"
+                        value={set.reps || ""}
+                        selection={repsInputSelection || undefined}
+                        onSelectionChange={(e) => {
+                          if (!customKeyboardActive || customKeyboardField !== 'reps') {
+                            setRepsInputSelection(e.nativeEvent.selection);
+                          }
+                        }}
+                        onChangeText={(text) => {
+                          if (!readOnly) {
+                            if (!customKeyboardActive || customKeyboardField !== 'reps') {
+                              setRepsInputSelection(null);
+                            } else {
+                              repsInputInitialFocusRef.current = true;
+                              const length = text.length;
+                              setRepsInputSelection({ start: length, end: length });
+                            }
+                            onUpdate({ ...set, reps: text });
+                          }
+                        }}
+                      />
+                    </View>
+                    {hasLRSplitReps && (
+                      <View style={[styles.reps2InputWrapper, styles.repsInputSingleWrapper__half]}>
+                        <TextInput
+                          numberOfLines={1}
+                          ref={reps2InputRef}
+                          style={[
+                            styles.repsInput,
+                            getInputStyle(set.reps2),
+                            (customKeyboardActive && customKeyboardField === 'reps2') && styles.inputFocused,
+                            isMissingReps2 && styles.inputCompletedEmpty
+                          ]}
+                          selectTextOnFocus={true}
+                          showSoftInputOnFocus={!onCustomKeyboardOpen}
+                          editable={!readOnly && !isRestTimerSelectionMode}
+                          pointerEvents={isRestTimerSelectionMode ? 'none' : 'auto'}
+                          onFocus={() => {
+                            if (!readOnly && !isRestTimerSelectionMode) {
+                              const val = set.reps2 || "";
+                              if (onCustomKeyboardOpen) {
+                                onCustomKeyboardOpen({ field: 'reps2', value: val });
+                                reps2InputInitialFocusRef.current = false;
+                                reps2InputInitialValueRef.current = val;
+                                setReps2InputSelection(null);
+                              } else {
+                                handleFocus(reps2InputRef as React.RefObject<TextInput>, val, 'second');
+                              }
+                            }
+                          }}
+                          onBlur={() => {
+                            if (!customKeyboardActive || customKeyboardField !== 'reps2') {
+                              if (!onCustomKeyboardOpen) {
+                                // Focus cleared by hook
+                              }
+                            }
+                          }}
+                          placeholder=""
+                          placeholderTextColor={COLORS.slate[400]}
+                          keyboardType="decimal-pad"
+                          value={set.reps2 || ""}
+                          selection={reps2InputSelection || undefined}
+                          onSelectionChange={(e) => {
+                            if (!customKeyboardActive || customKeyboardField !== 'reps2') {
+                              setReps2InputSelection(e.nativeEvent.selection);
+                            }
+                          }}
+                          onChangeText={(text) => {
+                            if (!readOnly) {
+                              if (!customKeyboardActive || customKeyboardField !== 'reps2') {
+                                setReps2InputSelection(null);
+                              } else {
+                                reps2InputInitialFocusRef.current = true;
+                                const length = text.length;
+                                setReps2InputSelection({ start: length, end: length });
+                              }
+                              onUpdate({ ...set, reps2: text });
+                            }
+                          }}
+                        />
+                      </View>
+                    )}
                   </View>
                 </View>
               )}
@@ -1151,6 +1251,12 @@ const styles = StyleSheet.create({
   weightContainer__twoInputs: {
     flex: 2, // Takes 2/3 of space when there are 2 weight inputs (so each input gets 1/3)
   },
+  weightContainer__twoRepsInputs: {
+    flex: 1, // Takes 1/3 of space when there are 2 reps inputs (same as each reps input)
+  },
+  weightContainer__bothSplit: {
+    flex: 2, // Takes 2/4 of space when both are split (so each of 4 inputs gets 1/4)
+  },
   weightInputWrapper: {
     width: '100%',
     position: 'relative',
@@ -1199,10 +1305,38 @@ const styles = StyleSheet.create({
   repsContainer__twoWeightInputs: {
     flex: 1, // Takes 1/3 of space when there are 2 weight inputs (same as each weight input)
   },
+  repsContainer__twoRepsInputs: {
+    flex: 2, // Takes 2/3 of space when there are 2 reps inputs (so each input gets 1/3)
+  },
+  repsContainer__bothSplit: {
+    flex: 2, // Takes 2/4 of space when both are split (so each of 4 inputs gets 1/4)
+  },
   repsInputWrapper: {
     width: '100%',
     position: 'relative',
     maxWidth: '100%',
+  },
+  repsInputWrapper__row: {
+    flexDirection: 'row',
+    gap: 4,
+    width: '100%',
+    flex: 1,
+  },
+  repsInputSingleWrapper: {
+    position: 'relative',
+    width: '100%',
+  },
+  repsInputSingleWrapper__half: {
+    flex: 1,
+    flexBasis: 0,
+    minWidth: 0,
+    width: 'auto' as any,
+    maxWidth: undefined as any,
+  },
+  reps2InputWrapper: {
+    position: 'relative',
+    flexBasis: 0,
+    minWidth: 0,
   },
   repsInput: {
     width: '100%',

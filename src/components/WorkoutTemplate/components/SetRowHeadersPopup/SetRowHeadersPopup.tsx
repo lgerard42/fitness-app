@@ -270,7 +270,8 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
                             return {
                                 ...ex,
                                 multiplyWeightBy2: !ex.multiplyWeightBy2,
-                                alternatingRepsBy2: false
+                                alternatingRepsBy2: false,
+                                repsConfigMode: undefined
                             };
                         })
                     });
@@ -286,10 +287,59 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
                         ...currentWorkout,
                         exercises: updateExercisesDeep(currentWorkout.exercises, columnHeaderMenu.exerciseId, (ex) => {
                             if (ex.type === 'group') return ex;
+                            const newAlternatingRepsBy2 = !ex.alternatingRepsBy2;
                             return {
                                 ...ex,
-                                alternatingRepsBy2: !ex.alternatingRepsBy2,
-                                multiplyWeightBy2: false
+                                alternatingRepsBy2: newAlternatingRepsBy2,
+                                multiplyWeightBy2: false,
+                                // Reset repsConfigMode to default when disabling
+                                repsConfigMode: newAlternatingRepsBy2 ? (ex.repsConfigMode || '1x2') : undefined
+                            };
+                        })
+                    });
+                    onClose();
+                }
+            }
+        ]
+    });
+
+    // Helper function to create Reps Config row options
+    const createRepsConfigOptions = (idSuffix: string = '') => ({
+        id: `reps-config-row${idSuffix}`,
+        type: 'row-options' as const,
+        label: 'Reps Config',
+        show: true,
+        rowOptions: [
+            {
+                id: `1x2-toggle${idSuffix}`,
+                label: '1x2',
+                isActive: (currentExercise?.repsConfigMode || '1x2') === '1x2',
+                onPress: () => {
+                    handleWorkoutUpdate({
+                        ...currentWorkout,
+                        exercises: updateExercisesDeep(currentWorkout.exercises, columnHeaderMenu.exerciseId, (ex) => {
+                            if (ex.type === 'group') return ex;
+                            return {
+                                ...ex,
+                                repsConfigMode: '1x2'
+                            };
+                        })
+                    });
+                    onClose();
+                }
+            },
+            {
+                id: `lr-split-toggle${idSuffix}`,
+                label: 'L/R Split',
+                isActive: currentExercise?.repsConfigMode === 'lrSplit',
+                onPress: () => {
+                    handleWorkoutUpdate({
+                        ...currentWorkout,
+                        exercises: updateExercisesDeep(currentWorkout.exercises, columnHeaderMenu.exerciseId, (ex) => {
+                            if (ex.type === 'group') return ex;
+                            return {
+                                ...ex,
+                                repsConfigMode: 'lrSplit'
                             };
                         })
                     });
@@ -370,6 +420,11 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
             // x2 Totals Adj. row options
             if (visibleColumns.showReps) {
                 options.push(createX2TotalsAdjOptions());
+
+                // Reps Config row options (only show when Reps is selected in Multiply x2)
+                if (currentExercise?.alternatingRepsBy2) {
+                    options.push(createRepsConfigOptions());
+                }
             }
         }
 
@@ -377,11 +432,13 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
         if (field === 'reps' && visibleColumns.showReps) {
             // Only show weight-related options if weight column is also visible
             if (visibleColumns.showWeight && hasWeightUnit) {
-                // Weight unit row options
-                options.push(createWeightUnitsOptions('-reps'));
-
                 // x2 Totals Adj. row options
                 options.push(createX2TotalsAdjOptions('-reps'));
+
+                // Reps Config row options (only show when Reps is selected in Multiply x2)
+                if (currentExercise?.alternatingRepsBy2) {
+                    options.push(createRepsConfigOptions('-reps'));
+                }
             }
         }
 
