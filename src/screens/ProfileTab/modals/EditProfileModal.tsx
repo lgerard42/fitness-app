@@ -67,16 +67,35 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ visible, onClose, p
   }, [visible, profile]);
 
   const requestImagePermissions = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
+    try {
+      // Check if module is available
+      if (!ImagePicker || !ImagePicker.requestMediaLibraryPermissionsAsync) {
+        Alert.alert(
+          'Module Not Available',
+          'Image picker is not available. Please make sure you are using a development build (not Expo Go) and that the build includes expo-image-picker.',
+          [{ text: 'OK' }]
+        );
+        return false;
+      }
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'We need access to your photos to set a profile picture.',
+          [{ text: 'OK' }]
+        );
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error('ImagePicker error:', error);
       Alert.alert(
-        'Permission Required',
-        'We need access to your photos to set a profile picture.',
+        'Error',
+        'Image picker is not available. Make sure you are using a development build with expo-image-picker included.',
         [{ text: 'OK' }]
       );
       return false;
     }
-    return true;
   };
 
   const handlePickImage = async () => {
@@ -101,11 +120,29 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ visible, onClose, p
   };
 
   const handleTakePhoto = async () => {
-    const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
-    if (cameraStatus !== 'granted') {
+    try {
+      if (!ImagePicker || !ImagePicker.requestCameraPermissionsAsync) {
+        Alert.alert(
+          'Module Not Available',
+          'Image picker is not available. Please make sure you are using a development build (not Expo Go) and that the build includes expo-image-picker.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+      const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
+      if (cameraStatus !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'We need access to your camera to take a photo.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+    } catch (error) {
+      console.error('ImagePicker error:', error);
       Alert.alert(
-        'Permission Required',
-        'We need access to your camera to take a photo.',
+        'Error',
+        'Image picker is not available. Make sure you are using a development build with expo-image-picker included.',
         [{ text: 'OK' }]
       );
       return;
