@@ -3,12 +3,14 @@ import { View, Platform, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Play, Calendar, Book, User, CircleDashed } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { WorkoutProvider } from '@/context/WorkoutContext';
 import ActiveWorkoutBanner from '@/components/ActiveWorkoutBanner';
+import type { Workout } from '@/types/workout';
 
 import LogScreen from '@/screens/LogScreen';
 import HistoryScreen from '@/screens/HistoryScreen';
@@ -16,8 +18,14 @@ import LibraryScreen from '@/screens/LibraryScreen';
 import LiveWorkoutScreen from '@/screens/LiveWorkoutScreen';
 import EditWorkoutScreen from '@/screens/EditWorkoutScreen';
 
+export type RootStackParamList = {
+  Main: undefined;
+  LiveWorkout: undefined;
+  EditWorkout: { workout: Workout };
+};
+
 const Tab = createBottomTabNavigator();
-const Stack = createNativeStackNavigator();
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const ProfileScreen: React.FC = () => (
   <SafeAreaProvider style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.slate[50] }}>
@@ -151,7 +159,6 @@ const styles = StyleSheet.create({
   webContainer: {
     flex: 1,
     width: '100%',
-    height: '100vh',
     backgroundColor: '#1a1a1a', // Dark background to frame the phone
     justifyContent: 'center',
     alignItems: 'center',
