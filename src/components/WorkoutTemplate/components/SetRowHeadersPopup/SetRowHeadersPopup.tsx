@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Pressable, StyleSheet } from 'react-native';
-import { ChevronLeft, ArrowLeftRight, Lock, Ruler, Settings, Trash2, Timer, Hash, Scale, Info } from 'lucide-react-native';
+import { ChevronLeft, ArrowLeftRight, Lock, Ruler, Settings, Trash2, Timer, Hash, Scale, Info, Footprints, Goal } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { updateExercisesDeep, findExerciseDeep } from '@/utils/workoutHelpers';
 import type { Workout, ExerciseLibraryItem, Exercise, DistanceUnitSystem, DistanceUnit } from '@/types/workout';
@@ -76,7 +76,7 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
     popupKey
 }) => {
     const [infoPopupVisible, setInfoPopupVisible] = useState(false);
-    const [infoPopupSection, setInfoPopupSection] = useState<'Weight Units' | 'Multiply x2'>('Weight Units');
+    const [infoPopupSection, setInfoPopupSection] = useState<'Weight Units' | 'Multiply x2' | 'Distance Unit'>('Weight Units');
 
     if (!visible || !columnHeaderMenu) return null;
 
@@ -166,24 +166,90 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
         ]
     });
 
-    // Helper function to create distance unit option
-    const createDistanceUnitOption = (unit: DistanceUnit, label: string) => ({
-        id: `distance-${unit}`,
-        label,
-        icon: <Ruler size={18} color={COLORS.white} />,
+    // Helper function to create Distance Distance Units row options
+    const createDistanceMeasurementUnitsOptions = () => ({
+        id: 'distance-measurement-unit-row',
+        type: 'row-options' as const,
+        label: 'Distance Unit',
         show: true,
-        isActive: currentUnit === unit,
-        onPress: () => {
-            handleWorkoutUpdate({
-                ...currentWorkout,
-                exercises: updateExercisesDeep(currentWorkout.exercises, columnHeaderMenu.exerciseId, (ex) => {
-                    if (ex.type === 'group') return ex;
-                    return { ...ex, distanceUnit: unit };
-                })
-            });
-            onClose();
-        }
+        rowOptions: [
+            {
+                id: 'metric-toggle',
+                label: 'Metric',
+                isActive: currentSystem === 'Metric',
+                onPress: () => {
+                    if (currentSystem !== 'Metric') {
+                        const defaultUnit: DistanceUnit = 'm';
+                        handleWorkoutUpdate({
+                            ...currentWorkout,
+                            exercises: updateExercisesDeep(currentWorkout.exercises, columnHeaderMenu.exerciseId, (ex) => {
+                                if (ex.type === 'group') return ex;
+                                return {
+                                    ...ex,
+                                    distanceUnitSystem: 'Metric',
+                                    distanceUnit: defaultUnit
+                                };
+                            })
+                        });
+                        onClose();
+                    }
+                }
+            },
+            {
+                id: 'imperial-toggle',
+                label: 'US / Imperial',
+                isActive: currentSystem === 'US',
+                onPress: () => {
+                    if (currentSystem !== 'US') {
+                        const defaultUnit: DistanceUnit = 'mi';
+                        handleWorkoutUpdate({
+                            ...currentWorkout,
+                            exercises: updateExercisesDeep(currentWorkout.exercises, columnHeaderMenu.exerciseId, (ex) => {
+                                if (ex.type === 'group') return ex;
+                                return {
+                                    ...ex,
+                                    distanceUnitSystem: 'US',
+                                    distanceUnit: defaultUnit
+                                };
+                            })
+                        });
+                        onClose();
+                    }
+                }
+            }
+        ]
     });
+
+    // Helper function to create distance unit option
+    const createDistanceUnitOption = (unit: DistanceUnit, label: string) => {
+        // Choose icon based on unit
+        let icon;
+        if (unit === 'ft') {
+            icon = <Footprints size={18} color={COLORS.white} />;
+        } else if (unit === 'yd') {
+            icon = <Goal size={18} color={COLORS.white} />;
+        } else {
+            icon = <Ruler size={18} color={COLORS.white} />;
+        }
+
+        return {
+            id: `distance-${unit}`,
+            label,
+            icon,
+            show: true,
+            isActive: currentUnit === unit,
+            onPress: () => {
+                handleWorkoutUpdate({
+                    ...currentWorkout,
+                    exercises: updateExercisesDeep(currentWorkout.exercises, columnHeaderMenu.exerciseId, (ex) => {
+                        if (ex.type === 'group') return ex;
+                        return { ...ex, distanceUnit: unit };
+                    })
+                });
+                onClose();
+            }
+        };
+    };
 
     // Helper function to create x2 Totals Adj. row options
     const createX2TotalsAdjOptions = (idSuffix: string = '') => ({
@@ -321,28 +387,8 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
 
         // Distance field options
         if (field === 'distance' && visibleColumns.showDistance) {
-            options.push({
-                id: 'switch-distance-system',
-                label: `Switch to ${currentSystem === 'US' ? 'Metric' : 'US'}`,
-                icon: <ArrowLeftRight size={18} color={COLORS.white} />,
-                show: true,
-                onPress: () => {
-                    const newSystem: DistanceUnitSystem = currentSystem === 'US' ? 'Metric' : 'US';
-                    const defaultUnit: DistanceUnit = newSystem === 'US' ? 'mi' : 'm';
-                    handleWorkoutUpdate({
-                        ...currentWorkout,
-                        exercises: updateExercisesDeep(currentWorkout.exercises, columnHeaderMenu.exerciseId, (ex) => {
-                            if (ex.type === 'group') return ex;
-                            return {
-                                ...ex,
-                                distanceUnitSystem: newSystem,
-                                distanceUnit: defaultUnit
-                            };
-                        })
-                    });
-                    onClose();
-                }
-            });
+            // Distance Distance Unit row options
+            options.push(createDistanceMeasurementUnitsOptions());
 
             if (currentSystem === 'US') {
                 options.push(createDistanceUnitOption('ft', 'Feet'));
@@ -434,7 +480,12 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
                                     <View style={styles.columnHeaderPopupRowOptionsLabelWrapper}>
                                         <TouchableOpacity
                                             onPress={() => {
-                                                setInfoPopupSection(option.label as 'Weight Units' | 'Multiply x2');
+                                                const sectionMap: Record<string, 'Weight Units' | 'Multiply x2' | 'Distance Unit'> = {
+                                                    'Weight Units': 'Weight Units',
+                                                    'Multiply x2': 'Multiply x2',
+                                                    'Distance Unit': 'Distance Unit'
+                                                };
+                                                setInfoPopupSection(sectionMap[option.label || ''] || 'Weight Units');
                                                 setInfoPopupVisible(true);
                                             }}
                                             style={styles.columnHeaderPopupRowOptionsLabelContainer}
@@ -453,7 +504,8 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
                                             styles.columnHeaderPopupRowOption,
                                             styles.columnHeaderPopupRowOptionInactive,
                                             rowIndex < option.rowOptions!.length - 1 && styles.columnHeaderPopupRowOptionBorder,
-                                            rowOption.isActive && styles.columnHeaderPopupRowOptionActive
+                                            rowOption.isActive && styles.columnHeaderPopupRowOptionActive,
+                                            option.label === 'Distance Unit' && { paddingTop: 24 }
                                         ]}
                                         onPress={rowOption.onPress}
                                     >
@@ -464,7 +516,9 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
                                             rowOption.label === 'KG' && { paddingRight: 35 },
                                             rowOption.label === 'LBS' && { paddingLeft: 35 },
                                             rowOption.label === 'Weight' && { paddingRight: 25 },
-                                            rowOption.label === 'Reps' && { paddingLeft: 30 }
+                                            rowOption.label === 'Reps' && { paddingLeft: 30 },
+                                            rowOption.label === 'Metric' && { paddingRight: 0 },
+                                            rowOption.label === 'US / Imperial' && { paddingLeft: 0 }
                                         ]}>
                                             {rowOption.label}
                                         </Text>
@@ -479,13 +533,14 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
                         return (
                             <View key={option.id} style={[
                                 styles.columnHeaderPopupOptionWrapper,
-                                isLast && styles.columnHeaderPopupOptionLast
+                                isLast && styles.columnHeaderPopupOptionWrapperLast
                             ]}>
                                 <TouchableOpacity
                                     style={[
                                         styles.columnHeaderPopupOption,
                                         styles.columnHeaderPopupOptionFlex,
-                                        styles.columnHeaderPopupOptionWithBorder
+                                        styles.columnHeaderPopupOptionWithBorder,
+                                        isLast && styles.columnHeaderPopupOptionLast
                                     ]}
                                     onPress={option.setInputsOption.onPress}
                                 >
@@ -501,7 +556,8 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
                                         styles.columnHeaderPopupOption,
                                         styles.columnHeaderPopupOptionDelete,
                                         styles.columnHeaderPopupOptionDeleteFixed,
-                                        option.deleteOption.isLocked && styles.columnHeaderPopupOptionDeleteDisabled
+                                        option.deleteOption.isLocked && styles.columnHeaderPopupOptionDeleteDisabled,
+                                        isLast && styles.columnHeaderPopupOptionLast
                                     ]}
                                     onPress={option.deleteOption.onPress}
                                     disabled={option.deleteOption.disabled}
@@ -598,6 +654,8 @@ const styles = StyleSheet.create({
     columnHeaderPopupOption: {
         paddingVertical: 12,
         paddingHorizontal: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.slate[550],
     },
     columnHeaderPopupOptionLast: {
         borderBottomWidth: 0,
@@ -625,6 +683,9 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'stretch',
         padding: 0,
+    },
+    columnHeaderPopupOptionWrapperLast: {
+        borderBottomWidth: 0,
     },
     columnHeaderPopupOptionFlex: {
         flex: 1,

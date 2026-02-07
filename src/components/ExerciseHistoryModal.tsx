@@ -13,14 +13,15 @@ interface ExerciseHistoryModalProps {
   exercise: ExerciseLibraryItem | null;
   stats: ExerciseStats | {};
   onEdit?: (exercise: ExerciseLibraryItem) => void;
+  defaultTab?: TabKey;
 }
 
 const TABS: TabKey[] = ['Records', 'History', 'About'];
 
-const ExerciseHistoryModal: React.FC<ExerciseHistoryModalProps> = ({ visible, onClose, exercise, stats, onEdit }) => {
+const ExerciseHistoryModal: React.FC<ExerciseHistoryModalProps> = ({ visible, onClose, exercise, stats, onEdit, defaultTab = 'History' }) => {
   const insets = useSafeAreaInsets();
   const pan = useRef(new Animated.ValueXY()).current;
-  const [activeTab, setActiveTab] = useState<TabKey>('History');
+  const [activeTab, setActiveTab] = useState<TabKey>(defaultTab);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -49,9 +50,9 @@ const ExerciseHistoryModal: React.FC<ExerciseHistoryModalProps> = ({ visible, on
   React.useEffect(() => {
     if (visible) {
       pan.setValue({ x: 0, y: 0 });
-      setActiveTab('History');
+      setActiveTab(defaultTab);
     }
-  }, [visible, pan]);
+  }, [visible, pan, defaultTab]);
 
   if (!exercise) return null;
 
@@ -62,9 +63,9 @@ const ExerciseHistoryModal: React.FC<ExerciseHistoryModalProps> = ({ visible, on
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <Animated.View 
+        <Animated.View
           style={[
-            styles.container, 
+            styles.container,
             { marginTop: insets.top + 16, transform: [{ translateY: pan.y }] }
           ]}
           {...panResponder.panHandlers}
@@ -72,7 +73,7 @@ const ExerciseHistoryModal: React.FC<ExerciseHistoryModalProps> = ({ visible, on
           <View style={styles.dragHandleContainer}>
             <View style={styles.dragHandle} />
           </View>
-          
+
           <View style={styles.header}>
             <View>
               <Text style={styles.title}>{exercise.name}</Text>

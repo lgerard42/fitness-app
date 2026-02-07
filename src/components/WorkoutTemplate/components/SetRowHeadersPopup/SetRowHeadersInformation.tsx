@@ -5,7 +5,7 @@ import { COLORS } from '@/constants/colors';
 interface SetRowHeadersInformationProps {
     visible: boolean;
     onClose: () => void;
-    initialSection?: 'Weight Units' | 'Multiply x2';
+    initialSection?: 'Weight Units' | 'Multiply x2' | 'Distance Unit';
 }
 
 const SetRowHeadersInformation: React.FC<SetRowHeadersInformationProps> = ({
@@ -13,15 +13,15 @@ const SetRowHeadersInformation: React.FC<SetRowHeadersInformationProps> = ({
     onClose,
     initialSection = 'Weight Units'
 }) => {
-    const [activeSection, setActiveSection] = useState<'Weight Units' | 'Multiply x2'>(initialSection);
+    const [activeSection, setActiveSection] = useState<'Weight Units' | 'Multiply x2' | 'Distance Unit'>(initialSection || 'Weight Units');
 
     useEffect(() => {
         if (visible) {
-            setActiveSection(initialSection);
+            setActiveSection(initialSection || 'Weight Units');
         }
     }, [visible, initialSection]);
 
-    const sections: Array<'Weight Units' | 'Multiply x2'> = ['Weight Units', 'Multiply x2'];
+    const sections: Array<'Weight Units' | 'Multiply x2' | 'Distance Unit'> = ['Weight Units', 'Multiply x2', 'Distance Unit'];
 
     return (
         <Modal
@@ -116,6 +116,30 @@ const SetRowHeadersInformation: React.FC<SetRowHeadersInformationProps> = ({
                                 </View>
                                 <Text style={styles.infoSectionText}>
                                     Only one option can be active at a time. The adjustment affects how totals are displayed and calculated in your workout summary.
+                                </Text>
+                            </View>
+                        )}
+
+                        {activeSection === 'Distance Unit' && (
+                            <View style={styles.infoSection}>
+                                <Text style={styles.infoSectionTitle}>Distance Unit</Text>
+                                <Text style={styles.infoSectionText}>
+                                    The Distance Unit option allows you to switch between Metric and US/Imperial systems for displaying and tracking distance values.
+                                </Text>
+                                <View style={styles.infoBulletPoint}>
+                                    <Text style={styles.infoBullet}>•</Text>
+                                    <Text style={styles.infoSectionText}>
+                                        <Text style={styles.infoBold}>Metric:</Text> Displays distances in meters (m) and kilometers (km). This is the metric system used in most countries worldwide.
+                                    </Text>
+                                </View>
+                                <View style={styles.infoBulletPoint}>
+                                    <Text style={styles.infoBullet}>•</Text>
+                                    <Text style={styles.infoSectionText}>
+                                        <Text style={styles.infoBold}>US / Imperial:</Text> Displays distances in feet (ft), yards (yd), and miles (mi). This is the imperial system commonly used in the United States.
+                                    </Text>
+                                </View>
+                                <Text style={styles.infoSectionText}>
+                                    When you switch systems, all distance values for this exercise will be converted automatically. You can also select specific units (meters, kilometers, feet, yards, or miles) after choosing your preferred system.
                                 </Text>
                             </View>
                         )}

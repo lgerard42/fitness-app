@@ -38,6 +38,7 @@ import SetRowHeadersPopup from './components/SetRowHeadersPopup/SetRowHeadersPop
 import { useSetDragAndDrop } from './hooks/useSetDragAndDrop';
 import { useWorkoutNotes, useExerciseNotes } from './hooks/useWorkoutNotes';
 import { createExerciseInstance, createExerciseInstanceWithSetGroups } from '@/utils/workoutInstanceHelpers';
+import ExerciseHistoryModal from '@/components/ExerciseHistoryModal';
 import type { Workout, WorkoutMode, ExerciseLibraryItem, ExerciseStatsMap, ExerciseItem, Exercise, Set, RestPeriodSetInfo, FocusNextSet, GroupType, SetType, ExerciseCategory, ExerciseGroup, Note, GroupSetType } from '@/types/workout';
 
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
@@ -84,6 +85,8 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
   const [finishModalOpen, setFinishModalOpen] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [popupKey, setPopupKey] = useState(0);
+  const [historyModalVisible, setHistoryModalVisible] = useState(false);
+  const [selectedExerciseForHistory, setSelectedExerciseForHistory] = useState<ExerciseLibraryItem | null>(null);
 
   // Exercise Options State
   const [optionsModalExId, setOptionsModalExId] = useState<string | null>(null);
@@ -447,6 +450,14 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
         setShowPicker(true);
       });
     });
+  };
+
+  const handleEditExerciseSave = (updatedExData: ExerciseLibraryItem) => {
+    if (selectedExerciseForHistory && selectedExerciseForHistory.id) {
+      updateExerciseInLibrary(selectedExerciseForHistory.id, updatedExData);
+      setIsCreateModalOpen(false);
+      setSelectedExerciseForHistory(null);
+    }
   };
 
   const handleUpdateSet = (exInstanceId: string, updatedSet: Set) => {
@@ -1449,7 +1460,18 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
             <View style={styles.exerciseHeaderRow}>
               <View style={styles.exerciseHeaderLeft}>
                 <View style={styles.exerciseNameRow}>
-                  <Text style={styles.exerciseName}>{ex.name}</Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      const libraryExercise = exercisesLibrary.find(libEx => libEx.id === ex.exerciseId);
+                      if (libraryExercise) {
+                        setSelectedExerciseForHistory(libraryExercise);
+                        setHistoryModalVisible(true);
+                      }
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.exerciseName}>{ex.name}</Text>
+                  </TouchableOpacity>
                   <View style={styles.exerciseHeaderIcons}>
                     <TouchableOpacity
                       onPress={() => {
@@ -2579,6 +2601,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
           // Close ExercisePicker before opening EditExercise (React Native doesn't support nested modals)
           // Use requestAnimationFrame for fastest possible transition
           setShowPicker(false);
+          setSelectedExerciseForHistory(null); // Clear any selected exercise to ensure create mode
           requestAnimationFrame(() => {
             requestAnimationFrame(() => {
               setIsCreateModalOpen(true);
@@ -2593,16 +2616,43 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
         isOpen={isCreateModalOpen}
         onClose={() => {
           setIsCreateModalOpen(false);
-          // Reopen ExercisePicker if it was open before (user cancelled creating new exercise)
-          // Use requestAnimationFrame for fastest possible transition
+          // If we were editing from history modal, clear the selected exercise
+          if (selectedExerciseForHistory) {
+            setSelectedExerciseForHistory(null);
+          } else {
+            // Reopen ExercisePicker if it was open before (user cancelled creating new exercise)
+            // Use requestAnimationFrame for fastest possible transition
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                setShowPicker(true);
+              });
+            });
+          }
+        }}
+        onSave={selectedExerciseForHistory ? handleEditExerciseSave : handleCreateExerciseSave}
+        categories={CATEGORIES as ExerciseCategory[]}
+        exercise={selectedExerciseForHistory || undefined}
+      />
+
+      <ExerciseHistoryModal
+        visible={historyModalVisible}
+        onClose={() => {
+          setHistoryModalVisible(false);
+          setSelectedExerciseForHistory(null);
+        }}
+        exercise={selectedExerciseForHistory}
+        stats={selectedExerciseForHistory ? (exerciseStats[selectedExerciseForHistory.id] || {}) : {}}
+        defaultTab="About"
+        onEdit={(exercise) => {
+          setHistoryModalVisible(false);
+          // Open EditExercise modal in edit mode
+          setSelectedExerciseForHistory(exercise);
           requestAnimationFrame(() => {
             requestAnimationFrame(() => {
-              setShowPicker(true);
+              setIsCreateModalOpen(true);
             });
           });
         }}
-        onSave={handleCreateExerciseSave}
-        categories={CATEGORIES as ExerciseCategory[]}
       />
 
       <WorkoutModals
