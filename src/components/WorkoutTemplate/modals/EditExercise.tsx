@@ -317,7 +317,7 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                                 <Text style={styles.label}>ADDITIONAL SETTINGS:</Text>
                             </View>
 
-                            {/* Intensity Profile Toggle for Lifts */}
+                            {/* METABOLIC INTENSITY Toggle for Lifts */}
                             <TouchableOpacity onPress={() => {
                                 setShowLiftsCardioType(!showLiftsCardioType);
                             }} style={styles.collapsibleLabelToggleRow}>
@@ -328,7 +328,7 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                                     return (
                                         <>
                                             <View style={styles.rowGap}>
-                                                <Text style={[styles.label, { marginBottom: 0, color: isActive ? COLORS.slate[500] : disabledColor }]}>INTENSITY PROFILE</Text>
+                                                <Text style={[styles.label, { marginBottom: 0, color: isActive ? COLORS.slate[500] : disabledColor }]}>METABOLIC INTENSITY</Text>
                                                 <ChevronDown size={16} color={isActive ? COLORS.blue[600] : disabledColor} style={{ transform: [{ rotate: showLiftsCardioType ? '180deg' : '0deg' }] }} />
                                                 {hasSelection && (
                                                     <Text style={[styles.toggleLabel, { color: isActive ? COLORS.slate[500] : disabledColor }]} numberOfLines={1} ellipsizeMode="tail">
@@ -347,7 +347,7 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                                         value={editState.cardioType}
                                         onChange={(val) => setEditState({ ...editState, cardioType: val })}
                                         options={CARDIO_TYPES}
-                                        placeholder="Select Intensity Profile..."
+                                        placeholder="Select METABOLIC INTENSITY..."
                                     />
                                 </View>
                             )}
@@ -370,12 +370,12 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                     {editState.category === 'Cardio' && (
                         <View style={styles.section}>
                             <View style={styles.fieldGroup}>
-                                <Text style={styles.label}>INTENSITY PROFILE</Text>
+                                <Text style={styles.label}>METABOLIC INTENSITY</Text>
                                 <CustomDropdown
                                     value={editState.cardioType}
                                     onChange={(val) => setEditState({ ...editState, cardioType: val })}
                                     options={CARDIO_TYPES}
-                                    placeholder="Select Intensity Profile..."
+                                    placeholder="Select METABOLIC INTENSITY..."
                                 />
                             </View>
                             <View style={styles.additionalSettings}>
@@ -439,7 +439,7 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                                 <Text style={styles.label}>ADDITIONAL SETTINGS:</Text>
                             </View>
 
-                            {/* Intensity Profile Toggle for Training */}
+                            {/* METABOLIC INTENSITY Toggle for Training */}
                             <TouchableOpacity onPress={() => {
                                 setShowTrainingCardioType(!showTrainingCardioType);
                             }} style={styles.collapsibleLabelToggleRow}>
@@ -450,7 +450,7 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                                     return (
                                         <>
                                             <View style={styles.rowGap}>
-                                                <Text style={[styles.label, { marginBottom: 0, color: isActive ? COLORS.slate[500] : disabledColor }]}>INTENSITY PROFILE</Text>
+                                                <Text style={[styles.label, { marginBottom: 0, color: isActive ? COLORS.slate[500] : disabledColor }]}>METABOLIC INTENSITY</Text>
                                                 <ChevronDown size={16} color={isActive ? COLORS.blue[600] : disabledColor} style={{ transform: [{ rotate: showTrainingCardioType ? '180deg' : '0deg' }] }} />
                                                 {hasSelection && (
                                                     <Text style={[styles.toggleLabel, { color: isActive ? COLORS.slate[500] : disabledColor }]} numberOfLines={1} ellipsizeMode="tail">
@@ -469,7 +469,7 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                                         value={editState.cardioType}
                                         onChange={(val) => setEditState({ ...editState, cardioType: val })}
                                         options={CARDIO_TYPES}
-                                        placeholder="Select Intensity Profile..."
+                                        placeholder="Select METABOLIC INTENSITY..."
                                     />
                                 </View>
                             )}
@@ -808,6 +808,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderRadius: 12,
         backgroundColor: COLORS.transparent,
+        borderWidth: 1,
+        borderColor: COLORS.slate[300],
     },
     cancelButtonText: {
         fontSize: 16,

@@ -1525,7 +1525,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                         } else {
                           unitText = unit === 'km' ? 'km' : 'm';
                         }
-                        return `Dist. ${unitText}`;
+                        return `Dist. (${unitText})`;
                       })()}
                     </Text>
                   </TouchableOpacity>
