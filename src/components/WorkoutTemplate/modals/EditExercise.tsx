@@ -353,17 +353,15 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                             )}
 
                             {editState.category === 'Lifts' && (
-                                <View style={styles.fieldGroup}>
-                                    <View style={styles.labelToggleRow}>
-                                        <Text style={[styles.label, { marginBottom: 0, color: editState.trackDuration ? COLORS.slate[500] : COLORS.slate[400] }]}>TRACK DURATION BY DEFAULT</Text>
-                                        <TouchableOpacity
-                                            style={styles.toggleContainer}
-                                            onPress={() => setEditState(prev => ({ ...prev, trackDuration: !prev.trackDuration }))}
-                                        >
-                                            <Text style={[styles.toggleLabel, editState.trackDuration ? styles.textBlue : styles.textSlate]}>TRACK DURATION</Text>
-                                            {editState.trackDuration ? <ToggleRight size={24} color={COLORS.blue[600]} /> : <ToggleLeft size={24} color={COLORS.slate[400]} />}
-                                        </TouchableOpacity>
-                                    </View>
+                                <View style={styles.labelToggleRow}>
+                                    <Text style={[styles.label, { marginBottom: 0, color: editState.trackDuration ? COLORS.slate[500] : COLORS.slate[400] }]}>TRACK DURATION BY DEFAULT</Text>
+                                    <TouchableOpacity
+                                        style={styles.toggleContainer}
+                                        onPress={() => setEditState(prev => ({ ...prev, trackDuration: !prev.trackDuration }))}
+                                    >
+                                        <Text style={[styles.toggleLabel, editState.trackDuration ? styles.textBlue : styles.textSlate]}>TRACK DURATION</Text>
+                                        {editState.trackDuration ? <ToggleRight size={24} color={COLORS.blue[600]} /> : <ToggleLeft size={24} color={COLORS.slate[400]} />}
+                                    </TouchableOpacity>
                                 </View>
                             )}
                         </View>
@@ -382,6 +380,16 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                             </View>
                             <View style={styles.additionalSettings}>
                                 <Text style={styles.label}>ADDITIONAL SETTINGS:</Text>
+                            </View>
+                            <View style={styles.labelToggleRow}>
+                                <Text style={[styles.label, { marginBottom: 0, color: editState.trackDistance ? COLORS.slate[500] : COLORS.slate[400] }]}>TRACK DISTANCE BY DEFAULT</Text>
+                                <TouchableOpacity
+                                    style={styles.toggleContainer}
+                                    onPress={() => setEditState(prev => ({ ...prev, trackDistance: !prev.trackDistance }))}
+                                >
+                                    <Text style={[styles.toggleLabel, editState.trackDistance ? styles.textBlue : styles.textSlate]}>TRACK DISTANCE</Text>
+                                    {editState.trackDistance ? <ToggleRight size={24} color={COLORS.blue[600]} /> : <ToggleLeft size={24} color={COLORS.slate[400]} />}
+                                </TouchableOpacity>
                             </View>
                             <TouchableOpacity onPress={() => setShowWeightEquip(!showWeightEquip)} style={styles.collapsibleLabelToggleRow}>
                                 {(() => {
@@ -516,7 +524,7 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
 
                             <TouchableOpacity onPress={() => setShowWeightEquip(!showWeightEquip)} style={styles.collapsibleLabelToggleRow}>
                                 {(() => {
-                                    const isActive = showWeightEquip || editState.weightEquipTags.some(tag => tag) || showSecondEquip || editState.trackReps;
+                                    const isActive = showWeightEquip || editState.weightEquipTags.some(tag => tag) || showSecondEquip;
                                     const disabledColor = COLORS.slate[400];
                                     return (
                                         <>
@@ -524,30 +532,18 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                                                 <Text style={[styles.label, { marginBottom: 0, color: isActive ? COLORS.slate[500] : disabledColor }]}>WEIGHT EQUIP.</Text>
                                                 <ChevronDown size={16} color={isActive ? COLORS.blue[600] : disabledColor} style={{ transform: [{ rotate: showWeightEquip ? '180deg' : '0deg' }] }} />
                                             </View>
-                                            <View style={styles.rowGap}>
-                                                <TouchableOpacity
-                                                    style={styles.toggleContainer}
-                                                    onPress={(e) => {
-                                                        e.stopPropagation();
-                                                        setEditState(prev => ({ ...prev, trackReps: !prev.trackReps }));
-                                                    }}
-                                                >
-                                                    <Text style={[styles.toggleLabel, { color: isActive ? (editState.trackReps ? COLORS.blue[600] : COLORS.slate[400]) : disabledColor }]}>TRACK REPS</Text>
-                                                    {editState.trackReps ? <ToggleRight size={24} color={isActive ? COLORS.blue[600] : disabledColor} /> : <ToggleLeft size={24} color={disabledColor} />}
-                                                </TouchableOpacity>
-                                                <TouchableOpacity
-                                                    style={styles.toggleContainer}
-                                                    onPress={(e) => {
-                                                        e.stopPropagation();
-                                                        const newVal = !showSecondEquip;
-                                                        setShowSecondEquip(newVal);
-                                                        if (!newVal) setEditState(prev => ({ ...prev, weightEquipTags: [prev.weightEquipTags[0]].filter(Boolean) }));
-                                                    }}
-                                                >
-                                                    <Text style={[styles.toggleLabel, { color: isActive ? (showSecondEquip ? COLORS.blue[600] : COLORS.slate[400]) : disabledColor }]}>ADD 2ND</Text>
-                                                    {showSecondEquip ? <ToggleRight size={24} color={isActive ? COLORS.blue[600] : disabledColor} /> : <ToggleLeft size={24} color={disabledColor} />}
-                                                </TouchableOpacity>
-                                            </View>
+                                            <TouchableOpacity
+                                                style={styles.toggleContainer}
+                                                onPress={(e) => {
+                                                    e.stopPropagation();
+                                                    const newVal = !showSecondEquip;
+                                                    setShowSecondEquip(newVal);
+                                                    if (!newVal) setEditState(prev => ({ ...prev, weightEquipTags: [prev.weightEquipTags[0]].filter(Boolean) }));
+                                                }}
+                                            >
+                                                <Text style={[styles.toggleLabel, { color: isActive ? (showSecondEquip ? COLORS.blue[600] : COLORS.slate[400]) : disabledColor }]}>ADD 2ND</Text>
+                                                {showSecondEquip ? <ToggleRight size={24} color={isActive ? COLORS.blue[600] : disabledColor} /> : <ToggleLeft size={24} color={disabledColor} />}
+                                            </TouchableOpacity>
                                         </>
                                     );
                                 })()}
@@ -562,7 +558,17 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                             )}
 
                             {editState.category === 'Training' && (
-                                <View style={styles.fieldGroup}>
+                                <>
+                                    <View style={styles.labelToggleRow}>
+                                        <Text style={[styles.label, { marginBottom: 0, color: editState.trackReps ? COLORS.slate[500] : COLORS.slate[400] }]}>TRACK REPS BY DEFAULT</Text>
+                                        <TouchableOpacity
+                                            style={styles.toggleContainer}
+                                            onPress={() => setEditState(prev => ({ ...prev, trackReps: !prev.trackReps }))}
+                                        >
+                                            <Text style={[styles.toggleLabel, editState.trackReps ? styles.textBlue : styles.textSlate]}>TRACK REPS</Text>
+                                            {editState.trackReps ? <ToggleRight size={24} color={COLORS.blue[600]} /> : <ToggleLeft size={24} color={COLORS.slate[400]} />}
+                                        </TouchableOpacity>
+                                    </View>
                                     <View style={styles.labelToggleRow}>
                                         <Text style={[styles.label, { marginBottom: 0, color: editState.trackDuration ? COLORS.slate[500] : COLORS.slate[400] }]}>TRACK DURATION BY DEFAULT</Text>
                                         <TouchableOpacity
@@ -583,7 +589,7 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                                             {editState.trackDistance ? <ToggleRight size={24} color={COLORS.blue[600]} /> : <ToggleLeft size={24} color={COLORS.slate[400]} />}
                                         </TouchableOpacity>
                                     </View>
-                                </View>
+                                </>
                             )}
                         </View>
                     )}

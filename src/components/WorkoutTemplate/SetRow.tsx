@@ -618,7 +618,7 @@ const SetRow: React.FC<SetRowProps> = ({
                           }
                         }
                       }}
-                      placeholder="mm:ss"
+                      placeholder=""
                       placeholderTextColor={COLORS.slate[400]}
                       keyboardType="numeric"
                       value={getDurationDisplayValue()}
@@ -687,7 +687,7 @@ const SetRow: React.FC<SetRowProps> = ({
                           }
                         }
                       }}
-                      placeholder="km"
+                      placeholder=""
                       placeholderTextColor={COLORS.slate[400]}
                       keyboardType="decimal-pad"
                       value={set.distance || ""}
@@ -985,7 +985,7 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   durationContainer: {
-    width: 76, // Fixed width for duration column
+    width: 80, // Fixed width for duration column
     alignItems: 'center',
     justifyContent: 'center',
   },

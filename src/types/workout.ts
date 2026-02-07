@@ -1,5 +1,9 @@
 export type SetType = 'Working' | 'Warmup' | 'Failure';
 export type WeightUnit = 'lbs' | 'kg';
+export type DistanceUnitSystem = 'US' | 'Metric';
+export type DistanceUnitUS = 'ft' | 'yd' | 'mi';
+export type DistanceUnitMetric = 'm' | 'km';
+export type DistanceUnit = DistanceUnitUS | DistanceUnitMetric;
 export type ExerciseCategory = 'Lifts' | 'Cardio' | 'Training';
 export type WorkoutMode = 'live' | 'edit' | 'readonly';
 export type GroupType = 'Superset' | 'HIIT';
@@ -36,6 +40,10 @@ export interface Exercise {
   trackReps?: boolean;
   trackDistance?: boolean;
   weightEquipTags?: string[];
+  multiplyWeightBy2?: boolean;
+  alternatingRepsBy2?: boolean;
+  distanceUnitSystem?: DistanceUnitSystem;
+  distanceUnit?: DistanceUnit;
 }
 
 export interface ExerciseGroup {

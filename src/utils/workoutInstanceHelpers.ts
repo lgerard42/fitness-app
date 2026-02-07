@@ -42,7 +42,12 @@ export const createExerciseInstance = (
     ...(ex.trackDuration !== undefined && { trackDuration: ex.trackDuration }),
     ...(ex.trackReps !== undefined && { trackReps: ex.trackReps }),
     ...(ex.trackDistance !== undefined && { trackDistance: ex.trackDistance }),
-    ...(ex.weightEquipTags && ex.weightEquipTags.length > 0 && { weightEquipTags: ex.weightEquipTags })
+    ...(ex.weightEquipTags && ex.weightEquipTags.length > 0 && { weightEquipTags: ex.weightEquipTags }),
+    // Set default distance unit system and unit if trackDistance is true
+    ...(ex.trackDistance === true && {
+      distanceUnitSystem: (ex.distanceUnitSystem as 'US' | 'Metric' | undefined) || 'US',
+      distanceUnit: (ex.distanceUnit as 'ft' | 'yd' | 'mi' | 'm' | 'km' | undefined) || ((ex.distanceUnitSystem as 'US' | 'Metric' | undefined) === 'Metric' ? 'm' : 'mi')
+    })
   };
 };
 
@@ -92,6 +97,11 @@ export const createExerciseInstanceWithSetGroups = (
     ...(ex.trackDuration !== undefined && { trackDuration: ex.trackDuration }),
     ...(ex.trackReps !== undefined && { trackReps: ex.trackReps }),
     ...(ex.trackDistance !== undefined && { trackDistance: ex.trackDistance }),
-    ...(ex.weightEquipTags && ex.weightEquipTags.length > 0 && { weightEquipTags: ex.weightEquipTags })
+    ...(ex.weightEquipTags && ex.weightEquipTags.length > 0 && { weightEquipTags: ex.weightEquipTags }),
+    // Set default distance unit system and unit if trackDistance is true
+    ...(ex.trackDistance === true && {
+      distanceUnitSystem: (ex.distanceUnitSystem as 'US' | 'Metric' | undefined) || 'US',
+      distanceUnit: (ex.distanceUnit as 'ft' | 'yd' | 'mi' | 'm' | 'km' | undefined) || ((ex.distanceUnitSystem as 'US' | 'Metric' | undefined) === 'Metric' ? 'm' : 'mi')
+    })
   };
 };
