@@ -14,6 +14,7 @@ export interface Set {
   id: string;
   type: SetType;
   weight: string;
+  weight2?: string;
   reps: string;
   duration: string;
   distance: string;
@@ -117,7 +118,7 @@ export interface RestPeriodSetInfo {
 export interface FocusNextSet {
   exerciseId: string;
   setId: string;
-  field: 'weight' | 'reps' | 'duration' | 'distance';
+  field: 'weight' | 'weight2' | 'reps' | 'duration' | 'distance';
 }
 
 export interface ExerciseStats {
@@ -127,6 +128,7 @@ export interface ExerciseStats {
     date: string;
     sets: Array<{
       weight: string;
+      weight2?: string;
       reps: string;
       duration: string;
       distance: string;

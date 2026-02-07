@@ -220,7 +220,8 @@ export const convertWorkoutUnits = (exercise: Exercise): Exercise => {
     weightUnit: newUnit,
     sets: exercise.sets.map(s => ({
       ...s,
-      weight: exercise.category === 'Lifts' ? convert(s.weight) : s.weight
+      weight: exercise.category === 'Lifts' ? convert(s.weight) : s.weight,
+      weight2: exercise.category === 'Lifts' && s.weight2 ? convert(s.weight2) : s.weight2
     }))
   };
 };

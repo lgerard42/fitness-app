@@ -42,11 +42,12 @@ interface SetRowProps {
   isGroupChild?: boolean;
   parentGroupType?: 'HIIT' | 'Superset' | null;
   readOnly?: boolean;
-  shouldFocus?: 'weight' | 'reps' | 'duration' | 'distance' | null;
+  shouldFocus?: 'weight' | 'weight2' | 'reps' | 'duration' | 'distance' | null;
   onFocusHandled?: () => void;
-  onCustomKeyboardOpen?: ((params: { field: 'weight' | 'reps' | 'duration' | 'distance'; value: string }) => void) | null;
+  onCustomKeyboardOpen?: ((params: { field: 'weight' | 'weight2' | 'reps' | 'duration' | 'distance'; value: string }) => void) | null;
   customKeyboardActive?: boolean;
-  customKeyboardField?: 'weight' | 'reps' | 'duration' | 'distance' | null;
+  customKeyboardField?: 'weight' | 'weight2' | 'reps' | 'duration' | 'distance' | null;
+  hasSecondWeight?: boolean;
   customKeyboardShouldSelectAll?: boolean;
   onLongPressRow?: () => void;
   showDuration?: boolean;
@@ -95,7 +96,8 @@ const SetRow: React.FC<SetRowProps> = ({
   showDuration = false,
   showDistance = false,
   showWeight = false,
-  showReps = false
+  showReps = false,
+  hasSecondWeight = false
 }) => {
   const isLift = category === 'Lifts';
   const isCardio = category === 'Cardio';
@@ -113,16 +115,18 @@ const SetRow: React.FC<SetRowProps> = ({
 
   // Check if required values are missing (individually)
   const isMissingWeight = shouldShowWeight && (!set.weight || set.weight.trim() === '');
+  const isMissingWeight2 = hasSecondWeight && shouldShowWeight && (!set.weight2 || set.weight2.trim() === '');
   const isMissingReps = shouldShowReps && (!set.reps || set.reps.trim() === '');
   const isMissingDuration = shouldShowDuration && (!set.duration || set.duration.trim() === '');
   const isMissingDistance = shouldShowDistance && (!set.distance || set.distance.trim() === '');
 
-  const isMissingValue = isMissingWeight || isMissingReps || isMissingDuration || isMissingDistance;
+  const isMissingValue = isMissingWeight || isMissingWeight2 || isMissingReps || isMissingDuration || isMissingDistance;
 
   // Track selection for cursor positioning after custom keyboard updates
   const [durationInputSelection, setDurationInputSelection] = useState<{ start: number; end: number } | null>(null);
   const [distanceInputSelection, setDistanceInputSelection] = useState<{ start: number; end: number } | null>(null);
   const [weightInputSelection, setWeightInputSelection] = useState<{ start: number; end: number } | null>(null);
+  const [weight2InputSelection, setWeight2InputSelection] = useState<{ start: number; end: number } | null>(null);
   const [repsInputSelection, setRepsInputSelection] = useState<{ start: number; end: number } | null>(null);
 
   // Duration: while focused show raw number, when blurred show formatted time
@@ -131,11 +135,13 @@ const SetRow: React.FC<SetRowProps> = ({
   const durationInputInitialFocusRef = useRef<boolean>(false);
   const distanceInputInitialFocusRef = useRef<boolean>(false);
   const weightInputInitialFocusRef = useRef<boolean>(false);
+  const weight2InputInitialFocusRef = useRef<boolean>(false);
   const repsInputInitialFocusRef = useRef<boolean>(false);
 
   const durationInputInitialValueRef = useRef<string | null>(null);
   const distanceInputInitialValueRef = useRef<string | null>(null);
   const weightInputInitialValueRef = useRef<string | null>(null);
+  const weight2InputInitialValueRef = useRef<string | null>(null);
   const repsInputInitialValueRef = useRef<string | null>(null);
 
   // Legacy refs for backward compatibility - keep for useSetRowLogic hook
@@ -164,6 +170,7 @@ const SetRow: React.FC<SetRowProps> = ({
   const durationInputRef = useRef<TextInput>(null);
   const distanceInputRef = useRef<TextInput>(null);
   const weightInputRef = useRef<TextInput>(null);
+  const weight2InputRef = useRef<TextInput>(null);
   const repsInputRef = useRef<TextInput>(null);
 
   const {
@@ -248,6 +255,27 @@ const SetRow: React.FC<SetRowProps> = ({
   }, [set.weight, customKeyboardActive, customKeyboardField, customKeyboardShouldSelectAll, shouldShowWeight]);
 
   useEffect(() => {
+    if (customKeyboardActive && customKeyboardField === 'weight2' && shouldShowWeight && hasSecondWeight) {
+      const value = set.weight2 || "";
+      const length = value.length;
+      const initialValue = weight2InputInitialValueRef.current;
+
+      if (customKeyboardShouldSelectAll && length > 0) {
+        setWeight2InputSelection({ start: 0, end: length });
+        weight2InputInitialFocusRef.current = false;
+        weight2InputInitialValueRef.current = value;
+      } else if (value !== initialValue) {
+        setWeight2InputSelection({ start: length, end: length });
+        weight2InputInitialFocusRef.current = true;
+        weight2InputInitialValueRef.current = value;
+      }
+    } else if (!customKeyboardActive || customKeyboardField !== 'weight2') {
+      weight2InputInitialFocusRef.current = false;
+      weight2InputInitialValueRef.current = null;
+    }
+  }, [set.weight2, customKeyboardActive, customKeyboardField, customKeyboardShouldSelectAll, shouldShowWeight, hasSecondWeight]);
+
+  useEffect(() => {
     if (customKeyboardActive && customKeyboardField === 'reps' && shouldShowReps) {
       const value = set.reps || "";
       const length = value.length;
@@ -274,6 +302,13 @@ const SetRow: React.FC<SetRowProps> = ({
     return isEmpty ? styles.inputCompletedEmpty : styles.inputCompletedFilled;
   };
 
+  // Calculate total weight for display
+  const getTotalWeight = (): number => {
+    const weight1 = parseFloat(set.weight || '0') || 0;
+    const weight2 = parseFloat(set.weight2 || '0') || 0;
+    return weight1 + weight2;
+  };
+
   const renderPrevious = () => {
     if (!previousSet) return <Text style={styles.previousText}>-</Text>;
 
@@ -292,8 +327,18 @@ const SetRow: React.FC<SetRowProps> = ({
       parts.push(previousSet.distance);
     }
     if (shouldShowWeight && previousSet.weight) {
-      const weightText = previousSet.weight + (weightUnit === 'lbs' ? 'lb' : (weightUnit || 'lb'));
-      parts.push(weightText);
+      if (hasSecondWeight && previousSet.weight2) {
+        // Show both weights and total: "45lb + 25lb = 70lb"
+        const weight1 = parseFloat(previousSet.weight) || 0;
+        const weight2 = parseFloat(previousSet.weight2) || 0;
+        const total = weight1 + weight2;
+        const unit = weightUnit === 'lbs' ? 'lb' : (weightUnit || 'lb');
+        const weightText = `${weight1}${unit} + ${weight2}${unit} = ${total}${unit}`;
+        parts.push(weightText);
+      } else {
+        const weightText = previousSet.weight + (weightUnit === 'lbs' ? 'lb' : (weightUnit || 'lb'));
+        parts.push(weightText);
+      }
     }
     if (shouldShowReps && previousSet.reps) {
       parts.push(previousSet.reps);
@@ -715,70 +760,132 @@ const SetRow: React.FC<SetRowProps> = ({
               )}
 
               {shouldShowWeight && (
-                <View style={styles.weightContainer} pointerEvents={isRestTimerSelectionMode ? 'none' : 'auto'}>
-                  <View style={styles.weightInputWrapper}>
-                    <TextInput
-                      numberOfLines={1}
-                      ref={weightInputRef}
-                      style={[
-                        styles.weightInput,
-                        getInputStyle(set.weight),
-                        (customKeyboardActive && customKeyboardField === 'weight') && styles.inputFocused,
-                        isMissingWeight && styles.inputCompletedEmpty
-                      ]}
-                      selectTextOnFocus={true}
-                      showSoftInputOnFocus={!onCustomKeyboardOpen}
-                      editable={!readOnly && !isRestTimerSelectionMode}
-                      pointerEvents={isRestTimerSelectionMode ? 'none' : 'auto'}
-                      onFocus={() => {
-                        if (!readOnly && !isRestTimerSelectionMode) {
-                          const val = set.weight || "";
-                          if (onCustomKeyboardOpen) {
-                            onCustomKeyboardOpen({ field: 'weight', value: val });
-                            weightInputInitialFocusRef.current = false;
-                            weightInputInitialValueRef.current = val;
-                            setWeightInputSelection(null);
-                          } else {
-                            handleFocus(weightInputRef as React.RefObject<TextInput>, val, 'first');
+                <View style={[styles.weightContainer, hasSecondWeight && styles.weightContainer__twoInputs]} pointerEvents={isRestTimerSelectionMode ? 'none' : 'auto'}>
+                  <View style={[styles.weightInputWrapper, hasSecondWeight && styles.weightInputWrapper__row]}>
+                    <View style={[styles.weightInputSingleWrapper, hasSecondWeight && styles.weightInputSingleWrapper__half]}>
+                      <TextInput
+                        numberOfLines={1}
+                        ref={weightInputRef}
+                        style={[
+                          styles.weightInput,
+                          getInputStyle(set.weight),
+                          (customKeyboardActive && customKeyboardField === 'weight') && styles.inputFocused,
+                          isMissingWeight && styles.inputCompletedEmpty
+                        ]}
+                        selectTextOnFocus={true}
+                        showSoftInputOnFocus={!onCustomKeyboardOpen}
+                        editable={!readOnly && !isRestTimerSelectionMode}
+                        pointerEvents={isRestTimerSelectionMode ? 'none' : 'auto'}
+                        onFocus={() => {
+                          if (!readOnly && !isRestTimerSelectionMode) {
+                            const val = set.weight || "";
+                            if (onCustomKeyboardOpen) {
+                              onCustomKeyboardOpen({ field: 'weight', value: val });
+                              weightInputInitialFocusRef.current = false;
+                              weightInputInitialValueRef.current = val;
+                              setWeightInputSelection(null);
+                            } else {
+                              handleFocus(weightInputRef as React.RefObject<TextInput>, val, 'first');
+                            }
                           }
-                        }
-                      }}
-                      onBlur={() => {
-                        if (!customKeyboardActive || customKeyboardField !== 'weight') {
-                          if (!onCustomKeyboardOpen) {
-                            // Focus cleared by hook
-                          }
-                        }
-                      }}
-                      placeholder=""
-                      placeholderTextColor={COLORS.slate[400]}
-                      keyboardType="decimal-pad"
-                      value={set.weight || ""}
-                      selection={weightInputSelection || undefined}
-                      onSelectionChange={(e) => {
-                        if (!customKeyboardActive || customKeyboardField !== 'weight') {
-                          setWeightInputSelection(e.nativeEvent.selection);
-                        }
-                      }}
-                      onChangeText={(text) => {
-                        if (!readOnly) {
+                        }}
+                        onBlur={() => {
                           if (!customKeyboardActive || customKeyboardField !== 'weight') {
-                            setWeightInputSelection(null);
-                          } else {
-                            weightInputInitialFocusRef.current = true;
-                            const length = text.length;
-                            setWeightInputSelection({ start: length, end: length });
+                            if (!onCustomKeyboardOpen) {
+                              // Focus cleared by hook
+                            }
                           }
-                          onUpdate({ ...set, weight: text });
-                        }
-                      }}
-                    />
+                        }}
+                        placeholder=""
+                        placeholderTextColor={COLORS.slate[400]}
+                        keyboardType="decimal-pad"
+                        value={set.weight || ""}
+                        selection={weightInputSelection || undefined}
+                        onSelectionChange={(e) => {
+                          if (!customKeyboardActive || customKeyboardField !== 'weight') {
+                            setWeightInputSelection(e.nativeEvent.selection);
+                          }
+                        }}
+                        onChangeText={(text) => {
+                          if (!readOnly) {
+                            if (!customKeyboardActive || customKeyboardField !== 'weight') {
+                              setWeightInputSelection(null);
+                            } else {
+                              weightInputInitialFocusRef.current = true;
+                              const length = text.length;
+                              setWeightInputSelection({ start: length, end: length });
+                            }
+                            onUpdate({ ...set, weight: text });
+                          }
+                        }}
+                      />
+                    </View>
+                    {hasSecondWeight && (
+                      <View style={[styles.weight2InputWrapper, styles.weightInputSingleWrapper__half]}>
+                        <TextInput
+                          numberOfLines={1}
+                          ref={weight2InputRef}
+                          style={[
+                            styles.weightInput,
+                            getInputStyle(set.weight2),
+                            (customKeyboardActive && customKeyboardField === 'weight2') && styles.inputFocused,
+                            isMissingWeight2 && styles.inputCompletedEmpty
+                          ]}
+                          selectTextOnFocus={true}
+                          showSoftInputOnFocus={!onCustomKeyboardOpen}
+                          editable={!readOnly && !isRestTimerSelectionMode}
+                          pointerEvents={isRestTimerSelectionMode ? 'none' : 'auto'}
+                          onFocus={() => {
+                            if (!readOnly && !isRestTimerSelectionMode) {
+                              const val = set.weight2 || "";
+                              if (onCustomKeyboardOpen) {
+                                onCustomKeyboardOpen({ field: 'weight2', value: val });
+                                weight2InputInitialFocusRef.current = false;
+                                weight2InputInitialValueRef.current = val;
+                                setWeight2InputSelection(null);
+                              } else {
+                                handleFocus(weight2InputRef as React.RefObject<TextInput>, val, 'first');
+                              }
+                            }
+                          }}
+                          onBlur={() => {
+                            if (!customKeyboardActive || customKeyboardField !== 'weight2') {
+                              if (!onCustomKeyboardOpen) {
+                                // Focus cleared by hook
+                              }
+                            }
+                          }}
+                          placeholder=""
+                          placeholderTextColor={COLORS.slate[400]}
+                          keyboardType="decimal-pad"
+                          value={set.weight2 || ""}
+                          selection={weight2InputSelection || undefined}
+                          onSelectionChange={(e) => {
+                            if (!customKeyboardActive || customKeyboardField !== 'weight2') {
+                              setWeight2InputSelection(e.nativeEvent.selection);
+                            }
+                          }}
+                          onChangeText={(text) => {
+                            if (!readOnly) {
+                              if (!customKeyboardActive || customKeyboardField !== 'weight2') {
+                                setWeight2InputSelection(null);
+                              } else {
+                                weight2InputInitialFocusRef.current = true;
+                                const length = text.length;
+                                setWeight2InputSelection({ start: length, end: length });
+                              }
+                              onUpdate({ ...set, weight2: text });
+                            }
+                          }}
+                        />
+                      </View>
+                    )}
                   </View>
                 </View>
               )}
 
               {shouldShowReps && (
-                <View style={styles.repsContainer} pointerEvents={isRestTimerSelectionMode ? 'none' : 'auto'}>
+                <View style={[styles.repsContainer, hasSecondWeight && styles.repsContainer__twoWeightInputs]} pointerEvents={isRestTimerSelectionMode ? 'none' : 'auto'}>
                   <View style={styles.repsInputWrapper}>
                     <TextInput
                       numberOfLines={1}
@@ -1041,10 +1148,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     minWidth: 0,
   },
+  weightContainer__twoInputs: {
+    flex: 2, // Takes 2/3 of space when there are 2 weight inputs (so each input gets 1/3)
+  },
   weightInputWrapper: {
     width: '100%',
     position: 'relative',
     maxWidth: '100%',
+  },
+  weightInputWrapper__row: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  weightInputSingleWrapper: {
+    width: '100%',
+    position: 'relative',
+    maxWidth: '100%',
+  },
+  weightInputSingleWrapper__half: {
+    flex: 1,
+    flexBasis: 0,
+    minWidth: 0,
   },
   weightInput: {
     width: '100%',
@@ -1060,12 +1184,20 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: COLORS.slate[150],
   },
+  weight2InputWrapper: {
+    width: '100%',
+    position: 'relative',
+    maxWidth: '100%',
+  },
   repsContainer: {
     flex: 1,
     flexBasis: 0, // Force equal width distribution
     alignItems: 'center',
     justifyContent: 'center',
     minWidth: 0,
+  },
+  repsContainer__twoWeightInputs: {
+    flex: 1, // Takes 1/3 of space when there are 2 weight inputs (same as each weight input)
   },
   repsInputWrapper: {
     width: '100%',

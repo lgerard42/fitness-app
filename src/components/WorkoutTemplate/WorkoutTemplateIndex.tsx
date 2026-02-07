@@ -257,7 +257,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
 
   // Custom Keyboard State
   const [customKeyboardVisible, setCustomKeyboardVisible] = useState(false);
-  const [customKeyboardTarget, setCustomKeyboardTarget] = useState<{ exerciseId: string; setId: string; field: 'weight' | 'reps' | 'duration' | 'distance' } | null>(null);
+  const [customKeyboardTarget, setCustomKeyboardTarget] = useState<{ exerciseId: string; setId: string; field: 'weight' | 'weight2' | 'reps' | 'duration' | 'distance' } | null>(null);
   const [customKeyboardValue, setCustomKeyboardValue] = useState('');
   const [customKeyboardShouldSelectAll, setCustomKeyboardShouldSelectAll] = useState(false);
   const customKeyboardTextSelectedRef = useRef<boolean>(false);
@@ -468,7 +468,9 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
         const lastSet = ex.sets[ex.sets.length - 1];
         const newSet: Set = {
           id: `s-${Date.now()}-${Math.random()}`, type: "Working" as SetType,
-          weight: lastSet ? lastSet.weight : "", reps: lastSet ? lastSet.reps : "", duration: lastSet ? lastSet.duration : "", distance: lastSet ? lastSet.distance : "",
+          weight: lastSet ? lastSet.weight : "",
+          weight2: lastSet?.weight2 ? lastSet.weight2 : undefined,
+          reps: lastSet ? lastSet.reps : "", duration: lastSet ? lastSet.duration : "", distance: lastSet ? lastSet.distance : "",
           completed: false,
           // Copy rest timer if the previous set has one
           ...(lastSet?.restPeriodSeconds && { restPeriodSeconds: lastSet.restPeriodSeconds })
@@ -567,10 +569,16 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
         if (setIndex !== -1 && setIndex < exercise.sets.length - 1) {
           const nextSet = exercise.sets[setIndex + 1];
           // Determine which field to focus: first empty one, or reps if both filled
-          let fieldToFocus: 'weight' | 'reps' | 'duration' | 'distance' = 'reps';
+          const libraryExercise = exercisesLibrary.find(libEx => libEx.id === exercise.exerciseId);
+          const hasSecondWeight = (exercise.weightEquipTags && exercise.weightEquipTags.length > 1) ||
+            (libraryExercise?.weightEquipTags && (libraryExercise.weightEquipTags as string[]).length > 1);
+
+          let fieldToFocus: 'weight' | 'weight2' | 'reps' | 'duration' | 'distance' = 'reps';
           if (exercise.category === 'Lifts') {
             if (!nextSet.weight || nextSet.weight === '') {
               fieldToFocus = 'weight';
+            } else if (hasSecondWeight && (!nextSet.weight2 || nextSet.weight2 === '')) {
+              fieldToFocus = 'weight2';
             } else if (!nextSet.reps || nextSet.reps === '') {
               fieldToFocus = 'reps';
             }
@@ -622,7 +630,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
   }, [restPeriodModalOpen]);
 
   // Custom keyboard handler
-  const handleCustomKeyboardOpen = (exerciseId: string, setId: string, field: 'weight' | 'reps' | 'duration' | 'distance', value: string) => {
+  const handleCustomKeyboardOpen = (exerciseId: string, setId: string, field: 'weight' | 'weight2' | 'reps' | 'duration' | 'distance', value: string) => {
     // Close rest timer modal if open
     if (restPeriodModalOpen) {
       setRestPeriodModalOpen(false);
@@ -769,6 +777,29 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     }
 
     if (field === 'weight') {
+      // Check if exercise has second weight
+      const libraryExercise = exercisesLibrary.find(libEx => libEx.id === exercise.exerciseId);
+      const hasSecondWeight = (exercise.weightEquipTags && exercise.weightEquipTags.length > 1) ||
+        (libraryExercise?.weightEquipTags && (libraryExercise.weightEquipTags as string[]).length > 1);
+
+      const set = exercise.sets[setIndex];
+      // Close rest timer modal if open
+      if (restPeriodModalOpen) {
+        setRestPeriodModalOpen(false);
+        setRestPeriodSetInfo(null);
+        setRestTimerInput('');
+      }
+
+      if (hasSecondWeight) {
+        // Move to weight2 of the same set
+        setCustomKeyboardTarget({ exerciseId, setId, field: 'weight2' });
+        setCustomKeyboardValue(set.weight2 || '');
+      } else {
+        // Move to reps of the same set
+        setCustomKeyboardTarget({ exerciseId, setId, field: 'reps' });
+        setCustomKeyboardValue(set.reps || '');
+      }
+    } else if (field === 'weight2') {
       // Move to reps of the same set
       const set = exercise.sets[setIndex];
       // Close rest timer modal if open
@@ -1002,6 +1033,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
             id: `s-${Date.now()}-${Math.random()}`,
             type: "Working" as SetType,
             weight: currentSet.weight || "",
+            weight2: currentSet.weight2 ? currentSet.weight2 : undefined,
             reps: currentSet.reps || "",
             duration: currentSet.duration || "",
             distance: currentSet.distance || "",
@@ -1059,7 +1091,8 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                     ...child,
                     sets: child.sets.map(set => ({
                       ...set,
-                      weight: set.weight && set.weight !== '' ? String((parseFloat(set.weight) || 0) * 2) : set.weight
+                      weight: set.weight && set.weight !== '' ? String((parseFloat(set.weight) || 0) * 2) : set.weight,
+                      weight2: set.weight2 && set.weight2 !== '' ? String((parseFloat(set.weight2) || 0) * 2) : set.weight2
                     }))
                   };
                 } else if (child.alternatingRepsBy2) {
@@ -1080,7 +1113,8 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                 ...ex,
                 sets: ex.sets.map(set => ({
                   ...set,
-                  weight: set.weight && set.weight !== '' ? String((parseFloat(set.weight) || 0) * 2) : set.weight
+                  weight: set.weight && set.weight !== '' ? String((parseFloat(set.weight) || 0) * 2) : set.weight,
+                  weight2: set.weight2 && set.weight2 !== '' ? String((parseFloat(set.weight2) || 0) * 2) : set.weight2
                 }))
               };
             } else if (ex.alternatingRepsBy2) {
@@ -1227,6 +1261,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     // Helper function to compute indices for historical sets
     const computeHistoricalIndices = (historicalSets: Array<{
       weight: string;
+      weight2?: string;
       reps: string;
       duration: string;
       distance: string;
@@ -1344,6 +1379,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     // Helper to convert weight units for previous set
     const convertPreviousSet = (prevSet: {
       weight: string;
+      weight2?: string;
       reps: string;
       duration: string;
       distance: string;
@@ -1359,6 +1395,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
         id: `prev-${Date.now()}`,
         type: prevSet.isWarmup ? 'Warmup' as SetType : prevSet.isFailure ? 'Failure' as SetType : 'Working' as SetType,
         weight: prevSet.weight,
+        weight2: prevSet.weight2,
         reps: prevSet.reps,
         duration: prevSet.duration,
         distance: prevSet.distance,
@@ -1369,10 +1406,18 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
       };
 
       // If current unit is kg, convert previous (assumed lbs) to kg
-      if (ex.weightUnit === 'kg' && ex.category === 'Lifts' && convertedSet.weight) {
-        const val = parseFloat(convertedSet.weight);
-        if (!isNaN(val)) {
-          convertedSet.weight = (val / 2.20462).toFixed(1);
+      if (ex.weightUnit === 'kg' && ex.category === 'Lifts') {
+        if (convertedSet.weight) {
+          const val = parseFloat(convertedSet.weight);
+          if (!isNaN(val)) {
+            convertedSet.weight = (val / 2.20462).toFixed(1);
+          }
+        }
+        if (convertedSet.weight2) {
+          const val = parseFloat(convertedSet.weight2);
+          if (!isNaN(val)) {
+            convertedSet.weight2 = (val / 2.20462).toFixed(1);
+          }
         }
       }
       return convertedSet;
@@ -1496,6 +1541,10 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
             const libraryExercise = exercisesLibrary.find(libEx => libEx.id === ex.exerciseId);
             const visibleColumns = getVisibleColumns(ex, libraryExercise);
 
+            // Determine if exercise has second weight equipment
+            const hasSecondWeight: boolean = (ex.weightEquipTags && ex.weightEquipTags.length > 1) ||
+              (!!(libraryExercise?.weightEquipTags) && (libraryExercise.weightEquipTags as string[]).length > 1);
+
             return (
               <View style={styles.columnHeaders}>
                 <View style={styles.colIndex}><Text style={styles.colHeaderText}>Set</Text></View>
@@ -1532,7 +1581,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                 )}
                 {visibleColumns.showWeight && (
                   <TouchableOpacity
-                    style={styles.colWeight}
+                    style={[styles.colWeight, hasSecondWeight && styles.colWeight__twoInputs]}
                     onPress={(e) => !readOnly && handleColumnHeaderPress(ex.instanceId, 'weight', e)}
                     disabled={readOnly}
                   >
@@ -1543,7 +1592,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                 )}
                 {visibleColumns.showReps && (
                   <TouchableOpacity
-                    style={styles.colReps}
+                    style={[styles.colReps, hasSecondWeight && styles.colReps__twoWeightInputs]}
                     onPress={(e) => !readOnly && handleColumnHeaderPress(ex.instanceId, 'reps', e)}
                     disabled={readOnly}
                   >
@@ -1700,6 +1749,10 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
               const libraryExercise = exercisesLibrary.find(libEx => libEx.id === ex.exerciseId);
               const visibleColumns = getVisibleColumns(ex, libraryExercise);
 
+              // Determine if exercise has second weight equipment
+              const hasSecondWeight: boolean = (ex.weightEquipTags && ex.weightEquipTags.length > 1) ||
+                (!!(libraryExercise?.weightEquipTags) && (libraryExercise.weightEquipTags as string[]).length > 1);
+
               const setRowProps = {
                 index: idx,
                 set,
@@ -1730,11 +1783,12 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                 isGroupChild,
                 parentGroupType,
                 readOnly,
-                shouldFocus: focusNextSet?.setId === set.id ? (focusNextSet.field === 'weight' || focusNextSet.field === 'reps' || focusNextSet.field === 'duration' || focusNextSet.field === 'distance' ? focusNextSet.field : null) : null,
+                shouldFocus: focusNextSet?.setId === set.id ? (focusNextSet.field === 'weight' || focusNextSet.field === 'weight2' || focusNextSet.field === 'reps' || focusNextSet.field === 'duration' || focusNextSet.field === 'distance' ? focusNextSet.field : null) : null,
                 onFocusHandled: () => setFocusNextSet(null),
-                onCustomKeyboardOpen: !readOnly && !restTimerSelectionMode ? ({ field, value }: { field: 'weight' | 'reps' | 'duration' | 'distance'; value: string }) => handleCustomKeyboardOpen(ex.instanceId, set.id, field, value) : null,
+                onCustomKeyboardOpen: !readOnly && !restTimerSelectionMode ? ({ field, value }: { field: 'weight' | 'weight2' | 'reps' | 'duration' | 'distance'; value: string }) => handleCustomKeyboardOpen(ex.instanceId, set.id, field, value) : null,
                 customKeyboardActive: customKeyboardTarget?.exerciseId === ex.instanceId && customKeyboardTarget?.setId === set.id,
-                customKeyboardField: customKeyboardTarget?.exerciseId === ex.instanceId && customKeyboardTarget?.setId === set.id ? (customKeyboardTarget.field === 'weight' || customKeyboardTarget.field === 'reps' || customKeyboardTarget.field === 'duration' || customKeyboardTarget.field === 'distance' ? customKeyboardTarget.field : null) : null,
+                customKeyboardField: customKeyboardTarget?.exerciseId === ex.instanceId && customKeyboardTarget?.setId === set.id ? (customKeyboardTarget.field === 'weight' || customKeyboardTarget.field === 'weight2' || customKeyboardTarget.field === 'reps' || customKeyboardTarget.field === 'duration' || customKeyboardTarget.field === 'distance' ? customKeyboardTarget.field : null) : null,
+                hasSecondWeight,
                 customKeyboardShouldSelectAll: customKeyboardTarget?.exerciseId === ex.instanceId && customKeyboardTarget?.setId === set.id ? customKeyboardShouldSelectAll : false,
                 onLongPressRow: () => startSetDrag(ex),
                 showDuration: visibleColumns.showDuration,
@@ -3486,10 +3540,10 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
 
       <CustomNumberKeyboard
         visible={customKeyboardVisible && !restPeriodModalOpen}
-        customKeyboardTarget={customKeyboardTarget && (customKeyboardTarget.field === 'weight' || customKeyboardTarget.field === 'reps' || customKeyboardTarget.field === 'duration' || customKeyboardTarget.field === 'distance') ? {
+        customKeyboardTarget={customKeyboardTarget && (customKeyboardTarget.field === 'weight' || customKeyboardTarget.field === 'weight2' || customKeyboardTarget.field === 'reps' || customKeyboardTarget.field === 'duration' || customKeyboardTarget.field === 'distance') ? {
           exerciseId: customKeyboardTarget.exerciseId,
           setId: customKeyboardTarget.setId,
-          field: customKeyboardTarget.field as 'weight' | 'reps' | 'duration' | 'distance'
+          field: customKeyboardTarget.field as 'weight' | 'weight2' | 'reps' | 'duration' | 'distance'
         } : null}
         customKeyboardValue={customKeyboardValue}
         onInput={handleCustomKeyboardInput}
@@ -3800,12 +3854,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     minWidth: 0,
   },
+  colWeight__twoInputs: {
+    flex: 2, // Takes 2/3 of space when there are 2 weight inputs (so each input gets 1/3)
+  },
   colReps: {
     flex: 1,
     flexBasis: 0, // Force equal width distribution
     alignItems: 'center',
     justifyContent: 'center',
     minWidth: 0,
+  },
+  colReps__twoWeightInputs: {
+    flex: 1, // Takes 1/3 of space when there are 2 weight inputs (same as each weight input)
   },
   colCheck: {
     width: 26, // Match checkButton width
