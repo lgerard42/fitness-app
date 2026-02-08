@@ -2568,12 +2568,30 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
           }
           if (columnHeaderMenu) {
             setColumnHeaderMenu(null);
+            setColumnHeaderMenuPage('main');
+          }
+          if (customKeyboardVisible) {
+            closeCustomKeyboard();
+          }
+          if (restTimerPopupOpen) {
+            setRestTimerPopupOpen(false);
+          }
+          if (supersetSelectionMode) {
+            handleCancelSupersetSelection();
           }
         }}
       >
         <View style={styles.mainContentWrapper}>
           {/* Main exercise list with DraggableFlatList */}
           {renderDraggableExercises()}
+
+          {/* Backdrop for set menu popup */}
+          {activeSetMenu && (
+            <Pressable
+              style={styles.popupBackdrop}
+              onPress={() => setActiveSetMenu(null)}
+            />
+          )}
 
           {/* Render the set menu outside the Modal, using conditional rendering */}
           {activeSetMenu && (
@@ -2601,26 +2619,10 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                 const isGrouped = !!set?.dropSetId;
 
                 const hasRestPeriod = !!set?.restPeriodSeconds;
+                const isWarmup = set?.isWarmup;
+                const isFailure = set?.isFailure;
 
-                const setMenuOptions = [
-                  {
-                    id: 'warmup',
-                    onPress: () => handleSetMenuAction('warmup'),
-                    icon: <Flame size={18} color={COLORS.orange[500]} />,
-                    text: 'Warmup',
-                    isActive: set?.isWarmup,
-                    activeIcon: set?.isWarmup ? <Check size={16} color={COLORS.orange[500]} strokeWidth={3} /> : null,
-                    textStyle: set?.isWarmup ? styles.setPopupOptionText__warmup : undefined,
-                  },
-                  {
-                    id: 'failure',
-                    onPress: () => handleSetMenuAction('failure'),
-                    icon: <Zap size={18} color={COLORS.red[500]} />,
-                    text: 'Failure',
-                    isActive: set?.isFailure,
-                    activeIcon: set?.isFailure ? <Check size={16} color={COLORS.red[500]} strokeWidth={3} /> : null,
-                    textStyle: set?.isFailure ? styles.setPopupOptionText__failure : undefined,
-                  },
+                const regularOptions = [
                   {
                     id: 'edit_group',
                     onPress: () => handleSetMenuAction('edit_group'),
@@ -2650,9 +2652,64 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
 
                 return (
                   <>
-                    {setMenuOptions.map((option, index) => {
-                      const isFirst = index === 0;
-                      const isLast = index === setMenuOptions.length - 1;
+                    {/* Toggle row for Warmup/Failure */}
+                    <View style={[
+                      styles.setPopupToggleRow,
+                      defaultPopupStyles.borderRadiusFirst,
+                    ]}>
+                      <TouchableOpacity
+                        style={[
+                          styles.setPopupToggleOption,
+                          !isFailure && styles.setPopupToggleOptionBorder,
+                          isWarmup && styles.setPopupToggleOptionActiveWarmup,
+                          !isWarmup && styles.setPopupToggleOptionInactive,
+                          { borderTopLeftRadius: 8 },
+                        ]}
+                        onPress={() => handleSetMenuAction('warmup')}
+                      >
+                        <View style={styles.setPopupToggleOptionContent}>
+                          <Flame
+                            size={18}
+                            color={isWarmup ? COLORS.white : COLORS.orange[500]}
+                          />
+                          <Text style={[
+                            styles.setPopupToggleOptionText,
+                            isWarmup && styles.setPopupToggleOptionTextActive,
+                            !isWarmup && styles.setPopupToggleOptionTextInactive,
+                          ]}>
+                            Warmup
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.setPopupToggleOption,
+                          isFailure && styles.setPopupToggleOptionActiveFailure,
+                          !isFailure && styles.setPopupToggleOptionInactive,
+                          { borderTopRightRadius: 8 },
+                        ]}
+                        onPress={() => handleSetMenuAction('failure')}
+                      >
+                        <View style={styles.setPopupToggleOptionContent}>
+                          <Zap
+                            size={18}
+                            color={isFailure ? COLORS.white : COLORS.red[500]}
+                          />
+                          <Text style={[
+                            styles.setPopupToggleOptionText,
+                            isFailure && styles.setPopupToggleOptionTextActive,
+                            !isFailure && styles.setPopupToggleOptionTextInactive,
+                          ]}>
+                            Failure
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Regular options */}
+                    {regularOptions.map((option, index) => {
+                      const isFirst = false; // First row is the toggle row
+                      const isLast = index === regularOptions.length - 1;
                       return (
                         <TouchableOpacity
                           key={option.id}
@@ -2660,7 +2717,6 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                             styles.setPopupOptionItem,
                             option.itemStyle,
                             isLast && styles.setPopupOptionItemLast,
-                            isFirst && defaultPopupStyles.borderRadiusFirst,
                             isLast && defaultPopupStyles.borderRadiusLast,
                           ]}
                           onPress={option.onPress}
@@ -2680,6 +2736,14 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                 );
               })()}
             </Pressable>
+          )}
+
+          {/* Backdrop for exercise options menu */}
+          {optionsModalExId && (
+            <Pressable
+              style={styles.popupBackdrop}
+              onPress={() => setOptionsModalExId(null)}
+            />
           )}
 
           {/* Render the exercise options menu outside the Modal, using conditional rendering */}
@@ -3798,6 +3862,55 @@ const styles = StyleSheet.create({
     color: COLORS.red[500],
     fontWeight: '700',
   },
+  // Toggle row styles
+  setPopupToggleRow: {
+    flexDirection: defaultPopupStyles.toggleRow.flexDirection as 'row',
+    borderBottomWidth: defaultPopupStyles.toggleRow.borderBottomWidth,
+    borderBottomColor: defaultPopupStyles.toggleRow.borderBottomColor,
+    position: defaultPopupStyles.toggleRow.position as 'relative',
+    flexShrink: defaultPopupStyles.toggleRow.flexShrink,
+    flexWrap: defaultPopupStyles.toggleRow.flexWrap as 'nowrap',
+  },
+  setPopupToggleOption: {
+    flexGrow: defaultPopupStyles.toggleOption.flexGrow,
+    flexShrink: defaultPopupStyles.toggleOption.flexShrink,
+    paddingBottom: defaultPopupStyles.toggleOption.paddingBottom,
+    paddingTop: defaultPopupStyles.toggleOption.paddingTop,
+    paddingHorizontal: defaultPopupStyles.toggleOption.paddingHorizontal,
+    alignItems: defaultPopupStyles.toggleOption.alignItems as 'center',
+    justifyContent: defaultPopupStyles.toggleOption.justifyContent as 'center',
+  },
+  setPopupToggleOptionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  setPopupToggleOptionBorder: {
+    borderRightWidth: defaultPopupStyles.toggleOptionBorder.borderRightWidth,
+    borderRightColor: defaultPopupStyles.toggleOptionBorder.borderRightColor,
+  },
+  setPopupToggleOptionInactive: {
+    backgroundColor: defaultPopupStyles.toggleOptionBackgroundInactive.backgroundColor,
+  },
+  setPopupToggleOptionActiveWarmup: {
+    backgroundColor: COLORS.orange[500], // Override with warmup color
+  },
+  setPopupToggleOptionActiveFailure: {
+    backgroundColor: COLORS.red[500], // Override with failure color
+  },
+  setPopupToggleOptionText: {
+    fontSize: defaultPopupStyles.toggleOptionText.fontSize,
+    fontWeight: defaultPopupStyles.toggleOptionText.fontWeight as '600',
+    color: defaultPopupStyles.toggleOptionText.color,
+    flexShrink: defaultPopupStyles.toggleOptionText.flexShrink,
+  },
+  setPopupToggleOptionTextInactive: {
+    color: defaultPopupStyles.toggleOptionTextInactive.color,
+  },
+  setPopupToggleOptionTextActive: {
+    color: defaultPopupStyles.toggleOptionTextActive.color,
+    fontWeight: defaultPopupStyles.toggleOptionTextActive.fontWeight as '600',
+  },
   optionDestructive: {
     color: COLORS.red[500],
   },
@@ -3995,6 +4108,12 @@ const styles = StyleSheet.create({
   },
   mainContentWrapper: {
     flex: 1,
+  },
+  popupBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 99,
+    elevation: 9,
+    backgroundColor: 'transparent',
   },
 
   // Superset Selection Overlay
