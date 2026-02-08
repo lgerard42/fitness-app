@@ -27,8 +27,8 @@ const SwipeToDelete: React.FC<SwipeToDeleteProps> = ({
   children,
   onDelete,
   disabled = false,
-  trashBackgroundColor = COLORS.red[100],
-  trashIconColor = COLORS.red[600],
+  trashBackgroundColor = COLORS.red[500],
+  trashIconColor = '#ffffff',
   onSwipeStart,
   onSwipeEnd,
   onCloseTrash,
@@ -39,32 +39,33 @@ const SwipeToDelete: React.FC<SwipeToDeleteProps> = ({
   const screenWidth = Dimensions.get('window').width;
   const translateX = useSharedValue(0);
   const [internalTrashVisible, setInternalTrashVisible] = useState(false);
-  
+
   // Use external trash visibility if provided, otherwise use internal state
   const trashVisible = externalTrashVisible !== undefined ? externalTrashVisible : internalTrashVisible;
-  
-  // Reset translation when trash visibility changes externally
-  React.useEffect(() => {
-    if (externalTrashVisible !== undefined) {
-      if (!externalTrashVisible) {
-        translateX.value = withSpring(0, {
-          damping: 8,
-          stiffness: 100,
-        });
-      } else {
-        translateX.value = withSpring(trashPosition, {
-          damping: 8,
-          stiffness: 100,
-        });
-      }
-    }
-  }, [externalTrashVisible, trashPosition]);
-  
+
+  // Constants
   const cardWidth = screenWidth * 0.9;
   const swipeThreshold = cardWidth * 0.7;
   const velocityThreshold = 500;
   const trashRevealThreshold = 50;
   const trashPosition = -60;
+
+  // Reset translation when trash visibility changes externally
+  React.useEffect(() => {
+    if (externalTrashVisible !== undefined) {
+      if (!externalTrashVisible) {
+        translateX.value = withSpring(0, {
+          damping: 30,
+          stiffness: 150,
+        });
+      } else {
+        translateX.value = withSpring(trashPosition, {
+          damping: 30,
+          stiffness: 150,
+        });
+      }
+    }
+  }, [externalTrashVisible, trashPosition]);
 
   const handleDelete = useCallback(() => {
     onDelete();
@@ -82,16 +83,16 @@ const SwipeToDelete: React.FC<SwipeToDeleteProps> = ({
       setInternalTrashVisible(true);
     }
     translateX.value = withSpring(trashPosition, {
-      damping: 8,
-      stiffness: 100,
+      damping: 30,
+      stiffness: 150,
     });
   }, [onCloseTrash, onShowTrash, trashPosition]);
 
   const hideTrash = useCallback(() => {
     setInternalTrashVisible(false);
     translateX.value = withSpring(0, {
-      damping: 8,
-      stiffness: 100,
+      damping: 30,
+      stiffness: 150,
     });
   }, []);
 
@@ -110,32 +111,49 @@ const SwipeToDelete: React.FC<SwipeToDeleteProps> = ({
     // Check if trash is currently visible by checking translateX position
     const isCurrentlyVisible = translateX.value <= trashPosition + 10; // Small threshold for comparison
 
-    if (swipeDistance > swipeThreshold || swipeVelocity > velocityThreshold) {
-      // Clear intention: immediate deletion
-      runOnJS(handleDelete)();
-    } else if (swipeDistance > trashRevealThreshold) {
-      // Ambiguous swipe: show trash icon
-      runOnJS(showTrash)();
-    } else if (isCurrentlyVisible) {
-      // If trash is visible, check if we should close it
+    // If trash is visible, handle differently - only allow deletion on LEFT swipe
+    if (isCurrentlyVisible) {
+      // Swiping right (positive translationX) - close trash, never delete
       if (translationX > -trashRevealThreshold) {
-        // Swiping right to close
         runOnJS(hideTrash)();
+      }
+      // Swiping left (negative translationX) - check if should delete
+      else if (translationX < 0 && (swipeDistance > swipeThreshold || swipeVelocity > velocityThreshold)) {
+        // Only delete if swiping LEFT with sufficient distance/velocity
+        runOnJS(handleDelete)();
       } else {
         // Small left swipe when trash visible: keep trash visible
         translateX.value = withSpring(trashPosition, {
-          damping: 8,
-          stiffness: 100,
+          damping: 30,
+          stiffness: 150,
         });
       }
-    } else {
-      // Small swipe: reset
-      translateX.value = withSpring(0, {
-        damping: 8,
-        stiffness: 100,
-      });
     }
-    
+    // Trash not visible - normal swipe behavior
+    else {
+      if (swipeDistance > swipeThreshold || swipeVelocity > velocityThreshold) {
+        // Clear intention: immediate deletion (only works when swiping left)
+        if (translationX < 0) {
+          runOnJS(handleDelete)();
+        } else {
+          // Swiping right shouldn't delete, just reset
+          translateX.value = withSpring(0, {
+            damping: 30,
+            stiffness: 150,
+          });
+        }
+      } else if (swipeDistance > trashRevealThreshold && translationX < 0) {
+        // Ambiguous swipe: show trash icon (only on left swipe)
+        runOnJS(showTrash)();
+      } else {
+        // Small swipe: reset
+        translateX.value = withSpring(0, {
+          damping: 30,
+          stiffness: 150,
+        });
+      }
+    }
+
     if (onSwipeEnd) {
       runOnJS(onSwipeEnd)();
     }
@@ -174,7 +192,7 @@ const SwipeToDelete: React.FC<SwipeToDeleteProps> = ({
     const clampedTranslation = Math.max(-cardWidth, Math.min(0, translateX.value));
     const width = Math.abs(clampedTranslation);
     const opacity = clampedTranslation < 0 ? 1 : 0;
-    
+
     return {
       width,
       opacity,
@@ -189,17 +207,15 @@ const SwipeToDelete: React.FC<SwipeToDeleteProps> = ({
 
   return (
     <View style={styles.container}>
-      {/* Red deletion indicator bar */}
+      {/* Red deletion indicator bar with trash icon */}
       <Animated.View
         style={[
           styles.swipeIndicatorBar,
+          { backgroundColor: trashBackgroundColor },
           animatedBarStyle,
         ]}
-      />
-
-      {/* Trash icon background */}
-      {trashVisible && (
-        <View style={[styles.swipeDeleteBackground, { backgroundColor: trashBackgroundColor }]}>
+      >
+        <Animated.View style={styles.swipeIndicatorBarContent}>
           <TouchableOpacity
             onPress={handleDelete}
             style={styles.swipeDeleteButton}
@@ -207,8 +223,8 @@ const SwipeToDelete: React.FC<SwipeToDeleteProps> = ({
           >
             <Trash2 size={20} color={trashIconColor} />
           </TouchableOpacity>
-        </View>
-      )}
+        </Animated.View>
+      </Animated.View>
 
       <GestureDetector gesture={swipeGesture}>
         <Animated.View style={animatedContentStyle}>
@@ -235,18 +251,13 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
     bottom: 0,
-    backgroundColor: COLORS.red[500],
-    zIndex: 0,
-  },
-  swipeDeleteBackground: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: 80,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 1,
+    zIndex: 0,
+  },
+  swipeIndicatorBarContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   swipeDeleteButton: {
     padding: 12,

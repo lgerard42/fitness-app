@@ -9,6 +9,7 @@ import { defaultPopupStyles } from '@/constants/defaultStyles';
 import type { Exercise, Set, ExerciseCategory } from '@/types/workout';
 import type { SetDragListItem, SetDragItem, DropSetHeaderItem, DropSetFooterItem } from '../hooks/useSetDragAndDrop';
 import { TimerKeyboard } from '../Keyboards/timerKeyboardUtil';
+import SwipeToDelete from '@/components/common/SwipeToDelete';
 
 // Extended types for collapse functionality
 interface CollapsibleSetDragItem extends SetDragItem {
@@ -60,6 +61,7 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
     const [isDragging, setIsDragging] = useState<boolean>(false);
     const [collapsedDropsetId, setCollapsedDropsetId] = useState<string | null>(null);
     const [localDragItems, setLocalDragItems] = useState<CollapsibleSetDragListItem[]>([]);
+    const [swipedItemId, setSwipedItemId] = useState<string | null>(null);
     const pendingDragRef = useRef<(() => void) | null>(null);
     const badgeRefs = useRef<Map<string, View>>(new Map());
     const modalContainerRef = useRef<View>(null);
@@ -70,6 +72,13 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
             setLocalDragItems(setDragItems as CollapsibleSetDragListItem[]);
         }
     }, [setDragItems, collapsedDropsetId]);
+
+    // Reset swipe state when modal closes
+    useEffect(() => {
+        if (!visible) {
+            setSwipedItemId(null);
+        }
+    }, [visible]);
 
     // Effect to fire pending drag after collapse
     useEffect(() => {
@@ -132,6 +141,93 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
             }
             return item;
         });
+    }, []);
+
+    // Helper: Reconstruct items from sets (for after deletion)
+    const reconstructItemsFromSets = useCallback((sets: Set[]): CollapsibleSetDragListItem[] => {
+        const items: CollapsibleSetDragListItem[] = [];
+        const processedDropSetIds = new Set<string>();
+
+        sets.forEach((set, index) => {
+            // Check if this is the start of a new dropset
+            const isDropSetStart = set.dropSetId &&
+                (index === 0 || sets[index - 1].dropSetId !== set.dropSetId);
+
+            // Check if this is the end of a dropset
+            const isDropSetEnd = set.dropSetId &&
+                (index === sets.length - 1 || sets[index + 1]?.dropSetId !== set.dropSetId);
+
+            // Add dropset header if this is the start
+            if (isDropSetStart && set.dropSetId && !processedDropSetIds.has(set.dropSetId)) {
+                // Count sets in this dropset
+                const dropSetSets = sets.filter(s => s.dropSetId === set.dropSetId);
+                items.push({
+                    id: `dropset-header-${set.dropSetId}`,
+                    type: 'dropset_header',
+                    dropSetId: set.dropSetId,
+                    setCount: dropSetSets.length,
+                });
+                processedDropSetIds.add(set.dropSetId);
+            }
+
+            // Add the set itself
+            items.push({
+                id: set.id,
+                type: 'set',
+                set,
+                hasRestTimer: !!set.restPeriodSeconds,
+            });
+
+            // Add dropset footer if this is the end
+            if (isDropSetEnd && set.dropSetId) {
+                items.push({
+                    id: `dropset-footer-${set.dropSetId}`,
+                    type: 'dropset_footer',
+                    dropSetId: set.dropSetId,
+                });
+            }
+        });
+
+        return items;
+    }, []);
+
+    // Handle delete set
+    const handleDeleteSet = useCallback((setId: string) => {
+        // Extract all current sets
+        const currentSets: Set[] = [];
+        localDragItems.forEach(item => {
+            if (item.type === 'set') {
+                currentSets.push(item.set);
+            }
+        });
+
+        // Remove the deleted set
+        const updatedSets = currentSets.filter(s => s.id !== setId);
+
+        // Reconstruct items with headers/footers
+        const newItems = reconstructItemsFromSets(updatedSets);
+        setLocalDragItems(newItems);
+
+        // Close trash if this item was swiped
+        if (swipedItemId === setId) {
+            setSwipedItemId(null);
+        }
+
+        // Close index popup if it was for this set
+        if (indexPopup && indexPopup.setId === setId) {
+            setIndexPopup(null);
+        }
+
+        // Close rest timer input if it was for this set
+        if (restTimerInput && restTimerInput.setId === setId) {
+            setRestTimerInput(null);
+            setRestTimerInputString('');
+        }
+    }, [localDragItems, reconstructItemsFromSets, swipedItemId, indexPopup, restTimerInput]);
+
+    // Helper: Close trash icon
+    const closeTrashIcon = useCallback(() => {
+        setSwipedItemId(null);
     }, []);
 
     // Initiate dropset drag - collapse group and prepare for drag
@@ -349,161 +445,177 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
         }
 
         const isSelected = addTimerMode && restTimerSelectedSetIds.has(set.id);
+        const showTrash = swipedItemId === set.id;
 
         return (
-            <TouchableOpacity
-                onLongPress={drag}
-                delayLongPress={100}
-                disabled={isActive}
-                activeOpacity={1}
-                onPress={addTimerMode ? () => {
-                    const newSet = new globalThis.Set(restTimerSelectedSetIds);
-                    if (newSet.has(set.id)) {
-                        newSet.delete(set.id);
-                    } else {
-                        newSet.add(set.id);
-                    }
-                    setRestTimerSelectedSetIds(newSet);
-                } : undefined}
-                style={[
-                    styles.dragItem,
-                    isActive && styles.dragItem__active,
-                    isSelected && styles.dragItem__selected,
-                    set.dropSetId && styles.dragItem__dropset,
-                ]}
+            <SwipeToDelete
+                onDelete={() => handleDeleteSet(set.id)}
+                disabled={isActive || addTimerMode || isDragging}
+                itemId={set.id}
+                isTrashVisible={showTrash}
+                onShowTrash={() => setSwipedItemId(set.id)}
+                onCloseTrash={closeTrashIcon}
+                trashBackgroundColor={COLORS.red[500]}
+                trashIconColor="#ffffff"
             >
-                <View
-                    ref={(ref) => {
-                        if (ref) {
-                            badgeRefs.current.set(set.id, ref);
-                        } else {
-                            badgeRefs.current.delete(set.id);
+                <TouchableOpacity
+                    onLongPress={drag}
+                    delayLongPress={100}
+                    disabled={isActive}
+                    activeOpacity={1}
+                    onPress={addTimerMode ? () => {
+                        // Close trash if visible
+                        if (swipedItemId) {
+                            closeTrashIcon();
                         }
-                    }}
+                        const newSet = new globalThis.Set(restTimerSelectedSetIds);
+                        if (newSet.has(set.id)) {
+                            newSet.delete(set.id);
+                        } else {
+                            newSet.add(set.id);
+                        }
+                        setRestTimerSelectedSetIds(newSet);
+                    } : undefined}
+                    style={[
+                        styles.dragItem,
+                        isActive && styles.dragItem__active,
+                        isSelected && styles.dragItem__selected,
+                        set.dropSetId && styles.dragItem__dropset,
+                    ]}
                 >
-                    <TouchableOpacity
-                        style={[
-                            styles.setIndexBadge,
-                            set.isWarmup && styles.setIndexBadge__warmup,
-                            set.isFailure && styles.setIndexBadge__failure,
-                        ]}
-                        onPress={(e) => {
-                            e.stopPropagation();
-                            const badgeRef = badgeRefs.current.get(set.id);
-                            if (badgeRef && modalContainerRef.current) {
-                                // Measure badge position relative to window
-                                badgeRef.measureInWindow((badgeX, badgeY, badgeWidth, badgeHeight) => {
-                                    // Measure modal container position relative to window
-                                    modalContainerRef.current?.measureInWindow((containerX, containerY) => {
-                                        // Calculate position relative to modal container
-                                        const relativeX = badgeX - containerX;
-                                        const relativeY = badgeY - containerY;
-
-                                        // Position popup below the badge, aligned to the left edge
-                                        setIndexPopup({
-                                            setId: set.id,
-                                            top: relativeY + badgeHeight + 4,
-                                            left: relativeX,
-                                        });
-                                    });
-                                });
+                    <View
+                        ref={(ref) => {
+                            if (ref) {
+                                badgeRefs.current.set(set.id, ref);
+                            } else {
+                                badgeRefs.current.delete(set.id);
                             }
                         }}
                     >
-                        {isSubIndex ? (
-                            <Text style={[
-                                styles.setIndexText__groupSub,
-                                set.isWarmup && styles.setIndexText__groupSub__warmup,
-                                set.isFailure && styles.setIndexText__groupSub__failure,
-                            ]}>
-                                {displayIndexText}
+                        <TouchableOpacity
+                            style={[
+                                styles.setIndexBadge,
+                                set.isWarmup && styles.setIndexBadge__warmup,
+                                set.isFailure && styles.setIndexBadge__failure,
+                            ]}
+                            onPress={(e) => {
+                                e.stopPropagation();
+                                const badgeRef = badgeRefs.current.get(set.id);
+                                if (badgeRef && modalContainerRef.current) {
+                                    // Measure badge position relative to window
+                                    badgeRef.measureInWindow((badgeX, badgeY, badgeWidth, badgeHeight) => {
+                                        // Measure modal container position relative to window
+                                        modalContainerRef.current?.measureInWindow((containerX, containerY) => {
+                                            // Calculate position relative to modal container
+                                            const relativeX = badgeX - containerX;
+                                            const relativeY = badgeY - containerY;
+
+                                            // Position popup below the badge, aligned to the left edge
+                                            setIndexPopup({
+                                                setId: set.id,
+                                                top: relativeY + badgeHeight + 4,
+                                                left: relativeX,
+                                            });
+                                        });
+                                    });
+                                }
+                            }}
+                        >
+                            {isSubIndex ? (
+                                <Text style={[
+                                    styles.setIndexText__groupSub,
+                                    set.isWarmup && styles.setIndexText__groupSub__warmup,
+                                    set.isFailure && styles.setIndexText__groupSub__failure,
+                                ]}>
+                                    {displayIndexText}
+                                </Text>
+                            ) : (
+                                <Text style={[
+                                    styles.setIndexText,
+                                    set.isWarmup && styles.setIndexText__warmup,
+                                    set.isFailure && styles.setIndexText__failure,
+                                ]}>
+                                    {displayIndexText}
+                                </Text>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.setInfo}>
+                        {category === 'Lifts' ? (
+                            <Text style={styles.setInfoText}>
+                                {set.weight || '-'} {weightUnit} × {set.reps || '-'}
+                            </Text>
+                        ) : category === 'Cardio' ? (
+                            <Text style={styles.setInfoText}>
+                                {set.duration || '-'} / {set.distance || '-'}
                             </Text>
                         ) : (
-                            <Text style={[
-                                styles.setIndexText,
-                                set.isWarmup && styles.setIndexText__warmup,
-                                set.isFailure && styles.setIndexText__failure,
-                            ]}>
-                                {displayIndexText}
+                            <Text style={styles.setInfoText}>
+                                {set.reps || '-'} reps
                             </Text>
-                        )}
-                    </TouchableOpacity>
-                </View>
-
-                <View style={styles.setInfo}>
-                    {category === 'Lifts' ? (
-                        <Text style={styles.setInfoText}>
-                            {set.weight || '-'} {weightUnit} × {set.reps || '-'}
-                        </Text>
-                    ) : category === 'Cardio' ? (
-                        <Text style={styles.setInfoText}>
-                            {set.duration || '-'} / {set.distance || '-'}
-                        </Text>
-                    ) : (
-                        <Text style={styles.setInfoText}>
-                            {set.reps || '-'} reps
-                        </Text>
-                    )}
-                </View>
-
-                {addTimerMode ? (
-                    <View style={styles.checkboxContainer}>
-                        {restTimerSelectedSetIds.has(set.id) ? (
-                            <Check size={20} color={COLORS.blue[600]} strokeWidth={3} />
-                        ) : (
-                            <Square size={20} color={COLORS.slate[400]} />
                         )}
                     </View>
-                ) : (
-                    <>
-                        <View style={styles.setIndicators}>
-                            {set.isWarmup && (
-                                <Flame size={14} color={COLORS.orange[500]} />
-                            )}
-                            {set.isFailure && (
-                                <Zap size={14} color={COLORS.red[500]} />
-                            )}
-                            {set.completed && (
-                                <Check size={14} color={COLORS.green[500]} />
+
+                    {addTimerMode ? (
+                        <View style={styles.checkboxContainer}>
+                            {restTimerSelectedSetIds.has(set.id) ? (
+                                <Check size={20} color={COLORS.blue[600]} strokeWidth={3} />
+                            ) : (
+                                <Square size={20} color={COLORS.slate[400]} />
                             )}
                         </View>
+                    ) : (
+                        <>
+                            <View style={styles.setIndicators}>
+                                {set.isWarmup && (
+                                    <Flame size={14} color={COLORS.orange[500]} />
+                                )}
+                                {set.isFailure && (
+                                    <Zap size={14} color={COLORS.red[500]} />
+                                )}
+                                {set.completed && (
+                                    <Check size={14} color={COLORS.green[500]} />
+                                )}
+                            </View>
 
-                        <TouchableOpacity
-                            onPress={() => {
-                                const currentValue = set.restPeriodSeconds
-                                    ? set.restPeriodSeconds.toString()
-                                    : '';
-                                setRestTimerInputString(currentValue);
-                                setRestTimerInput({
-                                    setId: set.id,
-                                    currentValue,
-                                });
-                            }}
-                            style={[
-                                styles.restTimerBadge,
-                                !setItemData.hasRestTimer && styles.restTimerBadge__add
-                            ]}
-                        >
-                            <Timer size={12} color={setItemData.hasRestTimer ? COLORS.blue[500] : COLORS.slate[400]} />
-                            <Text style={[
-                                styles.restTimerText,
-                                !setItemData.hasRestTimer && styles.restTimerText__add
-                            ]}>
-                                {setItemData.hasRestTimer
-                                    ? formatRestTime(set.restPeriodSeconds!)
-                                    : '+ rest'
-                                }
-                            </Text>
-                        </TouchableOpacity>
-                    </>
-                )}
+                            <TouchableOpacity
+                                onPress={() => {
+                                    const currentValue = set.restPeriodSeconds
+                                        ? set.restPeriodSeconds.toString()
+                                        : '';
+                                    setRestTimerInputString(currentValue);
+                                    setRestTimerInput({
+                                        setId: set.id,
+                                        currentValue,
+                                    });
+                                }}
+                                style={[
+                                    styles.restTimerBadge,
+                                    !setItemData.hasRestTimer && styles.restTimerBadge__add
+                                ]}
+                            >
+                                <Timer size={12} color={setItemData.hasRestTimer ? COLORS.blue[500] : COLORS.slate[400]} />
+                                <Text style={[
+                                    styles.restTimerText,
+                                    !setItemData.hasRestTimer && styles.restTimerText__add
+                                ]}>
+                                    {setItemData.hasRestTimer
+                                        ? formatRestTime(set.restPeriodSeconds!)
+                                        : '+ rest'
+                                    }
+                                </Text>
+                            </TouchableOpacity>
+                        </>
+                    )}
 
-                {set.dropSetId && !isActive && (
-                    <View style={styles.dropSetIndicator} />
-                )}
-            </TouchableOpacity>
+                    {set.dropSetId && !isActive && (
+                        <View style={styles.dropSetIndicator} />
+                    )}
+                </TouchableOpacity>
+            </SwipeToDelete>
         );
-    }, [exercise, localDragItems, renderDropSetHeader, renderDropSetFooter, addTimerMode, restTimerSelectedSetIds, collapsedDropsetId]);
+    }, [exercise, localDragItems, renderDropSetHeader, renderDropSetFooter, addTimerMode, restTimerSelectedSetIds, collapsedDropsetId, swipedItemId, handleDeleteSet, closeTrashIcon, isDragging]);
 
     const keyExtractor = useCallback((item: CollapsibleSetDragListItem) => item.id, []);
 
@@ -1042,7 +1154,7 @@ const styles = StyleSheet.create({
     dropSetIndicator: {
         position: 'absolute',
         left: -8, // Position at the left edge (before margin) to create indentation effect
-        top: -4,
+        top: -5,
         bottom: -4,
         width: 4,
         backgroundColor: COLORS.indigo[500],
