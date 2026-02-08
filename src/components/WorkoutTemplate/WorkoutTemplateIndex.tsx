@@ -2705,25 +2705,29 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                 const isInGroup = currentExercise ? isExerciseInSuperset(currentWorkout.exercises, optionsModalExId) : false;
 
                 const options = [
-                  { id: 'replace', onPress: () => handleReplaceExercise(optionsModalExId), icon: <RefreshCw size={18} color={COLORS.white} />, text: 'Replace Exercise' },
-                  { id: 'superset', onPress: () => handleEditSupersetWrapper(optionsModalExId), icon: <Layers size={18} color={COLORS.white} />, text: isInGroup ? 'Edit superset' : 'Create Group' },
-                  { id: 'delete', onPress: () => handleDeleteExercise(optionsModalExId), icon: <Trash2 size={18} color={COLORS.white} />, text: 'Delete Exercise', isDelete: true },
+                  {
+                    id: 'superset',
+                    onPress: () => handleEditSupersetWrapper(optionsModalExId),
+                    icon: <Layers size={18} color={COLORS.white} />,
+                    text: isInGroup ? 'Edit superset' : 'Create Group'
+                  },
                 ];
+
+                // Replace/Delete row is always the last option ROW
+                const isReplaceDeleteRowLast = true;
 
                 return (
                   <>
                     {options.map((option, index) => {
-                      const isFirst = index === 0;
-                      const isLast = index === options.length - 1;
+                      const isFirstRow = index === 0;
+                      // Create Group is NOT the last row (Replace/Delete is), so it keeps its bottom border
                       return (
                         <TouchableOpacity
                           key={option.id}
                           style={[
                             styles.setPopupOptionItem,
-                            option.isDelete && styles.setPopupOptionItemDelete,
-                            isLast && styles.setPopupOptionItemLast,
-                            isFirst && defaultPopupStyles.borderRadiusFirst,
-                            isLast && defaultPopupStyles.borderRadiusLast,
+                            // Don't apply setPopupOptionItemLast - this row is not the last row
+                            isFirstRow && defaultPopupStyles.borderRadiusFirst,
                           ]}
                           onPress={option.onPress}
                         >
@@ -2734,6 +2738,40 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                         </TouchableOpacity>
                       );
                     })}
+                    {/* Replace/Delete row - matches Set Inputs/Trash structure */}
+                    {/* This is the last option ROW, so it should have no bottom border */}
+                    <View style={[
+                      styles.setPopupOptionWrapper,
+                      isReplaceDeleteRowLast && styles.setPopupOptionWrapperLast
+                    ]}>
+                      <TouchableOpacity
+                        style={[
+                          styles.setPopupOptionItemInRow,
+                          styles.setPopupOptionItemFlex,
+                          styles.setPopupOptionItemWithBorder,
+                          styles.setPopupOptionItemBackground,
+                          { borderBottomLeftRadius: 8 }, // Only bottom-left since there's a row above
+                        ]}
+                        onPress={() => handleReplaceExercise(optionsModalExId)}
+                      >
+                        <View style={styles.setPopupOptionContent}>
+                          <RefreshCw size={18} color={COLORS.white} />
+                          <Text style={styles.setPopupOptionText}>Replace Exercise</Text>
+                        </View>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.setPopupOptionItemDelete,
+                          styles.setPopupOptionItemDeleteFixed,
+                          { borderBottomRightRadius: 8 }, // Only bottom-right since there's a row above
+                        ]}
+                        onPress={() => handleDeleteExercise(optionsModalExId)}
+                      >
+                        <View style={styles.setPopupOptionContent}>
+                          <Trash2 size={18} color={COLORS.white} />
+                        </View>
+                      </TouchableOpacity>
+                    </View>
                   </>
                 );
               })()}
@@ -3689,7 +3727,6 @@ const styles = StyleSheet.create({
     zIndex: defaultPopupStyles.container.zIndex,
     borderWidth: defaultPopupStyles.container.borderWidth,
     borderColor: defaultPopupStyles.container.borderColor,
-    width: 200,
   },
   closeButton: {},
   setPopupOptionItem: {
@@ -3699,8 +3736,42 @@ const styles = StyleSheet.create({
   setPopupOptionItemLast: {
     ...defaultPopupStyles.borderBottomLast,
   },
+  // Option inside a row container (no bottom border - row container handles it)
+  setPopupOptionItemInRow: {
+    ...defaultPopupStyles.optionInRow,
+  },
+  setPopupOptionItemBackground: {
+    ...defaultPopupStyles.optionBackground,
+  },
   setPopupOptionItemDelete: {
-    ...defaultPopupStyles.optionDelete,
+    ...defaultPopupStyles.iconOnlyOption,
+    ...defaultPopupStyles.optionInRow, // Use optionInRow to remove bottom border
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  setPopupOptionItemDeleteFixed: {
+    ...defaultPopupStyles.iconOnlyOption,
+    ...defaultPopupStyles.optionInRow, // Use optionInRow to remove bottom border
+    borderBottomRightRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  setPopupOptionWrapper: {
+    flexDirection: defaultPopupStyles.optionRow.flexDirection as 'row',
+    alignItems: defaultPopupStyles.optionRow.alignItems as 'stretch',
+    padding: defaultPopupStyles.optionRow.padding,
+    borderBottomWidth: defaultPopupStyles.optionRow.borderBottomWidth,
+    borderBottomColor: defaultPopupStyles.optionRow.borderBottomColor,
+  },
+  setPopupOptionWrapperLast: {
+    ...defaultPopupStyles.borderBottomLast,
+  },
+  setPopupOptionItemFlex: {
+    ...defaultPopupStyles.optionFlex,
+  },
+  setPopupOptionItemWithBorder: {
+    borderRightWidth: 1,
+    borderRightColor: COLORS.slate[600],
   },
   setPopupOptionContent: {
     flexDirection: defaultPopupStyles.optionContent.flexDirection as 'row',
@@ -3714,7 +3785,7 @@ const styles = StyleSheet.create({
   setPopupOptionText: {
     ...defaultPopupStyles.optionText,
     fontWeight: '500',
-    flex: 1,
+    // Remove flex: 1 to allow text to size naturally and prevent container from being too narrow
   },
   setPopupOptionText__active: {
     color: COLORS.white,

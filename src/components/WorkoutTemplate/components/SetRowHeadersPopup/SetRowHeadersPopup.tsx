@@ -405,7 +405,7 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
             },
             {
                 id: `lr-split-toggle${idSuffix}`,
-                label: 'L/R Split',
+                label: 'L | R',
                 isActive: currentExercise?.repsConfigMode === 'lrSplit',
                 onPress: () => {
                     handleWorkoutUpdate({
@@ -652,10 +652,9 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
                             ]}>
                                 <TouchableOpacity
                                     style={[
-                                        styles.columnHeaderPopupOption,
+                                        styles.columnHeaderPopupOptionInRow,
                                         styles.columnHeaderPopupOptionFlex,
                                         styles.columnHeaderPopupOptionWithBorder,
-                                        isLast && styles.columnHeaderPopupOptionLast,
                                         isFirstOption && { borderTopLeftRadius: 8 },
                                         isLast && { borderBottomLeftRadius: 8 }
                                     ]}
@@ -670,11 +669,9 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     style={[
-                                        styles.columnHeaderPopupOption,
                                         styles.columnHeaderPopupOptionDelete,
                                         styles.columnHeaderPopupOptionDeleteFixed,
                                         option.deleteOption.isLocked && styles.columnHeaderPopupOptionDeleteDisabled,
-                                        isLast && styles.columnHeaderPopupOptionLast,
                                         isFirstOption && { borderTopRightRadius: 8 },
                                         isLast && { borderBottomRightRadius: 8 }
                                     ]}
@@ -763,6 +760,7 @@ const baseStyles = StyleSheet.create({
     columnHeaderPopupBackdrop: {},
     columnHeaderPopupContainer: {},
     columnHeaderPopupOption: {},
+    columnHeaderPopupOptionInRow: {},
     columnHeaderPopupOptionLast: {},
     columnHeaderPopupOptionContent: {},
     columnHeaderPopupOptionText: {},
@@ -797,6 +795,10 @@ const styles = {
         { ...defaultPopupStyles.option, ...defaultPopupStyles.optionBackground },
         baseStyles.columnHeaderPopupOption
     ),
+    columnHeaderPopupOptionInRow: getMergedStyle(
+        { ...defaultPopupStyles.optionInRow, ...defaultPopupStyles.optionBackground },
+        baseStyles.columnHeaderPopupOptionInRow
+    ),
     columnHeaderPopupOptionLast: getMergedStyle(defaultPopupStyles.borderBottomLast, baseStyles.columnHeaderPopupOptionLast),
     columnHeaderPopupOptionContent: getMergedStyle(defaultPopupStyles.optionContent, baseStyles.columnHeaderPopupOptionContent),
     columnHeaderPopupOptionText: getMergedStyle(defaultPopupStyles.optionText, baseStyles.columnHeaderPopupOptionText),
@@ -807,10 +809,13 @@ const styles = {
     columnHeaderPopupOptionFlex: getMergedStyle(defaultPopupStyles.optionFlex, baseStyles.columnHeaderPopupOptionFlex),
     columnHeaderPopupOptionWithBorder: getMergedStyle(defaultPopupStyles.optionRowWithBorder, baseStyles.columnHeaderPopupOptionWithBorder),
     columnHeaderPopupOptionDeleteFixed: getMergedStyle(
-        { ...defaultPopupStyles.iconOnlyOption, borderBottomRightRadius: 6 },
+        { ...defaultPopupStyles.iconOnlyOption, ...defaultPopupStyles.optionInRow, borderBottomRightRadius: 6 },
         baseStyles.columnHeaderPopupOptionDeleteFixed
     ),
-    columnHeaderPopupOptionDelete: getMergedStyle(defaultPopupStyles.iconOnlyOption, baseStyles.columnHeaderPopupOptionDelete),
+    columnHeaderPopupOptionDelete: getMergedStyle(
+        { ...defaultPopupStyles.iconOnlyOption, ...defaultPopupStyles.optionInRow },
+        baseStyles.columnHeaderPopupOptionDelete
+    ),
     columnHeaderPopupOptionDeleteDisabled: getMergedStyle(defaultPopupStyles.iconOnlyOptionDisabled, baseStyles.columnHeaderPopupOptionDeleteDisabled),
     columnHeaderPopupOptionLocked: getMergedStyle(defaultPopupStyles.optionBackgroundDisabled, baseStyles.columnHeaderPopupOptionLocked),
     columnHeaderPopupRowOptions: getMergedStyle(defaultPopupStyles.toggleRow, baseStyles.columnHeaderPopupRowOptions),

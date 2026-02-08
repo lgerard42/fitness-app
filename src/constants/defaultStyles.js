@@ -7,11 +7,13 @@ export const defaultHiitColorScheme = COLORS.burgundy;
 
 export const defaultPopupStyles = {
     // Container
+    // Container sizes to content - absolutely positioned elements size to content by default
+    // Option rows use flexShrink: 0 and flexWrap: 'nowrap' to ensure content fits perfectly
     container: {
         position: 'absolute',
         backgroundColor: COLORS.slate[700],
         borderRadius: 8,
-        minWidth: 220,
+        minWidth: 200, // Minimum width to prevent collapse, container can grow to fit content
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.15,
@@ -25,7 +27,7 @@ export const defaultPopupStyles = {
         position: 'absolute',
         backgroundColor: COLORS.white,
         borderRadius: 8,
-        minWidth: 220,
+        minWidth: 200, // Minimum width to prevent collapse, container can grow to fit content
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.25,
@@ -47,6 +49,8 @@ export const defaultPopupStyles = {
         borderBottomWidth: 1,
         borderBottomColor: COLORS.slate[500],
         position: 'relative',
+        flexShrink: 0, // Prevent row from shrinking
+        flexWrap: 'nowrap', // Prevent toggle options from wrapping to next line
     },
     toggleLabelWrapper: {
         position: 'absolute',
@@ -78,9 +82,11 @@ export const defaultPopupStyles = {
         paddingTop: 0,
     },
     toggleOption: {
-        flex: 1,
+        flexGrow: 1, // Allow to grow to fill space
+        flexShrink: 0, // Prevent toggle option from shrinking below content size
         paddingBottom: 12,
         paddingTop: 16,
+        paddingHorizontal: 16,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -94,6 +100,10 @@ export const defaultPopupStyles = {
         flexDirection: 'row',
         alignItems: 'stretch',
         padding: 0,
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.slate[550],
+        flexShrink: 0, // Prevent row from shrinking
+        flexWrap: 'nowrap', // Prevent options from wrapping to next line
     },
     optionRowWithBorder: {
         borderRightWidth: 1,
@@ -106,6 +116,14 @@ export const defaultPopupStyles = {
         paddingHorizontal: 16,
         borderBottomWidth: 1,
         borderBottomColor: COLORS.slate[550],
+        flexShrink: 0, // Prevent option from shrinking
+    },
+    // Option inside a row container (no bottom border - row container handles it)
+    optionInRow: {
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderBottomWidth: 0, // No bottom border - row container handles it
+        flexShrink: 0, // Prevent option from shrinking
     },
     optionWithIcon: {
         paddingVertical: 12,
@@ -123,9 +141,13 @@ export const defaultPopupStyles = {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
+        flexShrink: 0, // Prevent content from shrinking
+        flexWrap: 'nowrap', // Prevent wrapping
     },
     optionFlex: {
-        flex: 1,
+        flexGrow: 1, // Allow to grow to fill space
+        flexShrink: 1, // Allow to shrink, but text inside (flexShrink: 0) will prevent it from going too small
+        minWidth: 0, // Allow flex to work properly with text
     },
 
     // Icon-only options
@@ -170,13 +192,13 @@ export const defaultPopupStyles = {
         fontSize: 14,
         fontWeight: '600',
         color: COLORS.white,
-        flex: 1,
+        flexShrink: 0, // Prevent text from shrinking
     },
     optionTextLight: {
         fontSize: 14,
         fontWeight: '600',
         color: COLORS.slate[900],
-        flex: 1,
+        flexShrink: 0, // Prevent text from shrinking
     },
     optionTextActive: {
         color: COLORS.white,
@@ -189,6 +211,7 @@ export const defaultPopupStyles = {
         fontSize: 14,
         fontWeight: '600',
         color: COLORS.white,
+        flexShrink: 0, // Prevent toggle option text from shrinking
     },
     toggleOptionTextInactive: {
         color: COLORS.slate[300],
