@@ -1,12 +1,29 @@
-import React, { useCallback, useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable, TextInput, ScrollView } from 'react-native';
+import React, { useCallback, useMemo, useState, useRef, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
 import { X, Timer, Flame, Zap, Check, Layers, Plus, Square } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { formatRestTime, parseRestTimeInput } from '@/utils/workoutHelpers';
+import { defaultPopupStyles } from '@/constants/defaultStyles';
 import type { Exercise, Set, ExerciseCategory } from '@/types/workout';
 import type { SetDragListItem, SetDragItem, DropSetHeaderItem, DropSetFooterItem } from '../hooks/useSetDragAndDrop';
+import { TimerKeyboard } from '../Keyboards/timerKeyboardUtil';
+
+// Extended types for collapse functionality
+interface CollapsibleSetDragItem extends SetDragItem {
+    isCollapsed?: boolean;
+}
+
+interface CollapsibleDropSetHeaderItem extends DropSetHeaderItem {
+    isCollapsed?: boolean;
+}
+
+interface CollapsibleDropSetFooterItem extends DropSetFooterItem {
+    isCollapsed?: boolean;
+}
+
+type CollapsibleSetDragListItem = CollapsibleSetDragItem | CollapsibleDropSetHeaderItem | CollapsibleDropSetFooterItem;
 
 interface SetDragModalProps {
     visible: boolean;
@@ -37,41 +54,224 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
 }) => {
     const [indexPopup, setIndexPopup] = useState<{ setId: string; top: number; left: number } | null>(null);
     const [restTimerInput, setRestTimerInput] = useState<{ setId: string; currentValue: string } | null>(null);
-    const [applyToMode, setApplyToMode] = useState<{ selectedSetIds: string[] } | null>(null);
+    const [restTimerInputString, setRestTimerInputString] = useState<string>('');
+    const [addTimerMode, setAddTimerMode] = useState<boolean>(false);
+    const [restTimerSelectedSetIds, setRestTimerSelectedSetIds] = useState<globalThis.Set<string>>(new globalThis.Set());
+    const [isDragging, setIsDragging] = useState<boolean>(false);
+    const [collapsedDropsetId, setCollapsedDropsetId] = useState<string | null>(null);
+    const [localDragItems, setLocalDragItems] = useState<CollapsibleSetDragListItem[]>([]);
+    const pendingDragRef = useRef<(() => void) | null>(null);
     const badgeRefs = useRef<Map<string, View>>(new Map());
     const modalContainerRef = useRef<View>(null);
-    const renderDropSetHeader = useCallback((item: DropSetHeaderItem) => {
+
+    // Sync local drag items with parent when not in collapsed state
+    useEffect(() => {
+        if (!collapsedDropsetId) {
+            setLocalDragItems(setDragItems as CollapsibleSetDragListItem[]);
+        }
+    }, [setDragItems, collapsedDropsetId]);
+
+    // Effect to fire pending drag after collapse
+    useEffect(() => {
+        if (collapsedDropsetId && pendingDragRef.current) {
+            const timeoutId = setTimeout(() => {
+                if (pendingDragRef.current) {
+                    pendingDragRef.current();
+                    pendingDragRef.current = null;
+                }
+            }, 50);
+            return () => clearTimeout(timeoutId);
+        }
+    }, [collapsedDropsetId, localDragItems]);
+
+    // Helper: Collapse a dropset (mark items as collapsed)
+    const collapseDropset = useCallback((items: CollapsibleSetDragListItem[], dropsetId: string): CollapsibleSetDragListItem[] => {
+        return items.map(item => {
+            if (item.type === 'set' && item.set.dropSetId === dropsetId) {
+                return { ...item, isCollapsed: true };
+            }
+            if (item.type === 'dropset_header' && item.dropSetId === dropsetId) {
+                return { ...item, isCollapsed: true };
+            }
+            if (item.type === 'dropset_footer' && item.dropSetId === dropsetId) {
+                return { ...item, isCollapsed: true };
+            }
+            return item;
+        });
+    }, []);
+
+    // Helper: Collapse all dropsets except the one being dragged
+    const collapseAllOtherDropsets = useCallback((items: CollapsibleSetDragListItem[], draggedDropsetId: string): CollapsibleSetDragListItem[] => {
+        const otherDropsetIds = new globalThis.Set<string>();
+        items.forEach(item => {
+            if (item.type === 'set' && item.set.dropSetId && item.set.dropSetId !== draggedDropsetId) {
+                otherDropsetIds.add(item.set.dropSetId);
+            }
+        });
+
+        return items.map(item => {
+            if (item.type === 'set' && item.set.dropSetId && otherDropsetIds.has(item.set.dropSetId)) {
+                return { ...item, isCollapsed: true };
+            }
+            if (item.type === 'dropset_header' && otherDropsetIds.has(item.dropSetId)) {
+                return { ...item, isCollapsed: true };
+            }
+            if (item.type === 'dropset_footer' && otherDropsetIds.has(item.dropSetId)) {
+                return { ...item, isCollapsed: true };
+            }
+            return item;
+        });
+    }, []);
+
+    // Helper: Expand all collapsed items
+    const expandAllDropsets = useCallback((items: CollapsibleSetDragListItem[]): CollapsibleSetDragListItem[] => {
+        return items.map(item => {
+            if ('isCollapsed' in item && item.isCollapsed) {
+                const { isCollapsed, ...rest } = item;
+                return rest as CollapsibleSetDragListItem;
+            }
+            return item;
+        });
+    }, []);
+
+    // Initiate dropset drag - collapse group and prepare for drag
+    const initiateDropsetDrag = useCallback((dropsetId: string, drag: () => void) => {
+        // Collapse this dropset and all others
+        let collapsed = collapseDropset(localDragItems, dropsetId);
+        collapsed = collapseAllOtherDropsets(collapsed, dropsetId);
+
+        setLocalDragItems(collapsed);
+        setCollapsedDropsetId(dropsetId);
+        pendingDragRef.current = drag;
+    }, [localDragItems, collapseDropset, collapseAllOtherDropsets]);
+
+    // Memoize restPeriodSetInfo to prevent unnecessary effect re-fires in TimerKeyboard
+    const restPeriodSetInfoMemo = useMemo(() => {
+        if (exercise && restTimerInput) {
+            return {
+                exerciseId: exercise.instanceId,
+                setId: restTimerInput.setId,
+            };
+        }
+        return null;
+    }, [exercise?.instanceId, restTimerInput?.setId]);
+
+    const renderDropSetHeader = useCallback((
+        item: CollapsibleDropSetHeaderItem,
+        drag?: () => void,
+        isActive?: boolean
+    ) => {
+        const isCollapsed = item.isCollapsed || collapsedDropsetId === item.dropSetId;
+        const isDraggedDropset = collapsedDropsetId === item.dropSetId;
+        const shouldRenderGhosts = isCollapsed && !isDraggedDropset;
+        const isActivelyDragging = isActive && isDraggedDropset;
+
+        // Get all sets in this dropset for ghost rendering
+        const dropsetSets = localDragItems.filter(
+            (i): i is CollapsibleSetDragItem => i.type === 'set' && i.set.dropSetId === item.dropSetId
+        );
+
+        return (
+            <TouchableOpacity
+                onLongPress={() => initiateDropsetDrag(item.dropSetId, drag!)}
+                disabled={isActive}
+                delayLongPress={150}
+                activeOpacity={1}
+                style={[
+                    styles.dropsetHeaderContainer,
+                    isActive && styles.dropsetHeaderContainer__active,
+                ]}
+            >
+                <View
+                    style={[
+                        styles.dropsetHeader,
+                        isDragging && styles.dropsetHeader__dragging,
+                        isDraggedDropset && styles.dropsetHeader__collapsed,
+                        isActivelyDragging && styles.dropsetHeader__activelyDragging,
+                    ]}
+                >
+                    <View style={styles.dropSetIndicatorHeader} />
+                    <View style={styles.dropsetHeaderContent}>
+                        <Text style={styles.dropsetHeaderText}>Dropset ({item.setCount} sets)</Text>
+                        {isDragging && (
+                            <View style={styles.dropsetHeaderLine} />
+                        )}
+                    </View>
+                </View>
+
+                {/* Render ghost items when collapsed but not being dragged */}
+                {shouldRenderGhosts && (
+                    <View>
+                        {dropsetSets.map((setItem, index) => (
+                            <View
+                                key={setItem.id}
+                                style={[
+                                    styles.ghostItem,
+                                    index === 0 && styles.ghostItem__first,
+                                    index === dropsetSets.length - 1 && styles.ghostItem__last,
+                                ]}
+                            >
+                                <View style={styles.dropSetIndicator} />
+                                <View style={styles.ghostItemContent}>
+                                    <View style={styles.setIndexBadge}>
+                                        <Text style={styles.setIndexText}>·</Text>
+                                    </View>
+                                    <Text style={styles.ghostItemText}>
+                                        {setItem.set.weight || '-'} × {setItem.set.reps || '-'}
+                                    </Text>
+                                </View>
+                            </View>
+                        ))}
+                        {/* Ghost footer */}
+                        <View style={styles.dropsetFooter}>
+                            <View style={styles.dropSetIndicatorFooter} />
+                        </View>
+                    </View>
+                )}
+            </TouchableOpacity>
+        );
+    }, [isDragging, collapsedDropsetId, localDragItems, initiateDropsetDrag]);
+
+    const renderDropSetFooter = useCallback((item: CollapsibleDropSetFooterItem) => {
+        const isCollapsed = item.isCollapsed || collapsedDropsetId === item.dropSetId;
+
+        // If collapsed, don't render (it's shown in the header ghost)
+        if (isCollapsed) {
+            return <View style={styles.hiddenItem} />;
+        }
+
         return (
             <View
-                style={styles.dropsetHeader}
+                style={[
+                    styles.dropsetFooter,
+                    isDragging && styles.dropsetFooter__dragging
+                ]}
                 pointerEvents="box-none"
             >
-                <Text style={styles.dropsetHeaderText}>Dropset ({item.setCount} sets)</Text>
+                <View style={styles.dropSetIndicatorFooter} />
             </View>
         );
-    }, []);
+    }, [isDragging, collapsedDropsetId]);
 
-    const renderDropSetFooter = useCallback((item: DropSetFooterItem) => {
-        return (
-            <View
-                style={styles.dropsetFooter}
-                pointerEvents="box-none"
-            />
-        );
-    }, []);
-
-    const renderDragItem = useCallback(({ item, drag, isActive, getIndex }: RenderItemParams<SetDragListItem>) => {
-        // Handle dropset headers and footers (non-draggable)
+    const renderDragItem = useCallback(({ item, drag, isActive, getIndex }: RenderItemParams<CollapsibleSetDragListItem>) => {
+        // Handle dropset headers - now draggable
         if (item.type === 'dropset_header') {
-            return renderDropSetHeader(item);
+            return renderDropSetHeader(item as CollapsibleDropSetHeaderItem, drag, isActive);
         }
         if (item.type === 'dropset_footer') {
-            return renderDropSetFooter(item);
+            return renderDropSetFooter(item as CollapsibleDropSetFooterItem);
         }
 
         // Handle regular sets
-        const setItem = item as SetDragItem;
-        const set = setItem.set;
+        const setItemData = item as CollapsibleSetDragItem;
+
+        // Handle collapsed sets - render hidden
+        const isCollapsed = setItemData.isCollapsed || (setItemData.set.dropSetId && collapsedDropsetId === setItemData.set.dropSetId);
+        if (isCollapsed) {
+            return <View style={styles.hiddenItem} />;
+        }
+
+        const set = setItemData.set;
         const category = exercise?.category || 'Lifts';
         const weightUnit = exercise?.weightUnit || 'lbs';
 
@@ -81,13 +281,13 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
         // Count how many sets come before this position (excluding headers/footers)
         let setCountBefore = 0;
         for (let i = 0; i < fullArrayIndex; i++) {
-            if (setDragItems[i]?.type === 'set') {
+            if (localDragItems[i]?.type === 'set') {
                 setCountBefore++;
             }
         }
 
         // Get all sets in order for dropset calculations
-        const allSets = setDragItems.filter((i): i is SetDragItem => i.type === 'set');
+        const allSets = localDragItems.filter((i): i is CollapsibleSetDragItem => i.type === 'set');
         const currentSetIndex = setCountBefore;
 
         // Calculate display index based on dropset logic (matching SetRow.tsx)
@@ -148,15 +348,28 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
             displayIndexText = overallSetNumber.toString();
         }
 
+        const isSelected = addTimerMode && restTimerSelectedSetIds.has(set.id);
+
         return (
             <TouchableOpacity
                 onLongPress={drag}
                 delayLongPress={100}
                 disabled={isActive}
                 activeOpacity={1}
+                onPress={addTimerMode ? () => {
+                    const newSet = new globalThis.Set(restTimerSelectedSetIds);
+                    if (newSet.has(set.id)) {
+                        newSet.delete(set.id);
+                    } else {
+                        newSet.add(set.id);
+                    }
+                    setRestTimerSelectedSetIds(newSet);
+                } : undefined}
                 style={[
                     styles.dragItem,
                     isActive && styles.dragItem__active,
+                    isSelected && styles.dragItem__selected,
+                    set.dropSetId && styles.dragItem__dropset,
                 ]}
             >
                 <View
@@ -233,55 +446,87 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                     )}
                 </View>
 
-                <View style={styles.setIndicators}>
-                    {set.isWarmup && (
-                        <Flame size={14} color={COLORS.orange[500]} />
-                    )}
-                    {set.isFailure && (
-                        <Zap size={14} color={COLORS.red[500]} />
-                    )}
-                    {set.completed && (
-                        <Check size={14} color={COLORS.green[500]} />
-                    )}
-                </View>
+                {addTimerMode ? (
+                    <View style={styles.checkboxContainer}>
+                        {restTimerSelectedSetIds.has(set.id) ? (
+                            <Check size={20} color={COLORS.blue[600]} strokeWidth={3} />
+                        ) : (
+                            <Square size={20} color={COLORS.slate[400]} />
+                        )}
+                    </View>
+                ) : (
+                    <>
+                        <View style={styles.setIndicators}>
+                            {set.isWarmup && (
+                                <Flame size={14} color={COLORS.orange[500]} />
+                            )}
+                            {set.isFailure && (
+                                <Zap size={14} color={COLORS.red[500]} />
+                            )}
+                            {set.completed && (
+                                <Check size={14} color={COLORS.green[500]} />
+                            )}
+                        </View>
 
-                <TouchableOpacity
-                    onPress={() => {
-                        const currentValue = set.restPeriodSeconds
-                            ? set.restPeriodSeconds.toString()
-                            : '';
-                        // Always reset to input mode when opening the modal
-                        setApplyToMode(null);
-                        setRestTimerInput({
-                            setId: set.id,
-                            currentValue,
-                        });
-                    }}
-                    style={[
-                        styles.restTimerBadge,
-                        !setItem.hasRestTimer && styles.restTimerBadge__add
-                    ]}
-                >
-                    <Timer size={12} color={setItem.hasRestTimer ? COLORS.blue[500] : COLORS.slate[400]} />
-                    <Text style={[
-                        styles.restTimerText,
-                        !setItem.hasRestTimer && styles.restTimerText__add
-                    ]}>
-                        {setItem.hasRestTimer
-                            ? formatRestTime(set.restPeriodSeconds!)
-                            : '+ rest'
-                        }
-                    </Text>
-                </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={() => {
+                                const currentValue = set.restPeriodSeconds
+                                    ? set.restPeriodSeconds.toString()
+                                    : '';
+                                setRestTimerInputString(currentValue);
+                                setRestTimerInput({
+                                    setId: set.id,
+                                    currentValue,
+                                });
+                            }}
+                            style={[
+                                styles.restTimerBadge,
+                                !setItemData.hasRestTimer && styles.restTimerBadge__add
+                            ]}
+                        >
+                            <Timer size={12} color={setItemData.hasRestTimer ? COLORS.blue[500] : COLORS.slate[400]} />
+                            <Text style={[
+                                styles.restTimerText,
+                                !setItemData.hasRestTimer && styles.restTimerText__add
+                            ]}>
+                                {setItemData.hasRestTimer
+                                    ? formatRestTime(set.restPeriodSeconds!)
+                                    : '+ rest'
+                                }
+                            </Text>
+                        </TouchableOpacity>
+                    </>
+                )}
 
-                {set.dropSetId && (
+                {set.dropSetId && !isActive && (
                     <View style={styles.dropSetIndicator} />
                 )}
             </TouchableOpacity>
         );
-    }, [exercise, setDragItems, renderDropSetHeader, renderDropSetFooter]);
+    }, [exercise, localDragItems, renderDropSetHeader, renderDropSetFooter, addTimerMode, restTimerSelectedSetIds, collapsedDropsetId]);
 
-    const keyExtractor = useCallback((item: SetDragListItem) => item.id, []);
+    const keyExtractor = useCallback((item: CollapsibleSetDragListItem) => item.id, []);
+
+    // Handle drag end - expand groups and pass to parent
+    const handleLocalDragEnd = useCallback(({ data, from, to }: { data: CollapsibleSetDragListItem[]; from: number; to: number }) => {
+        let updatedData = data;
+
+        // If a dropset was collapsed, expand all groups
+        if (collapsedDropsetId) {
+            updatedData = expandAllDropsets(data);
+            setCollapsedDropsetId(null);
+        }
+
+        setLocalDragItems(updatedData);
+        pendingDragRef.current = null;
+
+        // Pass the expanded data to parent
+        onDragEnd({
+            data: updatedData as SetDragListItem[],
+            from,
+            to,
+        });
+    }, [collapsedDropsetId, expandAllDropsets, onDragEnd]);
 
     if (!visible || !exercise) return null;
 
@@ -314,16 +559,20 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                             </Text>
                         </View>
 
-                        {setDragItems.length === 0 ? (
+                        {localDragItems.length === 0 ? (
                             <View style={styles.emptyContainer}>
                                 <Text style={styles.emptyText}>No sets to reorder</Text>
                             </View>
                         ) : (
                             <DraggableFlatList
-                                data={setDragItems}
+                                data={localDragItems}
                                 keyExtractor={keyExtractor}
                                 renderItem={renderDragItem}
-                                onDragEnd={onDragEnd}
+                                onDragBegin={() => setIsDragging(true)}
+                                onDragEnd={(params) => {
+                                    setIsDragging(false);
+                                    handleLocalDragEnd(params);
+                                }}
                                 containerStyle={styles.listContainer}
                                 contentContainerStyle={styles.listContent}
                                 ListFooterComponent={
@@ -340,83 +589,105 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
 
                         {/* Index Popup Menu */}
                         {indexPopup && (() => {
-                            const setItem = setDragItems.find((i): i is SetDragItem => i.type === 'set' && i.id === indexPopup.setId);
+                            const setItem = localDragItems.find((i): i is CollapsibleSetDragItem => i.type === 'set' && i.id === indexPopup.setId);
                             const set = setItem?.set;
                             if (!set) return null;
 
                             return (
                                 <Pressable
                                     onPress={() => setIndexPopup(null)}
-                                    style={styles.popupOverlay}
+                                    style={defaultPopupStyles.backdrop as any}
                                 >
                                     <Pressable
                                         onPress={(e) => e.stopPropagation()}
                                         style={[
-                                            styles.setPopupMenuContainer,
+                                            defaultPopupStyles.container as any,
                                             {
-                                                position: 'absolute',
+                                                position: 'absolute' as const,
                                                 top: indexPopup.top,
                                                 left: indexPopup.left,
-                                                zIndex: 100,
-                                                elevation: 10,
                                             }
                                         ]}
                                     >
-                                        <TouchableOpacity
-                                            style={styles.closeButton}
-                                            onPress={() => setIndexPopup(null)}
-                                        >
-                                            <X size={16} color={COLORS.white} />
-                                        </TouchableOpacity>
+                                        {/* Warmup/Failure Toggle Row */}
+                                        <View style={[
+                                            defaultPopupStyles.toggleRow as any,
+                                            set.dropSetId && defaultPopupStyles.borderBottomLast as any
+                                        ]}>
+                                            <TouchableOpacity
+                                                style={[
+                                                    defaultPopupStyles.toggleOption as any,
+                                                    defaultPopupStyles.toggleOptionBorder as any,
+                                                    set.isWarmup ? defaultPopupStyles.toggleOptionBackgroundActive as any : defaultPopupStyles.toggleOptionBackgroundInactive as any,
+                                                    defaultPopupStyles.borderRadiusFirstLeft as any,
+                                                    set.dropSetId && defaultPopupStyles.borderRadiusLastLeft as any,
+                                                ]}
+                                                onPress={() => {
+                                                    const newIsWarmup = !set.isWarmup;
+                                                    onUpdateSet(set.id, {
+                                                        isWarmup: newIsWarmup,
+                                                        isFailure: newIsWarmup ? false : set.isFailure,
+                                                    });
+                                                    setIndexPopup(null);
+                                                }}
+                                            >
+                                                <View style={defaultPopupStyles.optionContent as any}>
+                                                    <Flame size={18} color={set.isWarmup ? COLORS.white : COLORS.orange[500]} />
+                                                    <Text style={[
+                                                        defaultPopupStyles.toggleOptionText as any,
+                                                        set.isWarmup ? defaultPopupStyles.toggleOptionTextActive as any : defaultPopupStyles.toggleOptionTextInactive as any
+                                                    ]}>
+                                                        Warmup
+                                                    </Text>
+                                                </View>
+                                            </TouchableOpacity>
 
-                                        <TouchableOpacity
-                                            style={styles.setPopupOptionItem}
-                                            onPress={() => {
-                                                const newIsWarmup = !set.isWarmup;
-                                                onUpdateSet(set.id, {
-                                                    isWarmup: newIsWarmup,
-                                                    isFailure: newIsWarmup ? false : set.isFailure,
-                                                });
-                                                setIndexPopup(null);
-                                            }}
-                                        >
-                                            <Flame size={18} color={COLORS.orange[500]} />
-                                            <Text style={[
-                                                styles.setPopupOptionText,
-                                                set.isWarmup && styles.setPopupOptionText__warmup
-                                            ]}>Warmup</Text>
-                                            {set.isWarmup && <Check size={16} color={COLORS.orange[500]} strokeWidth={3} />}
-                                        </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={[
+                                                    defaultPopupStyles.toggleOption as any,
+                                                    set.isFailure ? defaultPopupStyles.toggleOptionBackgroundActive as any : defaultPopupStyles.toggleOptionBackgroundInactive as any,
+                                                    defaultPopupStyles.borderRadiusFirstRight as any,
+                                                    set.dropSetId && defaultPopupStyles.borderRadiusLastRight as any,
+                                                ]}
+                                                onPress={() => {
+                                                    const newIsFailure = !set.isFailure;
+                                                    onUpdateSet(set.id, {
+                                                        isFailure: newIsFailure,
+                                                        isWarmup: newIsFailure ? false : set.isWarmup,
+                                                    });
+                                                    setIndexPopup(null);
+                                                }}
+                                            >
+                                                <View style={defaultPopupStyles.optionContent as any}>
+                                                    <Zap size={18} color={set.isFailure ? COLORS.white : COLORS.red[500]} />
+                                                    <Text style={[
+                                                        defaultPopupStyles.toggleOptionText as any,
+                                                        set.isFailure ? defaultPopupStyles.toggleOptionTextActive as any : defaultPopupStyles.toggleOptionTextInactive as any
+                                                    ]}>
+                                                        Failure
+                                                    </Text>
+                                                </View>
+                                            </TouchableOpacity>
+                                        </View>
 
-                                        <TouchableOpacity
-                                            style={styles.setPopupOptionItem}
-                                            onPress={() => {
-                                                const newIsFailure = !set.isFailure;
-                                                onUpdateSet(set.id, {
-                                                    isFailure: newIsFailure,
-                                                    isWarmup: newIsFailure ? false : set.isWarmup,
-                                                });
-                                                setIndexPopup(null);
-                                            }}
-                                        >
-                                            <Zap size={18} color={COLORS.red[500]} />
-                                            <Text style={[
-                                                styles.setPopupOptionText,
-                                                set.isFailure && styles.setPopupOptionText__failure
-                                            ]}>Failure</Text>
-                                            {set.isFailure && <Check size={16} color={COLORS.red[500]} strokeWidth={3} />}
-                                        </TouchableOpacity>
-
+                                        {/* Create Dropset Option */}
                                         {!set.dropSetId && (
                                             <TouchableOpacity
-                                                style={[styles.setPopupOptionItem, { borderBottomWidth: 0 }]}
+                                                style={[
+                                                    defaultPopupStyles.option as any,
+                                                    defaultPopupStyles.optionBackground as any,
+                                                    defaultPopupStyles.borderBottomLast as any,
+                                                    defaultPopupStyles.borderRadiusLast as any,
+                                                ]}
                                                 onPress={() => {
                                                     onCreateDropset(set.id);
                                                     setIndexPopup(null);
                                                 }}
                                             >
-                                                <Layers size={18} color={COLORS.indigo[600]} />
-                                                <Text style={styles.setPopupOptionText}>Create dropset</Text>
+                                                <View style={defaultPopupStyles.optionContent as any}>
+                                                    <Layers size={18} color={COLORS.indigo[400]} />
+                                                    <Text style={defaultPopupStyles.optionText as any}>Create dropset</Text>
+                                                </View>
                                             </TouchableOpacity>
                                         )}
                                     </Pressable>
@@ -424,12 +695,15 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                             );
                         })()}
 
-                        {/* Rest Timer Input Modal */}
+                        {/* Rest Timer Input Popup - Shows parsed time while keyboard is open */}
                         {restTimerInput && (
                             <Pressable
                                 onPress={() => {
+                                    // Don't close if in addTimerMode - let user select sets
+                                    if (addTimerMode) return;
                                     setRestTimerInput(null);
-                                    setApplyToMode(null);
+                                    setRestTimerInputString('');
+                                    setRestTimerSelectedSetIds(new globalThis.Set());
                                 }}
                                 style={styles.restTimerInputOverlay}
                             >
@@ -439,274 +713,146 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                                 >
                                     <View style={styles.restTimerInputHeader}>
                                         <Text style={styles.restTimerInputTitle}>
-                                            {setDragItems.find((i): i is SetDragItem => i.type === 'set' && i.id === restTimerInput.setId)?.set.restPeriodSeconds
+                                            {localDragItems.find((i): i is CollapsibleSetDragItem => i.type === 'set' && i.id === restTimerInput.setId)?.set.restPeriodSeconds
                                                 ? 'Update Rest Timer'
                                                 : 'Add Rest Timer'
                                             }
                                         </Text>
-                                        <TouchableOpacity
-                                            onPress={() => {
-                                                setRestTimerInput(null);
-                                                setApplyToMode(null);
-                                            }}
-                                            style={styles.restTimerInputClose}
-                                        >
-                                            <X size={20} color={COLORS.slate[600]} />
-                                        </TouchableOpacity>
                                     </View>
-
-                                    {!applyToMode ? (
-                                        <View style={styles.restTimerInputContent}>
-                                            <Text style={styles.restTimerInputLabel}>
-                                                Enter time (e.g., 90 for 1:30, 30 for 30 seconds)
+                                    <View style={styles.restTimerInputContent}>
+                                        <View style={styles.restTimerInputDisplay}>
+                                            <Text style={styles.restTimerInputDisplayText}>
+                                                {restTimerInputString
+                                                    ? formatRestTime(parseRestTimeInput(restTimerInputString))
+                                                    : '0:00'
+                                                }
                                             </Text>
-                                            <TextInput
-                                                style={styles.restTimerInput}
-                                                value={restTimerInput.currentValue}
-                                                onChangeText={(text) => {
-                                                    // Only allow numbers
-                                                    const numericText = text.replace(/[^0-9]/g, '');
-                                                    setRestTimerInput({
-                                                        ...restTimerInput,
-                                                        currentValue: numericText,
-                                                    });
-                                                }}
-                                                placeholder="e.g., 90"
-                                                keyboardType="numeric"
-                                                autoFocus
-                                            />
                                         </View>
-                                    ) : (
-                                        <View style={styles.restTimerInputContent}>
-                                            <ScrollView style={styles.setSelectionList}>
-                                                {setDragItems
-                                                    .filter((i): i is SetDragItem => i.type === 'set')
-                                                    .map((item, itemIndex) => {
-                                                        const isSelected = applyToMode.selectedSetIds.includes(item.id);
-                                                        const set = item.set;
-                                                        const category = exercise?.category || 'Lifts';
-                                                        const weightUnit = exercise?.weightUnit || 'lbs';
-
-                                                        // Get all sets in order for dropset calculations
-                                                        const allSets = setDragItems.filter((i): i is SetDragItem => i.type === 'set');
-                                                        const currentSetIndex = itemIndex;
-
-                                                        // Calculate display index based on dropset logic (matching SetRow.tsx)
-                                                        let displayIndexText: string;
-                                                        let isSubIndex = false;
-
-                                                        if (set.dropSetId) {
-                                                            // Find all sets in this dropset
-                                                            const dropSetSets = allSets.filter(s => s.set.dropSetId === set.dropSetId);
-                                                            const indexInDropSet = dropSetSets.findIndex(s => s.id === item.id) + 1;
-
-                                                            // Count group number: iterate through sets before this one, counting dropsets as single units
-                                                            let groupNumber = 0;
-                                                            const seenDropSetIds = new Set<string>();
-
-                                                            for (let i = 0; i < currentSetIndex; i++) {
-                                                                const prevSet = allSets[i].set;
-                                                                if (prevSet.dropSetId) {
-                                                                    if (!seenDropSetIds.has(prevSet.dropSetId)) {
-                                                                        seenDropSetIds.add(prevSet.dropSetId);
-                                                                        groupNumber++;
-                                                                    }
-                                                                } else {
-                                                                    groupNumber++;
-                                                                }
-                                                            }
-
-                                                            // Check if this dropset was already counted
-                                                            if (!seenDropSetIds.has(set.dropSetId)) {
-                                                                groupNumber++;
-                                                            }
-
-                                                            if (indexInDropSet === 1) {
-                                                                // First set in dropset: show only primary index
-                                                                displayIndexText = groupNumber.toString();
-                                                            } else {
-                                                                // Subsequent sets: show only subIndex with "."
-                                                                displayIndexText = `.${indexInDropSet}`;
-                                                                isSubIndex = true;
-                                                            }
-                                                        } else {
-                                                            // Not in a dropset - count all sets (treating dropsets as single units)
-                                                            let overallSetNumber = 0;
-                                                            const seenDropSetIds = new Set<string>();
-
-                                                            for (let i = 0; i < currentSetIndex; i++) {
-                                                                const prevSet = allSets[i].set;
-                                                                if (prevSet.dropSetId) {
-                                                                    if (!seenDropSetIds.has(prevSet.dropSetId)) {
-                                                                        seenDropSetIds.add(prevSet.dropSetId);
-                                                                        overallSetNumber++;
-                                                                    }
-                                                                } else {
-                                                                    overallSetNumber++;
-                                                                }
-                                                            }
-                                                            overallSetNumber++;
-                                                            displayIndexText = overallSetNumber.toString();
-                                                        }
-
-                                                        return (
-                                                            <TouchableOpacity
-                                                                key={item.id}
-                                                                style={[
-                                                                    styles.setSelectionItem,
-                                                                    isSelected && styles.setSelectionItem__selected,
-                                                                    set.dropSetId && styles.setSelectionItem__dropset
-                                                                ]}
-                                                                onPress={() => {
-                                                                    const newSelected = [...applyToMode.selectedSetIds];
-                                                                    if (isSelected) {
-                                                                        const index = newSelected.indexOf(item.id);
-                                                                        if (index > -1) {
-                                                                            newSelected.splice(index, 1);
-                                                                        }
-                                                                    } else {
-                                                                        newSelected.push(item.id);
-                                                                    }
-                                                                    setApplyToMode({ selectedSetIds: newSelected });
-                                                                }}
-                                                            >
-                                                                <View style={styles.setSelectionItemLeft}>
-                                                                    {isSelected ? (
-                                                                        <Check size={20} color={COLORS.blue[600]} strokeWidth={3} />
-                                                                    ) : (
-                                                                        <Square size={20} color={COLORS.slate[400]} />
-                                                                    )}
-                                                                    <View style={styles.setSelectionItemInfo}>
-                                                                        <View style={styles.setSelectionItemHeader}>
-                                                                            <Text style={[
-                                                                                styles.setSelectionItemIndex,
-                                                                                isSubIndex && styles.setSelectionItemIndex__subIndex
-                                                                            ]}>
-                                                                                {displayIndexText}
-                                                                            </Text>
-                                                                            <Text style={styles.setSelectionItemDetails}>
-                                                                                {category === 'Lifts' ? (
-                                                                                    `${set.weight || '-'} ${weightUnit} × ${set.reps || '-'}`
-                                                                                ) : category === 'Cardio' ? (
-                                                                                    `${set.duration || '-'} / ${set.distance || '-'}`
-                                                                                ) : (
-                                                                                    `${set.reps || '-'} reps`
-                                                                                )}
-                                                                            </Text>
-                                                                            {set.dropSetId && (
-                                                                                <View style={styles.setSelectionItemDropsetBadge}>
-                                                                                    <Text style={styles.setSelectionItemDropsetText}>D</Text>
-                                                                                </View>
-                                                                            )}
-                                                                            {set.isWarmup && (
-                                                                                <View style={[styles.setSelectionItemTypeBadge, styles.setSelectionItemTypeBadge__warmup]}>
-                                                                                    <Flame size={12} color={COLORS.orange[500]} />
-                                                                                </View>
-                                                                            )}
-                                                                            {set.isFailure && (
-                                                                                <View style={[styles.setSelectionItemTypeBadge, styles.setSelectionItemTypeBadge__failure]}>
-                                                                                    <Zap size={12} color={COLORS.red[500]} />
-                                                                                </View>
-                                                                            )}
-                                                                        </View>
-                                                                    </View>
-                                                                </View>
-                                                                {set.restPeriodSeconds && (
-                                                                    <View style={styles.setSelectionItemRestTimer}>
-                                                                        <Timer size={14} color={COLORS.blue[500]} />
-                                                                        <Text style={styles.setSelectionItemRestTimerText}>
-                                                                            {formatRestTime(set.restPeriodSeconds)}
-                                                                        </Text>
-                                                                    </View>
-                                                                )}
-                                                            </TouchableOpacity>
-                                                        );
-                                                    })}
-                                            </ScrollView>
-                                        </View>
-                                    )}
-
-                                    <View style={styles.restTimerInputFooter}>
-                                        {!applyToMode ? (
-                                            <TouchableOpacity
-                                                onPress={() => {
-                                                    if (restTimerInput.currentValue) {
-                                                        const seconds = parseRestTimeInput(restTimerInput.currentValue);
-                                                        if (seconds > 0) {
-                                                            // Initialize with current set selected
-                                                            const initialSelected = [restTimerInput.setId];
-                                                            setApplyToMode({ selectedSetIds: initialSelected });
-                                                        }
-                                                    }
-                                                }}
-                                                style={[
-                                                    styles.restTimerInputApplyToButton,
-                                                    (!restTimerInput.currentValue || parseRestTimeInput(restTimerInput.currentValue) <= 0) && styles.restTimerInputApplyToButton__disabled
-                                                ]}
-                                                disabled={!restTimerInput.currentValue || parseRestTimeInput(restTimerInput.currentValue) <= 0}
-                                            >
-                                                <Text style={[
-                                                    styles.restTimerInputApplyToText,
-                                                    (!restTimerInput.currentValue || parseRestTimeInput(restTimerInput.currentValue) <= 0) && styles.restTimerInputApplyToText__disabled
-                                                ]}>Apply to</Text>
-                                            </TouchableOpacity>
-                                        ) : (
-                                            <>
-                                                <TouchableOpacity
-                                                    onPress={() => {
-                                                        setApplyToMode(null);
-                                                    }}
-                                                    style={styles.restTimerInputCancelButton}
-                                                >
-                                                    <Text style={styles.restTimerInputCancelText}>Back</Text>
-                                                </TouchableOpacity>
-                                                <TouchableOpacity
-                                                    onPress={() => {
-                                                        if (restTimerInput.currentValue) {
-                                                            const seconds = parseRestTimeInput(restTimerInput.currentValue);
-                                                            if (seconds > 0 && applyToMode.selectedSetIds.length > 0) {
-                                                                onUpdateRestTimerMultiple(
-                                                                    applyToMode.selectedSetIds,
-                                                                    seconds
-                                                                );
-                                                            }
-                                                        }
-                                                        setApplyToMode(null);
-                                                        setRestTimerInput(null);
-                                                    }}
-                                                    style={[
-                                                        styles.restTimerInputSaveButton,
-                                                        applyToMode.selectedSetIds.length === 0 && styles.restTimerInputSaveButton__disabled
-                                                    ]}
-                                                    disabled={applyToMode.selectedSetIds.length === 0}
-                                                >
-                                                    <Text style={[
-                                                        styles.restTimerInputSaveText,
-                                                        applyToMode.selectedSetIds.length === 0 && styles.restTimerInputSaveText__disabled
-                                                    ]}>
-                                                        {(() => {
-                                                            const seconds = restTimerInput.currentValue
-                                                                ? parseRestTimeInput(restTimerInput.currentValue)
-                                                                : 0;
-                                                            const formattedTime = seconds > 0 ? formatRestTime(seconds) : '';
-                                                            return `Apply ${formattedTime} to set(s)`;
-                                                        })()}
-                                                    </Text>
-                                                </TouchableOpacity>
-                                            </>
-                                        )}
                                     </View>
                                 </Pressable>
                             </Pressable>
                         )}
 
                         <View style={styles.footer}>
-                            <TouchableOpacity onPress={onSave} style={styles.doneButton}>
-                                <Text style={styles.doneButtonText}>Done</Text>
-                            </TouchableOpacity>
+                            {addTimerMode ? (
+                                <View style={styles.footerButtonsRow}>
+                                    <TouchableOpacity
+                                        onPress={() => {
+                                            setAddTimerMode(false);
+                                            setRestTimerSelectedSetIds(new globalThis.Set());
+                                            setRestTimerInput(null);
+                                            setRestTimerInputString('');
+                                        }}
+                                        style={styles.cancelButton}
+                                    >
+                                        <Text style={styles.cancelButtonText}>Cancel</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        onPress={() => {
+                                            if (restTimerSelectedSetIds.size > 0 && restTimerInputString) {
+                                                const seconds = parseRestTimeInput(restTimerInputString);
+                                                if (seconds > 0) {
+                                                    const selectedIdsArray = Array.from(restTimerSelectedSetIds);
+                                                    onUpdateRestTimerMultiple(selectedIdsArray, seconds);
+                                                }
+                                            }
+                                            setAddTimerMode(false);
+                                            setRestTimerSelectedSetIds(new globalThis.Set());
+                                            setRestTimerInput(null);
+                                            setRestTimerInputString('');
+                                        }}
+                                        style={[
+                                            styles.saveButton,
+                                            (restTimerSelectedSetIds.size === 0 || !restTimerInputString) && styles.saveButton__disabled
+                                        ]}
+                                        disabled={restTimerSelectedSetIds.size === 0 || !restTimerInputString}
+                                    >
+                                        <Text style={styles.saveButtonText}>Save</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            ) : (
+                                <TouchableOpacity onPress={onSave} style={styles.doneButton}>
+                                    <Text style={styles.doneButtonText}>Done</Text>
+                                </TouchableOpacity>
+                            )}
                         </View>
                     </View>
                 </View>
+
+                {/* Timer Keyboard - Rendered outside modalContainer to appear from bottom of screen with highest z-index */}
+                <TimerKeyboard
+                    visible={!!restTimerInput && !addTimerMode}
+                    onClose={() => {
+                        setRestTimerInput(null);
+                        setRestTimerInputString('');
+                        setRestTimerSelectedSetIds(new globalThis.Set());
+                    }}
+                    restTimerInput={restTimerInputString}
+                    setRestTimerInput={setRestTimerInputString}
+                    restPeriodSetInfo={restPeriodSetInfoMemo}
+                    currentWorkout={{
+                        id: '',
+                        name: '',
+                        startedAt: Date.now(),
+                        exercises: exercise ? [{
+                            ...exercise,
+                            sets: exercise.sets.map((s: Set) => ({
+                                ...s,
+                                restPeriodSeconds: s.id === restTimerInput?.setId && restTimerInputString
+                                    ? parseRestTimeInput(restTimerInputString) > 0
+                                        ? parseRestTimeInput(restTimerInputString)
+                                        : undefined
+                                    : s.restPeriodSeconds,
+                            })),
+                        }] : [],
+                        date: new Date().toISOString(),
+                    }}
+                    handleWorkoutUpdate={(workout) => {
+                        // Only handle single-set auto-updates as the user types
+                        if (!restTimerInput || addTimerMode) return;
+                        const exerciseItem = workout.exercises[0];
+                        if (exerciseItem && exerciseItem.type === 'exercise') {
+                            const updatedSet = exerciseItem.sets.find((s: Set) => s.id === restTimerInput.setId);
+                            if (updatedSet) {
+                                onUpdateRestTimer(restTimerInput.setId, updatedSet.restPeriodSeconds);
+                            }
+                        }
+                    }}
+                    onAddRestPeriod={() => {
+                        // When keyboard's "Save" is pressed (not "Start Timer"), just save the value
+                        if (restTimerInput && restTimerInputString) {
+                            const seconds = parseRestTimeInput(restTimerInputString);
+                            if (seconds > 0) {
+                                onUpdateRestTimer(restTimerInput.setId, seconds);
+                            }
+                        }
+                        setRestTimerInput(null);
+                        setRestTimerInputString('');
+                        setRestTimerSelectedSetIds(new globalThis.Set());
+                    }}
+                    setActiveRestTimer={() => { }}
+                    setRestTimerPopupOpen={() => { }}
+                    onSetSelectionMode={(enabled) => {
+                        if (enabled) {
+                            // Enter addTimerMode: close keyboard and popup, enter selection mode
+                            // Auto-select the original set before closing
+                            if (restTimerInput) {
+                                const newSet = new globalThis.Set<string>();
+                                newSet.add(restTimerInput.setId);
+                                setRestTimerSelectedSetIds(newSet);
+                            }
+                            // Enter addTimerMode and close both keyboard and popup
+                            setAddTimerMode(true);
+                            setRestTimerInput(null); // This closes both keyboard and popup
+                        }
+                    }}
+                    selectedSetIds={restTimerSelectedSetIds}
+                    onToggleSetSelection={(exerciseId, setId) => {
+                        // Not used - selection handled in set cards when in addTimerMode
+                        // This callback is only used by TimerKeyboard's internal selection UI,
+                        // which is not shown since we close the keyboard when entering addTimerMode
+                    }}
+                />
             </GestureHandlerRootView>
         </Modal>
     );
@@ -798,15 +944,26 @@ const styles = StyleSheet.create({
         position: 'relative',
         overflow: 'hidden',
     },
+    dragItem__dropset: {
+        marginLeft: 12, // Indent to make room for the indicator line (4px line + 4px gap)
+        overflow: 'visible', // Allow indicator to extend beyond border radius
+    },
     dragItem__active: {
-        backgroundColor: COLORS.slate[50],
-        borderColor: COLORS.slate[400],
+        backgroundColor: COLORS.blue[50],
+        borderWidth: 2,
+        borderStyle: 'dashed',
+        borderColor: COLORS.blue[400],
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.15,
         shadowRadius: 8,
         elevation: 8,
         transform: [{ scale: 1.02 }],
+    },
+    dragItem__selected: {
+        borderColor: COLORS.blue[600],
+        borderWidth: 2,
+        backgroundColor: COLORS.blue[100],
     },
     setIndexBadge: {
         width: 30,
@@ -856,7 +1013,7 @@ const styles = StyleSheet.create({
     setIndicators: {
         flexDirection: 'row',
         gap: 6,
-        marginLeft: 8,
+        marginLeft: 24,
     },
     restTimerBadge: {
         flexDirection: 'row',
@@ -884,19 +1041,49 @@ const styles = StyleSheet.create({
     },
     dropSetIndicator: {
         position: 'absolute',
-        left: 0,
-        top: 0,
-        bottom: 0,
+        left: -8, // Position at the left edge (before margin) to create indentation effect
+        top: -4,
+        bottom: -4,
         width: 4,
         backgroundColor: COLORS.indigo[500],
-        borderTopLeftRadius: 10,
-        borderBottomLeftRadius: 10,
+        borderTopLeftRadius: 0,
+        borderTopRightRadius: 0,
+        borderBottomLeftRadius: 0,
+        borderBottomRightRadius: 0,
+    },
+    dropSetIndicatorHeader: {
+        position: 'absolute',
+        left: -8,
+        top: 0,
+        bottom: -4,
+        width: 4,
+        backgroundColor: COLORS.indigo[500],
+        borderTopLeftRadius: 0,
+        borderTopRightRadius: 0,
+        borderBottomLeftRadius: 0,
+        borderBottomRightRadius: 0,
+    },
+    dropSetIndicatorFooter: {
+        position: 'absolute',
+        left: -8,
+        top: -4,
+        bottom: -1,
+        width: 4,
+        backgroundColor: COLORS.indigo[500],
+        borderTopLeftRadius: 0,
+        borderTopRightRadius: 0,
+        borderBottomLeftRadius: 0,
+        borderBottomRightRadius: 0,
     },
     footer: {
         paddingHorizontal: 20,
         paddingVertical: 16,
         borderTopWidth: 1,
         borderTopColor: COLORS.slate[200],
+    },
+    footerButtonsRow: {
+        flexDirection: 'row',
+        gap: 12,
     },
     doneButton: {
         backgroundColor: COLORS.blue[600],
@@ -909,104 +1096,39 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: COLORS.white,
     },
-    dropsetHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        paddingHorizontal: 16,
-        paddingVertical: 2,
-        marginHorizontal: 18,
-        marginTop: 8,
-        marginBottom: 0,
-        backgroundColor: COLORS.indigo[200],
-        borderWidth: 2,
-        borderColor: COLORS.indigo[200],
-        borderBottomLeftRadius: 0,
-        borderBottomRightRadius: 0,
-        borderTopLeftRadius: 8,
-        borderTopRightRadius: 8,
-        borderStyle: 'solid',
-    },
-    dropsetHeaderText: {
-        fontSize: 9,
-        fontWeight: '700',
-        color: COLORS.indigo[700],
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-    },
-    dropsetFooter: {
-        height: 8,
-        marginHorizontal: 18,
-        marginTop: 4,
-        marginBottom: 4,
-        backgroundColor: COLORS.indigo[200],
-        borderBottomLeftRadius: 8,
-        borderBottomRightRadius: 8,
-    },
-    popupOverlay: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        zIndex: 99,
-    },
-    setPopupMenuContainer: {
-        width: 200,
-        backgroundColor: COLORS.white,
-        borderRadius: 8,
-        padding: 8,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
-        borderWidth: 1,
-        borderColor: COLORS.slate[100],
-    },
-    setPopupOptionItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-        paddingVertical: 10,
-        paddingHorizontal: 8,
-        borderBottomWidth: 1,
-        borderBottomColor: COLORS.slate[100],
-    },
-    setPopupOptionText: {
-        fontSize: 14,
-        fontWeight: '500',
-        color: COLORS.slate[700],
+    cancelButton: {
         flex: 1,
-    },
-    setPopupOptionText__warmup: {
-        color: COLORS.orange[500],
-        fontWeight: '700',
-    },
-    setPopupOptionText__failure: {
-        color: COLORS.red[500],
-        fontWeight: '700',
-    },
-    addSetButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        marginHorizontal: 12,
-        marginTop: 8,
-        marginBottom: 8,
-        backgroundColor: COLORS.blue[50],
+        backgroundColor: COLORS.white,
+        paddingVertical: 14,
         borderRadius: 10,
-        borderWidth: 2,
-        borderColor: COLORS.blue[200],
-        borderStyle: 'dashed',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: COLORS.slate[300],
     },
-    addSetButtonText: {
-        fontSize: 14,
+    cancelButtonText: {
+        fontSize: 16,
         fontWeight: '600',
-        color: COLORS.blue[600],
+        color: COLORS.slate[700],
+    },
+    saveButton: {
+        flex: 1,
+        backgroundColor: COLORS.blue[600],
+        paddingVertical: 14,
+        borderRadius: 10,
+        alignItems: 'center',
+    },
+    saveButton__disabled: {
+        backgroundColor: COLORS.slate[200],
+        opacity: 0.5,
+    },
+    saveButtonText: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: COLORS.white,
+    },
+    checkboxContainer: {
+        padding: 8,
+        marginLeft: 8,
     },
     restTimerInputOverlay: {
         position: 'absolute',
@@ -1017,8 +1139,8 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
         justifyContent: 'center',
         alignItems: 'center',
-        zIndex: 1000,
-        elevation: 10,
+        zIndex: 998,
+        elevation: 8,
     },
     restTimerInputContainer: {
         backgroundColor: COLORS.white,
@@ -1044,206 +1166,165 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: COLORS.slate[800],
     },
-    restTimerInputClose: {
-        padding: 4,
-    },
     restTimerInputContent: {
         padding: 16,
     },
-    restTimerInputLabel: {
-        fontSize: 14,
-        color: COLORS.slate[600],
-        marginBottom: 12,
-    },
-    restTimerInput: {
-        borderWidth: 1,
-        borderColor: COLORS.slate[300],
-        borderRadius: 8,
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        fontSize: 16,
-        color: COLORS.slate[800],
-        backgroundColor: COLORS.white,
-    },
-    restTimerInputFooter: {
-        flexDirection: 'row',
-        padding: 16,
-        borderTopWidth: 1,
-        borderTopColor: COLORS.slate[200],
-        gap: 12,
-    },
-    restTimerInputSaveButton: {
-        flex: 1,
-        backgroundColor: COLORS.blue[600],
-        paddingVertical: 12,
-        borderRadius: 8,
+    restTimerInputDisplay: {
         alignItems: 'center',
-    },
-    restTimerInputSaveText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: COLORS.white,
-    },
-    restTimerInputRemoveButton: {
-        paddingVertical: 12,
+        justifyContent: 'center',
+        paddingVertical: 20,
         paddingHorizontal: 16,
-        borderRadius: 8,
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: COLORS.red[300],
-    },
-    restTimerInputRemoveText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: COLORS.red[600],
-    },
-    restTimerInputApplyToButton: {
-        flex: 1,
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        borderRadius: 8,
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: COLORS.blue[300],
-        backgroundColor: COLORS.blue[600],
-    },
-    restTimerInputApplyToButton__disabled: {
-        backgroundColor: COLORS.slate[200],
-        borderColor: COLORS.slate[300],
-    },
-    restTimerInputApplyToText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: COLORS.white,
-    },
-    restTimerInputApplyToText__disabled: {
-        color: COLORS.slate[400],
-    },
-    restTimerInputCancelButton: {
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        borderRadius: 8,
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: COLORS.slate[300],
-    },
-    restTimerInputCancelText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: COLORS.slate[600],
-    },
-    restTimerInputSaveButton__disabled: {
-        backgroundColor: COLORS.slate[200],
-    },
-    restTimerInputSaveText__disabled: {
-        color: COLORS.slate[400],
-    },
-    setSelectionList: {
-        marginTop: 8,
-    },
-    setSelectionItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingVertical: 12,
-        paddingHorizontal: 12,
-        marginBottom: 4,
-        borderRadius: 8,
         backgroundColor: COLORS.slate[50],
+        borderRadius: 8,
         borderWidth: 1,
         borderColor: COLORS.slate[200],
     },
-    setSelectionItem__selected: {
-        backgroundColor: COLORS.blue[50],
-        borderColor: COLORS.blue[300],
+    restTimerInputDisplayText: {
+        fontSize: 48,
+        fontWeight: 'bold',
+        color: COLORS.slate[900],
     },
-    setSelectionItem__dropset: {
-        borderLeftWidth: 3,
-        borderLeftColor: COLORS.indigo[400],
-    },
-    setSelectionItemLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-        flex: 1,
-    },
-    setSelectionItemInfo: {
-        flex: 1,
-    },
-    setSelectionItemHeader: {
+    dropsetHeader: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
-        flexWrap: 'wrap',
+        paddingHorizontal: 16,
+        paddingLeft: 8, // Indent to make room for the indicator line (4px line + 4px gap)
+        marginHorizontal: 12, // Match dragItem marginHorizontal
+        marginTop: 8,
+        marginBottom: 0,
+        marginLeft: 12,
+        backgroundColor: 'transparent',
+        borderLeftWidth: 1,
+        borderColor: 'transparent',
+        borderBottomLeftRadius: 0,
+        borderBottomRightRadius: 4,
+        borderTopLeftRadius: 0,
+        borderTopRightRadius: 4,
+        borderStyle: 'solid',
+        position: 'relative',
     },
-    setSelectionItemIndex: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: COLORS.slate[700],
-    },
-    setSelectionItemIndex__subIndex: {
-        fontSize: 12,
-        color: COLORS.slate[500],
-    },
-    setSelectionItemDropsetBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        backgroundColor: COLORS.indigo[50],
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 4,
-    },
-    setSelectionItemDropsetText: {
-        fontSize: 10,
-        fontWeight: '600',
+    dropsetHeaderText: {
+        fontSize: 9,
+        fontWeight: '700',
         color: COLORS.indigo[700],
         textTransform: 'uppercase',
         letterSpacing: 0.5,
     },
-    setSelectionItemTypeBadge: {
+    dropsetFooter: {
+        height: 1,
+        marginHorizontal: 12, // Match dragItem marginHorizontal
+        marginTop: 4,
+        marginBottom: 4,
+        marginLeft: 12,
+        backgroundColor: 'transparent',
+        borderBottomLeftRadius: 0,
+        borderBottomRightRadius: 1,
+        borderTopLeftRadius: 0,
+        borderTopRightRadius: 1,
+        borderLeftWidth: 1,
+        borderColor: 'transparent',
+        position: 'relative',
+    },
+    dropsetHeader__dragging: {
+    },
+    dropsetHeaderContent: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 4,
+        flex: 1,
+        gap: 8,
     },
-    setSelectionItemTypeBadge__warmup: {
-        backgroundColor: COLORS.orange[50],
+    dropsetHeaderLine: {
+        flex: 1,
+        height: 1,
+        backgroundColor: COLORS.indigo[500],
     },
-    setSelectionItemTypeBadge__failure: {
-        backgroundColor: COLORS.red[50],
+    dropsetFooter__dragging: {
+        backgroundColor: COLORS.indigo[500],
     },
-    setSelectionItemTypeText__warmup: {
-        fontSize: 10,
-        fontWeight: '600',
-        color: COLORS.orange[600],
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
+    dropsetHeaderContainer: {
+        // Container for draggable dropset header
     },
-    setSelectionItemTypeText__failure: {
-        fontSize: 10,
-        fontWeight: '600',
-        color: COLORS.red[600],
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
+    dropsetHeaderContainer__active: {
+        opacity: 0.9,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+        elevation: 20,
+        zIndex: 9999,
+        transform: [{ scale: 1.02 }],
     },
-    setSelectionItemDetails: {
-        fontSize: 12,
-        color: COLORS.slate[500],
+    dropsetHeader__collapsed: {
+        borderBottomWidth: 2,
+        borderBottomLeftRadius: 10,
+        borderBottomRightRadius: 10,
+        borderStyle: 'dashed',
+        borderColor: COLORS.indigo[300],
+        marginBottom: 4,
+        zIndex: 900,
     },
-    setSelectionItemRestTimer: {
+    dropsetHeader__activelyDragging: {
+        borderColor: COLORS.indigo[400],
+        backgroundColor: COLORS.indigo[50],
+        zIndex: 9999,
+        elevation: 20,
+    },
+    hiddenItem: {
+        height: 0,
+        overflow: 'hidden',
+    },
+    ghostItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
-        backgroundColor: COLORS.blue[50],
-        paddingHorizontal: 8,
+        backgroundColor: COLORS.indigo[50],
         paddingVertical: 4,
-        borderRadius: 6,
+        paddingHorizontal: 16,
+        marginHorizontal: 12,
+        marginLeft: 12,
+        borderWidth: 1,
+        borderColor: COLORS.indigo[200],
+        borderTopWidth: 0,
+        position: 'relative',
+        overflow: 'visible',
     },
-    setSelectionItemRestTimerText: {
-        fontSize: 11,
+    ghostItem__first: {
+        borderTopWidth: 1,
+        borderTopLeftRadius: 8,
+        borderTopRightRadius: 8,
+    },
+    ghostItem__last: {
+        borderBottomLeftRadius: 8,
+        borderBottomRightRadius: 8,
+    },
+    ghostItemContent: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    ghostItemText: {
+        fontSize: 13,
+        fontWeight: '500',
+        color: COLORS.indigo[400],
+    },
+    addSetButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        marginHorizontal: 12,
+        marginTop: 8,
+        marginBottom: 8,
+        backgroundColor: COLORS.blue[50],
+        borderRadius: 10,
+        borderWidth: 2,
+        borderColor: COLORS.blue[200],
+        borderStyle: 'dashed',
+    },
+    addSetButtonText: {
+        fontSize: 14,
         fontWeight: '600',
         color: COLORS.blue[600],
     },

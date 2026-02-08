@@ -29,7 +29,7 @@ import { useWorkoutSupersets } from './hooks/useWorkoutSupersets';
 import { useWorkoutGroups } from './hooks/useWorkoutGroups';
 import { useWorkoutDragDrop, WorkoutDragItem, ExerciseDragItem } from './hooks/useWorkoutDragDrop';
 import RestTimerBar from './components/RestTimerBar';
-import RestTimerInputModal from './modals/RestTimerInputModal';
+import { TimerKeyboard } from './Keyboards/timerKeyboardUtil';
 import ActiveRestTimerPopup from './modals/ActiveRestTimerPopup';
 import CustomNumberKeyboard from './modals/CustomNumberKeyboard';
 import SetDragModal from './modals/SetDragModal';
@@ -2952,7 +2952,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
         onConfirmCancel={confirmCancel}
       />
 
-      <RestTimerInputModal
+      <TimerKeyboard
         visible={restPeriodModalOpen}
         onClose={() => {
           setRestPeriodModalOpen(false);

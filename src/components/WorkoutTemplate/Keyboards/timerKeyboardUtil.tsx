@@ -1,11 +1,11 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Play, X } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
-import { formatRestTime, parseRestTimeInput, updateExercisesDeep, findExerciseDeep } from '@/utils/workoutHelpers';
+import { formatRestTime, parseRestTimeInput, updateExercisesDeep } from '@/utils/workoutHelpers';
 import type { Workout, RestTimer, RestPeriodSetInfo, Set, ExerciseItem } from '@/types/workout';
 
-interface RestTimerInputModalProps {
+export interface TimerKeyboardProps {
   visible: boolean;
   onClose: () => void;
   restTimerInput: string;
@@ -21,7 +21,7 @@ interface RestTimerInputModalProps {
   onToggleSetSelection?: (exerciseId: string, setId: string) => void;
 }
 
-const RestTimerInputModal: React.FC<RestTimerInputModalProps> = ({
+export const TimerKeyboard: React.FC<TimerKeyboardProps> = ({
   visible,
   onClose,
   restTimerInput,
@@ -36,7 +36,7 @@ const RestTimerInputModal: React.FC<RestTimerInputModalProps> = ({
   selectedSetIds = new Set(),
   onToggleSetSelection,
 }) => {
-  const [isSelectionMode, setIsSelectionMode] = React.useState(false);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
   const lastInputRef = useRef<string>('');
   const shouldClearOnNextInputRef = useRef<boolean>(false);
   const previousSetIdRef = useRef<string | null>(null);
@@ -247,20 +247,20 @@ const RestTimerInputModal: React.FC<RestTimerInputModalProps> = ({
   const isValid = parsedSeconds > 0;
 
   return (
-    <View style={localStyles.container}>
+    <View style={styles.container}>
       {/* Number Pad - Row 1 */}
-      <View style={localStyles.row}>
+      <View style={styles.row}>
         {['1', '2', '3'].map(key => (
           <TouchableOpacity
             key={key}
-            style={localStyles.keyButton}
+            style={styles.keyButton}
             onPress={() => handleInput(key)}
           >
-            <Text style={localStyles.keyButtonText}>{key}</Text>
+            <Text style={styles.keyButtonText}>{key}</Text>
           </TouchableOpacity>
         ))}
         <TouchableOpacity
-          style={localStyles.closeButton}
+          style={styles.closeButton}
           onPress={handleClose}
         >
           <X size={20} color={COLORS.white} />
@@ -268,39 +268,39 @@ const RestTimerInputModal: React.FC<RestTimerInputModalProps> = ({
       </View>
 
       {/* Number Pad - Row 2 */}
-      <View style={localStyles.row}>
+      <View style={styles.row}>
         {['4', '5', '6'].map(key => (
           <TouchableOpacity
             key={key}
-            style={localStyles.keyButton}
+            style={styles.keyButton}
             onPress={() => handleInput(key)}
           >
-            <Text style={localStyles.keyButtonText}>{key}</Text>
+            <Text style={styles.keyButtonText}>{key}</Text>
           </TouchableOpacity>
         ))}
         {isSelectionMode ? (
           <TouchableOpacity
             style={[
-              localStyles.saveButton,
-              (selectedSetIds.size === 0 || !isValid) && localStyles.saveButton__disabled
+              styles.saveButton,
+              (selectedSetIds.size === 0 || !isValid) && styles.saveButton__disabled
             ]}
             onPress={handleSaveSelected}
             disabled={selectedSetIds.size === 0 || !isValid}
           >
-            <Text style={localStyles.saveButtonText}>
+            <Text style={styles.saveButtonText}>
               Save ({selectedSetIds.size})
             </Text>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
             style={[
-              localStyles.applyToButton,
-              !isValid && localStyles.applyToButton__disabled
+              styles.applyToButton,
+              !isValid && styles.applyToButton__disabled
             ]}
             onPress={handleApplyTo}
             disabled={!isValid}
           >
-            <Text style={localStyles.applyToButtonText}>
+            <Text style={styles.applyToButtonText}>
               Apply to
             </Text>
           </TouchableOpacity>
@@ -308,55 +308,55 @@ const RestTimerInputModal: React.FC<RestTimerInputModalProps> = ({
       </View>
 
       {/* Number Pad - Row 3 */}
-      <View style={localStyles.row}>
+      <View style={styles.row}>
         {['7', '8', '9'].map(key => (
           <TouchableOpacity
             key={key}
-            style={localStyles.keyButton}
+            style={styles.keyButton}
             onPress={() => handleInput(key)}
           >
-            <Text style={localStyles.keyButtonText}>{key}</Text>
+            <Text style={styles.keyButtonText}>{key}</Text>
           </TouchableOpacity>
         ))}
         <TouchableOpacity
           style={[
-            localStyles.startTimerButton,
-            !isValid && localStyles.startTimerButton__disabled
+            styles.startTimerButton,
+            !isValid && styles.startTimerButton__disabled
           ]}
           onPress={handleStartTimer}
           disabled={!isValid}
         >
           <Play size={16} color={COLORS.white} />
-          <Text style={localStyles.startTimerButtonText}>Start</Text>
+          <Text style={styles.startTimerButtonText}>Start</Text>
         </TouchableOpacity>
       </View>
 
       {/* Number Pad - Row 4 */}
-      <View style={localStyles.row}>
+      <View style={styles.row}>
         <TouchableOpacity
-          style={localStyles.secondaryButton}
+          style={styles.secondaryButton}
           onPress={handleClear}
         >
-          <Text style={localStyles.secondaryButtonText}>C</Text>
+          <Text style={styles.secondaryButtonText}>C</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={localStyles.keyButton}
+          style={styles.keyButton}
           onPress={() => handleInput('0')}
         >
-          <Text style={localStyles.keyButtonText}>0</Text>
+          <Text style={styles.keyButtonText}>0</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={localStyles.secondaryButton}
+          style={styles.secondaryButton}
           onPress={handleBackspace}
         >
-          <Text style={localStyles.secondaryButtonText}>⌫</Text>
+          <Text style={styles.secondaryButtonText}>⌫</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 };
 
-const localStyles = StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
     position: 'absolute',
     bottom: 0,
@@ -368,6 +368,8 @@ const localStyles = StyleSheet.create({
     paddingBottom: 30,
     paddingHorizontal: 20,
     paddingTop: 8,
+    zIndex: 1001,
+    elevation: 11,
   },
   row: {
     flexDirection: 'row',
@@ -513,5 +515,3 @@ const localStyles = StyleSheet.create({
     color: COLORS.white,
   },
 });
-
-export default RestTimerInputModal;
