@@ -23,7 +23,7 @@ import {
   convertWorkoutUnits,
   getGroupColorScheme
 } from '@/utils/workoutHelpers';
-import { defaultSupersetColorScheme } from '@/constants/defaultStyles';
+import { defaultSupersetColorScheme, defaultPopupStyles } from '@/constants/defaultStyles';
 import { useWorkoutRestTimer } from './hooks/useWorkoutRestTimer';
 import { useWorkoutSupersets } from './hooks/useWorkoutSupersets';
 import { useWorkoutGroups } from './hooks/useWorkoutGroups';
@@ -96,10 +96,10 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
   const scrollViewRef = useRef<ScrollView | null>(null);
   const listContainerRef = useRef<View | null>(null);
   const headerRef = useRef<View | null>(null);
-  
+
   // Get safe area insets
   const insets = useSafeAreaInsets();
-  
+
   // State for initial padding to account for header height
   const [initialPaddingTop, setInitialPaddingTop] = useState<number>(0);
 
@@ -263,12 +263,12 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
       setInitialPaddingTop(0);
       return;
     }
-    
+
     if (isDragging) {
       // Don't recalculate during drag - use preCollapsePaddingTop instead
       return;
     }
-    
+
     // No initial padding needed - header is already positioned above the list
     setInitialPaddingTop(0);
   }, [currentWorkout, isDragging]);
@@ -284,7 +284,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
           });
         }
       }, 150); // Slightly longer delay to ensure header is measured first
-      
+
       return () => clearTimeout(timer);
     }
   }, [isDragging, currentWorkout]);
@@ -1719,7 +1719,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                           return (
                             <>
                               {ex.weightUnit || 'lbs'}
-                              <Text style={{ textTransform: 'none' }}> x 2*</Text>
+                              <Text style={{ textTransform: 'none' }}> (x2)</Text>
                             </>
                           );
                         }
@@ -1746,14 +1746,14 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                           return (
                             <>
                               Reps
-                              <Text style={{ textTransform: 'none' }}> - L/R*</Text>
+                              <Text style={{ textTransform: 'none' }}> (L/R)</Text>
                             </>
                           );
                         } else if (repsConfigMode === '2x') {
                           return (
                             <>
                               Reps
-                              <Text style={{ textTransform: 'none' }}> x 2*</Text>
+                              <Text style={{ textTransform: 'none' }}> (x2)</Text>
                             </>
                           );
                         }
@@ -2489,10 +2489,10 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
           renderItem={renderDragItem}
           contentContainerStyle={[
             styles.dragListContent,
-            { 
+            {
               // Use preCollapsePaddingTop during drag, otherwise use initialPaddingTop for proper spacing
-              paddingTop: isDragging && preCollapsePaddingTop !== null 
-                ? preCollapsePaddingTop 
+              paddingTop: isDragging && preCollapsePaddingTop !== null
+                ? preCollapsePaddingTop
                 : (!isDragging ? initialPaddingTop : 0)
             },
           ]}
@@ -2594,14 +2594,6 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                 }
               ]}
             >
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => {
-                  setActiveSetMenu(null);
-                }}
-              >
-                <X size={16} color={COLORS.white} />
-              </TouchableOpacity>
               {(() => {
                 const exercise = findExerciseDeep(currentWorkout.exercises, activeSetMenu?.exerciseId);
                 const set = exercise?.sets?.find(s => s.id === activeSetMenu?.setId);
@@ -2610,61 +2602,80 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
 
                 const hasRestPeriod = !!set?.restPeriodSeconds;
 
+                const setMenuOptions = [
+                  {
+                    id: 'warmup',
+                    onPress: () => handleSetMenuAction('warmup'),
+                    icon: <Flame size={18} color={COLORS.orange[500]} />,
+                    text: 'Warmup',
+                    isActive: set?.isWarmup,
+                    activeIcon: set?.isWarmup ? <Check size={16} color={COLORS.orange[500]} strokeWidth={3} /> : null,
+                    textStyle: set?.isWarmup ? styles.setPopupOptionText__warmup : undefined,
+                  },
+                  {
+                    id: 'failure',
+                    onPress: () => handleSetMenuAction('failure'),
+                    icon: <Zap size={18} color={COLORS.red[500]} />,
+                    text: 'Failure',
+                    isActive: set?.isFailure,
+                    activeIcon: set?.isFailure ? <Check size={16} color={COLORS.red[500]} strokeWidth={3} /> : null,
+                    textStyle: set?.isFailure ? styles.setPopupOptionText__failure : undefined,
+                  },
+                  {
+                    id: 'edit_group',
+                    onPress: () => handleSetMenuAction('edit_group'),
+                    icon: <Layers size={18} color={COLORS.white} />,
+                    text: isGrouped ? 'Edit dropset(s)' : 'Edit dropset',
+                  },
+                  {
+                    id: 'rest',
+                    onPress: (e?: any) => {
+                      if (e) e.stopPropagation();
+                      handleSetMenuAction(hasRestPeriod ? 'remove_rest' : 'add_rest');
+                    },
+                    icon: <Timer size={18} color={COLORS.white} />,
+                    text: hasRestPeriod ? `Rest: ${formatRestTime(set.restPeriodSeconds!)}` : 'Add rest timer',
+                    isActive: hasRestPeriod,
+                    activeIcon: hasRestPeriod ? <Check size={16} color={COLORS.white} strokeWidth={3} /> : null,
+                    textStyle: hasRestPeriod ? styles.setPopupOptionText__active : undefined,
+                    itemStyle: hasRestPeriod ? styles.setPopupOptionItem__activeRest : undefined,
+                  },
+                  {
+                    id: 'insert_set',
+                    onPress: () => handleSetMenuAction('insert_set'),
+                    icon: <Plus size={18} color={COLORS.white} />,
+                    text: 'Insert set',
+                  },
+                ];
+
                 return (
                   <>
-                    <TouchableOpacity
-                      style={styles.setPopupOptionItem}
-                      onPress={() => handleSetMenuAction('warmup')}
-                    >
-                      <Flame size={18} color={COLORS.orange[500]} />
-                      <Text style={[
-                        styles.setPopupOptionText,
-                        set?.isWarmup && styles.setPopupOptionText__warmup
-                      ]}>Warmup</Text>
-                      {set?.isWarmup && <Check size={16} color={COLORS.orange[500]} strokeWidth={3} />}
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.setPopupOptionItem}
-                      onPress={() => handleSetMenuAction('failure')}
-                    >
-                      <Zap size={18} color={COLORS.red[500]} />
-                      <Text style={[
-                        styles.setPopupOptionText,
-                        set?.isFailure && styles.setPopupOptionText__failure
-                      ]}>Failure</Text>
-                      {set?.isFailure && <Check size={16} color={COLORS.red[500]} strokeWidth={3} />}
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.setPopupOptionItem}
-                      onPress={() => handleSetMenuAction('edit_group')}
-                    >
-                      <Layers size={18} color={defaultSupersetColorScheme[600]} />
-                      <Text style={styles.setPopupOptionText}>{isGrouped ? 'Edit dropset(s)' : 'Edit dropset'}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.setPopupOptionItem,
-                        hasRestPeriod && styles.setPopupOptionItem__activeRest
-                      ]}
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        handleSetMenuAction(hasRestPeriod ? 'remove_rest' : 'add_rest');
-                      }}
-                    >
-                      <Timer size={18} color={hasRestPeriod ? COLORS.white : COLORS.blue[500]} />
-                      <Text style={[
-                        styles.setPopupOptionText,
-                        hasRestPeriod && styles.setPopupOptionText__active
-                      ]}>{hasRestPeriod ? `Rest: ${formatRestTime(set.restPeriodSeconds!)}` : 'Add rest timer'}</Text>
-                      {hasRestPeriod && <Check size={16} color={COLORS.white} strokeWidth={3} />}
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.setPopupOptionItem, { borderBottomWidth: 0 }]}
-                      onPress={() => handleSetMenuAction('insert_set')}
-                    >
-                      <Plus size={18} color={COLORS.slate[600]} />
-                      <Text style={styles.setPopupOptionText}>Insert set</Text>
-                    </TouchableOpacity>
+                    {setMenuOptions.map((option, index) => {
+                      const isFirst = index === 0;
+                      const isLast = index === setMenuOptions.length - 1;
+                      return (
+                        <TouchableOpacity
+                          key={option.id}
+                          style={[
+                            styles.setPopupOptionItem,
+                            option.itemStyle,
+                            isLast && styles.setPopupOptionItemLast,
+                            isFirst && defaultPopupStyles.borderRadiusFirst,
+                            isLast && defaultPopupStyles.borderRadiusLast,
+                          ]}
+                          onPress={option.onPress}
+                        >
+                          <View style={styles.setPopupOptionContent}>
+                            {option.icon}
+                            <Text style={[
+                              styles.setPopupOptionText,
+                              option.textStyle
+                            ]}>{option.text}</Text>
+                            {option.activeIcon}
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </>
                 );
               })()}
@@ -2689,34 +2700,40 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                 }
               ]}
             >
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => setOptionsModalExId(null)}
-              >
-                <X size={16} color={COLORS.white} />
-              </TouchableOpacity>
-
               {(() => {
                 const currentExercise = findExerciseDeep(currentWorkout.exercises, optionsModalExId);
                 const isInGroup = currentExercise ? isExerciseInSuperset(currentWorkout.exercises, optionsModalExId) : false;
 
+                const options = [
+                  { id: 'replace', onPress: () => handleReplaceExercise(optionsModalExId), icon: <RefreshCw size={18} color={COLORS.white} />, text: 'Replace Exercise' },
+                  { id: 'superset', onPress: () => handleEditSupersetWrapper(optionsModalExId), icon: <Layers size={18} color={COLORS.white} />, text: isInGroup ? 'Edit superset' : 'Create Group' },
+                  { id: 'delete', onPress: () => handleDeleteExercise(optionsModalExId), icon: <Trash2 size={18} color={COLORS.white} />, text: 'Delete Exercise', isDelete: true },
+                ];
+
                 return (
                   <>
-                    <TouchableOpacity style={styles.setPopupOptionItem} onPress={() => handleReplaceExercise(optionsModalExId)}>
-                      <RefreshCw size={18} color={COLORS.slate[600]} />
-                      <Text style={styles.setPopupOptionText}>Replace Exercise</Text>
-                    </TouchableOpacity>
-
-                    {/* Superset Options */}
-                    <TouchableOpacity style={styles.setPopupOptionItem} onPress={() => handleEditSupersetWrapper(optionsModalExId)}>
-                      <Layers size={18} color={defaultSupersetColorScheme[600]} />
-                      <Text style={styles.setPopupOptionText}>{isInGroup ? 'Edit superset' : 'Create Group'}</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity style={[styles.setPopupOptionItem, { borderBottomWidth: 0 }]} onPress={() => handleDeleteExercise(optionsModalExId)}>
-                      <Trash2 size={18} color={COLORS.red[500]} />
-                      <Text style={[styles.setPopupOptionText, styles.optionDestructive]}>Delete Exercise</Text>
-                    </TouchableOpacity>
+                    {options.map((option, index) => {
+                      const isFirst = index === 0;
+                      const isLast = index === options.length - 1;
+                      return (
+                        <TouchableOpacity
+                          key={option.id}
+                          style={[
+                            styles.setPopupOptionItem,
+                            option.isDelete && styles.setPopupOptionItemDelete,
+                            isLast && styles.setPopupOptionItemLast,
+                            isFirst && defaultPopupStyles.borderRadiusFirst,
+                            isLast && defaultPopupStyles.borderRadiusLast,
+                          ]}
+                          onPress={option.onPress}
+                        >
+                          <View style={styles.setPopupOptionContent}>
+                            {option.icon}
+                            <Text style={styles.setPopupOptionText}>{option.text}</Text>
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </>
                 );
               })()}
@@ -3660,46 +3677,43 @@ const styles = StyleSheet.create({
     color: COLORS.white,
   },
   setPopupMenuContainer: {
-    position: 'absolute',
+    position: defaultPopupStyles.container.position as 'absolute',
+    backgroundColor: defaultPopupStyles.container.backgroundColor,
+    borderRadius: defaultPopupStyles.container.borderRadius,
+    minWidth: defaultPopupStyles.container.minWidth,
+    shadowColor: defaultPopupStyles.container.shadowColor,
+    shadowOffset: defaultPopupStyles.container.shadowOffset,
+    shadowOpacity: defaultPopupStyles.container.shadowOpacity,
+    shadowRadius: defaultPopupStyles.container.shadowRadius,
+    elevation: defaultPopupStyles.container.elevation,
+    zIndex: defaultPopupStyles.container.zIndex,
+    borderWidth: defaultPopupStyles.container.borderWidth,
+    borderColor: defaultPopupStyles.container.borderColor,
     width: 200,
-    backgroundColor: COLORS.white,
-    borderRadius: 8, // Originall 12
-    padding: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-    borderWidth: 1,
-    borderColor: COLORS.slate[100],
   },
-  closeButton: {
-    position: 'absolute',
-    top: -8,
-    right: -8,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: COLORS.red[500],
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1,
-  },
+  closeButton: {},
   setPopupOptionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
+    ...defaultPopupStyles.option,
+    ...defaultPopupStyles.optionBackground,
+  },
+  setPopupOptionItemLast: {
+    ...defaultPopupStyles.borderBottomLast,
+  },
+  setPopupOptionItemDelete: {
+    ...defaultPopupStyles.optionDelete,
+  },
+  setPopupOptionContent: {
+    flexDirection: defaultPopupStyles.optionContent.flexDirection as 'row',
+    alignItems: defaultPopupStyles.optionContent.alignItems as 'center',
+    gap: defaultPopupStyles.optionContent.gap,
   },
   setPopupOptionItem__activeRest: {
     backgroundColor: COLORS.blue[500],
     borderRadius: 4,
   },
   setPopupOptionText: {
-    fontSize: 14,
+    ...defaultPopupStyles.optionText,
     fontWeight: '500',
-    color: COLORS.slate[700],
     flex: 1,
   },
   setPopupOptionText__active: {

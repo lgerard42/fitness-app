@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Pressable, StyleSheet } from 'react-native';
 import { ChevronLeft, ArrowLeftRight, Lock, Ruler, Settings, Trash2, Timer, Hash, Scale, Info, Footprints, Goal } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
+import { defaultPopupStyles } from '@/constants/defaultStyles';
 import { updateExercisesDeep, findExerciseDeep } from '@/utils/workoutHelpers';
 import type { Workout, ExerciseLibraryItem, Exercise, DistanceUnitSystem, DistanceUnit } from '@/types/workout';
 import SetRowHeadersInformation from './SetRowHeadersInformation';
@@ -751,149 +752,78 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
     );
 };
 
-const styles = StyleSheet.create({
-    columnHeaderPopupBackdrop: {
-        ...StyleSheet.absoluteFillObject,
-        zIndex: 100,
-        elevation: 10,
-    },
-    columnHeaderPopupContainer: {
-        position: 'absolute',
-        backgroundColor: COLORS.slate[700],
-        borderRadius: 8,
-        minWidth: 220,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
-        elevation: 8,
-        zIndex: 999,
-        overflow: 'visible',
-        borderWidth: 1,
-        borderColor: COLORS.slate[200],
-    },
-    columnHeaderPopupOption: {
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: COLORS.slate[550],
-    },
-    columnHeaderPopupOptionLast: {
-        borderBottomWidth: 0,
-    },
-    columnHeaderPopupOptionContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    columnHeaderPopupOptionText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: COLORS.white,
-        textTransform: 'none',
-        flex: 1,
-    },
-    columnHeaderPopupOptionActive: {
-        backgroundColor: COLORS.blue[500],
-    },
-    columnHeaderPopupOptionTextActive: {
-        color: COLORS.white,
-        fontWeight: '600',
-    },
-    columnHeaderPopupOptionWrapper: {
-        flexDirection: 'row',
-        alignItems: 'stretch',
-        padding: 0,
-    },
-    columnHeaderPopupOptionWrapperLast: {
-        borderBottomWidth: 0,
-    },
-    columnHeaderPopupOptionFlex: {
-        flex: 1,
-    },
-    columnHeaderPopupOptionWithBorder: {
-        borderRightWidth: 1,
-        borderRightColor: COLORS.slate[600],
-    },
-    columnHeaderPopupOptionDeleteFixed: {
-        width: 50,
-        borderBottomRightRadius: 6,
-    },
-    columnHeaderPopupOptionDelete: {
-        backgroundColor: COLORS.red[600],
-    },
-    columnHeaderPopupOptionDeleteDisabled: {
-        backgroundColor: COLORS.slate[600],
-        opacity: 0.6,
-    },
-    columnHeaderPopupOptionLocked: {
-        backgroundColor: COLORS.slate[600],
-        opacity: 0.6,
-    },
-    columnHeaderPopupRowOptions: {
-        flexDirection: 'row',
-        borderBottomWidth: 1,
-        borderBottomColor: COLORS.slate[500],
-        position: 'relative',
-    },
-    columnHeaderPopupRowOptionsLabelWrapper: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1,
-        pointerEvents: 'box-none',
-        backgroundColor: 'transparent',
-    },
-    columnHeaderPopupRowOptionsLabelContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        backgroundColor: COLORS.slate[700],
-        padding: 2,
-        paddingHorizontal: 6,
-        borderRadius: 6,
-        borderWidth: 1,
-        borderColor: COLORS.slate[500],
-        marginTop: -8,// Approximately half the label container height to center on border
-    },
-    columnHeaderPopupRowOptionsLabel: {
-        fontSize: 10,
-        fontWeight: 'normal',
-        color: COLORS.slate[300],
-        paddingTop: 0,
-    },
-    columnHeaderPopupRowOption: {
-        flex: 1,
-        paddingBottom: 12,
-        paddingTop: 16,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    columnHeaderPopupRowOptionBorder: {
-        borderRightWidth: 1,
-        borderRightColor: COLORS.slate[550],
-    },
-    columnHeaderPopupRowOptionInactive: {
-        backgroundColor: COLORS.slate[650],
-    },
-    columnHeaderPopupRowOptionActive: {
-        backgroundColor: COLORS.blue[500],
-    },
-    columnHeaderPopupRowOptionText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: COLORS.white,
-    },
-    columnHeaderPopupRowOptionTextInactive: {
-        color: COLORS.slate[300],
-    },
-    columnHeaderPopupRowOptionTextActive: {
-        color: COLORS.white,
-        fontWeight: '600',
-    },
+// Merge default styles with component-specific overrides
+const getMergedStyle = (defaultStyle: any, overrideStyle: any) => {
+    return overrideStyle && Object.keys(overrideStyle).length > 0
+        ? { ...defaultStyle, ...overrideStyle }
+        : defaultStyle;
+};
+
+const baseStyles = StyleSheet.create({
+    columnHeaderPopupBackdrop: {},
+    columnHeaderPopupContainer: {},
+    columnHeaderPopupOption: {},
+    columnHeaderPopupOptionLast: {},
+    columnHeaderPopupOptionContent: {},
+    columnHeaderPopupOptionText: {},
+    columnHeaderPopupOptionActive: {},
+    columnHeaderPopupOptionTextActive: {},
+    columnHeaderPopupOptionWrapper: {},
+    columnHeaderPopupOptionWrapperLast: {},
+    columnHeaderPopupOptionFlex: {},
+    columnHeaderPopupOptionWithBorder: {},
+    columnHeaderPopupOptionDeleteFixed: {},
+    columnHeaderPopupOptionDelete: {},
+    columnHeaderPopupOptionDeleteDisabled: {},
+    columnHeaderPopupOptionLocked: {},
+    columnHeaderPopupRowOptions: {},
+    columnHeaderPopupRowOptionsLabelWrapper: {},
+    columnHeaderPopupRowOptionsLabelContainer: {},
+    columnHeaderPopupRowOptionsLabel: {},
+    columnHeaderPopupRowOption: {},
+    columnHeaderPopupRowOptionBorder: {},
+    columnHeaderPopupRowOptionInactive: {},
+    columnHeaderPopupRowOptionActive: {},
+    columnHeaderPopupRowOptionText: {},
+    columnHeaderPopupRowOptionTextInactive: {},
+    columnHeaderPopupRowOptionTextActive: {},
 });
+
+// Merge default styles with component-specific overrides
+const styles = {
+    columnHeaderPopupBackdrop: getMergedStyle(defaultPopupStyles.backdrop, baseStyles.columnHeaderPopupBackdrop),
+    columnHeaderPopupContainer: getMergedStyle(defaultPopupStyles.container, baseStyles.columnHeaderPopupContainer),
+    columnHeaderPopupOption: getMergedStyle(
+        { ...defaultPopupStyles.option, ...defaultPopupStyles.optionBackground },
+        baseStyles.columnHeaderPopupOption
+    ),
+    columnHeaderPopupOptionLast: getMergedStyle(defaultPopupStyles.borderBottomLast, baseStyles.columnHeaderPopupOptionLast),
+    columnHeaderPopupOptionContent: getMergedStyle(defaultPopupStyles.optionContent, baseStyles.columnHeaderPopupOptionContent),
+    columnHeaderPopupOptionText: getMergedStyle(defaultPopupStyles.optionText, baseStyles.columnHeaderPopupOptionText),
+    columnHeaderPopupOptionActive: getMergedStyle(defaultPopupStyles.optionBackgroundActive, baseStyles.columnHeaderPopupOptionActive),
+    columnHeaderPopupOptionTextActive: getMergedStyle(defaultPopupStyles.optionTextActive, baseStyles.columnHeaderPopupOptionTextActive),
+    columnHeaderPopupOptionWrapper: getMergedStyle(defaultPopupStyles.optionRow, baseStyles.columnHeaderPopupOptionWrapper),
+    columnHeaderPopupOptionWrapperLast: getMergedStyle(defaultPopupStyles.borderBottomLast, baseStyles.columnHeaderPopupOptionWrapperLast),
+    columnHeaderPopupOptionFlex: getMergedStyle(defaultPopupStyles.optionFlex, baseStyles.columnHeaderPopupOptionFlex),
+    columnHeaderPopupOptionWithBorder: getMergedStyle(defaultPopupStyles.optionRowWithBorder, baseStyles.columnHeaderPopupOptionWithBorder),
+    columnHeaderPopupOptionDeleteFixed: getMergedStyle(
+        { ...defaultPopupStyles.iconOnlyOption, borderBottomRightRadius: 6 },
+        baseStyles.columnHeaderPopupOptionDeleteFixed
+    ),
+    columnHeaderPopupOptionDelete: getMergedStyle(defaultPopupStyles.iconOnlyOption, baseStyles.columnHeaderPopupOptionDelete),
+    columnHeaderPopupOptionDeleteDisabled: getMergedStyle(defaultPopupStyles.iconOnlyOptionDisabled, baseStyles.columnHeaderPopupOptionDeleteDisabled),
+    columnHeaderPopupOptionLocked: getMergedStyle(defaultPopupStyles.optionBackgroundDisabled, baseStyles.columnHeaderPopupOptionLocked),
+    columnHeaderPopupRowOptions: getMergedStyle(defaultPopupStyles.toggleRow, baseStyles.columnHeaderPopupRowOptions),
+    columnHeaderPopupRowOptionsLabelWrapper: getMergedStyle(defaultPopupStyles.toggleLabelWrapper, baseStyles.columnHeaderPopupRowOptionsLabelWrapper),
+    columnHeaderPopupRowOptionsLabelContainer: getMergedStyle(defaultPopupStyles.toggleLabelContainer, baseStyles.columnHeaderPopupRowOptionsLabelContainer),
+    columnHeaderPopupRowOptionsLabel: getMergedStyle(defaultPopupStyles.toggleLabelText, baseStyles.columnHeaderPopupRowOptionsLabel),
+    columnHeaderPopupRowOption: getMergedStyle(defaultPopupStyles.toggleOption, baseStyles.columnHeaderPopupRowOption),
+    columnHeaderPopupRowOptionBorder: getMergedStyle(defaultPopupStyles.toggleOptionBorder, baseStyles.columnHeaderPopupRowOptionBorder),
+    columnHeaderPopupRowOptionInactive: getMergedStyle(defaultPopupStyles.toggleOptionBackgroundInactive, baseStyles.columnHeaderPopupRowOptionInactive),
+    columnHeaderPopupRowOptionActive: getMergedStyle(defaultPopupStyles.toggleOptionBackgroundActive, baseStyles.columnHeaderPopupRowOptionActive),
+    columnHeaderPopupRowOptionText: getMergedStyle(defaultPopupStyles.toggleOptionText, baseStyles.columnHeaderPopupRowOptionText),
+    columnHeaderPopupRowOptionTextInactive: getMergedStyle(defaultPopupStyles.toggleOptionTextInactive, baseStyles.columnHeaderPopupRowOptionTextInactive),
+    columnHeaderPopupRowOptionTextActive: getMergedStyle(defaultPopupStyles.toggleOptionTextActive, baseStyles.columnHeaderPopupRowOptionTextActive),
+};
 
 export default SetRowHeadersPopup;
