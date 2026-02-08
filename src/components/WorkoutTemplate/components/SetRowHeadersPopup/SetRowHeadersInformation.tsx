@@ -314,7 +314,9 @@ const styles = StyleSheet.create({
         flex: 1,
         paddingVertical: 8,
         alignItems: 'center',
+        justifyContent: 'center',
         borderRadius: 6,
+        minHeight: 36,
     },
     sectionToggleButtonSelected: {
         backgroundColor: COLORS.slate[900],
