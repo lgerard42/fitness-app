@@ -2626,8 +2626,12 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                   {
                     id: 'edit_group',
                     onPress: () => handleSetMenuAction('edit_group'),
-                    icon: <Layers size={18} color={COLORS.white} />,
-                    text: isGrouped ? 'Edit dropset(s)' : 'Edit dropset',
+                    icon: <Layers size={18} color={isGrouped ? COLORS.white : COLORS.indigo[500]} />,
+                    text: isGrouped ? 'Edit dropsets' : 'Edit dropset',
+                    isActive: isGrouped,
+                    activeIcon: isGrouped ? <Check size={16} color={COLORS.white} strokeWidth={3} /> : null,
+                    textStyle: isGrouped ? styles.setPopupOptionText__active : undefined,
+                    itemStyle: isGrouped ? styles.setPopupOptionItem__activeDropset : undefined,
                   },
                   {
                     id: 'rest',
@@ -3845,6 +3849,9 @@ const styles = StyleSheet.create({
   setPopupOptionItem__activeRest: {
     backgroundColor: COLORS.blue[500],
     borderRadius: 4,
+  },
+  setPopupOptionItem__activeDropset: {
+    backgroundColor: COLORS.indigo[500],
   },
   setPopupOptionText: {
     ...defaultPopupStyles.optionText,
