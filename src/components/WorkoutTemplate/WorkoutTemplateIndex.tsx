@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Pressable, ScrollView, StyleSheet, Modal, Animated, Keyboard, Dimensions } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
 import { ChevronDown, ChevronLeft, ChevronRight, Calendar, Clock, FileText, Plus, Dumbbell, Layers, MoreVertical, Trash2, RefreshCw, X, Flame, Zap, Check, Timer } from 'lucide-react-native';
 import type { NavigationProp } from '@react-navigation/native';
@@ -95,6 +95,13 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
 
   const scrollViewRef = useRef<ScrollView | null>(null);
   const listContainerRef = useRef<View | null>(null);
+  const headerRef = useRef<View | null>(null);
+  
+  // Get safe area insets
+  const insets = useSafeAreaInsets();
+  
+  // State for initial padding to account for header height
+  const [initialPaddingTop, setInitialPaddingTop] = useState<number>(0);
 
   // Rest Period Modal State
   const [restPeriodModalOpen, setRestPeriodModalOpen] = useState(false);
@@ -249,15 +256,38 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     }
   }, [collapsedGroupId, dragItems, alignAfterCollapse, pendingDragItemId, isDragging]);
 
-  // Ensure layout is measured on initial render to fix spacing issue
+  // Reset initial padding when workout loads (no extra padding needed)
+  // The header is already rendered above the list, so no additional padding is required
   useEffect(() => {
-    if (listContainerRef.current && !isDragging) {
-      // Trigger layout measurement on mount
-      listContainerRef.current.measureInWindow?.((_, pageY) => {
-        setListLayoutY(pageY);
-      });
+    if (!currentWorkout) {
+      setInitialPaddingTop(0);
+      return;
     }
-  }, [isDragging]);
+    
+    if (isDragging) {
+      // Don't recalculate during drag - use preCollapsePaddingTop instead
+      return;
+    }
+    
+    // No initial padding needed - header is already positioned above the list
+    setInitialPaddingTop(0);
+  }, [currentWorkout, isDragging]);
+
+  // Ensure layout is measured on initial render and when workout changes
+  useEffect(() => {
+    if (listContainerRef.current && !isDragging && currentWorkout) {
+      // Trigger layout measurement on mount and when workout loads
+      const timer = setTimeout(() => {
+        if (listContainerRef.current) {
+          listContainerRef.current.measureInWindow?.((_, pageY) => {
+            setListLayoutY(pageY);
+          });
+        }
+      }, 150); // Slightly longer delay to ensure header is measured first
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isDragging, currentWorkout]);
 
   // Custom Keyboard State
   const [customKeyboardVisible, setCustomKeyboardVisible] = useState(false);
@@ -2459,7 +2489,12 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
           renderItem={renderDragItem}
           contentContainerStyle={[
             styles.dragListContent,
-            { paddingTop: preCollapsePaddingTop ?? 0 },
+            { 
+              // Use preCollapsePaddingTop during drag, otherwise use initialPaddingTop for proper spacing
+              paddingTop: isDragging && preCollapsePaddingTop !== null 
+                ? preCollapsePaddingTop 
+                : (!isDragging ? initialPaddingTop : 0)
+            },
           ]}
           ListHeaderComponent={notesHeaderComponent}
           ListFooterComponent={
@@ -2491,7 +2526,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     <SafeAreaView style={styles.container} edges={['top']}>
 
       {customHeader ? customHeader : (
-        <View style={styles.header}>
+        <View ref={headerRef} style={styles.header}>
           <TouchableOpacity onPress={() => navigation?.goBack()} style={styles.headerButton}>
             <ChevronDown size={24} color={COLORS.slate[400]} />
           </TouchableOpacity>
