@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { View, Text, TextInput, TouchableOpacity, Pressable, ScrollView, StyleSheet, Modal, Animated, Keyboard, Dimensions } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
-import { ChevronDown, ChevronLeft, ChevronRight, Calendar, Clock, FileText, Plus, Dumbbell, Layers, MoreVertical, Trash2, RefreshCw, X, Flame, Zap, Check, Timer } from 'lucide-react-native';
+import { ChevronDown, ChevronLeft, ChevronRight, Calendar, Clock, FileText, Plus, Dumbbell, TrendingDown, Layers, MoreVertical, Trash2, RefreshCw, X, Flame, Zap, Check, Timer } from 'lucide-react-native';
 import type { NavigationProp } from '@react-navigation/native';
 import { COLORS } from '@/constants/colors';
 import { formatDuration } from '@/constants/data';
@@ -996,31 +996,37 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
       const set = exercise.sets.find((s: Set) => s.id === setId);
 
       if (set?.dropSetId) {
-        // Grouped set: Pre-populate selection with all sets in the group
-        const groupSetIds = exercise.sets
-          .filter((s: Set) => s.dropSetId === set.dropSetId)
-          .map((s: Set) => s.id);
-
-        // Check if all sets in the group have the same type
-        const groupSets = exercise.sets.filter((s: Set) => s.dropSetId === set.dropSetId);
-        const allWarmup = groupSets.length > 0 && groupSets.every((s: Set) => s.isWarmup);
-        const allFailure = groupSets.length > 0 && groupSets.every((s: Set) => s.isFailure);
-
-        // Initialize groupSetType with the current group type
-        if (allWarmup) {
-          setGroupSetType('warmup');
-        } else if (allFailure) {
-          setGroupSetType('failure');
-        } else {
-          setGroupSetType(null);
-        }
-
-        setSelectionMode({ exerciseId, type: 'drop_set', editingGroupId: set.dropSetId });
-        setSelectedSetIds(new Set(groupSetIds));
+        // Grouped set: Open SetDragModal directly
+        startSetDrag(exercise);
       } else {
-        // Ungrouped set: Pre-select just this set
-        setSelectionMode({ exerciseId, type: 'drop_set', editingGroupId: undefined });
-        setSelectedSetIds(new Set([setId]));
+        // Ungrouped set: Create a dropset first, then open SetDragModal
+        const newDropSetId = `dropset-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+        // Update the workout to add the set to a dropset
+        const updatedWorkout = {
+          ...currentWorkout,
+          exercises: updateExercisesDeep(currentWorkout.exercises, exerciseId, (ex) => {
+            if (ex.type === 'group') return ex;
+            return {
+              ...ex,
+              sets: ex.sets.map((s: Set) => {
+                if (s.id === setId) {
+                  return { ...s, dropSetId: newDropSetId };
+                }
+                return s;
+              }),
+            };
+          }),
+        };
+
+        // Update the workout first
+        handleWorkoutUpdate(updatedWorkout);
+
+        // Then find the updated exercise and open the modal
+        const updatedExercise = findExerciseDeep(updatedWorkout.exercises, exerciseId);
+        if (updatedExercise) {
+          startSetDrag(updatedExercise);
+        }
       }
       setActiveSetMenu(null);
     } else if (action === 'add_rest') {
@@ -2626,8 +2632,8 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                   {
                     id: 'edit_group',
                     onPress: () => handleSetMenuAction('edit_group'),
-                    icon: <Layers size={18} color={isGrouped ? COLORS.white : COLORS.indigo[500]} />,
-                    text: isGrouped ? 'Edit dropsets' : 'Edit dropset',
+                    icon: <TrendingDown size={18} color={isGrouped ? COLORS.white : COLORS.indigo[400]} />,
+                    text: isGrouped ? 'Edit dropsets' : 'Create dropset',
                     isActive: isGrouped,
                     activeIcon: isGrouped ? <Check size={16} color={COLORS.white} strokeWidth={3} /> : null,
                     textStyle: isGrouped ? styles.setPopupOptionText__active : undefined,

@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useState, useRef, useEffect } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
-import { X, Timer, Flame, Zap, Check, Layers, Plus, Square, Trash2 } from 'lucide-react-native';
+import { X, Timer, Flame, Zap, Check, TrendingDown, Layers, Plus, Square, Trash2 } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { formatRestTime, parseRestTimeInput } from '@/utils/workoutHelpers';
 import { defaultPopupStyles } from '@/constants/defaultStyles';
@@ -969,62 +969,35 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                                             </TouchableOpacity>
                                         </View>
 
-                                        {/* Create Dropset Option */}
+                                        {/* Create Dropset / Delete Set Row */}
                                         {!set.dropSetId && (
-                                            <TouchableOpacity
-                                                style={[
-                                                    defaultPopupStyles.option as any,
-                                                    defaultPopupStyles.optionBackground as any,
-                                                    defaultPopupStyles.borderBottomLast as any,
-                                                    defaultPopupStyles.borderRadiusLast as any,
-                                                ]}
-                                                onPress={() => {
-                                                    onCreateDropset(set.id);
-                                                    setIndexPopup(null);
-                                                }}
-                                            >
-                                                <View style={defaultPopupStyles.optionContent as any}>
-                                                    <Layers size={18} color={COLORS.indigo[400]} />
-                                                    <Text style={defaultPopupStyles.optionText as any}>Create dropset</Text>
-                                                </View>
-                                            </TouchableOpacity>
-                                        )}
-
-                                        {/* Ungroup Dropset / Delete Set Row */}
-                                        {set.dropSetId && (
                                             <View style={[
-                                                defaultPopupStyles.toggleRow as any,
+                                                defaultPopupStyles.optionRow as any,
                                                 defaultPopupStyles.borderBottomLast as any,
                                             ]}>
                                                 <TouchableOpacity
                                                     style={[
-                                                        defaultPopupStyles.toggleOption as any,
-                                                        defaultPopupStyles.toggleOptionBorder as any,
-                                                        defaultPopupStyles.toggleOptionBackgroundInactive as any,
-                                                        defaultPopupStyles.borderRadiusFirstLeft as any,
+                                                        defaultPopupStyles.optionInRow as any,
+                                                        defaultPopupStyles.optionBackground as any,
+                                                        defaultPopupStyles.optionFlex as any,
+                                                        defaultPopupStyles.optionRowWithBorder as any,
                                                         defaultPopupStyles.borderRadiusLastLeft as any,
                                                     ]}
                                                     onPress={() => {
-                                                        handleUngroupDropset(set.dropSetId!);
+                                                        onCreateDropset(set.id);
                                                         setIndexPopup(null);
                                                     }}
                                                 >
                                                     <View style={defaultPopupStyles.optionContent as any}>
-                                                        <Layers size={18} color={COLORS.indigo[400]} />
-                                                        <Text style={[
-                                                            defaultPopupStyles.toggleOptionText as any,
-                                                            defaultPopupStyles.toggleOptionTextInactive as any
-                                                        ]}>
-                                                            Ungroup dropset
-                                                        </Text>
+                                                        <TrendingDown size={18} color={COLORS.indigo[400]} />
+                                                        <Text style={defaultPopupStyles.optionText as any}>Create dropset</Text>
                                                     </View>
                                                 </TouchableOpacity>
 
                                                 <TouchableOpacity
                                                     style={[
-                                                        defaultPopupStyles.toggleOption as any,
-                                                        defaultPopupStyles.toggleOptionBackgroundInactive as any,
-                                                        defaultPopupStyles.borderRadiusFirstRight as any,
+                                                        defaultPopupStyles.iconOnlyOption as any,
+                                                        defaultPopupStyles.optionInRow as any,
                                                         defaultPopupStyles.borderRadiusLastRight as any,
                                                     ]}
                                                     onPress={() => {
@@ -1033,7 +1006,52 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                                                     }}
                                                 >
                                                     <View style={defaultPopupStyles.optionContent as any}>
-                                                        <Trash2 size={18} color={COLORS.red[500]} />
+                                                        <Trash2 size={18} color={COLORS.white} />
+                                                    </View>
+                                                </TouchableOpacity>
+                                            </View>
+                                        )}
+
+                                        {/* Ungroup Dropset / Delete Set Row */}
+                                        {set.dropSetId && (
+                                            <View style={[
+                                                defaultPopupStyles.optionRow as any,
+                                                defaultPopupStyles.borderBottomLast as any,
+                                            ]}>
+                                                <TouchableOpacity
+                                                    style={[
+                                                        defaultPopupStyles.optionInRow as any,
+                                                        defaultPopupStyles.optionBackground as any,
+                                                        defaultPopupStyles.optionFlex as any,
+                                                        defaultPopupStyles.optionRowWithBorder as any,
+                                                        defaultPopupStyles.borderRadiusLastLeft as any,
+                                                    ]}
+                                                    onPress={() => {
+                                                        handleUngroupDropset(set.dropSetId!);
+                                                        setIndexPopup(null);
+                                                    }}
+                                                >
+                                                    <View style={defaultPopupStyles.optionContent as any}>
+                                                        <TrendingDown size={18} color={COLORS.indigo[400]} />
+                                                        <Text style={defaultPopupStyles.optionText as any}>
+                                                            Ungroup dropset
+                                                        </Text>
+                                                    </View>
+                                                </TouchableOpacity>
+
+                                                <TouchableOpacity
+                                                    style={[
+                                                        defaultPopupStyles.iconOnlyOption as any,
+                                                        defaultPopupStyles.optionInRow as any,
+                                                        defaultPopupStyles.borderRadiusLastRight as any,
+                                                    ]}
+                                                    onPress={() => {
+                                                        handleDeleteSet(set.id);
+                                                        setIndexPopup(null);
+                                                    }}
+                                                >
+                                                    <View style={defaultPopupStyles.optionContent as any}>
+                                                        <Trash2 size={18} color={COLORS.white} />
                                                     </View>
                                                 </TouchableOpacity>
                                             </View>
