@@ -2774,6 +2774,17 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
 
                 const options = [
                   {
+                    id: 'editSets',
+                    onPress: () => {
+                      if (currentExercise) {
+                        startSetDrag(currentExercise);
+                        setOptionsModalExId(null);
+                      }
+                    },
+                    icon: <FileText size={18} color={COLORS.white} />,
+                    text: 'Edit Sets'
+                  },
+                  {
                     id: 'superset',
                     onPress: () => handleEditSupersetWrapper(optionsModalExId),
                     icon: <Layers size={18} color={COLORS.white} />,
@@ -2788,7 +2799,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                   <>
                     {options.map((option, index) => {
                       const isFirstRow = index === 0;
-                      // Create Group is NOT the last row (Replace/Delete is), so it keeps its bottom border
+                      // These options are NOT the last row (Replace/Delete is), so they keep their bottom border
                       return (
                         <TouchableOpacity
                           key={option.id}

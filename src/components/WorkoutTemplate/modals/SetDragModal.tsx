@@ -621,7 +621,9 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                                     <Zap size={14} color={COLORS.red[500]} />
                                 )}
                                 {set.completed && (
-                                    <Check size={14} color={COLORS.green[500]} />
+                                    <View style={styles.completedIndicatorWrapper}>
+                                        <Check size={14} color={COLORS.green[500]} />
+                                    </View>
                                 )}
                             </View>
 
@@ -1360,6 +1362,11 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         gap: 6,
         marginLeft: 24,
+    },
+    completedIndicatorWrapper: {
+        backgroundColor: COLORS.green[150],
+        borderRadius: 100,
+        padding: 2,
     },
     restTimerBadge: {
         flexDirection: 'row',
