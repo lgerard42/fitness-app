@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useState, useRef, useEffect } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
-import { X, Timer, Flame, Zap, Check, Layers, Plus, Square } from 'lucide-react-native';
+import { X, Timer, Flame, Zap, Check, Layers, Plus, Square, Trash2 } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { formatRestTime, parseRestTimeInput } from '@/utils/workoutHelpers';
 import { defaultPopupStyles } from '@/constants/defaultStyles';
@@ -208,6 +208,13 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
         const newItems = reconstructItemsFromSets(updatedSets);
         setLocalDragItems(newItems);
 
+        // Update parent state via onDragEnd (atomic operation)
+        onDragEnd({
+            data: newItems as SetDragListItem[],
+            from: 0,
+            to: 0,
+        });
+
         // Close trash if this item was swiped
         if (swipedItemId === setId) {
             setSwipedItemId(null);
@@ -223,7 +230,45 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
             setRestTimerInput(null);
             setRestTimerInputString('');
         }
-    }, [localDragItems, reconstructItemsFromSets, swipedItemId, indexPopup, restTimerInput]);
+    }, [localDragItems, reconstructItemsFromSets, swipedItemId, indexPopup, restTimerInput, onDragEnd]);
+
+    // Handle ungroup dropset - remove dropSetId from all sets in the dropset
+    const handleUngroupDropset = useCallback((dropSetId: string) => {
+        // Extract all current sets from localDragItems
+        const currentSets: Set[] = [];
+        localDragItems.forEach(item => {
+            if (item.type === 'set') {
+                currentSets.push(item.set);
+            }
+        });
+
+        // Remove dropSetId from all sets in this dropset
+        const updatedSets = currentSets.map(set => {
+            if (set.dropSetId === dropSetId) {
+                const { dropSetId: _, ...rest } = set;
+                return rest as Set;
+            }
+            return set;
+        });
+
+        // Reconstruct items with headers/footers (no more dropset headers/footers for this group)
+        const newItems = reconstructItemsFromSets(updatedSets);
+
+        // Update local state
+        setLocalDragItems(newItems);
+
+        // Update parent state via onDragEnd which sets setDragItems in one atomic operation
+        onDragEnd({
+            data: newItems as SetDragListItem[],
+            from: 0,
+            to: 0,
+        });
+
+        // Close index popup
+        if (indexPopup) {
+            setIndexPopup(null);
+        }
+    }, [localDragItems, reconstructItemsFromSets, indexPopup, onDragEnd]);
 
     // Helper: Close trash icon
     const closeTrashIcon = useCallback(() => {
@@ -276,6 +321,7 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                 style={[
                     styles.dropsetHeaderContainer,
                     isActive && styles.dropsetHeaderContainer__active,
+                    isDraggedDropset && styles.dropsetHeaderContainer__collapsed,
                 ]}
             >
                 <View
@@ -286,7 +332,7 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                         isActivelyDragging && styles.dropsetHeader__activelyDragging,
                     ]}
                 >
-                    <View style={styles.dropSetIndicatorHeader} />
+                    {!isDraggedDropset && <View style={styles.dropSetIndicatorHeader} />}
                     <View style={styles.dropsetHeaderContent}>
                         <Text style={styles.dropsetHeaderText}>Dropset ({item.setCount} sets)</Text>
                         {isDragging && (
@@ -619,26 +665,165 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
 
     const keyExtractor = useCallback((item: CollapsibleSetDragListItem) => item.id, []);
 
-    // Handle drag end - expand groups and pass to parent
+    // Handle drag end - expand groups and reconstruct dropset structure
     const handleLocalDragEnd = useCallback(({ data, from, to }: { data: CollapsibleSetDragListItem[]; from: number; to: number }) => {
         let updatedData = data;
 
-        // If a dropset was collapsed, expand all groups
+        // If a dropset was collapsed (dragging a dropset as a group)
         if (collapsedDropsetId) {
-            updatedData = expandAllDropsets(data);
+            // When dragging a collapsed dropset, the header moves but the sets/footer stay in place.
+            // We need to:
+            // 1. Find where the header moved to
+            // 2. Extract all sets belonging to the collapsed dropset
+            // 3. Move them together with the header
+            // 4. Preserve their dropSetId (they stay grouped)
+
+            const draggedDropsetId = collapsedDropsetId;
+
+            // Collect all items that belong to the dragged dropset (sets and footer)
+            const dropsetSets = data.filter(
+                (item): item is CollapsibleSetDragItem =>
+                    item.type === 'set' && item.set.dropSetId === draggedDropsetId
+            );
+            const dropsetFooter = data.find(
+                item => item.type === 'dropset_footer' && item.dropSetId === draggedDropsetId
+            );
+
+            // Collect all OTHER items (not part of the dragged dropset, except the header which stays in place)
+            const otherItems = data.filter(item => {
+                if (item.type === 'dropset_header' && item.dropSetId === draggedDropsetId) {
+                    return true; // Keep header in its new position
+                }
+                if (item.type === 'set' && item.set.dropSetId === draggedDropsetId) {
+                    return false; // Remove sets (we'll re-insert them)
+                }
+                if (item.type === 'dropset_footer' && item.dropSetId === draggedDropsetId) {
+                    return false; // Remove footer (we'll re-insert it)
+                }
+                return true; // Keep all other items
+            });
+
+            // Find where the header is in the otherItems array
+            const headerIndexInOthers = otherItems.findIndex(
+                item => item.type === 'dropset_header' && item.dropSetId === draggedDropsetId
+            );
+
+            // Insert sets right after header, then footer after sets
+            const reconstructedData: CollapsibleSetDragListItem[] = [
+                ...otherItems.slice(0, headerIndexInOthers + 1),
+                ...dropsetSets,
+                ...(dropsetFooter ? [dropsetFooter] : []),
+                ...otherItems.slice(headerIndexInOthers + 1),
+            ];
+
+            // Now expand all collapsed items and clear the collapsed state
+            updatedData = expandAllDropsets(reconstructedData);
             setCollapsedDropsetId(null);
+
+            // For dropset drags, we DON'T recalculate dropset membership - 
+            // the sets keep their original dropSetId
+            // Extract all sets in their new order, preserving dropSetId
+            const reorderedSets: Set[] = [];
+            updatedData.forEach(item => {
+                if (item.type === 'set') {
+                    reorderedSets.push(item.set);
+                }
+            });
+
+            // Reconstruct items with headers/footers from the sets
+            const reconstructedItems = reconstructItemsFromSets(reorderedSets);
+            setLocalDragItems(reconstructedItems);
+            pendingDragRef.current = null;
+
+            // Pass the reconstructed data to parent
+            onDragEnd({
+                data: reconstructedItems as SetDragListItem[],
+                from,
+                to,
+            });
+            return;
         }
 
-        setLocalDragItems(updatedData);
+        // For non-dropset drags (individual sets), determine dropset membership based on position
+        // Extract only the sets (filter out headers/footers)
+        const reorderedSets: Set[] = [];
+        updatedData.forEach(item => {
+            if (item.type === 'set') {
+                reorderedSets.push(item.set);
+            }
+        });
+
+        // Determine dropset membership based on position between headers/footers
+        const updatedSets = reorderedSets.map((set, setIndex) => {
+            // Find the position of this set in the full data array
+            let positionInFullArray = -1;
+            let setCount = 0;
+            for (let i = 0; i < updatedData.length; i++) {
+                if (updatedData[i].type === 'set') {
+                    if (setCount === setIndex) {
+                        positionInFullArray = i;
+                        break;
+                    }
+                    setCount++;
+                }
+            }
+
+            if (positionInFullArray === -1) {
+                // Fallback: keep original dropSetId
+                return { ...set };
+            }
+
+            // Look backwards to find the nearest dropset header
+            let nearestHeader: CollapsibleDropSetHeaderItem | null = null;
+            for (let i = positionInFullArray; i >= 0; i--) {
+                if (updatedData[i].type === 'dropset_header') {
+                    nearestHeader = updatedData[i] as CollapsibleDropSetHeaderItem;
+                    break;
+                }
+                if (updatedData[i].type === 'dropset_footer') {
+                    // Hit a footer before a header, so we're outside a dropset
+                    break;
+                }
+            }
+
+            // Look forwards to find the nearest dropset footer
+            let nearestFooter: CollapsibleDropSetFooterItem | null = null;
+            for (let i = positionInFullArray; i < updatedData.length; i++) {
+                if (updatedData[i].type === 'dropset_footer') {
+                    nearestFooter = updatedData[i] as CollapsibleDropSetFooterItem;
+                    break;
+                }
+                if (updatedData[i].type === 'dropset_header') {
+                    // Hit a header before a footer, so we're outside a dropset
+                    break;
+                }
+            }
+
+            // If we're between a matching header and footer, we're in that dropset
+            let newDropSetId: string | undefined = undefined;
+            if (nearestHeader && nearestFooter &&
+                nearestHeader.dropSetId === nearestFooter.dropSetId) {
+                newDropSetId = nearestHeader.dropSetId;
+            }
+
+            return {
+                ...set,
+                dropSetId: newDropSetId,
+            };
+        });
+
+        // Reconstruct items with headers/footers from the updated sets
+        const reconstructedItems = reconstructItemsFromSets(updatedSets);
+        setLocalDragItems(reconstructedItems);
         pendingDragRef.current = null;
 
-        // Pass the expanded data to parent
+        // Pass the reconstructed data to parent
         onDragEnd({
-            data: updatedData as SetDragListItem[],
+            data: reconstructedItems as SetDragListItem[],
             from,
             to,
         });
-    }, [collapsedDropsetId, expandAllDropsets, onDragEnd]);
+    }, [collapsedDropsetId, expandAllDropsets, reconstructItemsFromSets, onDragEnd]);
 
     if (!visible || !exercise) return null;
 
@@ -724,7 +909,7 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                                         {/* Warmup/Failure Toggle Row */}
                                         <View style={[
                                             defaultPopupStyles.toggleRow as any,
-                                            set.dropSetId && defaultPopupStyles.borderBottomLast as any
+                                            !set.dropSetId && defaultPopupStyles.borderBottomLast as any
                                         ]}>
                                             <TouchableOpacity
                                                 style={[
@@ -732,7 +917,7 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                                                     defaultPopupStyles.toggleOptionBorder as any,
                                                     set.isWarmup ? defaultPopupStyles.toggleOptionBackgroundActive as any : defaultPopupStyles.toggleOptionBackgroundInactive as any,
                                                     defaultPopupStyles.borderRadiusFirstLeft as any,
-                                                    set.dropSetId && defaultPopupStyles.borderRadiusLastLeft as any,
+                                                    !set.dropSetId && defaultPopupStyles.borderRadiusLastLeft as any,
                                                 ]}
                                                 onPress={() => {
                                                     const newIsWarmup = !set.isWarmup;
@@ -759,7 +944,7 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                                                     defaultPopupStyles.toggleOption as any,
                                                     set.isFailure ? defaultPopupStyles.toggleOptionBackgroundActive as any : defaultPopupStyles.toggleOptionBackgroundInactive as any,
                                                     defaultPopupStyles.borderRadiusFirstRight as any,
-                                                    set.dropSetId && defaultPopupStyles.borderRadiusLastRight as any,
+                                                    !set.dropSetId && defaultPopupStyles.borderRadiusLastRight as any,
                                                 ]}
                                                 onPress={() => {
                                                     const newIsFailure = !set.isFailure;
@@ -801,6 +986,55 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                                                     <Text style={defaultPopupStyles.optionText as any}>Create dropset</Text>
                                                 </View>
                                             </TouchableOpacity>
+                                        )}
+
+                                        {/* Ungroup Dropset / Delete Set Row */}
+                                        {set.dropSetId && (
+                                            <View style={[
+                                                defaultPopupStyles.toggleRow as any,
+                                                defaultPopupStyles.borderBottomLast as any,
+                                            ]}>
+                                                <TouchableOpacity
+                                                    style={[
+                                                        defaultPopupStyles.toggleOption as any,
+                                                        defaultPopupStyles.toggleOptionBorder as any,
+                                                        defaultPopupStyles.toggleOptionBackgroundInactive as any,
+                                                        defaultPopupStyles.borderRadiusFirstLeft as any,
+                                                        defaultPopupStyles.borderRadiusLastLeft as any,
+                                                    ]}
+                                                    onPress={() => {
+                                                        handleUngroupDropset(set.dropSetId!);
+                                                        setIndexPopup(null);
+                                                    }}
+                                                >
+                                                    <View style={defaultPopupStyles.optionContent as any}>
+                                                        <Layers size={18} color={COLORS.indigo[400]} />
+                                                        <Text style={[
+                                                            defaultPopupStyles.toggleOptionText as any,
+                                                            defaultPopupStyles.toggleOptionTextInactive as any
+                                                        ]}>
+                                                            Ungroup dropset
+                                                        </Text>
+                                                    </View>
+                                                </TouchableOpacity>
+
+                                                <TouchableOpacity
+                                                    style={[
+                                                        defaultPopupStyles.toggleOption as any,
+                                                        defaultPopupStyles.toggleOptionBackgroundInactive as any,
+                                                        defaultPopupStyles.borderRadiusFirstRight as any,
+                                                        defaultPopupStyles.borderRadiusLastRight as any,
+                                                    ]}
+                                                    onPress={() => {
+                                                        handleDeleteSet(set.id);
+                                                        setIndexPopup(null);
+                                                    }}
+                                                >
+                                                    <View style={defaultPopupStyles.optionContent as any}>
+                                                        <Trash2 size={18} color={COLORS.red[500]} />
+                                                    </View>
+                                                </TouchableOpacity>
+                                            </View>
                                         )}
                                     </Pressable>
                                 </Pressable>
@@ -1074,7 +1308,7 @@ const styles = StyleSheet.create({
     },
     dragItem__selected: {
         borderColor: COLORS.blue[600],
-        borderWidth: 2,
+        borderWidth: 1,
         backgroundColor: COLORS.blue[100],
     },
     setIndexBadge: {
@@ -1306,6 +1540,7 @@ const styles = StyleSheet.create({
         marginTop: 8,
         marginBottom: 0,
         marginLeft: 12,
+        paddingTop: 4,
         backgroundColor: 'transparent',
         borderLeftWidth: 1,
         borderColor: 'transparent',
@@ -1367,20 +1602,32 @@ const styles = StyleSheet.create({
         zIndex: 9999,
         transform: [{ scale: 1.02 }],
     },
+    dropsetHeaderContainer__collapsed: {
+        overflow: 'visible',
+    },
     dropsetHeader__collapsed: {
         borderBottomWidth: 2,
-        borderBottomLeftRadius: 10,
-        borderBottomRightRadius: 10,
         borderStyle: 'dashed',
         borderColor: COLORS.indigo[300],
         marginBottom: 4,
         zIndex: 900,
+        paddingTop: 12,
+        paddingBottom: 12,
+        borderWidth: 2,
+        borderLeftWidth: 2,
+        borderTopRightRadius: 6,
+        borderTopLeftRadius: 6,
+        borderBottomLeftRadius: 6,
+        borderBottomRightRadius: 6,
+        overflow: 'visible',
     },
     dropsetHeader__activelyDragging: {
         borderColor: COLORS.indigo[400],
         backgroundColor: COLORS.indigo[50],
         zIndex: 9999,
         elevation: 20,
+        borderWidth: 2,
+        borderRadius: 6,
     },
     hiddenItem: {
         height: 0,
