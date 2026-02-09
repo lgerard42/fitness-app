@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { View, Text, TextInput, TouchableOpacity, Pressable, ScrollView, StyleSheet, Modal, Animated, Keyboard, Dimensions } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
-import { ChevronDown, ChevronLeft, ChevronRight, Calendar, Clock, FileText, Plus, Dumbbell, TrendingDown, Layers, MoreVertical, Trash2, RefreshCw, X, Flame, Zap, Check, Timer } from 'lucide-react-native';
+import { ChevronDown, ChevronLeft, ChevronRight, Calendar, Clock, FileText, Plus, Dumbbell, TrendingDown, Layers, MoreVertical, Trash2, RefreshCw, X, Flame, Zap, Check, Timer, LogOut } from 'lucide-react-native';
 import type { NavigationProp } from '@react-navigation/native';
 import { COLORS } from '@/constants/colors';
 import { formatDuration } from '@/constants/data';
@@ -996,14 +996,48 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
       const set = exercise.sets.find((s: Set) => s.id === setId);
 
       if (set?.dropSetId) {
-        // Grouped set: Open SetDragModal directly
-        startSetDrag(exercise);
-      } else {
-        // Ungrouped set: Create a dropset first, then open SetDragModal
-        const newDropSetId = `dropset-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        // Grouped set: Enter selection mode with current dropset sets pre-selected
+        const dropSetId = set.dropSetId;
+        const setsInDropset = exercise.sets.filter((s: Set) => s.dropSetId === dropSetId);
+        const preSelectedSetIds = new Set(setsInDropset.map((s: Set) => s.id));
 
-        // Update the workout to add the set to a dropset
-        const updatedWorkout = {
+        // Determine group type from existing sets (warmup, failure, or null)
+        let groupType: 'warmup' | 'failure' | null = null;
+        if (setsInDropset.some((s: Set) => s.isWarmup)) {
+          groupType = 'warmup';
+        } else if (setsInDropset.some((s: Set) => s.isFailure)) {
+          groupType = 'failure';
+        }
+
+        setSelectionMode({
+          exerciseId,
+          type: 'drop_set',
+          editingGroupId: dropSetId,
+        });
+        setSelectedSetIds(preSelectedSetIds);
+        setGroupSetType(groupType);
+      } else {
+        // Ungrouped set: Enter selection mode to create a dropset
+        setSelectionMode({
+          exerciseId,
+          type: 'drop_set',
+          // editingGroupId is undefined when creating new dropset
+          triggeringSetId: setId, // Track which set triggered creation
+        });
+        setSelectedSetIds(new Set([setId])); // Pre-select the triggering set
+        setGroupSetType(null);
+      }
+      setActiveSetMenu(null);
+    } else if (action === 'remove_from_dropset') {
+      // Remove set from dropset
+      const exercise = findExerciseDeep(currentWorkout.exercises, exerciseId);
+      if (!exercise) {
+        setActiveSetMenu(null);
+        return;
+      }
+      const set = exercise.sets.find((s: Set) => s.id === setId);
+      if (set?.dropSetId) {
+        handleWorkoutUpdate({
           ...currentWorkout,
           exercises: updateExercisesDeep(currentWorkout.exercises, exerciseId, (ex) => {
             if (ex.type === 'group') return ex;
@@ -1011,22 +1045,14 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
               ...ex,
               sets: ex.sets.map((s: Set) => {
                 if (s.id === setId) {
-                  return { ...s, dropSetId: newDropSetId };
+                  const { dropSetId, ...rest } = s;
+                  return rest;
                 }
                 return s;
               }),
             };
           }),
-        };
-
-        // Update the workout first
-        handleWorkoutUpdate(updatedWorkout);
-
-        // Then find the updated exercise and open the modal
-        const updatedExercise = findExerciseDeep(updatedWorkout.exercises, exerciseId);
-        if (updatedExercise) {
-          startSetDrag(updatedExercise);
-        }
+        });
       }
       setActiveSetMenu(null);
     } else if (action === 'add_rest') {
@@ -2006,6 +2032,22 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                 </>
               );
 
+              // Determine if footer should appear after this set
+              const shouldShowFooterAfterThisSet = selectionMode?.exerciseId === ex.instanceId && (() => {
+                if (!selectionMode) return false;
+                const { editingGroupId } = selectionMode;
+
+                if (editingGroupId) {
+                  // Editing: show after last set in the dropset being edited
+                  const isLastInEditedDropset = set.dropSetId === editingGroupId &&
+                    (idx === ex.sets.length - 1 || ex.sets[idx + 1]?.dropSetId !== editingGroupId);
+                  return isLastInEditedDropset;
+                } else {
+                  // Creating: show after the set that triggered creation
+                  return set.id === selectionMode.triggeringSetId;
+                }
+              })();
+
               return (
                 <React.Fragment key={set.id}>
                   {shouldWrapInSelectionBorder ? (
@@ -2031,10 +2073,34 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                   ) : (
                     setRowAndTimer
                   )}
+                  {shouldShowFooterAfterThisSet && (
+                    <View style={[
+                      styles.selectionModeFooter,
+                      isGroupChild && groupColorScheme && {
+                        borderColor: groupColorScheme[200],
+                        backgroundColor: groupColorScheme[100],
+                      },
+                    ]}>
+                      <View style={styles.selectionModeActions}>
+                        <TouchableOpacity onPress={handleCancelDropSet} style={styles.selectionCancelButton}>
+                          <Text style={styles.selectionCancelText}>Cancel</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={handleSubmitDropSet}
+                          style={styles.selectionSubmitButton}
+                        >
+                          <Text style={styles.selectionSubmitText}>Save</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
                 </React.Fragment>
               );
             })}
-            {!readOnly && (
+          </View>
+
+          {!readOnly && (
+            <View style={styles.addSetButtonContainer}>
               <TouchableOpacity
                 onPress={() => handleAddSet(ex.instanceId)}
                 style={[
@@ -2050,57 +2116,6 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                   isGroupChild && groupColorScheme && { color: groupColorScheme[600] }
                 ]}>+ Set</Text>
               </TouchableOpacity>
-            )}
-          </View>
-
-          {selectionMode?.exerciseId === ex.instanceId && (
-            <View style={[
-              styles.selectionModeFooter,
-              isGroupChild && groupColorScheme && {
-                borderColor: groupColorScheme[200],
-                backgroundColor: groupColorScheme[100],
-              },
-            ]}>
-              <View style={styles.groupTypeDropdownContainer}>
-                <TouchableOpacity
-                  onPress={() => setGroupSetType(groupSetType === 'warmup' ? null : 'warmup')}
-                  style={[
-                    styles.groupTypeOption,
-                    groupSetType === 'warmup' && styles.groupTypeOption__warmup
-                  ]}
-                >
-                  <Flame size={14} color={groupSetType === 'warmup' ? COLORS.white : COLORS.orange[500]} />
-                  <Text style={[
-                    styles.groupTypeOptionText,
-                    groupSetType === 'warmup' && styles.groupTypeOptionText__selected
-                  ]}>Warmup</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => setGroupSetType(groupSetType === 'failure' ? null : 'failure')}
-                  style={[
-                    styles.groupTypeOption,
-                    groupSetType === 'failure' && styles.groupTypeOption__failure
-                  ]}
-                >
-                  <Zap size={14} color={groupSetType === 'failure' ? COLORS.white : COLORS.red[500]} />
-                  <Text style={[
-                    styles.groupTypeOptionText,
-                    groupSetType === 'failure' && styles.groupTypeOptionText__selected
-                  ]}>Failure</Text>
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.selectionModeActions}>
-                <TouchableOpacity onPress={handleCancelDropSet} style={styles.selectionCancelButton}>
-                  <Text style={styles.selectionCancelText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={handleSubmitDropSet}
-                  style={styles.selectionSubmitButton}
-                >
-                  <Text style={styles.selectionSubmitText}>Save</Text>
-                </TouchableOpacity>
-              </View>
             </View>
           )}
         </View>
@@ -2650,11 +2665,12 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                     id: 'edit_group',
                     onPress: () => handleSetMenuAction('edit_group'),
                     icon: <TrendingDown size={18} color={isGrouped ? COLORS.white : COLORS.indigo[400]} />,
-                    text: isGrouped ? 'Edit dropsets' : 'Create dropset',
+                    text: isGrouped ? 'Edit dropset' : 'Create dropset',
                     isActive: isGrouped,
-                    activeIcon: isGrouped ? <Check size={16} color={COLORS.white} strokeWidth={3} /> : null,
+                    activeIcon: null, // No checkmark
                     textStyle: isGrouped ? styles.setPopupOptionText__active : undefined,
                     itemStyle: isGrouped ? styles.setPopupOptionItem__activeDropset : undefined,
+                    isGrouped: isGrouped, // Flag to indicate if this should be in a row
                   },
                   {
                     id: 'rest',
@@ -2683,6 +2699,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                     <View style={[
                       styles.setPopupToggleRow,
                       defaultPopupStyles.borderRadiusFirst,
+                      { borderBottomLeftRadius: 0, borderBottomRightRadius: 0 },
                     ]}>
                       <View style={styles.setPopupToggleButtonsWrapper}>
                         <TouchableOpacity
@@ -2738,6 +2755,48 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                     {regularOptions.map((option, index) => {
                       const isFirst = false; // First row is the toggle row
                       const isLast = index === regularOptions.length - 1;
+                      const isEditGroupRow = option.id === 'edit_group' && option.isGrouped;
+
+                      if (isEditGroupRow) {
+                        // Render Edit dropset in a row with exit icon
+                        return (
+                          <View key={option.id} style={[
+                            styles.setPopupOptionWrapper,
+                            isLast && styles.setPopupOptionWrapperLast
+                          ]}>
+                            <TouchableOpacity
+                              style={[
+                                styles.setPopupOptionItemInRow,
+                                styles.setPopupOptionItemFlex,
+                                styles.setPopupOptionItemWithBorder,
+                                styles.setPopupOptionItemBackground,
+                                option.itemStyle,
+                              ]}
+                              onPress={option.onPress}
+                            >
+                              <View style={styles.setPopupOptionContent}>
+                                {option.icon}
+                                <Text style={[
+                                  styles.setPopupOptionText,
+                                  option.textStyle
+                                ]}>{option.text}</Text>
+                              </View>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={[
+                                styles.setPopupOptionItemInRow,
+                                styles.setPopupOptionItemBackground,
+                              ]}
+                              onPress={() => handleSetMenuAction('remove_from_dropset')}
+                            >
+                              <View style={styles.setPopupOptionContent}>
+                                <LogOut size={18} color={COLORS.white} />
+                              </View>
+                            </TouchableOpacity>
+                          </View>
+                        );
+                      }
+
                       return (
                         <TouchableOpacity
                           key={option.id}
@@ -3569,6 +3628,9 @@ const styles = StyleSheet.create({
   setsContainer: {
     // gap: 4,
   },
+  addSetButtonContainer: {
+    marginTop: 4,
+  },
   addSetButton: {
     marginTop: 4,
     marginHorizontal: 8,
@@ -4058,15 +4120,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 0,
+    paddingVertical: 4,
     marginBottom: 0,
-    marginHorizontal: -2,
-    borderWidth: 2,
-    borderTopWidth: 0,
-    borderTopLeftRadius: 0,
-    borderTopRightRadius: 0,
-    borderBottomLeftRadius: 12,
-    borderBottomRightRadius: 12,
+    marginHorizontal: 24,
+    borderWidth: 0,
     minHeight: 8,
     gap: 12,
   },
@@ -4105,19 +4162,30 @@ const styles = StyleSheet.create({
   selectionModeActions: {
     flexDirection: 'row',
     gap: 12,
+    width: '100%',
   },
   selectionCancelButton: {
+    flex: 1,
     padding: 8,
+    borderColor: COLORS.slate[300],
+    borderWidth: 1,
+    borderRadius: 8,
+    backgroundColor: COLORS.white,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   selectionCancelText: {
     color: COLORS.slate[500],
     fontWeight: '600',
   },
   selectionSubmitButton: {
+    flex: 1,
     backgroundColor: COLORS.blue[600],
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   selectionSubmitText: {
     color: COLORS.white,

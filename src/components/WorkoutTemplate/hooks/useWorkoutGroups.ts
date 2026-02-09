@@ -31,7 +31,8 @@ export const useWorkoutGroups = (
     if (isAddToGroupAction && set?.dropSetId) {
       const targetGroupId = set.dropSetId;
 
-      if (!editingGroupId) {
+      if (editingGroupId) {
+        // Editing existing dropset: add selected sets to the target dropset
         handleWorkoutUpdate({
           ...currentWorkout,
           exercises: updateExercisesDeep(currentWorkout.exercises, exerciseId, (ex) => {
@@ -71,43 +72,57 @@ export const useWorkoutGroups = (
         setSelectedSetIds(new Set());
         return;
       } else {
+        // Creating new dropset: immediately add all sets from the target dropset and create the dropset
+        const setsInTargetDropset = exercise?.sets?.filter(s => s.dropSetId === targetGroupId) || [];
+        const allSelectedIds = new Set(selectedSetIds);
+        setsInTargetDropset.forEach(s => {
+          allSelectedIds.add(s.id);
+        });
+
+        if (allSelectedIds.size < 2) {
+          setSelectionMode(null);
+          setSelectedSetIds(new Set());
+          setGroupSetType(null);
+          return;
+        }
+
+        const dropSetId = Date.now().toString();
+
         handleWorkoutUpdate({
           ...currentWorkout,
           exercises: updateExercisesDeep(currentWorkout.exercises, exerciseId, (ex) => {
-            const updatedSets = ex.sets.map(s => {
-              if (selectedSetIds.has(s.id)) {
-                return { ...s, dropSetId: targetGroupId };
+            const selectedSets: typeof ex.sets = [];
+            const nonSelectedSets: typeof ex.sets = [];
+
+            ex.sets.forEach(s => {
+              if (allSelectedIds.has(s.id)) {
+                let newSet = { ...s, dropSetId };
+
+                if (groupSetType) {
+                  const { isWarmup, isDropset, isFailure, ...rest } = newSet;
+                  newSet = rest;
+                  const typeKey = groupSetType === 'warmup' ? 'isWarmup' : groupSetType === 'dropset' ? 'isDropset' : 'isFailure';
+                  newSet[typeKey] = true;
+                }
+
+                selectedSets.push(newSet);
+              } else {
+                nonSelectedSets.push(s);
               }
-              return s;
             });
 
-            const setsToMove: typeof ex.sets = [];
-            const setsWithoutMoved = updatedSets.filter(s => {
-              if (selectedSetIds.has(s.id)) {
-                setsToMove.push(s);
-                return false;
-              }
-              return true;
-            });
+            const firstSelectedIndex = ex.sets.findIndex(s => allSelectedIds.has(s.id));
 
-            let lastGroupIndex = -1;
-            for (let i = setsWithoutMoved.length - 1; i >= 0; i--) {
-              if (setsWithoutMoved[i].dropSetId === targetGroupId) {
-                lastGroupIndex = i;
-                break;
-              }
-            }
+            const newSets = [...nonSelectedSets];
+            newSets.splice(firstSelectedIndex, 0, ...selectedSets);
 
-            if (lastGroupIndex !== -1) {
-              setsWithoutMoved.splice(lastGroupIndex + 1, 0, ...setsToMove);
-            }
-
-            return { ...ex, sets: setsWithoutMoved };
+            return { ...ex, sets: newSets };
           })
         });
 
         setSelectionMode(null);
         setSelectedSetIds(new Set());
+        setGroupSetType(null);
         return;
       }
     }
@@ -115,6 +130,7 @@ export const useWorkoutGroups = (
     const newSelectedIds = new Set(selectedSetIds);
 
     if (editingGroupId) {
+      // Editing existing dropset: can select sets in this dropset or ungrouped sets
       if (set?.dropSetId === editingGroupId || !set?.dropSetId) {
         if (newSelectedIds.has(setId)) {
           newSelectedIds.delete(setId);
@@ -123,6 +139,7 @@ export const useWorkoutGroups = (
         }
       }
     } else {
+      // Creating new dropset: can only select ungrouped sets
       if (!set?.dropSetId) {
         if (newSelectedIds.has(setId)) {
           newSelectedIds.delete(setId);
@@ -250,6 +267,7 @@ export const useWorkoutGroups = (
         })
       });
     } else {
+      // Creating new dropset
       if (selectedSetIds.size < 2) {
         setSelectionMode(null);
         setSelectedSetIds(new Set());

@@ -95,6 +95,7 @@ export interface GroupSelectionMode {
   exerciseId: string;
   type: 'drop_set';
   editingGroupId?: string;
+  triggeringSetId?: string; // Set that triggered creation (for positioning footer)
 }
 
 export interface RestTimer {

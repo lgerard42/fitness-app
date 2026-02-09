@@ -479,57 +479,80 @@ const SetRow: React.FC<SetRowProps> = ({
               {isSelectionMode ? (
                 (() => {
                   if (dropSetId) {
-                    if (indexInGroup === 1) {
-                      const isDifferentGroup = !editingGroupId || dropSetId !== editingGroupId;
-
-                      if (isDifferentGroup) {
+                    // Set is already in a dropset
+                    if (editingGroupId) {
+                      // Editing existing dropset: show checkbox if it's in the group being edited
+                      if (indexInGroup === 1) {
+                        const isDifferentGroup = dropSetId !== editingGroupId;
+                        if (isDifferentGroup) {
+                          // Different group: show plus button to add to this group
+                          return (
+                            <TouchableOpacity
+                              onPress={() => onToggleSelection(true)}
+                              style={styles.selectionPlusButton}
+                            >
+                              <Plus size={20} color={COLORS.blue[600]} strokeWidth={3} />
+                            </TouchableOpacity>
+                          );
+                        } else {
+                          // Same group: show checkbox
+                          return (
+                            <TouchableOpacity
+                              onPress={() => onToggleSelection(false)}
+                              style={[
+                                styles.selectionCheckbox,
+                                isSelected && (
+                                  groupColorScheme
+                                    ? { backgroundColor: groupColorScheme[500] }
+                                    : styles.selectionCheckboxSelected__default
+                                )
+                              ]}
+                            >
+                              {isSelected && <Check size={14} color={COLORS.white} strokeWidth={3} />}
+                            </TouchableOpacity>
+                          );
+                        }
+                      } else {
+                        // Not first set in group: show checkbox if editing this group
+                        if (dropSetId === editingGroupId) {
+                          return (
+                            <TouchableOpacity
+                              onPress={() => onToggleSelection(false)}
+                              style={[
+                                styles.selectionCheckbox,
+                                isSelected && (
+                                  groupColorScheme
+                                    ? { backgroundColor: groupColorScheme[500] }
+                                    : styles.selectionCheckboxSelected__default
+                                )
+                              ]}
+                            >
+                              {isSelected && <Check size={14} color={COLORS.white} strokeWidth={3} />}
+                            </TouchableOpacity>
+                          );
+                        } else {
+                          return <View style={styles.selectionMode__emptySpace} />;
+                        }
+                      }
+                    } else {
+                      // Creating new dropset: show plus button to add sets from other dropsets
+                      if (indexInGroup === 1) {
+                        // First set in dropset: show plus button
                         return (
                           <TouchableOpacity
                             onPress={() => onToggleSelection(true)}
                             style={styles.selectionPlusButton}
                           >
-                            <Plus size={20} color={COLORS.indigo[600]} strokeWidth={3} />
+                            <Plus size={20} color={COLORS.blue[600]} strokeWidth={3} />
                           </TouchableOpacity>
                         );
                       } else {
-                        return (
-                          <TouchableOpacity
-                            onPress={() => onToggleSelection(false)}
-                            style={[
-                              styles.selectionCheckbox,
-                              isSelected && (
-                                groupColorScheme
-                                  ? { backgroundColor: groupColorScheme[500] }
-                                  : styles.selectionCheckboxSelected__default
-                              )
-                            ]}
-                          >
-                            {isSelected && <Check size={14} color={COLORS.white} strokeWidth={3} />}
-                          </TouchableOpacity>
-                        );
-                      }
-                    } else {
-                      if (editingGroupId && dropSetId === editingGroupId) {
-                        return (
-                          <TouchableOpacity
-                            onPress={() => onToggleSelection(false)}
-                            style={[
-                              styles.selectionCheckbox,
-                              isSelected && (
-                                groupColorScheme
-                                  ? { backgroundColor: groupColorScheme[500] }
-                                  : styles.selectionCheckboxSelected__default
-                              )
-                            ]}
-                          >
-                            {isSelected && <Check size={14} color={COLORS.white} strokeWidth={3} />}
-                          </TouchableOpacity>
-                        );
-                      } else {
+                        // Not first set in dropset: show empty space
                         return <View style={styles.selectionMode__emptySpace} />;
                       }
                     }
                   } else {
+                    // Set is not in a dropset: show checkbox
                     return (
                       <TouchableOpacity
                         onPress={() => onToggleSelection(false)}
@@ -1671,16 +1694,16 @@ const styles = StyleSheet.create({
     borderColor: COLORS.blue[500],
   },
   selectionCheckboxSelected__default: {
-    backgroundColor: COLORS.indigo[500],
-    borderColor: COLORS.indigo[500],
+    backgroundColor: COLORS.blue[600],
+    borderColor: COLORS.blue[600],
   },
   selectionPlusButton: {
     width: 32,
     height: 32,
     borderRadius: 6,
     borderWidth: 2,
-    borderColor: COLORS.indigo[300],
-    backgroundColor: COLORS.indigo[50],
+    borderColor: COLORS.blue[500],
+    backgroundColor: COLORS.blue[50],
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'flex-start', // Left align
