@@ -1,8 +1,10 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import { View, Text, Modal, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, StyleSheet, Dimensions, FlatList, Platform } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DraggableFlatList from 'react-native-draggable-flatlist';
 import { MoreVertical, Check, Plus, Minus, TrendingDown, Flame, Zap, Users, Copy, Trash2 } from 'lucide-react-native';
+
 import { COLORS } from '@/constants/colors';
 import { defaultSupersetColorScheme, defaultHiitColorScheme, defaultPopupStyles } from '@/constants/defaultStyles';
 import SwipeToDelete from '@/components/common/SwipeToDelete';
@@ -1447,7 +1449,8 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
     isFirstInGroup: boolean,
     isLastInGroup: boolean,
     isActive: boolean,
-    showExerciseName: boolean
+    showExerciseName: boolean,
+    drag?: () => void
   ) => {
     const isFirstRow = setGroupIndex === 0;
     const isLastRow = setGroupIndex === item.setGroups.length - 1;
@@ -1500,6 +1503,16 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           </View>
 
           <View style={styles.exerciseRight}>
+            {showExerciseName && drag && !isSelectionMode && (
+              <TouchableOpacity
+                onLongPress={drag}
+                delayLongPress={150}
+                disabled={isActive}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                style={styles.dragHandleButton}
+              >
+              </TouchableOpacity>
+            )}
             <View style={styles.setControls}>
               <TouchableOpacity
                 onPress={() => handleDecrementSetGroup(item, setGroup.id)}
@@ -1661,7 +1674,8 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
                   isFirstInGroup,
                   isLastInGroup,
                   isActive,
-                  index === 0 // Only show exercise name on first row
+                  index === 0, // Only show exercise name on first row
+                  drag
                 )
               )}
             </View>
@@ -2004,7 +2018,8 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
       transparent={false}
       onRequestClose={onClose}
     >
-      <SafeAreaView style={styles.container} edges={[]}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaView style={styles.container} edges={[]}>
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} style={styles.cancelButton}>
             <Text style={styles.cancelButtonText}>Cancel</Text>
@@ -2046,19 +2061,28 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
         )}
 
         {reorderedItems.length > 0 ? (
-          <DraggableFlatList<DragItem>
-            data={reorderedItems}
-            onDragEnd={isSelectionMode ? () => { } : handleDragEnd}
-            keyExtractor={keyExtractor}
-            renderItem={renderItem}
-            contentContainerStyle={styles.listContent}
-            scrollEnabled={true}
-            CellRendererComponent={({ children, style, ...props }: any) => (
-              <View style={[style, { position: 'relative' }]} {...props}>
-                {children}
-              </View>
-            )}
-          />
+          Platform.OS === 'web' ? (
+            <FlatList
+              data={reorderedItems}
+              keyExtractor={keyExtractor}
+              renderItem={renderItem as any}
+              contentContainerStyle={styles.listContent}
+            />
+          ) : (
+            <DraggableFlatList<DragItem>
+              data={reorderedItems}
+              onDragEnd={isSelectionMode ? () => { } : handleDragEnd}
+              keyExtractor={keyExtractor}
+              renderItem={renderItem}
+              contentContainerStyle={styles.listContent}
+              scrollEnabled={true}
+              CellRendererComponent={({ children, style, ...props }: any) => (
+                <View style={[style, { position: 'relative' }]} {...props}>
+                  {children}
+                </View>
+              )}
+            />
+          )
         ) : (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>No items to reorder</Text>
@@ -2373,7 +2397,8 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           </>
         )}
 
-      </SafeAreaView>
+        </SafeAreaView>
+      </GestureHandlerRootView>
     </Modal>
   );
 };
@@ -2729,6 +2754,12 @@ const styles = StyleSheet.create({
   groupIconButton: {
     padding: 2,
     marginLeft: 0,
+  },
+  dragHandleButton: {
+    padding: 6,
+    borderRadius: 8,
+    marginRight: 6,
+    backgroundColor: COLORS.slate[50],
   },
   emptyGroupPlaceholder: {
     paddingVertical: 24,
