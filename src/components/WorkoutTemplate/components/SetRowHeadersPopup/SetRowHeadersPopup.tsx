@@ -550,6 +550,7 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
     // Filter and render options
     const visibleOptions = options.filter(opt => opt.show);
     const lastIndex = visibleOptions.length - 1;
+    const hasToggleRows = visibleOptions.some(opt => opt.type === 'row-options' && opt.rowOptions);
 
     return (
         <>
@@ -576,69 +577,86 @@ const SetRowHeadersPopup: React.FC<SetRowHeadersPopupProps> = ({
                     }
                 ]}
             >
+                {hasToggleRows && (
+                    <TouchableOpacity
+                        style={styles.columnHeaderPopupInfoIcon}
+                        onPress={() => {
+                            const sectionMap: Record<string, 'Duration' | 'Distance' | 'Weight' | 'Reps'> = {
+                                'weight': 'Weight',
+                                'reps': 'Reps',
+                                'distance': 'Distance',
+                                'duration': 'Duration'
+                            };
+                            setInfoPopupSection(sectionMap[columnHeaderMenu.field] || 'Weight');
+                            setInfoPopupVisible(true);
+                        }}
+                    >
+                        <Info size={24} color={COLORS.slate[300]} />
+                    </TouchableOpacity>
+                )}
                 {visibleOptions.map((option, index) => {
                     const isLast = index === lastIndex || option.isLast;
                     const isNotFirstOption = index > 0;
                     const isFirstOption = index === 0;
+                    const nextOption = index < lastIndex ? visibleOptions[index + 1] : null;
+                    const isNextOptionToggleRow = nextOption?.type === 'row-options' && nextOption?.rowOptions;
+                    const shouldUseDarkerBorder = !isLast && isNextOptionToggleRow;
 
                     // Row options type (no padding, options in a row)
                     if (option.type === 'row-options' && option.rowOptions) {
                         return (
                             <View key={option.id} style={[
                                 styles.columnHeaderPopupRowOptions,
-                                isLast && styles.columnHeaderPopupOptionLast
+                                isLast && styles.columnHeaderPopupOptionLast,
+                                shouldUseDarkerBorder && { borderBottomColor: COLORS.slate[600] },
+                                isFirstOption && !isLast && {
+                                    borderTopLeftRadius: 8,
+                                    borderTopRightRadius: 8,
+                                    borderBottomLeftRadius: 0,
+                                    borderBottomRightRadius: 0
+                                },
+                                !isFirstOption && isLast && {
+                                    borderTopLeftRadius: 0,
+                                    borderTopRightRadius: 0,
+                                    borderBottomLeftRadius: 8,
+                                    borderBottomRightRadius: 8
+                                },
+                                isFirstOption && isLast && {
+                                    borderTopLeftRadius: 8,
+                                    borderTopRightRadius: 8,
+                                    borderBottomLeftRadius: 8,
+                                    borderBottomRightRadius: 8
+                                },
+                                !isFirstOption && !isLast && {
+                                    borderRadius: 0
+                                }
                             ]}>
-                                {option.label && (
-                                    <View style={styles.columnHeaderPopupRowOptionsLabelWrapper}>
-                                        <TouchableOpacity
-                                            onPress={() => {
-                                                const sectionMap: Record<string, 'Duration' | 'Distance' | 'Weight' | 'Reps'> = {
-                                                    'Weight Units': 'Weight',
-                                                    'Total Weight Config': 'Weight',
-                                                    'Total Reps Config': 'Reps',
-                                                    'Dist. Measurement Units': 'Distance',
-                                                    'Unit Type': 'Distance'
-                                                };
-                                                setInfoPopupSection(sectionMap[option.label || ''] || 'Weight');
-                                                setInfoPopupVisible(true);
-                                            }}
-                                            style={styles.columnHeaderPopupRowOptionsLabelContainer}
-                                        >
-                                            <Text style={styles.columnHeaderPopupRowOptionsLabel}>
-                                                {option.label}
-                                            </Text>
-                                            <Info size={12} color={COLORS.slate[300]} />
-                                        </TouchableOpacity>
-                                    </View>
-                                )}
-                                {option.rowOptions.map((rowOption, rowIndex) => {
-                                    const isFirstRowOption = rowIndex === 0;
-                                    const isLastRowOption = rowIndex === option.rowOptions!.length - 1;
-                                    return (
-                                        <TouchableOpacity
-                                            key={rowOption.id}
-                                            style={[
-                                                styles.columnHeaderPopupRowOption,
-                                                styles.columnHeaderPopupRowOptionInactive,
-                                                rowIndex < option.rowOptions!.length - 1 && styles.columnHeaderPopupRowOptionBorder,
-                                                rowOption.isActive && styles.columnHeaderPopupRowOptionActive,
-                                                isFirstOption && isFirstRowOption && { borderTopLeftRadius: 8 },
-                                                isFirstOption && isLastRowOption && { borderTopRightRadius: 8 },
-                                                isLast && isFirstRowOption && { borderBottomLeftRadius: 8 },
-                                                isLast && isLastRowOption && { borderBottomRightRadius: 8 }
-                                            ]}
-                                            onPress={rowOption.onPress}
-                                        >
-                                            <Text style={[
-                                                styles.columnHeaderPopupRowOptionText,
-                                                styles.columnHeaderPopupRowOptionTextInactive,
-                                                rowOption.isActive && styles.columnHeaderPopupRowOptionTextActive
-                                            ]}>
-                                                {rowOption.label}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    );
-                                })}
+                                <View style={styles.columnHeaderPopupRowOptionsButtonsWrapper}>
+                                    {option.rowOptions.map((rowOption, rowIndex) => {
+                                        const isFirstRowOption = rowIndex === 0;
+                                        const isLastRowOption = rowIndex === option.rowOptions!.length - 1;
+                                        return (
+                                            <TouchableOpacity
+                                                key={rowOption.id}
+                                                activeOpacity={1}
+                                                style={[
+                                                    styles.columnHeaderPopupRowOption,
+                                                    styles.columnHeaderPopupRowOptionInactive,
+                                                    rowOption.isActive && styles.columnHeaderPopupRowOptionActive
+                                                ]}
+                                                onPress={rowOption.onPress}
+                                            >
+                                                <Text style={[
+                                                    styles.columnHeaderPopupRowOptionText,
+                                                    styles.columnHeaderPopupRowOptionTextInactive,
+                                                    rowOption.isActive && styles.columnHeaderPopupRowOptionTextActive
+                                                ]}>
+                                                    {rowOption.label}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
                             </View>
                         );
                     }
@@ -759,6 +777,18 @@ const getMergedStyle = (defaultStyle: any, overrideStyle: any) => {
 const baseStyles = StyleSheet.create({
     columnHeaderPopupBackdrop: {},
     columnHeaderPopupContainer: {},
+    columnHeaderPopupInfoIcon: {
+        position: 'absolute',
+        top: -8,
+        left: -8,
+        zIndex: 10,
+        width: 24,
+        height: 24,
+        borderRadius: 16,
+        backgroundColor: COLORS.slate[700],
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
     columnHeaderPopupOption: {},
     columnHeaderPopupOptionInRow: {},
     columnHeaderPopupOptionLast: {},
@@ -775,6 +805,7 @@ const baseStyles = StyleSheet.create({
     columnHeaderPopupOptionDeleteDisabled: {},
     columnHeaderPopupOptionLocked: {},
     columnHeaderPopupRowOptions: {},
+    columnHeaderPopupRowOptionsButtonsWrapper: {},
     columnHeaderPopupRowOptionsLabelWrapper: {},
     columnHeaderPopupRowOptionsLabelContainer: {},
     columnHeaderPopupRowOptionsLabel: {},
@@ -791,6 +822,7 @@ const baseStyles = StyleSheet.create({
 const styles = {
     columnHeaderPopupBackdrop: getMergedStyle(defaultPopupStyles.backdrop, baseStyles.columnHeaderPopupBackdrop),
     columnHeaderPopupContainer: getMergedStyle(defaultPopupStyles.container, baseStyles.columnHeaderPopupContainer),
+    columnHeaderPopupInfoIcon: baseStyles.columnHeaderPopupInfoIcon,
     columnHeaderPopupOption: getMergedStyle(
         { ...defaultPopupStyles.option, ...defaultPopupStyles.optionBackground },
         baseStyles.columnHeaderPopupOption
@@ -818,17 +850,18 @@ const styles = {
     ),
     columnHeaderPopupOptionDeleteDisabled: getMergedStyle(defaultPopupStyles.iconOnlyOptionDisabled, baseStyles.columnHeaderPopupOptionDeleteDisabled),
     columnHeaderPopupOptionLocked: getMergedStyle(defaultPopupStyles.optionBackgroundDisabled, baseStyles.columnHeaderPopupOptionLocked),
-    columnHeaderPopupRowOptions: getMergedStyle(defaultPopupStyles.toggleRow, baseStyles.columnHeaderPopupRowOptions),
+    columnHeaderPopupRowOptions: getMergedStyle(defaultPopupStyles.optionToggleRow, baseStyles.columnHeaderPopupRowOptions),
+    columnHeaderPopupRowOptionsButtonsWrapper: getMergedStyle(defaultPopupStyles.optionToggleButtonsWrapper, baseStyles.columnHeaderPopupRowOptionsButtonsWrapper),
     columnHeaderPopupRowOptionsLabelWrapper: getMergedStyle(defaultPopupStyles.toggleLabelWrapper, baseStyles.columnHeaderPopupRowOptionsLabelWrapper),
     columnHeaderPopupRowOptionsLabelContainer: getMergedStyle(defaultPopupStyles.toggleLabelContainer, baseStyles.columnHeaderPopupRowOptionsLabelContainer),
     columnHeaderPopupRowOptionsLabel: getMergedStyle(defaultPopupStyles.toggleLabelText, baseStyles.columnHeaderPopupRowOptionsLabel),
-    columnHeaderPopupRowOption: getMergedStyle(defaultPopupStyles.toggleOption, baseStyles.columnHeaderPopupRowOption),
+    columnHeaderPopupRowOption: getMergedStyle(defaultPopupStyles.optionToggleButton, baseStyles.columnHeaderPopupRowOption),
     columnHeaderPopupRowOptionBorder: getMergedStyle(defaultPopupStyles.toggleOptionBorder, baseStyles.columnHeaderPopupRowOptionBorder),
-    columnHeaderPopupRowOptionInactive: getMergedStyle(defaultPopupStyles.toggleOptionBackgroundInactive, baseStyles.columnHeaderPopupRowOptionInactive),
-    columnHeaderPopupRowOptionActive: getMergedStyle(defaultPopupStyles.toggleOptionBackgroundActive, baseStyles.columnHeaderPopupRowOptionActive),
-    columnHeaderPopupRowOptionText: getMergedStyle(defaultPopupStyles.toggleOptionText, baseStyles.columnHeaderPopupRowOptionText),
-    columnHeaderPopupRowOptionTextInactive: getMergedStyle(defaultPopupStyles.toggleOptionTextInactive, baseStyles.columnHeaderPopupRowOptionTextInactive),
-    columnHeaderPopupRowOptionTextActive: getMergedStyle(defaultPopupStyles.toggleOptionTextActive, baseStyles.columnHeaderPopupRowOptionTextActive),
+    columnHeaderPopupRowOptionInactive: getMergedStyle(defaultPopupStyles.optionToggleButtonUnselected, baseStyles.columnHeaderPopupRowOptionInactive),
+    columnHeaderPopupRowOptionActive: getMergedStyle(defaultPopupStyles.optionToggleButtonSelected, baseStyles.columnHeaderPopupRowOptionActive),
+    columnHeaderPopupRowOptionText: getMergedStyle(defaultPopupStyles.optionToggleText, baseStyles.columnHeaderPopupRowOptionText),
+    columnHeaderPopupRowOptionTextInactive: getMergedStyle(defaultPopupStyles.optionToggleTextUnselected, baseStyles.columnHeaderPopupRowOptionTextInactive),
+    columnHeaderPopupRowOptionTextActive: getMergedStyle(defaultPopupStyles.optionToggleTextSelected, baseStyles.columnHeaderPopupRowOptionTextActive),
 };
 
 export default SetRowHeadersPopup;

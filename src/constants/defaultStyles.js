@@ -52,6 +52,65 @@ export const defaultPopupStyles = {
         flexShrink: 0, // Prevent row from shrinking
         flexWrap: 'nowrap', // Prevent toggle options from wrapping to next line
     },
+    // Option toggle row (dark toggle style for popup options)
+    optionToggleRow: {
+        flexDirection: 'row',
+        padding: 4,
+        margin: 0,
+        borderRadius: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.slate[550],
+        flexShrink: 0, // Prevent row from shrinking
+        flexWrap: 'nowrap', // Prevent toggle options from wrapping to next line
+        opacity: 1,
+    },
+    optionToggleButtonsWrapper: {
+        flexDirection: 'row',
+        backgroundColor: COLORS.slate[600],
+        padding: 4,
+        margin: 0,
+        flex: 1,
+        width: '100%',
+        borderRadius: 8,
+        opacity: 1,
+    },
+    optionToggleButton: {
+        flex: 1,
+        paddingVertical: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 6,
+        minHeight: 36,
+    },
+    optionToggleButtonSelected: {
+        backgroundColor: COLORS.blue[550],
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+        elevation: 2,
+    },
+    optionToggleButtonUnselected: {
+        backgroundColor: 'transparent',
+    },
+    optionToggleText: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        flexShrink: 0, // Prevent text from shrinking
+    },
+    optionToggleTextSelected: {
+        color: COLORS.white,
+    },
+    optionToggleTextUnselected: {
+        color: COLORS.slate[300],
+    },
+    // Warmup/Failure toggle specific colors
+    optionToggleButtonSelectedWarmup: {
+        backgroundColor: COLORS.orange[500],
+    },
+    optionToggleButtonSelectedFailure: {
+        backgroundColor: COLORS.red[500],
+    },
     toggleLabelWrapper: {
         position: 'absolute',
         top: 0,

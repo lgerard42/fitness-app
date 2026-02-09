@@ -6,6 +6,7 @@ import { COLORS } from '@/constants/colors';
 import { formatRestTime, updateExercisesDeep } from '@/utils/workoutHelpers';
 import SwipeToDelete from '@/components/common/SwipeToDelete';
 import type { Set, Workout, RestTimer, GroupSetType } from '@/types/workout';
+import { defaultSupersetColorScheme } from '@/constants/defaultStyles';
 
 interface RestTimerBarProps {
   set: Set;
@@ -26,6 +27,7 @@ interface RestTimerBarProps {
   isRestTimerSelected?: boolean;
   onClearInputFocus?: () => void;
   onToggleRestTimerSelection?: () => void;
+  groupColorScheme?: typeof defaultSupersetColorScheme | null;
 }
 
 interface AnimatedCharacterProps {
@@ -39,15 +41,29 @@ interface AnimatedCharacterProps {
 }
 
 // Component to render a single character with color based on progress bar position
-const AnimatedCharacter: React.FC<AnimatedCharacterProps> = ({
+const AnimatedCharacter: React.FC<AnimatedCharacterProps & { isRestTimerSelectionMode?: boolean; isRestTimerSelected?: boolean }> = ({
   character,
   charIndex,
   totalChars,
   progressShared,
   barWidthShared,
   textLeftShared,
-  textWidthShared
+  textWidthShared,
+  isRestTimerSelectionMode = false,
+  isRestTimerSelected = false
 }) => {
+  // In selection mode, just render a regular Text with the appropriate color
+  if (isRestTimerSelectionMode) {
+    return (
+      <Text style={[
+        localStyles.restTimerText__activeLarge,
+        { color: isRestTimerSelected ? COLORS.blue[600] : COLORS.black }
+      ]}>
+        {character}
+      </Text>
+    );
+  }
+
   const animatedStyle = useAnimatedStyle(() => {
     const progressValue = progressShared.value;
     const barWidth = barWidthShared.value;
@@ -67,7 +83,7 @@ const AnimatedCharacter: React.FC<AnimatedCharacterProps> = ({
       charPosition = Math.max(0, Math.min(1, charAbsolutePosition / barWidth));
     }
 
-    // Character is white if progress bar hasn't passed its position, blue if it has
+    // white if progress bar hasn't passed its position, blue if it has
     const color = progressValue > charPosition ? COLORS.white : COLORS.blue[600];
     return {
       color,
@@ -100,6 +116,7 @@ const RestTimerBarComponent: React.FC<RestTimerBarProps> = ({
   isRestTimerSelected = false,
   onClearInputFocus,
   onToggleRestTimerSelection,
+  groupColorScheme,
 }) => {
   const isRestTimerActive = activeRestTimer?.setId === set.id;
 
@@ -351,6 +368,8 @@ const RestTimerBarComponent: React.FC<RestTimerBarProps> = ({
               barWidthShared={barWidthShared}
               textLeftShared={textLeftShared}
               textWidthShared={textWidthShared}
+              isRestTimerSelectionMode={isRestTimerSelectionMode}
+              isRestTimerSelected={isRestTimerSelected}
             />
           );
         })}
@@ -382,14 +401,22 @@ const RestTimerBarComponent: React.FC<RestTimerBarProps> = ({
 
   return (
     <SwipeToDelete onDelete={handleDeleteRestTimer}>
-      <View style={localStyles.restTimerWrapper}>
-        {set.dropSetId && (
+      <View style={[
+        localStyles.restTimerWrapper,
+        isRestTimerSelectionMode && !set.dropSetId && localStyles.restTimerWrapper__restTimerSelection__noDropSet,
+        isRestTimerSelectionMode && set.dropSetId && localStyles.restTimerWrapper__restTimerSelection__dropSet,
+        isRestTimerSelectionMode && set.dropSetId && isRestTimerDropSetEnd && localStyles.restTimerWrapper__restTimerSelection__dropSet__last,
+      ]}>
+        {set.dropSetId && !isRestTimerSelectionMode && (
           <View style={[
             localStyles.restTimerDropSetIndicator,
             isRestTimerDropSetStart && localStyles.restTimerDropSetIndicator__start,
             isRestTimerDropSetEnd && localStyles.restTimerDropSetIndicator__end,
+            // Apply group color scheme first (for grouped exercises)
+            groupColorScheme && displayGroupSetType !== 'warmup' && displayGroupSetType !== 'failure' ? { backgroundColor: groupColorScheme[400] } : null,
+            // Warmup and failure colors take precedence
             displayGroupSetType === 'warmup' && localStyles.restTimerDropSetIndicator__warmup,
-            displayGroupSetType === 'failure' && localStyles.restTimerDropSetIndicator__failure
+            displayGroupSetType === 'failure' && localStyles.restTimerDropSetIndicator__failure,
           ]} />
         )}
         <View
@@ -407,7 +434,9 @@ const RestTimerBarComponent: React.FC<RestTimerBarProps> = ({
             localStyles.restTimerBar,
             set.completed && set.restTimerCompleted && localStyles.restTimerBar__completed,
             isBeingEdited && set.dropSetId && localStyles.restTimerBar__editing__dropSet,
+            isBeingEdited && set.dropSetId && isRestTimerSelectionMode && localStyles.restTimerBar__editing__dropSet__restTimerSelection,
             isBeingEdited && !set.dropSetId && localStyles.restTimerBar__editing,
+            isBeingEdited && !set.dropSetId && isRestTimerSelectionMode && localStyles.restTimerBar__editing__restTimerSelection,
             !isBeingEdited && isRestTimerActive && set.dropSetId && localStyles.restTimerBar__dropSet__active,
             !isBeingEdited && isRestTimerActive && !set.dropSetId && localStyles.restTimerBar__active,
             !isBeingEdited && !isRestTimerActive && set.dropSetId && localStyles.restTimerBar__dropSet
@@ -468,8 +497,11 @@ const RestTimerBarComponent: React.FC<RestTimerBarProps> = ({
               <>
                 <Text style={[
                   localStyles.restTimerText,
-                  set.restTimerCompleted && localStyles.restTimerText__completed,
-                  isBeingEdited && localStyles.restTimerText__editing
+                  set.restTimerCompleted && !isRestTimerSelectionMode && localStyles.restTimerText__completed,
+                  isBeingEdited && localStyles.restTimerText__editing,
+                  // For non-edited timers in selection mode: blue if selected, black if not
+                  isRestTimerSelectionMode && !isBeingEdited && isRestTimerSelected && localStyles.restTimerText__restTimerSelection__selected,
+                  isRestTimerSelectionMode && !isBeingEdited && !isRestTimerSelected && localStyles.restTimerText__restTimerSelection__unselected
                 ]}>
                   {formatRestTime(set.restPeriodSeconds || 0)}
                 </Text>
@@ -496,6 +528,21 @@ const localStyles = StyleSheet.create({
     flexDirection: 'row',
     overflow: 'visible',
     position: 'relative',
+  },
+  // Non-dropset: Timer row
+  restTimerWrapper__restTimerSelection__noDropSet: {
+    paddingVertical: 0,
+  },
+  // Dropset: Timer row
+  restTimerWrapper__restTimerSelection__dropSet: {
+    paddingVertical: 0,
+    marginTop: -2,
+    marginBottom: -2,
+    paddingLeft: 5,
+  },
+  // Dropset: Last timer row of the last set in a dropset (apply to mode)
+  restTimerWrapper__restTimerSelection__dropSet__last: {
+    marginTop: -4,
   },
   restTimerBar: {
     flex: 1,
@@ -576,7 +623,7 @@ const localStyles = StyleSheet.create({
     borderColor: COLORS.blue[400],
     borderRadius: 6,
     borderStyle: 'solid',
-    marginVertical: 2,
+    marginVertical: 0,
     marginHorizontal: 8,
   },
   restTimerBar__editing__dropSet: {
@@ -584,9 +631,17 @@ const localStyles = StyleSheet.create({
     borderWidth: 2,
     borderColor: COLORS.blue[400],
     borderRadius: 6,
-    marginVertical: 2,
+    marginVertical: 0,
     marginLeft: 8,
     marginRight: 8,
+  },
+  restTimerBar__editing__restTimerSelection: {
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
+  },
+  restTimerBar__editing__dropSet__restTimerSelection: {
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
   },
   restTimerDropSetIndicator: {
     position: 'absolute',
@@ -656,6 +711,12 @@ const localStyles = StyleSheet.create({
     color: COLORS.blue[700],
     fontSize: 18,
     fontWeight: '700',
+  },
+  restTimerText__restTimerSelection__unselected: {
+    color: COLORS.black,
+  },
+  restTimerText__restTimerSelection__selected: {
+    color: COLORS.blue[600],
   },
 });
 

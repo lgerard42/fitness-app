@@ -30,6 +30,7 @@ interface SetRowProps {
   isRestTimerSelectionMode?: boolean;
   isRestTimerSelected?: boolean;
   onToggleRestTimerSelection?: () => void;
+  hasRestTimer?: boolean;
   dropSetId?: string;
   isDropSetStart: boolean;
   isDropSetEnd: boolean;
@@ -77,6 +78,7 @@ const SetRow: React.FC<SetRowProps> = ({
   isRestTimerSelectionMode = false,
   isRestTimerSelected = false,
   onToggleRestTimerSelection,
+  hasRestTimer = false,
   dropSetId,
   isDropSetStart,
   isDropSetEnd,
@@ -436,11 +438,12 @@ const SetRow: React.FC<SetRowProps> = ({
         trashIconColor={groupColorScheme ? groupColorScheme[700] : undefined}
       >
         <View style={styles.swipeableRow}>
-          {dropSetId && (
+          {dropSetId && !isRestTimerSelectionMode && (
             <View style={[
               styles.dropSetIndicator,
               isDropSetStart && styles.dropSetIndicator__start,
               isDropSetEnd && styles.dropSetIndicator__end,
+              isSelectionMode && styles.dropSetIndicator__selectionMode,
               groupColorScheme ? { backgroundColor: groupColorScheme[400] } : { backgroundColor: COLORS.slate[400] }
             ]} />
           )}
@@ -451,6 +454,7 @@ const SetRow: React.FC<SetRowProps> = ({
               dropSetId && isDropSetStart && styles.container__dropSetStart,
               dropSetId && isDropSetEnd && styles.container__dropSetEnd,
               dropSetId ? styles.container__dropSet__flex : styles.container__nonDropSet__flex,
+              dropSetId && isRestTimerSelectionMode && styles.container__dropSet__flex__restTimerSelection,
               isRestTimerSelectionMode && isRestTimerSelected && styles.container__restTimerSelected
             ]}
             onPress={isRestTimerSelectionMode && onToggleRestTimerSelection ? onToggleRestTimerSelection : undefined}
@@ -458,9 +462,19 @@ const SetRow: React.FC<SetRowProps> = ({
           >
             <View style={[
               styles.contentRow,
+              // Non-dropset styles
+              !dropSetId && isRestTimerSelectionMode && !hasRestTimer && styles.contentRow__restTimerSelection__noTimer,
+              !dropSetId && isRestTimerSelectionMode && hasRestTimer && styles.contentRow__restTimerSelection__withTimer,
+              // Dropset styles
               dropSetId && styles.contentRow__dropSet,
+              dropSetId && isRestTimerSelectionMode && styles.contentRow__dropSet__restTimerSelection,
+              dropSetId && isRestTimerSelectionMode && !hasRestTimer && styles.contentRow__dropSet__restTimerSelection__noTimer,
+              dropSetId && isRestTimerSelectionMode && hasRestTimer && styles.contentRow__dropSet__restTimerSelection__withTimer,
               dropSetId && isDropSetStart && styles.contentRow__dropSet__start,
-              dropSetId && isDropSetEnd && styles.contentRow__dropSet__end
+              dropSetId && isDropSetStart && isRestTimerSelectionMode && styles.contentRow__dropSet__start__restTimerSelection,
+              dropSetId && isDropSetEnd && styles.contentRow__dropSet__end,
+              dropSetId && isDropSetEnd && isRestTimerSelectionMode && !hasRestTimer && styles.contentRow__dropSet__end__restTimerSelection__noTimer,
+              dropSetId && isDropSetEnd && isRestTimerSelectionMode && hasRestTimer && styles.contentRow__dropSet__end__restTimerSelection__withTimer,
             ]}>
               {isSelectionMode ? (
                 (() => {
@@ -657,7 +671,9 @@ const SetRow: React.FC<SetRowProps> = ({
                         styles.durationInput,
                         getInputStyle(set.duration),
                         (customKeyboardActive && customKeyboardField === 'duration') && styles.inputFocused,
-                        isMissingDuration && styles.inputCompletedEmpty
+                        isMissingDuration && styles.inputCompletedEmpty,
+                        isRestTimerSelectionMode && styles.input__restTimerSelection,
+                        isRestTimerSelectionMode && styles.durationInput__restTimerSelection
                       ]}
                       selectTextOnFocus={true}
                       showSoftInputOnFocus={!onCustomKeyboardOpen}
@@ -760,7 +776,9 @@ const SetRow: React.FC<SetRowProps> = ({
                         styles.distanceInput,
                         getInputStyle(set.distance),
                         (customKeyboardActive && customKeyboardField === 'distance') && styles.inputFocused,
-                        isMissingDistance && styles.inputCompletedEmpty
+                        isMissingDistance && styles.inputCompletedEmpty,
+                        isRestTimerSelectionMode && styles.input__restTimerSelection,
+                        isRestTimerSelectionMode && styles.distanceInput__restTimerSelection
                       ]}
                       selectTextOnFocus={true}
                       showSoftInputOnFocus={!onCustomKeyboardOpen}
@@ -836,7 +854,9 @@ const SetRow: React.FC<SetRowProps> = ({
                             styles.weightInput,
                             getInputStyle(set.weight),
                             (customKeyboardActive && customKeyboardField === 'weight') && styles.inputFocused,
-                            isMissingWeight && styles.inputCompletedEmpty
+                            isMissingWeight && styles.inputCompletedEmpty,
+                            isRestTimerSelectionMode && styles.input__restTimerSelection,
+                            isRestTimerSelectionMode && styles.weightInput__restTimerSelection
                           ]}
                           selectTextOnFocus={true}
                           showSoftInputOnFocus={!onCustomKeyboardOpen}
@@ -924,7 +944,9 @@ const SetRow: React.FC<SetRowProps> = ({
                               styles.weightInput,
                               getInputStyle(set.weight2),
                               (customKeyboardActive && customKeyboardField === 'weight2') && styles.inputFocused,
-                              isMissingWeight2 && styles.inputCompletedEmpty
+                              isMissingWeight2 && styles.inputCompletedEmpty,
+                              isRestTimerSelectionMode && styles.input__restTimerSelection,
+                              isRestTimerSelectionMode && styles.weightInput__restTimerSelection
                             ]}
                             selectTextOnFocus={true}
                             showSoftInputOnFocus={!onCustomKeyboardOpen}
@@ -1024,7 +1046,9 @@ const SetRow: React.FC<SetRowProps> = ({
                             styles.repsInput,
                             getInputStyle(set.reps),
                             (customKeyboardActive && customKeyboardField === 'reps') && styles.inputFocused,
-                            isMissingReps && styles.inputCompletedEmpty
+                            isMissingReps && styles.inputCompletedEmpty,
+                            isRestTimerSelectionMode && styles.input__restTimerSelection,
+                            isRestTimerSelectionMode && styles.repsInput__restTimerSelection
                           ]}
                           selectTextOnFocus={true}
                           showSoftInputOnFocus={!onCustomKeyboardOpen}
@@ -1112,7 +1136,9 @@ const SetRow: React.FC<SetRowProps> = ({
                               styles.repsInput,
                               getInputStyle(set.reps2),
                               (customKeyboardActive && customKeyboardField === 'reps2') && styles.inputFocused,
-                              isMissingReps2 && styles.inputCompletedEmpty
+                              isMissingReps2 && styles.inputCompletedEmpty,
+                              isRestTimerSelectionMode && styles.input__restTimerSelection,
+                              isRestTimerSelectionMode && styles.repsInput__restTimerSelection
                             ]}
                             selectTextOnFocus={true}
                             showSoftInputOnFocus={!onCustomKeyboardOpen}
@@ -1225,6 +1251,15 @@ const styles = StyleSheet.create({
     overflow: 'visible',
     gap: 8,
   },
+  // Non-dropset: Set row without timer
+  contentRow__restTimerSelection__noTimer: {
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+  },
+  // Non-dropset: Set row with timer
+  contentRow__restTimerSelection__withTimer: {
+    paddingVertical: 0,
+  },
   divider: {
     height: 1,
     backgroundColor: COLORS.slate[100],
@@ -1254,6 +1289,9 @@ const styles = StyleSheet.create({
   dropSetIndicator__end: {
     bottom: 8,
   },
+  dropSetIndicator__selectionMode: {
+    // Style for dropset indicator in selection/move mode
+  },
   container__dropSetStart: {
     borderTopWidth: 2,
     borderTopColor: COLORS.indigo[200],
@@ -1268,6 +1306,10 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 5,
   },
+  container__dropSet__flex__restTimerSelection: {
+    marginLeft: -3,
+    paddingHorizontal: 0,
+  },
   container__nonDropSet__flex: {
     flex: 1,
     marginLeft: 0,
@@ -1277,11 +1319,38 @@ const styles = StyleSheet.create({
     paddingTop: 2,
     paddingBottom: 2,
   },
+  contentRow__dropSet__restTimerSelection: {
+    paddingHorizontal: 0,
+  },
+  // Dropset: Set row without timer
+  contentRow__dropSet__restTimerSelection__noTimer: {
+    paddingTop: 0,
+    paddingBottom: 0,
+  },
+  // Dropset: Set row with timer
+  contentRow__dropSet__restTimerSelection__withTimer: {
+    paddingTop: 0,
+    paddingBottom: 0,
+  },
   contentRow__dropSet__start: {
     paddingTop: 6,
   },
+  // Dropset start: First set row in dropset (apply to mode) - applies regardless of timer
+  contentRow__dropSet__start__restTimerSelection: {
+    paddingTop: 0,
+    marginTop: -2,
+  },
   contentRow__dropSet__end: {
     paddingBottom: 8,
+  },
+  // Dropset end: Last set row in dropset if set has no timer (apply to mode)
+  contentRow__dropSet__end__restTimerSelection__noTimer: {
+    paddingBottom: 0,
+    marginBottom: -2,
+  },
+  // Dropset end: Last set row in dropset if set does have a timer (apply to mode)
+  contentRow__dropSet__end__restTimerSelection__withTimer: {
+    paddingBottom: 6,
   },
   selectionMode__emptySpace: {
     width: 36, // Match colIndex width (32 + 4 margin)
@@ -1357,6 +1426,9 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: COLORS.slate[150],
   },
+  durationInput__restTimerSelection: {
+    color: COLORS.slate[400],
+  },
   distanceContainer: {
     flex: 1,
     flexBasis: 0, // Force equal width distribution
@@ -1382,6 +1454,9 @@ const styles = StyleSheet.create({
     color: COLORS.slate[900],
     borderWidth: 2,
     borderColor: COLORS.slate[150],
+  },
+  distanceInput__restTimerSelection: {
+    color: COLORS.slate[400],
   },
   weightContainer: {
     flex: 1,
@@ -1431,6 +1506,9 @@ const styles = StyleSheet.create({
     color: COLORS.slate[900],
     borderWidth: 2,
     borderColor: COLORS.slate[150],
+  },
+  weightInput__restTimerSelection: {
+    color: COLORS.slate[400],
   },
   weight2InputWrapper: {
     width: '100%',
@@ -1520,6 +1598,9 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: COLORS.slate[150],
   },
+  repsInput__restTimerSelection: {
+    color: COLORS.slate[400],
+  },
   previousText: {
     fontSize: 12,
     color: COLORS.slate[400],
@@ -1545,6 +1626,10 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.green[50],
     borderWidth: 2,
     borderColor: COLORS.green[50],
+  },
+  input__restTimerSelection: {
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
   },
   checkButton: {
     width: 25,

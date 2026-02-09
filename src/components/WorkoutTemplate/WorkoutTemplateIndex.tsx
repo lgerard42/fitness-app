@@ -1900,6 +1900,8 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
               const shouldWrapInSelectionBorder = restTimerSelectionMode;
               const isRestTimerDropSetStart = !!(set.dropSetId && (idx === 0 || ex.sets[idx - 1]?.dropSetId !== set.dropSetId));
               const isRestTimerDropSetEnd = !!(set.dropSetId && (idx === ex.sets.length - 1 || ex.sets[idx + 1]?.dropSetId !== set.dropSetId));
+              const isDropSetStart = !!(set.dropSetId && (idx === 0 || ex.sets[idx - 1]?.dropSetId !== set.dropSetId));
+              const isDropSetEnd = !!(set.dropSetId && (idx === ex.sets.length - 1 || ex.sets[idx + 1]?.dropSetId !== set.dropSetId) && !set.restPeriodSeconds);
               const toggleRestTimerSelection = () => {
                 setRestTimerSelectedSetIds((prev: globalThis.Set<string>) => {
                   const newSet = new globalThis.Set<string>(prev);
@@ -1945,6 +1947,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                 isRestTimerSelectionMode: restTimerSelectionMode,
                 isRestTimerSelected: restTimerSelectedSetIds.has(set.id),
                 onToggleRestTimerSelection: toggleRestTimerSelection,
+                hasRestTimer: !!showRestTimer,
                 dropSetId: set.dropSetId,
                 isDropSetStart: !!(set.dropSetId && (idx === 0 || ex.sets[idx - 1].dropSetId !== set.dropSetId)),
                 isDropSetEnd: !!(set.dropSetId && (idx === ex.sets.length - 1 || ex.sets[idx + 1]?.dropSetId !== set.dropSetId) && !set.restPeriodSeconds),
@@ -1993,6 +1996,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                 isRestTimerSelectionMode: restTimerSelectionMode,
                 isRestTimerSelected,
                 onToggleRestTimerSelection: toggleRestTimerSelection,
+                groupColorScheme,
               };
 
               const setRowAndTimer = (
@@ -2005,11 +2009,24 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
               return (
                 <React.Fragment key={set.id}>
                   {shouldWrapInSelectionBorder ? (
-                    <View style={[
-                      styles.restTimerSelectionWrapper,
-                      isRestTimerSelected && styles.restTimerSelectionWrapper__selected
-                    ]}>
-                      {setRowAndTimer}
+                    <View style={styles.restTimerSelectionWrapperContainer}>
+                      {set.dropSetId && (
+                        <View style={[
+                          styles.restTimerSelectionWrapperIndicator,
+                          isDropSetStart && styles.restTimerSelectionWrapperIndicator__start,
+                          isDropSetEnd && styles.restTimerSelectionWrapperIndicator__end,
+                          groupColorScheme ? { backgroundColor: groupColorScheme[400] } : {}
+                        ]} />
+                      )}
+                      <View style={[
+                        styles.restTimerSelectionWrapper,
+                        set.dropSetId && styles.restTimerSelectionWrapper__dropSet,
+                        set.dropSetId && isDropSetStart && styles.restTimerSelectionWrapper__dropSet__first,
+                        set.dropSetId && isDropSetEnd && styles.restTimerSelectionWrapper__dropSet__last,
+                        isRestTimerSelected && styles.restTimerSelectionWrapper__selected
+                      ]}>
+                        {setRowAndTimer}
+                      </View>
                     </View>
                   ) : (
                     setRowAndTimer
@@ -2667,53 +2684,54 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                       styles.setPopupToggleRow,
                       defaultPopupStyles.borderRadiusFirst,
                     ]}>
-                      <TouchableOpacity
-                        style={[
-                          styles.setPopupToggleOption,
-                          !isFailure && styles.setPopupToggleOptionBorder,
-                          isWarmup && styles.setPopupToggleOptionActiveWarmup,
-                          !isWarmup && styles.setPopupToggleOptionInactive,
-                          { borderTopLeftRadius: 8 },
-                        ]}
-                        onPress={() => handleSetMenuAction('warmup')}
-                      >
-                        <View style={styles.setPopupToggleOptionContent}>
-                          <Flame
-                            size={18}
-                            color={isWarmup ? COLORS.white : COLORS.orange[500]}
-                          />
-                          <Text style={[
-                            styles.setPopupToggleOptionText,
-                            isWarmup && styles.setPopupToggleOptionTextActive,
-                            !isWarmup && styles.setPopupToggleOptionTextInactive,
-                          ]}>
-                            Warmup
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[
-                          styles.setPopupToggleOption,
-                          isFailure && styles.setPopupToggleOptionActiveFailure,
-                          !isFailure && styles.setPopupToggleOptionInactive,
-                          { borderTopRightRadius: 8 },
-                        ]}
-                        onPress={() => handleSetMenuAction('failure')}
-                      >
-                        <View style={styles.setPopupToggleOptionContent}>
-                          <Zap
-                            size={18}
-                            color={isFailure ? COLORS.white : COLORS.red[500]}
-                          />
-                          <Text style={[
-                            styles.setPopupToggleOptionText,
-                            isFailure && styles.setPopupToggleOptionTextActive,
-                            !isFailure && styles.setPopupToggleOptionTextInactive,
-                          ]}>
-                            Failure
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
+                      <View style={styles.setPopupToggleButtonsWrapper}>
+                        <TouchableOpacity
+                          activeOpacity={1}
+                          style={[
+                            styles.setPopupToggleOption,
+                            styles.setPopupToggleOptionInactive,
+                            isWarmup && styles.setPopupToggleOptionActiveWarmup,
+                          ]}
+                          onPress={() => handleSetMenuAction('warmup')}
+                        >
+                          <View style={styles.setPopupToggleOptionContent}>
+                            <Flame
+                              size={18}
+                              color={isWarmup ? COLORS.white : COLORS.orange[500]}
+                            />
+                            <Text style={[
+                              styles.setPopupToggleOptionText,
+                              styles.setPopupToggleOptionTextInactive,
+                              isWarmup && styles.setPopupToggleOptionTextActive,
+                            ]}>
+                              Warmup
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          activeOpacity={1}
+                          style={[
+                            styles.setPopupToggleOption,
+                            styles.setPopupToggleOptionInactive,
+                            isFailure && styles.setPopupToggleOptionActiveFailure,
+                          ]}
+                          onPress={() => handleSetMenuAction('failure')}
+                        >
+                          <View style={styles.setPopupToggleOptionContent}>
+                            <Zap
+                              size={18}
+                              color={isFailure ? COLORS.white : COLORS.red[500]}
+                            />
+                            <Text style={[
+                              styles.setPopupToggleOptionText,
+                              styles.setPopupToggleOptionTextInactive,
+                              isFailure && styles.setPopupToggleOptionTextActive,
+                            ]}>
+                              Failure
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                      </View>
                     </View>
 
                     {/* Regular options */}
@@ -3888,52 +3906,60 @@ const styles = StyleSheet.create({
   },
   // Toggle row styles
   setPopupToggleRow: {
-    flexDirection: defaultPopupStyles.toggleRow.flexDirection as 'row',
-    borderBottomWidth: defaultPopupStyles.toggleRow.borderBottomWidth,
-    borderBottomColor: defaultPopupStyles.toggleRow.borderBottomColor,
-    position: defaultPopupStyles.toggleRow.position as 'relative',
-    flexShrink: defaultPopupStyles.toggleRow.flexShrink,
-    flexWrap: defaultPopupStyles.toggleRow.flexWrap as 'nowrap',
+    flexDirection: defaultPopupStyles.optionToggleRow.flexDirection as 'row',
+    padding: defaultPopupStyles.optionToggleRow.padding,
+    margin: defaultPopupStyles.optionToggleRow.margin,
+    borderRadius: defaultPopupStyles.optionToggleRow.borderRadius,
+    borderBottomWidth: defaultPopupStyles.optionToggleRow.borderBottomWidth,
+    borderBottomColor: defaultPopupStyles.optionToggleRow.borderBottomColor,
+    flexShrink: defaultPopupStyles.optionToggleRow.flexShrink,
+    flexWrap: defaultPopupStyles.optionToggleRow.flexWrap as 'nowrap',
+    opacity: defaultPopupStyles.optionToggleRow.opacity,
+  },
+  setPopupToggleButtonsWrapper: {
+    flexDirection: defaultPopupStyles.optionToggleButtonsWrapper.flexDirection as 'row',
+    backgroundColor: defaultPopupStyles.optionToggleButtonsWrapper.backgroundColor,
+    padding: defaultPopupStyles.optionToggleButtonsWrapper.padding,
+    margin: defaultPopupStyles.optionToggleButtonsWrapper.margin,
+    flex: defaultPopupStyles.optionToggleButtonsWrapper.flex,
+    width: defaultPopupStyles.optionToggleButtonsWrapper.width as '100%',
+    borderRadius: defaultPopupStyles.optionToggleButtonsWrapper.borderRadius,
+    opacity: defaultPopupStyles.optionToggleButtonsWrapper.opacity,
   },
   setPopupToggleOption: {
-    flexGrow: defaultPopupStyles.toggleOption.flexGrow,
-    flexShrink: defaultPopupStyles.toggleOption.flexShrink,
-    paddingBottom: defaultPopupStyles.toggleOption.paddingBottom,
-    paddingTop: defaultPopupStyles.toggleOption.paddingTop,
-    paddingHorizontal: defaultPopupStyles.toggleOption.paddingHorizontal,
-    alignItems: defaultPopupStyles.toggleOption.alignItems as 'center',
-    justifyContent: defaultPopupStyles.toggleOption.justifyContent as 'center',
+    flex: defaultPopupStyles.optionToggleButton.flex,
+    paddingVertical: defaultPopupStyles.optionToggleButton.paddingVertical,
+    alignItems: defaultPopupStyles.optionToggleButton.alignItems as 'center',
+    justifyContent: defaultPopupStyles.optionToggleButton.justifyContent as 'center',
+    borderRadius: defaultPopupStyles.optionToggleButton.borderRadius,
+    minHeight: defaultPopupStyles.optionToggleButton.minHeight,
   },
   setPopupToggleOptionContent: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  setPopupToggleOptionBorder: {
-    borderRightWidth: defaultPopupStyles.toggleOptionBorder.borderRightWidth,
-    borderRightColor: defaultPopupStyles.toggleOptionBorder.borderRightColor,
-  },
   setPopupToggleOptionInactive: {
-    backgroundColor: defaultPopupStyles.toggleOptionBackgroundInactive.backgroundColor,
+    ...defaultPopupStyles.optionToggleButtonUnselected,
   },
   setPopupToggleOptionActiveWarmup: {
-    backgroundColor: COLORS.orange[500], // Override with warmup color
+    ...defaultPopupStyles.optionToggleButtonSelected,
+    ...defaultPopupStyles.optionToggleButtonSelectedWarmup,
   },
   setPopupToggleOptionActiveFailure: {
-    backgroundColor: COLORS.red[500], // Override with failure color
+    ...defaultPopupStyles.optionToggleButtonSelected,
+    ...defaultPopupStyles.optionToggleButtonSelectedFailure,
   },
   setPopupToggleOptionText: {
-    fontSize: defaultPopupStyles.toggleOptionText.fontSize,
-    fontWeight: defaultPopupStyles.toggleOptionText.fontWeight as '600',
-    color: defaultPopupStyles.toggleOptionText.color,
-    flexShrink: defaultPopupStyles.toggleOptionText.flexShrink,
+    fontSize: defaultPopupStyles.optionToggleText.fontSize,
+    fontWeight: defaultPopupStyles.optionToggleText.fontWeight as 'bold',
+    flexShrink: defaultPopupStyles.optionToggleText.flexShrink,
   },
   setPopupToggleOptionTextInactive: {
-    color: defaultPopupStyles.toggleOptionTextInactive.color,
+    ...defaultPopupStyles.optionToggleTextUnselected,
   },
   setPopupToggleOptionTextActive: {
-    color: defaultPopupStyles.toggleOptionTextActive.color,
-    fontWeight: defaultPopupStyles.toggleOptionTextActive.fontWeight as '600',
+    ...defaultPopupStyles.optionToggleTextSelected,
   },
   optionDestructive: {
     color: COLORS.red[500],
@@ -4316,16 +4342,45 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   restTimerSelectionWrapper: {
+    flex: 1,
     borderWidth: 2,
     borderColor: COLORS.slate[300],
     borderRadius: 6,
-    marginVertical: 4,
+    marginTop: 4,
     marginHorizontal: 8,
-    padding: 2,
+    paddingVertical: 0,
+    paddingHorizontal: 2,
   },
   restTimerSelectionWrapper__selected: {
     borderColor: COLORS.blue[500],
     backgroundColor: COLORS.blue[50],
+  },
+  restTimerSelectionWrapper__dropSet: {
+    marginTop: 2,
+    marginLeft: 4,
+  },
+  restTimerSelectionWrapper__dropSet__first: {
+    marginTop: 4,
+  },
+  restTimerSelectionWrapper__dropSet__last: {
+    // Style for last set in dropset
+  },
+  restTimerSelectionWrapperContainer: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    position: 'relative',
+    width: '100%',
+  },
+  restTimerSelectionWrapperIndicator: {
+    width: 5,
+    backgroundColor: COLORS.slate[400],
+    marginRight: 0,
+  },
+  restTimerSelectionWrapperIndicator__start: {
+    marginTop: 4,
+  },
+  restTimerSelectionWrapperIndicator__end: {
+    marginBottom: 8,
   },
   dragGroupHeaderText: {
     fontSize: 13,

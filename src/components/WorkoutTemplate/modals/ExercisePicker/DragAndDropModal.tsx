@@ -2,9 +2,9 @@ import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { View, Text, Modal, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DraggableFlatList from 'react-native-draggable-flatlist';
-import { MoreVertical, Check, Plus, Minus, TrendingDown, Flame, XCircle, Users, Copy, Trash2 } from 'lucide-react-native';
+import { MoreVertical, Check, Plus, Minus, TrendingDown, Flame, Zap, Users, Copy, Trash2 } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
-import { defaultSupersetColorScheme, defaultHiitColorScheme } from '@/constants/defaultStyles';
+import { defaultSupersetColorScheme, defaultHiitColorScheme, defaultPopupStyles } from '@/constants/defaultStyles';
 import SwipeToDelete from '@/components/common/SwipeToDelete';
 import type { ExerciseLibraryItem, GroupType } from '@/types/workout';
 
@@ -2142,171 +2142,234 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
                 setEditDropdownPosition(null);
               }}
             />
-            {editDropdownPosition && (
-              <View
-                style={[
-                  styles.editDropdown,
-                  {
-                    top: editDropdownPosition.y,
-                    left: editDropdownPosition.x,
-                  },
-                ]}
-                onStartShouldSetResponder={() => true}
-              >
-                {/* Dropset */}
-                {clickedSetGroupId && exerciseToEdit && (
-                  <TouchableOpacity
-                    style={[
-                      styles.editDropdownItem,
-                      exerciseToEdit.setGroups.find(sg => sg.id === clickedSetGroupId)?.isDropset && { backgroundColor: COLORS.indigo[500] }
-                    ]}
-                    onPress={() => {
-                      if (exerciseToEdit && clickedSetGroupId) {
-                        handleToggleDropset(exerciseToEdit, clickedSetGroupId);
-                      }
-                      // Don't close popup - allow user to select multiple options
-                    }}
-                  >
-                    <View style={styles.editDropdownItemContent}>
-                      <TrendingDown size={16} color={exerciseToEdit.setGroups.find(sg => sg.id === clickedSetGroupId)?.isDropset ? COLORS.white : COLORS.indigo[400]} />
-                      <Text style={[
-                        styles.editDropdownItemText,
-                        exerciseToEdit.setGroups.find(sg => sg.id === clickedSetGroupId)?.isDropset && { color: COLORS.white }
-                      ]}>Dropset</Text>
-                    </View>
-                  </TouchableOpacity>
-                )}
+            {editDropdownPosition && exerciseToEdit && (() => {
+              const hasMultipleRows = clickedSetGroupId && exerciseToEdit.setGroups && exerciseToEdit.setGroups.length > 1;
+              const showDeleteRow = hasMultipleRows;
 
-                {/* Warmup and Failure */}
-                {clickedSetGroupId && exerciseToEdit && (
-                  <View style={styles.editDropdownItemRow}>
-                    <TouchableOpacity
-                      style={[
-                        styles.editDropdownItemHalf,
-                        exerciseToEdit.setGroups.find(sg => sg.id === clickedSetGroupId)?.isWarmup && { backgroundColor: COLORS.orange[500] }
-                      ]}
-                      onPress={() => {
-                        if (exerciseToEdit && clickedSetGroupId) {
-                          handleToggleWarmup(exerciseToEdit, clickedSetGroupId);
-                        }
-                        // Don't close popup - allow user to select multiple options
-                      }}
-                    >
-                      <View style={styles.editDropdownItemContent}>
-                        <Flame size={16} color={exerciseToEdit.setGroups.find(sg => sg.id === clickedSetGroupId)?.isWarmup ? COLORS.white : COLORS.orange[500]} />
-                        <Text style={[
-                          styles.editDropdownItemText,
-                          exerciseToEdit.setGroups.find(sg => sg.id === clickedSetGroupId)?.isWarmup && { color: COLORS.white }
-                        ]}>Warmup</Text>
-                      </View>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.editDropdownItemHalf,
-                        exerciseToEdit.setGroups.find(sg => sg.id === clickedSetGroupId)?.isFailure && { backgroundColor: COLORS.red[500] }
-                      ]}
-                      onPress={() => {
-                        if (exerciseToEdit && clickedSetGroupId) {
-                          handleToggleFailure(exerciseToEdit, clickedSetGroupId);
-                        }
-                        // Don't close popup - allow user to select multiple options
-                      }}
-                    >
-                      <View style={styles.editDropdownItemContent}>
-                        <XCircle size={16} color={exerciseToEdit.setGroups.find(sg => sg.id === clickedSetGroupId)?.isFailure ? COLORS.white : COLORS.red[500]} />
-                        <Text style={[
-                          styles.editDropdownItemText,
-                          exerciseToEdit.setGroups.find(sg => sg.id === clickedSetGroupId)?.isFailure && { color: COLORS.white }
-                        ]}>Failure</Text>
-                      </View>
-                    </TouchableOpacity>
-                  </View>
-                )}
-
-                {/* Create Group */}
-                {exerciseToEdit && exerciseToEdit.groupId === null && (
-                  <TouchableOpacity
-                    style={styles.editDropdownItem}
-                    onPress={() => {
-                      if (exerciseToEdit) {
-                        setExerciseToGroup(exerciseToEdit);
-                        setShowGroupTypeModal(true);
-                      }
-                      setShowEditModal(false);
-                      setExerciseToEdit(null);
-                      setClickedSetGroupId(null);
-                      setEditDropdownPosition(null);
-                    }}
-                  >
-                    <View style={styles.editDropdownItemContent}>
-                      <Users size={16} color={COLORS.slate[200]} />
-                      <Text style={styles.editDropdownItemText}>Create Group</Text>
-                    </View>
-                  </TouchableOpacity>
-                )}
-
-                {/* Insert Row */}
-                {clickedSetGroupId && exerciseToEdit && (
-                  <TouchableOpacity
-                    style={styles.editDropdownItem}
-                    onPress={() => {
-                      if (exerciseToEdit && clickedSetGroupId) {
-                        handleInsertRow(exerciseToEdit, clickedSetGroupId);
-                      }
-                      setShowEditModal(false);
-                      setExerciseToEdit(null);
-                      setClickedSetGroupId(null);
-                      setEditDropdownPosition(null);
-                    }}
-                  >
-                    <View style={styles.editDropdownItemContent}>
-                      <Plus size={16} color={COLORS.slate[200]} />
-                      <Text style={styles.editDropdownItemText}>Insert Row</Text>
-                    </View>
-                  </TouchableOpacity>
-                )}
-
-                {/* Duplicate Exercise */}
-                <TouchableOpacity
-                  style={styles.editDropdownItem}
-                  onPress={() => {
-                    if (exerciseToEdit) {
-                      handleDuplicateExercise(exerciseToEdit);
-                    }
-                    setShowEditModal(false);
-                    setExerciseToEdit(null);
-                    setClickedSetGroupId(null);
-                    setEditDropdownPosition(null);
-                  }}
+              return (
+                <View
+                  style={[
+                    styles.editDropdown,
+                    {
+                      top: editDropdownPosition.y,
+                      left: editDropdownPosition.x,
+                    },
+                  ]}
+                  onStartShouldSetResponder={() => true}
                 >
-                  <View style={styles.editDropdownItemContent}>
-                    <Copy size={16} color={COLORS.slate[200]} />
-                    <Text style={styles.editDropdownItemText}>Duplicate Exercise</Text>
-                  </View>
-                </TouchableOpacity>
+                  {/* Warmup and Failure - moved to top */}
+                  {clickedSetGroupId && (() => {
+                    const setGroup = exerciseToEdit.setGroups.find(sg => sg.id === clickedSetGroupId);
+                    const isWarmup = setGroup?.isWarmup || false;
+                    const isFailure = setGroup?.isFailure || false;
 
-                {/* Delete Row - only show if there are multiple rows */}
-                {clickedSetGroupId && exerciseToEdit && exerciseToEdit.setGroups && exerciseToEdit.setGroups.length > 1 && (
-                  <TouchableOpacity
-                    style={styles.editDropdownItem}
-                    onPress={() => {
-                      if (exerciseToEdit && clickedSetGroupId) {
-                        handleDeleteSetGroup(exerciseToEdit, clickedSetGroupId);
-                      }
-                      setShowEditModal(false);
-                      setExerciseToEdit(null);
-                      setClickedSetGroupId(null);
-                      setEditDropdownPosition(null);
-                    }}
-                  >
-                    <View style={styles.editDropdownItemContent}>
-                      <Trash2 size={16} color={COLORS.red[500]} />
-                      <Text style={[styles.editDropdownItemText, { color: COLORS.red[500] }]}>Delete Row</Text>
-                    </View>
-                  </TouchableOpacity>
-                )}
-              </View>
-            )}
+                    return (
+                      <View style={[
+                        styles.editDropdownToggleRow,
+                        defaultPopupStyles.borderRadiusFirst,
+                      ]}>
+                        <View style={styles.editDropdownToggleButtonsWrapper}>
+                          <TouchableOpacity
+                            activeOpacity={1}
+                            style={[
+                              styles.editDropdownToggleOption,
+                              styles.editDropdownToggleOptionInactive,
+                              isWarmup && styles.editDropdownToggleOptionActiveWarmup,
+                            ]}
+                            onPress={() => {
+                              if (exerciseToEdit && clickedSetGroupId) {
+                                handleToggleWarmup(exerciseToEdit, clickedSetGroupId);
+                              }
+                            }}
+                          >
+                            <View style={styles.editDropdownToggleOptionContent}>
+                              <Flame
+                                size={18}
+                                color={isWarmup ? COLORS.white : COLORS.orange[500]}
+                              />
+                              <Text style={[
+                                styles.editDropdownToggleOptionText,
+                                styles.editDropdownToggleOptionTextInactive,
+                                isWarmup && styles.editDropdownToggleOptionTextActive,
+                              ]}>
+                                Warmup
+                              </Text>
+                            </View>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            activeOpacity={1}
+                            style={[
+                              styles.editDropdownToggleOption,
+                              styles.editDropdownToggleOptionInactive,
+                              isFailure && styles.editDropdownToggleOptionActiveFailure,
+                            ]}
+                            onPress={() => {
+                              if (exerciseToEdit && clickedSetGroupId) {
+                                handleToggleFailure(exerciseToEdit, clickedSetGroupId);
+                              }
+                            }}
+                          >
+                            <View style={styles.editDropdownToggleOptionContent}>
+                              <Zap
+                                size={18}
+                                color={isFailure ? COLORS.white : COLORS.red[500]}
+                              />
+                              <Text style={[
+                                styles.editDropdownToggleOptionText,
+                                styles.editDropdownToggleOptionTextInactive,
+                                isFailure && styles.editDropdownToggleOptionTextActive,
+                              ]}>
+                                Failure
+                              </Text>
+                            </View>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    );
+                  })()}
+
+                  {/* Dropset */}
+                  {clickedSetGroupId && (
+                    <TouchableOpacity
+                      style={[
+                        styles.editDropdownItem,
+                        exerciseToEdit.setGroups.find(sg => sg.id === clickedSetGroupId)?.isDropset && styles.editDropdownItemActive
+                      ]}
+                      onPress={() => {
+                        if (exerciseToEdit && clickedSetGroupId) {
+                          handleToggleDropset(exerciseToEdit, clickedSetGroupId);
+                        }
+                        // Don't close popup - allow user to select multiple options
+                      }}
+                    >
+                      <View style={styles.editDropdownItemContent}>
+                        <TrendingDown size={18} color={exerciseToEdit.setGroups.find(sg => sg.id === clickedSetGroupId)?.isDropset ? COLORS.white : COLORS.indigo[400]} />
+                        <Text style={[
+                          styles.editDropdownItemText,
+                          exerciseToEdit.setGroups.find(sg => sg.id === clickedSetGroupId)?.isDropset && { color: COLORS.white }
+                        ]}>Dropset</Text>
+                      </View>
+                    </TouchableOpacity>
+                  )}
+
+                  {/* Create Group */}
+                  {exerciseToEdit.groupId === null && (
+                    <TouchableOpacity
+                      style={styles.editDropdownItem}
+                      onPress={() => {
+                        if (exerciseToEdit) {
+                          setExerciseToGroup(exerciseToEdit);
+                          setShowGroupTypeModal(true);
+                        }
+                        setShowEditModal(false);
+                        setExerciseToEdit(null);
+                        setClickedSetGroupId(null);
+                        setEditDropdownPosition(null);
+                      }}
+                    >
+                      <View style={styles.editDropdownItemContent}>
+                        <Users size={18} color={COLORS.white} />
+                        <Text style={styles.editDropdownItemText}>Create Group</Text>
+                      </View>
+                    </TouchableOpacity>
+                  )}
+
+                  {/* Insert Row */}
+                  {clickedSetGroupId && (
+                    <TouchableOpacity
+                      style={styles.editDropdownItem}
+                      onPress={() => {
+                        if (exerciseToEdit && clickedSetGroupId) {
+                          handleInsertRow(exerciseToEdit, clickedSetGroupId);
+                        }
+                        setShowEditModal(false);
+                        setExerciseToEdit(null);
+                        setClickedSetGroupId(null);
+                        setEditDropdownPosition(null);
+                      }}
+                    >
+                      <View style={styles.editDropdownItemContent}>
+                        <Plus size={18} color={COLORS.white} />
+                        <Text style={styles.editDropdownItemText}>Insert Row</Text>
+                      </View>
+                    </TouchableOpacity>
+                  )}
+
+                  {/* Duplicate Exercise + Delete Exercise */}
+                  <View style={[
+                    styles.editDropdownItemRow,
+                    !showDeleteRow && styles.editDropdownItemRowLast,
+                  ]}>
+                    <TouchableOpacity
+                      style={[
+                        styles.editDropdownItemInRow,
+                        styles.editDropdownItemInRowFlex,
+                        styles.editDropdownItemInRowWithBorder,
+                        !showDeleteRow && { borderBottomLeftRadius: 8 },
+                      ]}
+                      onPress={() => {
+                        if (exerciseToEdit) {
+                          handleDuplicateExercise(exerciseToEdit);
+                        }
+                        setShowEditModal(false);
+                        setExerciseToEdit(null);
+                        setClickedSetGroupId(null);
+                        setEditDropdownPosition(null);
+                      }}
+                    >
+                      <View style={styles.editDropdownItemContent}>
+                        <Copy size={18} color={COLORS.white} />
+                        <Text style={styles.editDropdownItemText}>Duplicate</Text>
+                      </View>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.editDropdownItemDelete,
+                        !showDeleteRow && { borderBottomRightRadius: 8 },
+                      ]}
+                      onPress={() => {
+                        if (exerciseToEdit) {
+                          handleDeleteExercise(exerciseToEdit.id);
+                        }
+                        setShowEditModal(false);
+                        setExerciseToEdit(null);
+                        setClickedSetGroupId(null);
+                        setEditDropdownPosition(null);
+                      }}
+                    >
+                      <View style={styles.editDropdownItemContent}>
+                        <Trash2 size={18} color={COLORS.white} />
+                      </View>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Delete Row - only show if there are multiple rows */}
+                  {showDeleteRow && (
+                    <TouchableOpacity
+                      style={[
+                        styles.editDropdownItem,
+                        defaultPopupStyles.borderBottomLast,
+                        defaultPopupStyles.borderRadiusLast,
+                      ]}
+                      onPress={() => {
+                        if (exerciseToEdit && clickedSetGroupId) {
+                          handleDeleteSetGroup(exerciseToEdit, clickedSetGroupId);
+                        }
+                        setShowEditModal(false);
+                        setExerciseToEdit(null);
+                        setClickedSetGroupId(null);
+                        setEditDropdownPosition(null);
+                      }}
+                    >
+                      <View style={styles.editDropdownItemContent}>
+                        <Trash2 size={18} color={COLORS.red[500]} />
+                        <Text style={[styles.editDropdownItemText, { color: COLORS.red[500] }]}>Delete Row</Text>
+                      </View>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              );
+            })()}
           </>
         )}
 
@@ -2725,49 +2788,121 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   editDropdown: {
-    position: 'absolute',
-    backgroundColor: COLORS.slate[700],
-    borderRadius: 8,
-    minWidth: 220,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 8,
-    zIndex: 999,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: COLORS.slate[200],
+    position: defaultPopupStyles.container.position as 'absolute',
+    backgroundColor: defaultPopupStyles.container.backgroundColor,
+    borderRadius: defaultPopupStyles.container.borderRadius,
+    minWidth: defaultPopupStyles.container.minWidth,
+    shadowColor: defaultPopupStyles.container.shadowColor,
+    shadowOffset: defaultPopupStyles.container.shadowOffset,
+    shadowOpacity: defaultPopupStyles.container.shadowOpacity,
+    shadowRadius: defaultPopupStyles.container.shadowRadius,
+    elevation: defaultPopupStyles.container.elevation,
+    zIndex: defaultPopupStyles.container.zIndex,
+    borderWidth: defaultPopupStyles.container.borderWidth,
+    borderColor: defaultPopupStyles.container.borderColor,
   },
-  editDropdownItem: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.slate[600],
+  editDropdownToggleRow: {
+    flexDirection: defaultPopupStyles.optionToggleRow.flexDirection as 'row',
+    padding: defaultPopupStyles.optionToggleRow.padding,
+    margin: defaultPopupStyles.optionToggleRow.margin,
+    borderRadius: defaultPopupStyles.optionToggleRow.borderRadius,
+    borderBottomWidth: defaultPopupStyles.optionToggleRow.borderBottomWidth,
+    borderBottomColor: defaultPopupStyles.optionToggleRow.borderBottomColor,
+    flexShrink: defaultPopupStyles.optionToggleRow.flexShrink,
+    flexWrap: defaultPopupStyles.optionToggleRow.flexWrap as 'nowrap',
+    opacity: defaultPopupStyles.optionToggleRow.opacity,
   },
-  editDropdownItemRow: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.slate[600],
+  editDropdownToggleButtonsWrapper: {
+    flexDirection: defaultPopupStyles.optionToggleButtonsWrapper.flexDirection as 'row',
+    backgroundColor: defaultPopupStyles.optionToggleButtonsWrapper.backgroundColor,
+    padding: defaultPopupStyles.optionToggleButtonsWrapper.padding,
+    margin: defaultPopupStyles.optionToggleButtonsWrapper.margin,
+    flex: defaultPopupStyles.optionToggleButtonsWrapper.flex,
+    width: defaultPopupStyles.optionToggleButtonsWrapper.width as '100%',
+    borderRadius: defaultPopupStyles.optionToggleButtonsWrapper.borderRadius,
+    opacity: defaultPopupStyles.optionToggleButtonsWrapper.opacity,
   },
-  editDropdownItemHalf: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+  editDropdownToggleOption: {
+    flex: defaultPopupStyles.optionToggleButton.flex,
+    paddingVertical: defaultPopupStyles.optionToggleButton.paddingVertical,
+    alignItems: defaultPopupStyles.optionToggleButton.alignItems as 'center',
+    justifyContent: defaultPopupStyles.optionToggleButton.justifyContent as 'center',
+    borderRadius: defaultPopupStyles.optionToggleButton.borderRadius,
+    minHeight: defaultPopupStyles.optionToggleButton.minHeight,
   },
-  editDropdownItemActive: {
-    backgroundColor: COLORS.orange[50],
-  },
-  editDropdownItemContent: {
+  editDropdownToggleOptionContent: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
+  editDropdownToggleOptionInactive: {
+    ...defaultPopupStyles.optionToggleButtonUnselected,
+  },
+  editDropdownToggleOptionActiveWarmup: {
+    ...defaultPopupStyles.optionToggleButtonSelected,
+    ...defaultPopupStyles.optionToggleButtonSelectedWarmup,
+  },
+  editDropdownToggleOptionActiveFailure: {
+    ...defaultPopupStyles.optionToggleButtonSelected,
+    ...defaultPopupStyles.optionToggleButtonSelectedFailure,
+  },
+  editDropdownToggleOptionText: {
+    fontSize: defaultPopupStyles.optionToggleText.fontSize,
+    fontWeight: defaultPopupStyles.optionToggleText.fontWeight as 'bold',
+    flexShrink: defaultPopupStyles.optionToggleText.flexShrink,
+  },
+  editDropdownToggleOptionTextInactive: {
+    ...defaultPopupStyles.optionToggleTextUnselected,
+  },
+  editDropdownToggleOptionTextActive: {
+    ...defaultPopupStyles.optionToggleTextSelected,
+  },
+  editDropdownItem: {
+    ...defaultPopupStyles.option,
+    ...defaultPopupStyles.optionBackground,
+  },
+  editDropdownItemActive: {
+    ...defaultPopupStyles.optionBackgroundActive,
+  },
+  editDropdownItemContent: {
+    flexDirection: defaultPopupStyles.optionContent.flexDirection as 'row',
+    alignItems: defaultPopupStyles.optionContent.alignItems as 'center',
+    gap: defaultPopupStyles.optionContent.gap,
+    flexShrink: defaultPopupStyles.optionContent.flexShrink,
+    flexWrap: defaultPopupStyles.optionContent.flexWrap as 'nowrap',
+  },
   editDropdownItemText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.white,
-    textTransform: 'none',
+    fontSize: defaultPopupStyles.optionText.fontSize,
+    fontWeight: defaultPopupStyles.optionText.fontWeight as '600',
+    color: defaultPopupStyles.optionText.color,
+    flexShrink: defaultPopupStyles.optionText.flexShrink,
+  },
+  editDropdownItemRow: {
+    flexDirection: defaultPopupStyles.optionRow.flexDirection as 'row',
+    alignItems: defaultPopupStyles.optionRow.alignItems as 'stretch',
+    padding: defaultPopupStyles.optionRow.padding,
+    borderBottomWidth: defaultPopupStyles.optionRow.borderBottomWidth,
+    borderBottomColor: defaultPopupStyles.optionRow.borderBottomColor,
+    flexShrink: defaultPopupStyles.optionRow.flexShrink,
+    flexWrap: defaultPopupStyles.optionRow.flexWrap as 'nowrap',
+  },
+  editDropdownItemRowLast: {
+    ...defaultPopupStyles.borderBottomLast,
+    ...defaultPopupStyles.borderRadiusLast,
+  },
+  editDropdownItemInRow: {
+    ...defaultPopupStyles.optionInRow,
+    ...defaultPopupStyles.optionBackground,
+  },
+  editDropdownItemInRowFlex: {
+    ...defaultPopupStyles.optionFlex,
+  },
+  editDropdownItemInRowWithBorder: {
+    ...defaultPopupStyles.optionRowWithBorder,
+  },
+  editDropdownItemDelete: {
+    ...defaultPopupStyles.iconOnlyOption,
+    ...defaultPopupStyles.optionInRow,
   },
   dropsetIndicator: {
     width: 2,
