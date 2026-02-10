@@ -7,6 +7,7 @@ export interface SetGroup {
   isDropset: boolean;
   isWarmup?: boolean;
   isFailure?: boolean;
+  restPeriodSeconds?: number; // Rest timer for sets in this group (if all sets have the same timer)
   // For dropsets with multiple set types, store individual set types
   setTypes?: Array<{ isWarmup: boolean; isFailure: boolean }>;
 }

@@ -3,7 +3,7 @@ import { View, Text, Modal, TouchableOpacity, StyleSheet, Dimensions } from 'rea
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DraggableFlatList from 'react-native-draggable-flatlist';
-import { MoreVertical, Check, Plus, Minus, TrendingDown, Flame, Zap, Users, Copy, Trash2, Layers } from 'lucide-react-native';
+import { MoreVertical, Check, Plus, Minus, TrendingDown, Flame, Zap, Users, Copy, Trash2, Layers, Timer } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { defaultSupersetColorScheme, defaultHiitColorScheme, defaultPopupStyles } from '@/constants/defaultStyles';
 import SwipeToDelete from '@/components/common/SwipeToDelete';
@@ -897,6 +897,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           isWarmup: isWarmup,
           isFailure: isFailure,
           dropSetId: setGroup.isDropset ? setGroup.id : undefined,
+          restPeriodSeconds: setGroup.restPeriodSeconds,
         };
         sets.push(set);
       }
@@ -917,6 +918,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
       const isDropset = !!set.dropSetId;
       const isWarmup = set.isWarmup || false;
       const isFailure = set.isFailure || false;
+      const restPeriodSeconds = set.restPeriodSeconds;
 
       if (isDropset) {
         // For dropsets, collect all sets with the same dropSetId
@@ -930,6 +932,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
             count: 0,
             isDropset: true,
             setTypes: [], // Initialize array to store individual set types
+            restPeriodSeconds: restPeriodSeconds, // Initialize with first set's rest timer
           };
           dropsetGroupsMap.set(dropSetId, dropsetGroup);
           setGroups.push(dropsetGroup);
@@ -940,6 +943,12 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
         dropsetGroup.count++;
         if (dropsetGroup.setTypes) {
           dropsetGroup.setTypes.push({ isWarmup, isFailure });
+        }
+
+        // Check if all sets in dropset have the same rest timer
+        if (dropsetGroup.restPeriodSeconds !== restPeriodSeconds) {
+          // Different rest timers, clear group-level rest timer
+          dropsetGroup.restPeriodSeconds = undefined;
         }
 
         // Check if all sets in dropset have the same type
@@ -960,21 +969,23 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           }
         }
       } else {
-        // For non-dropset sets, merge sequential sets of the same type
+        // For non-dropset sets, merge sequential sets of the same type and rest timer
         if (currentGroup &&
           !currentGroup.isDropset &&
           currentGroup.isWarmup === isWarmup &&
-          currentGroup.isFailure === isFailure) {
-          // Same type as current group, merge
+          currentGroup.isFailure === isFailure &&
+          currentGroup.restPeriodSeconds === restPeriodSeconds) {
+          // Same type and rest timer as current group, merge
           currentGroup.count++;
         } else {
-          // Different type or first set, start new group
+          // Different type, rest timer, or first set, start new group
           currentGroup = {
             id: `setgroup-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
             count: 1,
             isDropset: false,
             isWarmup: isWarmup,
             isFailure: isFailure,
+            restPeriodSeconds: restPeriodSeconds,
           };
           setGroups.push(currentGroup);
         }
@@ -1696,6 +1707,24 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           <View style={styles.exerciseRight}>
             <View style={styles.setControls}>
               <TouchableOpacity
+                disabled={isActive}
+                style={[
+                  styles.setControlButton,
+                  groupColorScheme && { backgroundColor: groupColorScheme[100] },
+                  isActive && styles.setControlButton__disabled,
+                ]}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Timer
+                  size={16}
+                  color={
+                    setGroup.restPeriodSeconds
+                      ? COLORS.blue[600]
+                      : (groupColorScheme ? groupColorScheme[400] : COLORS.slate[300])
+                  }
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
                 onPress={() => handleDecrementSetGroup(item, setGroup.id)}
                 disabled={isActive || setGroup.count <= 1}
                 style={[
@@ -2115,6 +2144,23 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
                       <View style={styles.exerciseRight}>
                         {!isSelectionMode && (
                           <View style={styles.setControls}>
+                            <TouchableOpacity
+                              disabled={isActive}
+                              style={[
+                                styles.setControlButton,
+                                isActive && styles.setControlButton__disabled,
+                              ]}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            >
+                              <Timer
+                                size={16}
+                                color={
+                                  setGroup.restPeriodSeconds
+                                    ? COLORS.blue[600]
+                                    : COLORS.slate[300]
+                                }
+                              />
+                            </TouchableOpacity>
                             <TouchableOpacity
                               onPress={() => handleDecrementSetGroup(item, setGroup.id)}
                               disabled={isActive || setGroup.count <= 1}
