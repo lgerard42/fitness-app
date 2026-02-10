@@ -533,14 +533,6 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                                     onPress={(e) => e.stopPropagation()}
                                     style={styles.restTimerInputContainer}
                                 >
-                                    <View style={styles.restTimerInputHeader}>
-                                        <Text style={styles.restTimerInputTitle}>
-                                            {(() => {
-                                                const foundItem = localDragItems.find((i) => isSetDragItem(i) && (i as any).id === restTimerInput.setId) as SetDragItem | undefined;
-                                                return foundItem?.set.restPeriodSeconds ? 'Update Rest Timer' : 'Add Rest Timer';
-                                            })()}
-                                        </Text>
-                                    </View>
                                     <View style={styles.restTimerInputContent}>
                                         <View style={styles.restTimerInputDisplay}>
                                             <Text style={styles.restTimerInputDisplayText}>
@@ -857,51 +849,42 @@ const styles = StyleSheet.create({
         bottom: 0,
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
         justifyContent: 'center',
-        alignItems: 'center',
+        alignItems: 'stretch',
         zIndex: 998,
         elevation: 8,
     },
     restTimerInputContainer: {
+        top: 168,
         backgroundColor: COLORS.white,
-        borderRadius: 12,
-        width: '95%',
+        width: '100%',
+        marginHorizontal: 0,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.25,
         shadowRadius: 8,
         elevation: 10,
-        maxHeight: '95%',
-    },
-    restTimerInputHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: COLORS.slate[200],
-    },
-    restTimerInputTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: COLORS.slate[800],
+        borderTopRightRadius: 16,
+        borderTopLeftRadius: 16,
     },
     restTimerInputContent: {
-        padding: 16,
+        padding: 0,
     },
     restTimerInputDisplay: {
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 20,
+        paddingVertical: 10,
         paddingHorizontal: 16,
-        backgroundColor: COLORS.slate[50],
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: COLORS.slate[200],
+        backgroundColor: COLORS.blue[100],
+        borderTopRightRadius: 12,
+        borderTopLeftRadius: 12,
+        borderWidth: 4,
+        borderBottomWidth: 0,
+        borderColor: COLORS.slate[800],
     },
     restTimerInputDisplayText: {
-        fontSize: 48,
+        fontSize: 36,
         fontWeight: 'bold',
-        color: COLORS.slate[900],
+        color: COLORS.blue[600],
     },
     // Drag-related styles moved to SetRowDragAndDrop.tsx
     addSetButton: {
