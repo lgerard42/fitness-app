@@ -496,17 +496,18 @@ export const useSetRowDragAndDrop = ({
                             isDragging && styles.dropsetHeader__dragging,
                             isDraggedDropset && styles.dropsetHeader__collapsed,
                             isActivelyDragging && styles.dropsetHeader__activelyDragging,
+                            shouldRenderGhosts && styles.ghostDropsetHeader,
                         ]}
                     >
                         {!isDraggedDropset && <View style={styles.dropSetIndicatorHeader} />}
                         <View style={styles.dropsetHeaderContent}>
                             <View style={styles.dropsetHeaderLeft}>
                                 <Text style={styles.dropsetHeaderText}>Dropset ({item.setCount} sets)</Text>
-                            {isDragging && (
+                            {isDraggedDropset && (
                                 <View style={styles.dropsetHeaderLine} />
                             )}
                         </View>
-                        {!isDragging && (
+                        {!isDraggedDropset && (
                             <GripVertical size={16} color={COLORS.indigo[700]} />
                         )}
                     </View>
@@ -536,7 +537,7 @@ export const useSetRowDragAndDrop = ({
                             </View>
                         ))}
                         {/* Ghost footer */}
-                        <View style={styles.dropsetFooter}>
+                        <View style={[styles.dropsetFooter, styles.ghostDropsetFooter]}>
                             <View style={styles.dropSetIndicatorFooter} />
                         </View>
                     </View>
@@ -1114,6 +1115,16 @@ const styles = StyleSheet.create({
         borderWidth: 2,
         borderRadius: 6,
     },
+    ghostDropsetHeader: {
+        backgroundColor: COLORS.indigo[50],
+        borderTopLeftRadius: 8,
+        borderTopRightRadius: 8,
+        borderLeftWidth: 1,
+        borderRightWidth: 1,
+        borderBottomRightRadius: 0,
+        borderTopWidth: 1,
+        borderColor: COLORS.indigo[200],
+    },
     dropsetHeaderContent: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1157,6 +1168,17 @@ const styles = StyleSheet.create({
     dropsetFooter__dragging: {
         backgroundColor: COLORS.indigo[500],
     },
+    ghostDropsetFooter: {
+        backgroundColor: COLORS.indigo[50],
+        borderBottomLeftRadius: 8,
+        borderBottomRightRadius: 8,
+        borderLeftWidth: 1,
+        borderRightWidth: 1,
+        borderBottomWidth: 1,
+        borderColor: COLORS.indigo[200],
+        height: 8,
+        marginTop: 0,
+    },
     dropSetIndicatorHeader: {
         position: 'absolute',
         left: -8,
@@ -1197,24 +1219,21 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: COLORS.indigo[50],
-        paddingVertical: 4,
+        paddingVertical: 8,
         paddingHorizontal: 16,
         marginHorizontal: 12,
         marginLeft: 12,
         borderWidth: 1,
+        marginTop: 0,
         borderColor: COLORS.indigo[200],
         borderTopWidth: 0,
         position: 'relative',
         overflow: 'visible',
     },
     ghostItem__first: {
-        borderTopWidth: 1,
-        borderTopLeftRadius: 8,
-        borderTopRightRadius: 8,
     },
     ghostItem__last: {
-        borderBottomLeftRadius: 8,
-        borderBottomRightRadius: 8,
+        borderBottomColor: 'transparent',
     },
     ghostItemContent: {
         flex: 1,

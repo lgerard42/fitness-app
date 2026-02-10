@@ -748,7 +748,7 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                     >
                         <View style={styles.header}>
                             <View style={styles.headerContent}>
-                                <Text style={styles.title}>Reorder Sets</Text>
+                                <Text style={styles.title}>Edit Sets</Text>
                                 <Text style={styles.subtitle}>{exercise.name}</Text>
                             </View>
                             <TouchableOpacity onPress={onCancel} style={styles.closeButton}>
@@ -997,12 +997,14 @@ const styles = StyleSheet.create({
     },
     instructions: {
         paddingHorizontal: 20,
-        paddingVertical: 12,
-        backgroundColor: COLORS.slate[50],
+        paddingVertical: 8,
+        backgroundColor: COLORS.blue[50],
+        borderBottomWidth: 1,
+        borderColor: COLORS.blue[100],
     },
     instructionsText: {
-        fontSize: 13,
-        color: COLORS.slate[500],
+        fontSize: 11,
+        color: COLORS.blue[700],
         textAlign: 'center',
     },
     modeButtonsContainer: {
