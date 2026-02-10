@@ -1,5 +1,16 @@
 import type { ExerciseLibraryItem, Exercise, Set, SetType, Note, UserSettings } from '@/types/workout';
 
+// SetGroup type definition for set group configurations
+export interface SetGroup {
+  id: string;
+  count: number;
+  isDropset: boolean;
+  isWarmup?: boolean;
+  isFailure?: boolean;
+  // For dropsets with multiple set types, store individual set types
+  setTypes?: Array<{ isWarmup: boolean; isFailure: boolean }>;
+}
+
 /** Optional global defaults that can be applied when creating exercise instances */
 export interface ExerciseDefaults {
   weightUnit?: 'lbs' | 'kg';
@@ -81,34 +92,46 @@ export const createExerciseInstance = (
 /**
  * Creates an exercise instance with multiple set groups (for dropsets, warmups, etc.)
  * @param ex - The library exercise to create an instance from
- * @param setGroups - Array of set group configurations
+ * @param setGroups - Array of set group configurations (with SetGroup type)
  * @param pinnedNotes - Pinned notes from the library exercise
  * @param defaults - Optional global user setting defaults
  * @returns A new Exercise instance
  */
 export const createExerciseInstanceWithSetGroups = (
   ex: ExerciseLibraryItem, 
-  setGroups: Array<{ count: number; isDropset: boolean; isWarmup?: boolean; isFailure?: boolean }>,
+  setGroups: SetGroup[],
   pinnedNotes: Note[] = [],
   defaults?: ExerciseDefaults
 ): Exercise => {
-  // Create sets based on setGroups - each setGroup gets its own dropSetId if it's a dropset
+  // Create sets based on setGroups - preserve dropset IDs and handle individual set types
   const sets: Set[] = [];
   setGroups.forEach((setGroup) => {
-    const dropSetId = setGroup.isDropset ? `dropset-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` : undefined;
+    // Use the setGroup's ID as the dropSetId if it's a dropset (preserves dropset grouping)
+    const dropSetId = setGroup.isDropset ? setGroup.id : undefined;
 
     for (let i = 0; i < setGroup.count; i++) {
+      // For dropsets with setTypes array, use individual set types
+      let isWarmup = setGroup.isWarmup || false;
+      let isFailure = setGroup.isFailure || false;
+      
+      if (setGroup.isDropset && setGroup.setTypes && setGroup.setTypes[i]) {
+        isWarmup = setGroup.setTypes[i].isWarmup;
+        isFailure = setGroup.setTypes[i].isFailure;
+      }
+      
+      const setType: SetType = isWarmup ? "Warmup" : isFailure ? "Failure" : "Working";
+      
       sets.push({
         id: `s-${Date.now()}-${Math.random()}-${sets.length}`,
-        type: setGroup.isWarmup ? "Warmup" as SetType : setGroup.isFailure ? "Failure" as SetType : "Working" as SetType,
+        type: setType,
         weight: "",
         reps: "",
         duration: "",
         distance: "",
         completed: false,
         ...(dropSetId && { dropSetId, isDropset: true }),
-        ...(setGroup.isWarmup && { isWarmup: true }),
-        ...(setGroup.isFailure && { isFailure: true })
+        ...(isWarmup && { isWarmup: true }),
+        ...(isFailure && { isFailure: true })
       });
     }
   });

@@ -37,7 +37,7 @@ import WorkoutModals from './components/WorkoutModals';
 import SetRowHeadersPopup from './components/SetRowHeadersPopup/SetRowHeadersPopup';
 import { useSetDragAndDrop } from './hooks/useSetDragAndDrop';
 import { useWorkoutNotes, useExerciseNotes } from './hooks/useWorkoutNotes';
-import { createExerciseInstance, createExerciseInstanceWithSetGroups } from '@/utils/workoutInstanceHelpers';
+import { createExerciseInstance, createExerciseInstanceWithSetGroups, type SetGroup } from '@/utils/workoutInstanceHelpers';
 import ExerciseHistoryModal from '@/components/ExerciseHistoryModal';
 import type { Workout, WorkoutMode, ExerciseLibraryItem, ExerciseStatsMap, ExerciseItem, Exercise, Set, RestPeriodSetInfo, FocusNextSet, GroupType, SetType, ExerciseCategory, ExerciseGroup, Note, GroupSetType } from '@/types/workout';
 
@@ -352,7 +352,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
     return libraryExercise?.pinnedNotes || [];
   };
 
-  const handleAddExercisesFromPicker = (selectedExercises: (ExerciseLibraryItem & { _setCount?: number; _isDropset?: boolean; _setGroups?: Array<{ count: number; isDropset: boolean }> })[], groupType: GroupType | null, groupsMetadata: any = null) => {
+  const handleAddExercisesFromPicker = (selectedExercises: (ExerciseLibraryItem & { _setCount?: number; _isDropset?: boolean; _setGroups?: SetGroup[] })[], groupType: GroupType | null, groupsMetadata: any = null) => {
     if (replacingExerciseId) {
       // Handle Replacement
       if (selectedExercises.length > 0) {
@@ -2871,7 +2871,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
                     id: 'superset',
                     onPress: () => handleEditSupersetWrapper(optionsModalExId),
                     icon: <Layers size={18} color={COLORS.white} />,
-                    text: isInGroup ? 'Edit superset' : 'Create Group'
+                    text: isInGroup ? 'Edit superset' : 'Create Superset / HIIT'
                   },
                 ];
 

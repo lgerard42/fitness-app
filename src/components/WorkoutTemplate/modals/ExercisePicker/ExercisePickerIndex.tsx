@@ -10,7 +10,7 @@ import SearchBar from './SearchBar';
 import Filters from './Filters';
 import SelectedInGlossary from './SelectedInGlossary';
 import type { ExerciseLibraryItem, GroupType } from '@/types/workout';
-import type { SetGroup } from './DragAndDropModal';
+import type { SetGroup } from '@/utils/workoutInstanceHelpers';
 
 interface ExercisePickerProps {
   isOpen: boolean;

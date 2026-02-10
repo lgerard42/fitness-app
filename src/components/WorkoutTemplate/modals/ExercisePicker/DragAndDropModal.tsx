@@ -3,11 +3,14 @@ import { View, Text, Modal, TouchableOpacity, StyleSheet, Dimensions } from 'rea
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DraggableFlatList from 'react-native-draggable-flatlist';
-import { MoreVertical, Check, Plus, Minus, TrendingDown, Flame, Zap, Users, Copy, Trash2 } from 'lucide-react-native';
+import { MoreVertical, Check, Plus, Minus, TrendingDown, Flame, Zap, Users, Copy, Trash2, Layers } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { defaultSupersetColorScheme, defaultHiitColorScheme, defaultPopupStyles } from '@/constants/defaultStyles';
 import SwipeToDelete from '@/components/common/SwipeToDelete';
-import type { ExerciseLibraryItem, GroupType } from '@/types/workout';
+import type { ExerciseLibraryItem, GroupType, Exercise, Set } from '@/types/workout';
+import SetDragModal from '../SetDragModal';
+import type { SetDragListItem } from '../../hooks/useSetDragAndDrop';
+import type { SetGroup } from '@/utils/workoutInstanceHelpers';
 
 interface ExerciseGroup {
   id: string;
@@ -47,13 +50,7 @@ interface GroupFooterItem extends DragItemBase {
   group: ExerciseGroup;
 }
 
-export interface SetGroup {
-  id: string;
-  count: number;
-  isDropset: boolean;
-  isWarmup?: boolean;
-  isFailure?: boolean;
-}
+// SetGroup is now imported from workoutInstanceHelpers
 
 interface ExerciseItem extends DragItemBase {
   type: 'Item';
@@ -102,7 +99,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
   itemIdToOrderIndices,
   itemSetGroupsMap,
 }) => {
-  const [dropsetExercises, setDropsetExercises] = useState<Set<string>>(new Set());
+  const [dropsetExercises, setDropsetExercises] = useState<globalThis.Set<string>>(new globalThis.Set());
 
   const dragItems = useMemo((): DragItem[] => {
     const items: DragItem[] = [];
@@ -443,13 +440,16 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
   const [exerciseToGroup, setExerciseToGroup] = useState<ExerciseItem | null>(null);
   const [dropdownPosition, setDropdownPosition] = useState<{ x: number; y: number } | null>(null);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
-  const [selectedExercisesForGroup, setSelectedExercisesForGroup] = useState<Set<string>>(new Set());
+  const [selectedExercisesForGroup, setSelectedExercisesForGroup] = useState<globalThis.Set<string>>(new globalThis.Set());
   const [pendingGroupType, setPendingGroupType] = useState<GroupType | null>(null);
   const [pendingGroupInitialExercise, setPendingGroupInitialExercise] = useState<ExerciseItem | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [exerciseToEdit, setExerciseToEdit] = useState<ExerciseItem | null>(null);
   const [editDropdownPosition, setEditDropdownPosition] = useState<{ x: number; y: number } | null>(null);
   const [clickedSetGroupId, setClickedSetGroupId] = useState<string | null>(null); // Track which setGroup's edit icon was clicked
+  const [showSetDragModal, setShowSetDragModal] = useState(false);
+  const [exerciseForSetDrag, setExerciseForSetDrag] = useState<ExerciseItem | null>(null);
+  const [setDragItems, setSetDragItems] = useState<SetDragListItem[]>([]);
 
   const buttonRefsMap = useRef<Map<string, any>>(new Map());
   const prevVisibleRef = useRef(visible);
@@ -573,14 +573,14 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
       setExerciseToGroup(null);
       setDropdownPosition(null);
       setIsSelectionMode(false);
-      setSelectedExercisesForGroup(new Set());
+      setSelectedExercisesForGroup(new globalThis.Set());
       setPendingGroupType(null);
       setPendingGroupInitialExercise(null);
       setShowEditModal(false);
       setExerciseToEdit(null);
       setEditDropdownPosition(null);
       setClickedSetGroupId(null);
-      setDropsetExercises(new Set());
+      setDropsetExercises(new globalThis.Set());
       pendingDragRef.current = null;
       setSwipedItemId(null);
     }
@@ -821,7 +821,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
     }
 
     setSelectedExercisesForGroup(prev => {
-      const newSet = new Set(prev);
+      const newSet = new globalThis.Set(prev);
       if (newSet.has(exerciseId)) {
         newSet.delete(exerciseId);
       } else {
@@ -833,7 +833,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
 
   const handleCancelSelection = useCallback(() => {
     setIsSelectionMode(false);
-    setSelectedExercisesForGroup(new Set());
+    setSelectedExercisesForGroup(new globalThis.Set());
     setPendingGroupType(null);
     setPendingGroupInitialExercise(null);
   }, []);
@@ -990,10 +990,10 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
 
         // Update dropsetExercises set
         if (hasAnyDropset) {
-          setDropsetExercises(prev => new Set([...prev, exerciseItem.exercise.id]));
+          setDropsetExercises(prev => new globalThis.Set([...prev, exerciseItem.exercise.id]));
         } else {
           setDropsetExercises(prev => {
-            const newSet = new Set(prev);
+            const newSet = new globalThis.Set(prev);
             newSet.delete(exerciseItem.exercise.id);
             return newSet;
           });
@@ -1010,45 +1010,176 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
     }));
   }, []);
 
-  const handleInsertRow = useCallback((exerciseItem: ExerciseItem, setGroupId: string) => {
-    setReorderedItems(prev => prev.map(item => {
-      if (item.id === exerciseItem.id && item.type === 'Item') {
-        // Find the clicked setGroup to duplicate
-        const clickedSetGroup = item.setGroups.find(sg => sg.id === setGroupId);
-        if (!clickedSetGroup) return item;
+  // Convert setGroups to Sets format for SetDragModal
+  const convertSetGroupsToSets = useCallback((exerciseItem: ExerciseItem): Set[] => {
+    const sets: Set[] = [];
 
-        // Find the index of the clicked setGroup
-        const clickedIndex = item.setGroups.findIndex(sg => sg.id === setGroupId);
+    exerciseItem.setGroups.forEach((setGroup) => {
+      for (let i = 0; i < setGroup.count; i++) {
+        const setId = `${setGroup.id}-${i}`;
 
-        // Create a new setGroup identical to the clicked one
-        const newSetGroup: SetGroup = {
-          id: `setgroup-${exerciseItem.exercise.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          count: clickedSetGroup.count,
-          isDropset: clickedSetGroup.isDropset,
-          isWarmup: clickedSetGroup.isWarmup,
-          isFailure: clickedSetGroup.isFailure,
+        // For dropsets with setTypes array, use individual set types
+        let isWarmup = setGroup.isWarmup || false;
+        let isFailure = setGroup.isFailure || false;
+
+        if (setGroup.isDropset && setGroup.setTypes && setGroup.setTypes[i]) {
+          isWarmup = setGroup.setTypes[i].isWarmup;
+          isFailure = setGroup.setTypes[i].isFailure;
+        }
+
+        const set: Set = {
+          id: setId,
+          type: 'Working',
+          weight: '',
+          reps: '',
+          duration: '',
+          distance: '',
+          completed: false,
+          isWarmup: isWarmup,
+          isFailure: isFailure,
+          dropSetId: setGroup.isDropset ? setGroup.id : undefined,
         };
-
-        // Insert the new setGroup right after the clicked one
-        const updatedSetGroups = [
-          ...item.setGroups.slice(0, clickedIndex + 1),
-          newSetGroup,
-          ...item.setGroups.slice(clickedIndex + 1)
-        ];
-
-        const totalCount = updatedSetGroups.reduce((sum, sg) => sum + sg.count, 0);
-        const hasAnyDropset = updatedSetGroups.some(sg => sg.isDropset);
-
-        return {
-          ...item,
-          setGroups: updatedSetGroups,
-          count: totalCount,
-          isDropset: hasAnyDropset,
-        };
+        sets.push(set);
       }
-      return item;
-    }));
+    });
+
+    return sets;
   }, []);
+
+  // Convert Sets back to setGroups, merging sequential sets of same type
+  const convertSetsToSetGroups = useCallback((sets: Set[]): SetGroup[] => {
+    if (sets.length === 0) return [];
+
+    const setGroups: SetGroup[] = [];
+    let currentGroup: SetGroup | null = null;
+    const dropsetGroupsMap = new Map<string, SetGroup>();
+
+    sets.forEach((set, index) => {
+      const isDropset = !!set.dropSetId;
+      const isWarmup = set.isWarmup || false;
+      const isFailure = set.isFailure || false;
+
+      if (isDropset) {
+        // For dropsets, collect all sets with the same dropSetId
+        const dropSetId = set.dropSetId!;
+        let dropsetGroup = dropsetGroupsMap.get(dropSetId);
+
+        if (!dropsetGroup) {
+          // Create new dropset group
+          dropsetGroup = {
+            id: dropSetId,
+            count: 0,
+            isDropset: true,
+            setTypes: [], // Initialize array to store individual set types
+          };
+          dropsetGroupsMap.set(dropSetId, dropsetGroup);
+          setGroups.push(dropsetGroup);
+          currentGroup = null; // Reset currentGroup when we hit a dropset
+        }
+
+        // Add this set to the dropset group
+        dropsetGroup.count++;
+        if (dropsetGroup.setTypes) {
+          dropsetGroup.setTypes.push({ isWarmup, isFailure });
+        }
+
+        // Check if all sets in dropset have the same type
+        if (dropsetGroup.setTypes && dropsetGroup.setTypes.length > 0) {
+          const firstType = dropsetGroup.setTypes[0];
+          const allSameType = dropsetGroup.setTypes.every(
+            t => t.isWarmup === firstType.isWarmup && t.isFailure === firstType.isFailure
+          );
+
+          if (allSameType) {
+            // All sets have the same type, set group-level properties for backward compatibility
+            dropsetGroup.isWarmup = firstType.isWarmup;
+            dropsetGroup.isFailure = firstType.isFailure;
+          } else {
+            // Multiple types in dropset, clear group-level properties
+            dropsetGroup.isWarmup = undefined;
+            dropsetGroup.isFailure = undefined;
+          }
+        }
+      } else {
+        // For non-dropset sets, merge sequential sets of the same type
+        if (currentGroup &&
+          !currentGroup.isDropset &&
+          currentGroup.isWarmup === isWarmup &&
+          currentGroup.isFailure === isFailure) {
+          // Same type as current group, merge
+          currentGroup.count++;
+        } else {
+          // Different type or first set, start new group
+          currentGroup = {
+            id: `setgroup-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
+            count: 1,
+            isDropset: false,
+            isWarmup: isWarmup,
+            isFailure: isFailure,
+          };
+          setGroups.push(currentGroup);
+        }
+      }
+    });
+
+    return setGroups;
+  }, []);
+
+  // Handle opening SetDragModal
+  const handleEditSets = useCallback((exerciseItem: ExerciseItem) => {
+    const sets = convertSetGroupsToSets(exerciseItem);
+
+    // Convert Sets to SetDragListItem format
+    const items: SetDragListItem[] = [];
+    const processedDropSetIds = new Set<string>();
+
+    sets.forEach((set, index) => {
+      // Check if this is the start of a new dropset
+      const isDropSetStart = set.dropSetId &&
+        (index === 0 || sets[index - 1].dropSetId !== set.dropSetId);
+
+      // Check if this is the end of a dropset
+      const isDropSetEnd = set.dropSetId &&
+        (index === sets.length - 1 || sets[index + 1]?.dropSetId !== set.dropSetId);
+
+      // Add dropset header if this is the start
+      if (isDropSetStart && set.dropSetId && !processedDropSetIds.has(set.dropSetId)) {
+        const dropSetSets = sets.filter(s => s.dropSetId === set.dropSetId);
+        items.push({
+          id: `dropset-header-${set.dropSetId}`,
+          type: 'dropset_header',
+          dropSetId: set.dropSetId,
+          setCount: dropSetSets.length,
+        });
+        processedDropSetIds.add(set.dropSetId);
+      }
+
+      // Add the set itself
+      items.push({
+        id: set.id,
+        type: 'set',
+        set,
+        hasRestTimer: !!set.restPeriodSeconds,
+      });
+
+      // Add dropset footer if this is the end
+      if (isDropSetEnd && set.dropSetId) {
+        items.push({
+          id: `dropset-footer-${set.dropSetId}`,
+          type: 'dropset_footer',
+          dropSetId: set.dropSetId,
+        });
+      }
+    });
+
+    setSetDragItems(items);
+    setExerciseForSetDrag(exerciseItem);
+    setShowSetDragModal(true);
+    setShowEditModal(false);
+    setExerciseToEdit(null);
+    setClickedSetGroupId(null);
+    setEditDropdownPosition(null);
+  }, [convertSetGroupsToSets]);
 
   const handleToggleWarmup = useCallback((exerciseItem: ExerciseItem, setGroupId: string) => {
     setReorderedItems(prevItems => prevItems.map(item => {
@@ -1156,6 +1287,259 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
       return item;
     }));
   }, []);
+
+  // SetDragModal handlers
+  const handleSetDragEnd = useCallback(({ data, from, to }: { data: SetDragListItem[]; from: number; to: number }) => {
+    // Extract sets from drag items
+    const sets: Set[] = [];
+    data.forEach(item => {
+      if (item.type === 'set') {
+        sets.push(item.set);
+      }
+    });
+
+    // Convert Sets back to setGroups with merging
+    const newSetGroups = convertSetsToSetGroups(sets);
+
+    // Update the exercise item
+    if (exerciseForSetDrag) {
+      setReorderedItems(prev => prev.map(item => {
+        if (item.id === exerciseForSetDrag.id && item.type === 'Item') {
+          const totalCount = newSetGroups.reduce((sum, sg) => sum + sg.count, 0);
+          const hasAnyDropset = newSetGroups.some(sg => sg.isDropset);
+          return {
+            ...item,
+            setGroups: newSetGroups,
+            count: totalCount,
+            isDropset: hasAnyDropset,
+          };
+        }
+        return item;
+      }));
+    }
+
+    // Update local setDragItems
+    setSetDragItems(data);
+  }, [exerciseForSetDrag, convertSetsToSetGroups]);
+
+  const handleSetDragCancel = useCallback(() => {
+    setShowSetDragModal(false);
+    setExerciseForSetDrag(null);
+    setSetDragItems([]);
+  }, []);
+
+  const handleSetDragSave = useCallback(() => {
+    // Extract sets from drag items
+    const sets: Set[] = [];
+    setDragItems.forEach(item => {
+      if (item.type === 'set') {
+        sets.push(item.set);
+      }
+    });
+
+    // Convert Sets back to setGroups with merging
+    const newSetGroups = convertSetsToSetGroups(sets);
+
+    // Update the exercise item
+    if (exerciseForSetDrag) {
+      setReorderedItems(prev => prev.map(item => {
+        if (item.id === exerciseForSetDrag.id && item.type === 'Item') {
+          const totalCount = newSetGroups.reduce((sum, sg) => sum + sg.count, 0);
+          const hasAnyDropset = newSetGroups.some(sg => sg.isDropset);
+          return {
+            ...item,
+            setGroups: newSetGroups,
+            count: totalCount,
+            isDropset: hasAnyDropset,
+          };
+        }
+        return item;
+      }));
+    }
+
+    setShowSetDragModal(false);
+    setExerciseForSetDrag(null);
+    setSetDragItems([]);
+  }, [exerciseForSetDrag, setDragItems, convertSetsToSetGroups]);
+
+  const handleCreateDropset = useCallback((setId: string) => {
+    const newDropSetId = `dropset-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    const updatedItems = setDragItems.map(item => {
+      if (item.type === 'set' && item.id === setId) {
+        return {
+          ...item,
+          set: {
+            ...item.set,
+            dropSetId: newDropSetId,
+          },
+        };
+      }
+      return item;
+    });
+
+    // Reconstruct items with headers/footers
+    const sets: Set[] = [];
+    updatedItems.forEach(item => {
+      if (item.type === 'set') {
+        sets.push(item.set);
+      }
+    });
+
+    // Reconstruct with headers/footers
+    const reconstructedItems: SetDragListItem[] = [];
+    const processedDropSetIds = new Set<string>();
+
+    sets.forEach((set, index) => {
+      const isDropSetStart = set.dropSetId &&
+        (index === 0 || sets[index - 1].dropSetId !== set.dropSetId);
+      const isDropSetEnd = set.dropSetId &&
+        (index === sets.length - 1 || sets[index + 1]?.dropSetId !== set.dropSetId);
+
+      if (isDropSetStart && set.dropSetId && !processedDropSetIds.has(set.dropSetId)) {
+        const dropSetSets = sets.filter(s => s.dropSetId === set.dropSetId);
+        reconstructedItems.push({
+          id: `dropset-header-${set.dropSetId}`,
+          type: 'dropset_header',
+          dropSetId: set.dropSetId,
+          setCount: dropSetSets.length,
+        });
+        processedDropSetIds.add(set.dropSetId);
+      }
+
+      reconstructedItems.push({
+        id: set.id,
+        type: 'set',
+        set,
+        hasRestTimer: !!set.restPeriodSeconds,
+      });
+
+      if (isDropSetEnd && set.dropSetId) {
+        reconstructedItems.push({
+          id: `dropset-footer-${set.dropSetId}`,
+          type: 'dropset_footer',
+          dropSetId: set.dropSetId,
+        });
+      }
+    });
+
+    setSetDragItems(reconstructedItems);
+  }, [setDragItems]);
+
+  const handleUpdateSet = useCallback((setId: string, updates: Partial<Set>) => {
+    const updatedItems = setDragItems.map(item => {
+      if (item.type === 'set' && item.id === setId) {
+        return {
+          ...item,
+          set: {
+            ...item.set,
+            ...updates,
+          },
+        };
+      }
+      return item;
+    });
+
+    setSetDragItems(updatedItems);
+  }, [setDragItems]);
+
+  const handleAddSet = useCallback(() => {
+    const currentSets: Set[] = [];
+    setDragItems.forEach(item => {
+      if (item.type === 'set') {
+        currentSets.push(item.set);
+      }
+    });
+
+    const newSet: Set = {
+      id: `s-${Date.now()}-${Math.random()}`,
+      type: 'Working',
+      weight: '',
+      reps: '',
+      duration: '',
+      distance: '',
+      completed: false,
+    };
+
+    const updatedSets = [...currentSets, newSet];
+
+    // Reconstruct items with headers/footers
+    const reconstructedItems: SetDragListItem[] = [];
+    const processedDropSetIds = new Set<string>();
+
+    updatedSets.forEach((set, index) => {
+      const isDropSetStart = set.dropSetId &&
+        (index === 0 || updatedSets[index - 1].dropSetId !== set.dropSetId);
+      const isDropSetEnd = set.dropSetId &&
+        (index === updatedSets.length - 1 || updatedSets[index + 1]?.dropSetId !== set.dropSetId);
+
+      if (isDropSetStart && set.dropSetId && !processedDropSetIds.has(set.dropSetId)) {
+        const dropSetSets = updatedSets.filter(s => s.dropSetId === set.dropSetId);
+        reconstructedItems.push({
+          id: `dropset-header-${set.dropSetId}`,
+          type: 'dropset_header',
+          dropSetId: set.dropSetId,
+          setCount: dropSetSets.length,
+        });
+        processedDropSetIds.add(set.dropSetId);
+      }
+
+      reconstructedItems.push({
+        id: set.id,
+        type: 'set',
+        set,
+        hasRestTimer: !!set.restPeriodSeconds,
+      });
+
+      if (isDropSetEnd && set.dropSetId) {
+        reconstructedItems.push({
+          id: `dropset-footer-${set.dropSetId}`,
+          type: 'dropset_footer',
+          dropSetId: set.dropSetId,
+        });
+      }
+    });
+
+    setSetDragItems(reconstructedItems);
+  }, [setDragItems]);
+
+  const handleUpdateRestTimer = useCallback((setId: string, restPeriodSeconds: number | undefined) => {
+    const updatedItems = setDragItems.map(item => {
+      if (item.type === 'set' && item.id === setId) {
+        return {
+          ...item,
+          set: {
+            ...item.set,
+            restPeriodSeconds,
+          },
+          hasRestTimer: !!restPeriodSeconds,
+        };
+      }
+      return item;
+    });
+
+    setSetDragItems(updatedItems);
+  }, [setDragItems]);
+
+  const handleUpdateRestTimerMultiple = useCallback((setIds: string[], restPeriodSeconds: number | undefined) => {
+    const setIdsSet = new globalThis.Set(setIds);
+
+    const updatedItems = setDragItems.map(item => {
+      if (item.type === 'set' && setIdsSet.has(item.id)) {
+        return {
+          ...item,
+          set: {
+            ...item.set,
+            restPeriodSeconds,
+          },
+          hasRestTimer: !!restPeriodSeconds,
+        };
+      }
+      return item;
+    });
+
+    setSetDragItems(updatedItems);
+  }, [setDragItems]);
 
   const handleDuplicateExercise = useCallback((exerciseItem: ExerciseItem) => {
     setReorderedItems(prev => {
@@ -1663,7 +2047,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
                   isLastInGroup,
                   isActive,
                   index === 0, // Only show exercise name on first row
-            
+
                 )
               )}
             </View>
@@ -2008,47 +2392,47 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
     >
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaView style={styles.container} edges={[]}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} style={styles.cancelButton}>
-            <Text style={styles.cancelButtonText}>Cancel</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Reorder Items</Text>
-          <TouchableOpacity onPress={handleSave} style={styles.saveButton}>
-            <Text style={styles.saveButtonText}>Save</Text>
-          </TouchableOpacity>
-        </View>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={onClose} style={styles.cancelButton}>
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Reorder Items</Text>
+            <TouchableOpacity onPress={handleSave} style={styles.saveButton}>
+              <Text style={styles.saveButtonText}>Save</Text>
+            </TouchableOpacity>
+          </View>
 
-        {isSelectionMode ? (
-          <View style={styles.selectionModeBanner}>
-            <View style={styles.selectionModeContent}>
-              <Text style={styles.selectionModeText}>
-                Select exercises to add to {pendingGroupType} group ({selectedExercisesForGroup.size} selected)
-              </Text>
-              <View style={styles.selectionModeButtons}>
-                <TouchableOpacity
-                  onPress={handleCancelSelection}
-                  style={styles.selectionCancelButton}
-                >
-                  <Text style={styles.selectionCancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={handleCreateGroupWithSelectedExercises}
-                  style={styles.selectionDoneButton}
-                >
-                  <Text style={styles.selectionDoneButtonText}>Done</Text>
-                </TouchableOpacity>
+          {isSelectionMode ? (
+            <View style={styles.selectionModeBanner}>
+              <View style={styles.selectionModeContent}>
+                <Text style={styles.selectionModeText}>
+                  Select exercises to add to {pendingGroupType} group ({selectedExercisesForGroup.size} selected)
+                </Text>
+                <View style={styles.selectionModeButtons}>
+                  <TouchableOpacity
+                    onPress={handleCancelSelection}
+                    style={styles.selectionCancelButton}
+                  >
+                    <Text style={styles.selectionCancelButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={handleCreateGroupWithSelectedExercises}
+                    style={styles.selectionDoneButton}
+                  >
+                    <Text style={styles.selectionDoneButtonText}>Done</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
-          </View>
-        ) : (
-          <View style={styles.instructionsContainer}>
-            <Text style={styles.instructionsText}>
-              Press and hold to drag • Drag headers to move entire groups
-            </Text>
-          </View>
-        )}
+          ) : (
+            <View style={styles.instructionsContainer}>
+              <Text style={styles.instructionsText}>
+                Press and hold to drag • Drag headers to move entire groups
+              </Text>
+            </View>
+          )}
 
-        {reorderedItems.length > 0 ? (
+          {reorderedItems.length > 0 ? (
             <DraggableFlatList<DragItem>
               data={reorderedItems}
               onDragEnd={isSelectionMode ? () => { } : handleDragEnd}
@@ -2062,320 +2446,347 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
                 </View>
               )}
             />
-          
-        ) : (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No items to reorder</Text>
-          </View>
-        )}
 
-        {showGroupTypeModal && (
-          <>
-            <TouchableOpacity
-              style={styles.dropdownOverlay}
-              activeOpacity={1}
-              onPress={() => {
-                setShowGroupTypeModal(false);
-                setExerciseToGroup(null);
-                setDropdownPosition(null);
-              }}
-            />
-            {dropdownPosition && (
-              <View
-                style={[
-                  styles.groupTypeDropdown,
-                  {
-                    top: dropdownPosition.y,
-                    left: dropdownPosition.x,
-                  },
-                ]}
-                onStartShouldSetResponder={() => true}
-              >
-                <TouchableOpacity
-                  style={[
-                    styles.groupTypeDropdownItem,
-                    styles.groupTypeDropdownItemSuperset,
-                  ]}
-                  onPress={() => {
-                    if (exerciseToGroup) {
-                      setIsSelectionMode(true);
-                      setPendingGroupType('Superset');
-                      setPendingGroupInitialExercise(exerciseToGroup);
-                      setSelectedExercisesForGroup(new Set([exerciseToGroup.id]));
-                    }
-                    setShowGroupTypeModal(false);
-                    setExerciseToGroup(null);
-                    setDropdownPosition(null);
-                  }}
-                >
-                  <Text style={styles.groupTypeDropdownItemText}>Superset</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.groupTypeDropdownItem,
-                    styles.groupTypeDropdownItemHiit,
-                  ]}
-                  onPress={() => {
-                    if (exerciseToGroup) {
-                      setIsSelectionMode(true);
-                      setPendingGroupType('HIIT');
-                      setPendingGroupInitialExercise(exerciseToGroup);
-                      setSelectedExercisesForGroup(new Set([exerciseToGroup.id]));
-                    }
-                    setShowGroupTypeModal(false);
-                    setExerciseToGroup(null);
-                    setDropdownPosition(null);
-                  }}
-                >
-                  <Text style={styles.groupTypeDropdownItemText}>HIIT</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </>
-        )}
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No items to reorder</Text>
+            </View>
+          )}
 
-        {showEditModal && exerciseToEdit && (
-          <>
-            <TouchableOpacity
-              style={styles.dropdownOverlay}
-              activeOpacity={1}
-              onPress={() => {
-                setShowEditModal(false);
-                setExerciseToEdit(null);
-                setClickedSetGroupId(null);
-                setEditDropdownPosition(null);
-              }}
-            />
-            {editDropdownPosition && exerciseToEdit && (() => {
-              const hasMultipleRows = clickedSetGroupId && exerciseToEdit.setGroups && exerciseToEdit.setGroups.length > 1;
-              const showDeleteRow = hasMultipleRows;
-
-              return (
+          {showGroupTypeModal && (
+            <>
+              <TouchableOpacity
+                style={styles.dropdownOverlay}
+                activeOpacity={1}
+                onPress={() => {
+                  setShowGroupTypeModal(false);
+                  setExerciseToGroup(null);
+                  setDropdownPosition(null);
+                }}
+              />
+              {dropdownPosition && (
                 <View
                   style={[
-                    styles.editDropdown,
+                    styles.groupTypeDropdown,
                     {
-                      top: editDropdownPosition.y,
-                      left: editDropdownPosition.x,
+                      top: dropdownPosition.y,
+                      left: dropdownPosition.x,
                     },
                   ]}
                   onStartShouldSetResponder={() => true}
                 >
-                  {/* Warmup and Failure - moved to top */}
-                  {clickedSetGroupId && (() => {
-                    const setGroup = exerciseToEdit.setGroups.find(sg => sg.id === clickedSetGroupId);
-                    const isWarmup = setGroup?.isWarmup || false;
-                    const isFailure = setGroup?.isFailure || false;
-
-                    return (
-                      <View style={[
-                        styles.editDropdownToggleRow,
-                        defaultPopupStyles.borderRadiusFirst,
-                      ]}>
-                        <View style={styles.editDropdownToggleButtonsWrapper}>
-                          <TouchableOpacity
-                            activeOpacity={1}
-                            style={[
-                              styles.editDropdownToggleOption,
-                              styles.editDropdownToggleOptionInactive,
-                              isWarmup && styles.editDropdownToggleOptionActiveWarmup,
-                            ]}
-                            onPress={() => {
-                              if (exerciseToEdit && clickedSetGroupId) {
-                                handleToggleWarmup(exerciseToEdit, clickedSetGroupId);
-                              }
-                            }}
-                          >
-                            <View style={styles.editDropdownToggleOptionContent}>
-                              <Flame
-                                size={18}
-                                color={isWarmup ? COLORS.white : COLORS.orange[500]}
-                              />
-                              <Text style={[
-                                styles.editDropdownToggleOptionText,
-                                styles.editDropdownToggleOptionTextInactive,
-                                isWarmup && styles.editDropdownToggleOptionTextActive,
-                              ]}>
-                                Warmup
-                              </Text>
-                            </View>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            activeOpacity={1}
-                            style={[
-                              styles.editDropdownToggleOption,
-                              styles.editDropdownToggleOptionInactive,
-                              isFailure && styles.editDropdownToggleOptionActiveFailure,
-                            ]}
-                            onPress={() => {
-                              if (exerciseToEdit && clickedSetGroupId) {
-                                handleToggleFailure(exerciseToEdit, clickedSetGroupId);
-                              }
-                            }}
-                          >
-                            <View style={styles.editDropdownToggleOptionContent}>
-                              <Zap
-                                size={18}
-                                color={isFailure ? COLORS.white : COLORS.red[500]}
-                              />
-                              <Text style={[
-                                styles.editDropdownToggleOptionText,
-                                styles.editDropdownToggleOptionTextInactive,
-                                isFailure && styles.editDropdownToggleOptionTextActive,
-                              ]}>
-                                Failure
-                              </Text>
-                            </View>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    );
-                  })()}
-
-                  {/* Dropset */}
-                  {clickedSetGroupId && (
-                    <TouchableOpacity
-                      style={[
-                        styles.editDropdownItem,
-                        exerciseToEdit.setGroups.find(sg => sg.id === clickedSetGroupId)?.isDropset && styles.editDropdownItemActive
-                      ]}
-                      onPress={() => {
-                        if (exerciseToEdit && clickedSetGroupId) {
-                          handleToggleDropset(exerciseToEdit, clickedSetGroupId);
-                        }
-                        // Don't close popup - allow user to select multiple options
-                      }}
-                    >
-                      <View style={styles.editDropdownItemContent}>
-                        <TrendingDown size={18} color={exerciseToEdit.setGroups.find(sg => sg.id === clickedSetGroupId)?.isDropset ? COLORS.white : COLORS.indigo[400]} />
-                        <Text style={[
-                          styles.editDropdownItemText,
-                          exerciseToEdit.setGroups.find(sg => sg.id === clickedSetGroupId)?.isDropset && { color: COLORS.white }
-                        ]}>Dropset</Text>
-                      </View>
-                    </TouchableOpacity>
-                  )}
-
-                  {/* Create Group */}
-                  {exerciseToEdit.groupId === null && (
-                    <TouchableOpacity
-                      style={styles.editDropdownItem}
-                      onPress={() => {
-                        if (exerciseToEdit) {
-                          setExerciseToGroup(exerciseToEdit);
-                          setShowGroupTypeModal(true);
-                        }
-                        setShowEditModal(false);
-                        setExerciseToEdit(null);
-                        setClickedSetGroupId(null);
-                        setEditDropdownPosition(null);
-                      }}
-                    >
-                      <View style={styles.editDropdownItemContent}>
-                        <Users size={18} color={COLORS.white} />
-                        <Text style={styles.editDropdownItemText}>Create Group</Text>
-                      </View>
-                    </TouchableOpacity>
-                  )}
-
-                  {/* Insert Row */}
-                  {clickedSetGroupId && (
-                    <TouchableOpacity
-                      style={styles.editDropdownItem}
-                      onPress={() => {
-                        if (exerciseToEdit && clickedSetGroupId) {
-                          handleInsertRow(exerciseToEdit, clickedSetGroupId);
-                        }
-                        setShowEditModal(false);
-                        setExerciseToEdit(null);
-                        setClickedSetGroupId(null);
-                        setEditDropdownPosition(null);
-                      }}
-                    >
-                      <View style={styles.editDropdownItemContent}>
-                        <Plus size={18} color={COLORS.white} />
-                        <Text style={styles.editDropdownItemText}>Insert Row</Text>
-                      </View>
-                    </TouchableOpacity>
-                  )}
-
-                  {/* Duplicate Exercise + Delete Exercise */}
-                  <View style={[
-                    styles.editDropdownItemRow,
-                    !showDeleteRow && styles.editDropdownItemRowLast,
-                  ]}>
-                    <TouchableOpacity
-                      style={[
-                        styles.editDropdownItemInRow,
-                        styles.editDropdownItemInRowFlex,
-                        styles.editDropdownItemInRowWithBorder,
-                        !showDeleteRow && { borderBottomLeftRadius: 8 },
-                      ]}
-                      onPress={() => {
-                        if (exerciseToEdit) {
-                          handleDuplicateExercise(exerciseToEdit);
-                        }
-                        setShowEditModal(false);
-                        setExerciseToEdit(null);
-                        setClickedSetGroupId(null);
-                        setEditDropdownPosition(null);
-                      }}
-                    >
-                      <View style={styles.editDropdownItemContent}>
-                        <Copy size={18} color={COLORS.white} />
-                        <Text style={styles.editDropdownItemText}>Duplicate</Text>
-                      </View>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.editDropdownItemDelete,
-                        !showDeleteRow && { borderBottomRightRadius: 8 },
-                      ]}
-                      onPress={() => {
-                        if (exerciseToEdit) {
-                          handleDeleteExercise(exerciseToEdit.id);
-                        }
-                        setShowEditModal(false);
-                        setExerciseToEdit(null);
-                        setClickedSetGroupId(null);
-                        setEditDropdownPosition(null);
-                      }}
-                    >
-                      <View style={styles.editDropdownItemContent}>
-                        <Trash2 size={18} color={COLORS.white} />
-                      </View>
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Delete Row - only show if there are multiple rows */}
-                  {showDeleteRow && (
-                    <TouchableOpacity
-                      style={[
-                        styles.editDropdownItem,
-                        defaultPopupStyles.borderBottomLast,
-                        defaultPopupStyles.borderRadiusLast,
-                      ]}
-                      onPress={() => {
-                        if (exerciseToEdit && clickedSetGroupId) {
-                          handleDeleteSetGroup(exerciseToEdit, clickedSetGroupId);
-                        }
-                        setShowEditModal(false);
-                        setExerciseToEdit(null);
-                        setClickedSetGroupId(null);
-                        setEditDropdownPosition(null);
-                      }}
-                    >
-                      <View style={styles.editDropdownItemContent}>
-                        <Trash2 size={18} color={COLORS.red[500]} />
-                        <Text style={[styles.editDropdownItemText, { color: COLORS.red[500] }]}>Delete Row</Text>
-                      </View>
-                    </TouchableOpacity>
-                  )}
+                  <TouchableOpacity
+                    style={[
+                      styles.groupTypeDropdownItem,
+                      styles.groupTypeDropdownItemSuperset,
+                    ]}
+                    onPress={() => {
+                      if (exerciseToGroup) {
+                        setIsSelectionMode(true);
+                        setPendingGroupType('Superset');
+                        setPendingGroupInitialExercise(exerciseToGroup);
+                        setSelectedExercisesForGroup(new globalThis.Set([exerciseToGroup.id]));
+                      }
+                      setShowGroupTypeModal(false);
+                      setExerciseToGroup(null);
+                      setDropdownPosition(null);
+                    }}
+                  >
+                    <Text style={styles.groupTypeDropdownItemText}>Superset</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.groupTypeDropdownItem,
+                      styles.groupTypeDropdownItemHiit,
+                    ]}
+                    onPress={() => {
+                      if (exerciseToGroup) {
+                        setIsSelectionMode(true);
+                        setPendingGroupType('HIIT');
+                        setPendingGroupInitialExercise(exerciseToGroup);
+                        setSelectedExercisesForGroup(new globalThis.Set([exerciseToGroup.id]));
+                      }
+                      setShowGroupTypeModal(false);
+                      setExerciseToGroup(null);
+                      setDropdownPosition(null);
+                    }}
+                  >
+                    <Text style={styles.groupTypeDropdownItemText}>HIIT</Text>
+                  </TouchableOpacity>
                 </View>
-              );
-            })()}
-          </>
-        )}
+              )}
+            </>
+          )}
+
+          {showEditModal && exerciseToEdit && (
+            <>
+              <TouchableOpacity
+                style={styles.dropdownOverlay}
+                activeOpacity={1}
+                onPress={() => {
+                  setShowEditModal(false);
+                  setExerciseToEdit(null);
+                  setClickedSetGroupId(null);
+                  setEditDropdownPosition(null);
+                }}
+              />
+              {editDropdownPosition && exerciseToEdit && (() => {
+                const hasMultipleRows = clickedSetGroupId && exerciseToEdit.setGroups && exerciseToEdit.setGroups.length > 1;
+                const showDeleteRow = hasMultipleRows;
+
+                return (
+                  <View
+                    style={[
+                      styles.editDropdown,
+                      {
+                        top: editDropdownPosition.y,
+                        left: editDropdownPosition.x,
+                      },
+                    ]}
+                    onStartShouldSetResponder={() => true}
+                  >
+                    {/* Warmup and Failure - moved to top */}
+                    {clickedSetGroupId && (() => {
+                      const setGroup = exerciseToEdit.setGroups.find(sg => sg.id === clickedSetGroupId);
+                      const isWarmup = setGroup?.isWarmup || false;
+                      const isFailure = setGroup?.isFailure || false;
+
+                      return (
+                        <View style={[
+                          styles.editDropdownToggleRow,
+                          defaultPopupStyles.borderRadiusFirst,
+                        ]}>
+                          <View style={styles.editDropdownToggleButtonsWrapper}>
+                            <TouchableOpacity
+                              activeOpacity={1}
+                              style={[
+                                styles.editDropdownToggleOption,
+                                styles.editDropdownToggleOptionInactive,
+                                isWarmup && styles.editDropdownToggleOptionActiveWarmup,
+                              ]}
+                              onPress={() => {
+                                if (exerciseToEdit && clickedSetGroupId) {
+                                  handleToggleWarmup(exerciseToEdit, clickedSetGroupId);
+                                }
+                              }}
+                            >
+                              <View style={styles.editDropdownToggleOptionContent}>
+                                <Flame
+                                  size={18}
+                                  color={isWarmup ? COLORS.white : COLORS.orange[500]}
+                                />
+                                <Text style={[
+                                  styles.editDropdownToggleOptionText,
+                                  styles.editDropdownToggleOptionTextInactive,
+                                  isWarmup && styles.editDropdownToggleOptionTextActive,
+                                ]}>
+                                  Warmup
+                                </Text>
+                              </View>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              activeOpacity={1}
+                              style={[
+                                styles.editDropdownToggleOption,
+                                styles.editDropdownToggleOptionInactive,
+                                isFailure && styles.editDropdownToggleOptionActiveFailure,
+                              ]}
+                              onPress={() => {
+                                if (exerciseToEdit && clickedSetGroupId) {
+                                  handleToggleFailure(exerciseToEdit, clickedSetGroupId);
+                                }
+                              }}
+                            >
+                              <View style={styles.editDropdownToggleOptionContent}>
+                                <Zap
+                                  size={18}
+                                  color={isFailure ? COLORS.white : COLORS.red[500]}
+                                />
+                                <Text style={[
+                                  styles.editDropdownToggleOptionText,
+                                  styles.editDropdownToggleOptionTextInactive,
+                                  isFailure && styles.editDropdownToggleOptionTextActive,
+                                ]}>
+                                  Failure
+                                </Text>
+                              </View>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      );
+                    })()}
+
+                    {/* Dropset */}
+                    {clickedSetGroupId && (
+                      <TouchableOpacity
+                        style={[
+                          styles.editDropdownItem,
+                          exerciseToEdit.setGroups.find(sg => sg.id === clickedSetGroupId)?.isDropset && styles.editDropdownItemActive
+                        ]}
+                        onPress={() => {
+                          if (exerciseToEdit && clickedSetGroupId) {
+                            handleToggleDropset(exerciseToEdit, clickedSetGroupId);
+                          }
+                          // Don't close popup - allow user to select multiple options
+                        }}
+                      >
+                        <View style={styles.editDropdownItemContent}>
+                          <TrendingDown size={18} color={exerciseToEdit.setGroups.find(sg => sg.id === clickedSetGroupId)?.isDropset ? COLORS.white : COLORS.indigo[400]} />
+                          <Text style={[
+                            styles.editDropdownItemText,
+                            exerciseToEdit.setGroups.find(sg => sg.id === clickedSetGroupId)?.isDropset && { color: COLORS.white }
+                          ]}>Dropset</Text>
+                        </View>
+                      </TouchableOpacity>
+                    )}
+
+                    {/* Create Group */}
+                    {exerciseToEdit.groupId === null && (
+                      <TouchableOpacity
+                        style={styles.editDropdownItem}
+                        onPress={() => {
+                          if (exerciseToEdit) {
+                            setExerciseToGroup(exerciseToEdit);
+                            setShowGroupTypeModal(true);
+                          }
+                          setShowEditModal(false);
+                          setExerciseToEdit(null);
+                          setClickedSetGroupId(null);
+                          setEditDropdownPosition(null);
+                        }}
+                      >
+                        <View style={styles.editDropdownItemContent}>
+                          <Users size={18} color={COLORS.white} />
+                          <Text style={styles.editDropdownItemText}>Create Superset / HIIT</Text>
+                        </View>
+                      </TouchableOpacity>
+                    )}
+
+                    {/* Edit Sets */}
+                    <TouchableOpacity
+                      style={styles.editDropdownItem}
+                      onPress={() => {
+                        if (exerciseToEdit) {
+                          handleEditSets(exerciseToEdit);
+                        }
+                      }}
+                    >
+                      <View style={styles.editDropdownItemContent}>
+                        <Layers size={18} color={COLORS.white} />
+                        <Text style={styles.editDropdownItemText}>Edit Sets</Text>
+                      </View>
+                    </TouchableOpacity>
+
+                    {/* Duplicate Exercise + Delete Exercise */}
+                    <View style={[
+                      styles.editDropdownItemRow,
+                      !showDeleteRow && styles.editDropdownItemRowLast,
+                    ]}>
+                      <TouchableOpacity
+                        style={[
+                          styles.editDropdownItemInRow,
+                          styles.editDropdownItemInRowFlex,
+                          styles.editDropdownItemInRowWithBorder,
+                          !showDeleteRow && { borderBottomLeftRadius: 8 },
+                        ]}
+                        onPress={() => {
+                          if (exerciseToEdit) {
+                            handleDuplicateExercise(exerciseToEdit);
+                          }
+                          setShowEditModal(false);
+                          setExerciseToEdit(null);
+                          setClickedSetGroupId(null);
+                          setEditDropdownPosition(null);
+                        }}
+                      >
+                        <View style={styles.editDropdownItemContent}>
+                          <Copy size={18} color={COLORS.white} />
+                          <Text style={styles.editDropdownItemText}>Duplicate</Text>
+                        </View>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.editDropdownItemDelete,
+                          !showDeleteRow && { borderBottomRightRadius: 8 },
+                        ]}
+                        onPress={() => {
+                          if (exerciseToEdit) {
+                            handleDeleteExercise(exerciseToEdit.id);
+                          }
+                          setShowEditModal(false);
+                          setExerciseToEdit(null);
+                          setClickedSetGroupId(null);
+                          setEditDropdownPosition(null);
+                        }}
+                      >
+                        <View style={styles.editDropdownItemContent}>
+                          <Trash2 size={18} color={COLORS.white} />
+                        </View>
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Delete Row - only show if there are multiple rows */}
+                    {showDeleteRow && (
+                      <TouchableOpacity
+                        style={[
+                          styles.editDropdownItem,
+                          defaultPopupStyles.borderBottomLast,
+                          defaultPopupStyles.borderRadiusLast,
+                        ]}
+                        onPress={() => {
+                          if (exerciseToEdit && clickedSetGroupId) {
+                            handleDeleteSetGroup(exerciseToEdit, clickedSetGroupId);
+                          }
+                          setShowEditModal(false);
+                          setExerciseToEdit(null);
+                          setClickedSetGroupId(null);
+                          setEditDropdownPosition(null);
+                        }}
+                      >
+                        <View style={styles.editDropdownItemContent}>
+                          <Trash2 size={18} color={COLORS.red[500]} />
+                          <Text style={[styles.editDropdownItemText, { color: COLORS.red[500] }]}>Delete Row</Text>
+                        </View>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                );
+              })()}
+            </>
+          )}
+
+          {/* SetDragModal for editing sets */}
+          {showSetDragModal && exerciseForSetDrag && (
+            <SetDragModal
+              visible={showSetDragModal}
+              exercise={{
+                instanceId: exerciseForSetDrag.id,
+                exerciseId: exerciseForSetDrag.exercise.id,
+                name: exerciseForSetDrag.exercise.name,
+                category: exerciseForSetDrag.exercise.category,
+                type: 'exercise',
+                sets: (() => {
+                  const sets: Set[] = [];
+                  setDragItems.forEach(item => {
+                    if (item.type === 'set') {
+                      sets.push(item.set);
+                    }
+                  });
+                  return sets;
+                })(),
+                weightUnit: 'lbs' as const,
+              }}
+              setDragItems={setDragItems}
+              onDragEnd={handleSetDragEnd}
+              onCancel={handleSetDragCancel}
+              onSave={handleSetDragSave}
+              onCreateDropset={handleCreateDropset}
+              onUpdateSet={handleUpdateSet}
+              onAddSet={handleAddSet}
+              onUpdateRestTimer={handleUpdateRestTimer}
+              onUpdateRestTimerMultiple={handleUpdateRestTimerMultiple}
+            />
+          )}
 
         </SafeAreaView>
       </GestureHandlerRootView>

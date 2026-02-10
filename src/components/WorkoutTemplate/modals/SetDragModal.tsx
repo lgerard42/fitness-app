@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useState, useRef, useEffect } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
-import { X, Timer, Flame, Zap, Check, TrendingDown, Layers, Plus, Square, Trash2 } from 'lucide-react-native';
+import { X, Timer, Flame, Zap, Check, TrendingDown, Layers, Plus, Square, Trash2, GripVertical } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { formatRestTime, parseRestTimeInput } from '@/utils/workoutHelpers';
 import { defaultPopupStyles } from '@/constants/defaultStyles';
@@ -334,9 +334,14 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                 >
                     {!isDraggedDropset && <View style={styles.dropSetIndicatorHeader} />}
                     <View style={styles.dropsetHeaderContent}>
-                        <Text style={styles.dropsetHeaderText}>Dropset ({item.setCount} sets)</Text>
-                        {isDragging && (
-                            <View style={styles.dropsetHeaderLine} />
+                        <View style={styles.dropsetHeaderLeft}>
+                            <Text style={styles.dropsetHeaderText}>Dropset ({item.setCount} sets)</Text>
+                            {isDragging && (
+                                <View style={styles.dropsetHeaderLine} />
+                            )}
+                        </View>
+                        {!isDragging && (
+                            <GripVertical size={16} color={COLORS.indigo[700]} />
                         )}
                     </View>
                 </View>
@@ -1601,6 +1606,13 @@ const styles = StyleSheet.create({
     dropsetHeader__dragging: {
     },
     dropsetHeaderContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flex: 1,
+        gap: 8,
+    },
+    dropsetHeaderLeft: {
         flexDirection: 'row',
         alignItems: 'center',
         flex: 1,
