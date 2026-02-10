@@ -108,9 +108,10 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                 });
 
                 if (firstSetId) {
-                    // Open timer keyboard for the first set
+                    // Open timer keyboard for the first set in selection mode
                     setRestTimerInput({ setId: firstSetId, currentValue: '' });
                     setRestTimerInputString('');
+                    // Note: Selection mode will be enabled via initialSelectionMode prop on TimerKeyboard
                 }
             }
             hasInitializedRef.current = true;
@@ -121,6 +122,16 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
             hasInitializedRef.current = false;
         }
     }, [visible, initialAddTimerMode, initialSelectedSetIds, localDragItems]);
+
+    // Pre-select the set when opening rest timer keyboard normally (not from exercise picker)
+    useEffect(() => {
+        if (visible && restTimerInput && restTimerSelectedSetIds.size === 0 && !initialAddTimerMode) {
+            // Pre-select the set that was clicked to open the timer keyboard
+            const newSet = new globalThis.Set<string>();
+            newSet.add(restTimerInput.setId);
+            setRestTimerSelectedSetIds(newSet);
+        }
+    }, [visible, restTimerInput, restTimerSelectedSetIds.size, initialAddTimerMode]);
 
     // Effect to fire pending drag after collapse
     useEffect(() => {
@@ -330,15 +341,20 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                                     handleLocalDragEnd(params);
                                 }}
                                 containerStyle={styles.listContainer}
-                                contentContainerStyle={styles.listContent}
+                                contentContainerStyle={[
+                                    styles.listContent,
+                                    restTimerInput && !addTimerMode && { paddingBottom: 200 }
+                                ]}
                                 ListFooterComponent={
-                                    <TouchableOpacity
-                                        onPress={onAddSet}
-                                        style={styles.addSetButton}
-                                    >
-                                        <Plus size={18} color={COLORS.blue[600]} />
-                                        <Text style={styles.addSetButtonText}>Add set</Text>
-                                    </TouchableOpacity>
+                                    restTimerInput && !addTimerMode ? null : (
+                                        <TouchableOpacity
+                                            onPress={onAddSet}
+                                            style={styles.addSetButton}
+                                        >
+                                            <Plus size={18} color={COLORS.blue[600]} />
+                                            <Text style={styles.addSetButtonText}>Add set</Text>
+                                        </TouchableOpacity>
+                                    )
                                 }
                             />
                         )}
@@ -616,13 +632,13 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                         date: new Date().toISOString(),
                     }}
                     handleWorkoutUpdate={(workout: any) => {
-                        // Only handle auto-updates as the user types
+                        // Only handle auto-updates as the user types (when keyboard is open)
                         if (!restTimerInput || addTimerMode) return;
                         const exerciseItem = workout.exercises[0];
                         if (exerciseItem && exerciseItem.type === 'exercise') {
                             const updatedSet = exerciseItem.sets.find((s: Set) => s.id === restTimerInput.setId);
                             if (updatedSet) {
-                                // If we have multiple sets pre-selected, update all of them
+                                // If we have multiple sets selected, update all of them
                                 if (restTimerSelectedSetIds.size > 0) {
                                     const selectedIdsArray = Array.from(restTimerSelectedSetIds);
                                     onUpdateRestTimerMultiple(selectedIdsArray, updatedSet.restPeriodSeconds);
@@ -648,41 +664,30 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                     setActiveRestTimer={() => { }}
                     setRestTimerPopupOpen={() => { }}
                     onSetSelectionMode={(enabled: boolean) => {
+                        // Enable/disable selection mode without closing keyboard
+                        // Sets can be toggled while keyboard is open
                         if (enabled) {
-                            // Enter addTimerMode: close keyboard and popup, enter selection mode
-                            // If sets are already pre-selected (from initialAddTimerMode), keep them
-                            // Otherwise, if we have initialSelectedSetIds, auto-select all those sets
-                            // Otherwise, auto-select just the original set from restTimerInput
-                            if (restTimerSelectedSetIds.size > 0) {
-                                // Sets already pre-selected, keep them
-                            } else if (initialSelectedSetIds.length > 0) {
-                                // Auto-select all sets from the setGroup
-                                const selectedSetIds = new globalThis.Set<string>();
-                                initialSelectedSetIds.forEach(id => {
-                                    // Verify the set exists in localDragItems
-                                    if (localDragItems.some(item => 
-                                        isSetDragItem(item) && (item as any).id === id
-                                    )) {
-                                        selectedSetIds.add(id);
-                                    }
-                                });
-                                setRestTimerSelectedSetIds(selectedSetIds);
-                            } else if (restTimerInput) {
+                            // If no sets are selected yet, select the current set
+                            if (restTimerSelectedSetIds.size === 0 && restTimerInput) {
                                 const newSet = new globalThis.Set<string>();
                                 newSet.add(restTimerInput.setId);
                                 setRestTimerSelectedSetIds(newSet);
                             }
-                            // Enter addTimerMode and close both keyboard and popup
-                            setAddTimerMode(true);
-                            setRestTimerInput(null); // This closes both keyboard and popup
                         }
                     }}
                     selectedSetIds={restTimerSelectedSetIds}
                     onToggleSetSelection={(exerciseId: string, setId: string) => {
-                        // Not used - selection handled in set cards when in addTimerMode
-                        // This callback is only used by TimerKeyboard's internal selection UI,
-                        // which is not shown since we close the keyboard when entering addTimerMode
+                        // Toggle set selection while keyboard is open
+                        const newSet = new globalThis.Set(restTimerSelectedSetIds);
+                        if (newSet.has(setId)) {
+                            newSet.delete(setId);
+                        } else {
+                            newSet.add(setId);
+                        }
+                        setRestTimerSelectedSetIds(newSet);
                     }}
+                    initialSelectionMode={initialAddTimerMode && initialSelectedSetIds.length > 0 || (!!restTimerInput && restTimerSelectedSetIds.size > 0)}
+                    disableStartButton={true}
                 />
             </GestureHandlerRootView>
         </Modal>

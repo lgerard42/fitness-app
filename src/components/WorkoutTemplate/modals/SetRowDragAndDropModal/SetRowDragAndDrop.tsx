@@ -282,7 +282,7 @@ export const useSetRowDragAndDrop = ({
                     delayLongPress={100}
                     disabled={isActive}
                     activeOpacity={1}
-                    onPress={addTimerMode && !restTimerInputOpen ? () => {
+                    onPress={(addTimerMode || restTimerInputOpen) ? () => {
                         // Close trash if visible
                         if (swipedItemId) {
                             closeTrashIcon();
@@ -376,7 +376,43 @@ export const useSetRowDragAndDrop = ({
                         )}
                     </View>
 
-                    {(addTimerMode || restTimerInputOpen) ? (
+                    {restTimerInputOpen ? (
+                        <View style={styles.restTimerAndCheckboxContainer}>
+                            <View
+                                style={[
+                                    styles.restTimerBadge,
+                                    !setItemData.hasRestTimer && styles.restTimerBadge__add,
+                                    setItemData.hasRestTimer 
+                                        ? styles.restTimerBadge__disabled__withTimer 
+                                        : styles.restTimerBadge__disabled__noTimer
+                                ]}
+                            >
+                                <Timer 
+                                    size={12} 
+                                    color={setItemData.hasRestTimer ? COLORS.blue[500] : 'transparent'} 
+                                />
+                                <Text style={[
+                                    styles.restTimerText,
+                                    !setItemData.hasRestTimer && styles.restTimerText__add,
+                                    setItemData.hasRestTimer 
+                                        ? styles.restTimerText__disabledWithTimer 
+                                        : styles.restTimerText__disabled__noTimer
+                                ]}>
+                                    {setItemData.hasRestTimer
+                                        ? formatRestTime(set.restPeriodSeconds!)
+                                        : '+ rest'
+                                    }
+                                </Text>
+                            </View>
+                            <View style={styles.checkboxContainer}>
+                                {restTimerSelectedSetIds.has(set.id) ? (
+                                    <Check size={20} color={COLORS.blue[600]} strokeWidth={3} />
+                                ) : (
+                                    <Square size={20} color={COLORS.slate[400]} />
+                                )}
+                            </View>
+                        </View>
+                    ) : addTimerMode ? (
                         <View style={styles.checkboxContainer}>
                             {restTimerSelectedSetIds.has(set.id) ? (
                                 <Check size={20} color={COLORS.blue[600]} strokeWidth={3} />
@@ -989,6 +1025,13 @@ const styles = StyleSheet.create({
         borderColor: COLORS.slate[200],
         borderStyle: 'dashed',
     },
+    restTimerBadge__disabled__noTimer: {
+        backgroundColor: 'transparent',
+        borderColor: 'transparent',
+    },
+    restTimerBadge__disabled__withTimer: {
+        backgroundColor: 'transparent',
+    },
     restTimerText: {
         fontSize: 11,
         fontWeight: '600',
@@ -997,8 +1040,19 @@ const styles = StyleSheet.create({
     restTimerText__add: {
         color: COLORS.slate[500],
     },
+    restTimerText__disabledWithTimer: {
+        color: COLORS.blue[600], // Keep blue color even when disabled if set has rest timer
+        fontSize: 14,
+    },
+    restTimerText__disabled__noTimer: {
+        color: 'transparent',
+    },
     checkboxContainer: {
-        padding: 8,
+        padding: 0,
         marginLeft: 8,
+    },
+    restTimerAndCheckboxContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
 });

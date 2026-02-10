@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Play, X } from 'lucide-react-native';
+import { Play } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { formatRestTime, parseRestTimeInput, updateExercisesDeep } from '@/utils/workoutHelpers';
 import type { Workout, RestTimer, RestPeriodSetInfo, Set, ExerciseItem } from '@/types/workout';
@@ -21,6 +21,8 @@ export interface TimerKeyboardProps {
   onToggleSetSelection?: (exerciseId: string, setId: string) => void;
   showDisplayAtTop?: boolean; // If true, show formatted time display at top of keyboard
   displayValue?: string; // Formatted time string to display at top
+  initialSelectionMode?: boolean; // If true, start in selection mode with keyboard open
+  disableStartButton?: boolean; // If true, disable the Start button
 }
 
 export const TimerKeyboard: React.FC<TimerKeyboardProps> = ({
@@ -39,8 +41,10 @@ export const TimerKeyboard: React.FC<TimerKeyboardProps> = ({
   onToggleSetSelection,
   showDisplayAtTop = false,
   displayValue,
+  initialSelectionMode = false,
+  disableStartButton = false,
 }) => {
-  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [isSelectionMode, setIsSelectionMode] = useState(initialSelectionMode);
   const lastInputRef = useRef<string>('');
   const shouldClearOnNextInputRef = useRef<boolean>(false);
   const previousSetIdRef = useRef<string | null>(null);
@@ -64,6 +68,14 @@ export const TimerKeyboard: React.FC<TimerKeyboardProps> = ({
   useEffect(() => {
     lastInputRef.current = '';
   }, [restPeriodSetInfo]);
+
+  // Initialize selection mode when opening with initialSelectionMode
+  useEffect(() => {
+    if (visible && initialSelectionMode && onSetSelectionMode) {
+      setIsSelectionMode(true);
+      onSetSelectionMode(true);
+    }
+  }, [visible, initialSelectionMode, onSetSelectionMode]);
 
   // Reset selection mode when modal closes
   useEffect(() => {
@@ -142,13 +154,74 @@ export const TimerKeyboard: React.FC<TimerKeyboardProps> = ({
   };
 
   const handleApplyTo = () => {
-    setIsSelectionMode(true);
-    if (onSetSelectionMode) {
-      onSetSelectionMode(true);
-    }
-    // Automatically select the set that was being edited
-    if (restPeriodSetInfo && onToggleSetSelection) {
-      onToggleSetSelection(restPeriodSetInfo.exerciseId, restPeriodSetInfo.setId);
+    if (isSelectionMode) {
+      // Apply timer to selected sets and close
+      const seconds = parseRestTimeInput(restTimerInput);
+      if (seconds <= 0 || !selectedSetIds || selectedSetIds.size === 0) return;
+
+      // Update all selected sets with the rest timer
+      // Group sets by exerciseId to update efficiently
+      const setsByExercise = new Map<string, string[]>();
+      selectedSetIds.forEach((setId: string) => {
+        // Find which exercise contains this set by searching all exercises
+        const findExerciseWithSet = (items: ExerciseItem[]): string | null => {
+          for (const item of items) {
+            if (item.type === 'exercise' && item.sets.some((s: Set) => s.id === setId)) {
+              return item.instanceId;
+            }
+            if (item.type === 'group' && item.children) {
+              const found = findExerciseWithSet(item.children);
+              if (found) return found;
+            }
+          }
+          return null;
+        };
+
+        const exerciseId = findExerciseWithSet(currentWorkout.exercises);
+        if (exerciseId) {
+          if (!setsByExercise.has(exerciseId)) {
+            setsByExercise.set(exerciseId, []);
+          }
+          setsByExercise.get(exerciseId)!.push(setId);
+        }
+      });
+
+      // Update each exercise with its selected sets
+      let updatedWorkout = currentWorkout;
+      setsByExercise.forEach((setIds, exerciseId) => {
+        updatedWorkout = {
+          ...updatedWorkout,
+          exercises: updateExercisesDeep(updatedWorkout.exercises, exerciseId, (ex: ExerciseItem) => {
+            if (ex.type === 'group') return ex;
+            return {
+              ...ex,
+              sets: ex.sets.map((s: Set) =>
+                setIds.includes(s.id)
+                  ? { ...s, restPeriodSeconds: seconds, restTimerCompleted: false }
+                  : s
+              )
+            };
+          })
+        };
+      });
+
+      handleWorkoutUpdate(updatedWorkout);
+      setIsSelectionMode(false);
+      if (onSetSelectionMode) {
+        onSetSelectionMode(false);
+      }
+      onClose();
+      setRestTimerInput('');
+    } else {
+      // Enter selection mode
+      setIsSelectionMode(true);
+      if (onSetSelectionMode) {
+        onSetSelectionMode(true);
+      }
+      // Automatically select the set that was being edited if no sets are selected
+      if (restPeriodSetInfo && onToggleSetSelection && (!selectedSetIds || selectedSetIds.size === 0)) {
+        onToggleSetSelection(restPeriodSetInfo.exerciseId, restPeriodSetInfo.setId);
+      }
     }
   };
 
@@ -247,6 +320,30 @@ export const TimerKeyboard: React.FC<TimerKeyboardProps> = ({
     setRestTimerInput('');
   };
 
+  const convertSecondsToInputFormat = (seconds: number): string => {
+    if (seconds <= 0) return '';
+    if (seconds < 100) {
+      return seconds.toString();
+    }
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return (mins * 100 + secs).toString();
+  };
+
+  const handleAdd10Seconds = () => {
+    shouldClearOnNextInputRef.current = false;
+    const currentSeconds = parseRestTimeInput(restTimerInput);
+    const newSeconds = Math.max(0, currentSeconds + 10);
+    setRestTimerInput(convertSecondsToInputFormat(newSeconds));
+  };
+
+  const handleSubtract10Seconds = () => {
+    shouldClearOnNextInputRef.current = false;
+    const currentSeconds = parseRestTimeInput(restTimerInput);
+    const newSeconds = Math.max(0, currentSeconds - 10);
+    setRestTimerInput(convertSecondsToInputFormat(newSeconds));
+  };
+
   const parsedSeconds = parseRestTimeInput(restTimerInput);
   const isValid = parsedSeconds > 0;
 
@@ -260,109 +357,159 @@ export const TimerKeyboard: React.FC<TimerKeyboardProps> = ({
           </Text>
         </View>
       )}
-      {/* Number Pad - Row 1 */}
-      <View style={styles.row}>
-        {['1', '2', '3'].map(key => (
-          <TouchableOpacity
-            key={key}
-            style={styles.keyButton}
-            onPress={() => handleInput(key)}
-          >
-            <Text style={styles.keyButtonText}>{key}</Text>
-          </TouchableOpacity>
-        ))}
-        <TouchableOpacity
-          style={styles.closeButton}
-          onPress={handleClose}
-        >
-          <X size={20} color={COLORS.white} />
-        </TouchableOpacity>
-      </View>
+      {/* Keyboard Layout - Columns */}
+      <View style={styles.keyboardContainer}>
+        {/* Columns 1-3 Wrapper */}
+        <View style={styles.numberColumnsWrapper}>
+          {/* Column 1: 1, 4, 7, C */}
+          <View style={styles.column}>
+            <TouchableOpacity
+              style={styles.keyButton}
+              onPress={() => handleInput('1')}
+            >
+              <Text style={styles.keyButtonText}>1</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.keyButton}
+              onPress={() => handleInput('4')}
+            >
+              <Text style={styles.keyButtonText}>4</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.keyButton}
+              onPress={() => handleInput('7')}
+            >
+              <Text style={styles.keyButtonText}>7</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={handleClear}
+            >
+              <Text style={styles.secondaryButtonText}>C</Text>
+            </TouchableOpacity>
+          </View>
 
-      {/* Number Pad - Row 2 */}
-      <View style={styles.row}>
-        {['4', '5', '6'].map(key => (
+          {/* Column 2: 2, 5, 8, 0 */}
+          <View style={styles.column}>
+            <TouchableOpacity
+              style={styles.keyButton}
+              onPress={() => handleInput('2')}
+            >
+              <Text style={styles.keyButtonText}>2</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.keyButton}
+              onPress={() => handleInput('5')}
+            >
+              <Text style={styles.keyButtonText}>5</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.keyButton}
+              onPress={() => handleInput('8')}
+            >
+              <Text style={styles.keyButtonText}>8</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.keyButton}
+              onPress={() => handleInput('0')}
+            >
+              <Text style={styles.keyButtonText}>0</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Column 3: 3, 6, 9, ⌫ */}
+          <View style={styles.column}>
+            <TouchableOpacity
+              style={styles.keyButton}
+              onPress={() => handleInput('3')}
+            >
+              <Text style={styles.keyButtonText}>3</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.keyButton}
+              onPress={() => handleInput('6')}
+            >
+              <Text style={styles.keyButtonText}>6</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.keyButton}
+              onPress={() => handleInput('9')}
+            >
+              <Text style={styles.keyButtonText}>9</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={handleBackspace}
+            >
+              <Text style={styles.secondaryButtonText}>⌫</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Column 4: Close, [+/-], Start, Apply */}
+        <View style={styles.column}>
           <TouchableOpacity
-            key={key}
-            style={styles.keyButton}
-            onPress={() => handleInput(key)}
+            style={styles.closeButton}
+            onPress={handleClose}
           >
-            <Text style={styles.keyButtonText}>{key}</Text>
+            <Text style={styles.closeButtonText}>Close</Text>
           </TouchableOpacity>
-        ))}
-        {isSelectionMode ? (
+          <View style={styles.adjustButtonContainer}>
+            <TouchableOpacity
+              style={styles.adjustButton}
+              onPress={handleSubtract10Seconds}
+            >
+              <Text style={styles.adjustButtonText}>−</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.adjustButton}
+              onPress={handleAdd10Seconds}
+            >
+              <Text style={styles.adjustButtonText}>+</Text>
+            </TouchableOpacity>
+          </View>
           <TouchableOpacity
             style={[
-              styles.saveButton,
-              (selectedSetIds.size === 0 || !isValid) && styles.saveButton__disabled
+              styles.startTimerButton,
+              (!isValid || disableStartButton) && styles.startTimerButton__disabled
             ]}
-            onPress={handleSaveSelected}
-            disabled={selectedSetIds.size === 0 || !isValid}
+            onPress={handleStartTimer}
+            disabled={!isValid || disableStartButton}
           >
-            <Text style={styles.saveButtonText}>
-              Save ({selectedSetIds.size})
-            </Text>
+            <Play size={16} color={disableStartButton ? COLORS.slate[600] : COLORS.white} />
+            <Text style={[
+              styles.startTimerButtonText,
+              disableStartButton && styles.startTimerButtonText__disabled
+            ]}>Start</Text>
           </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            style={[
-              styles.applyToButton,
-              !isValid && styles.applyToButton__disabled
-            ]}
-            onPress={handleApplyTo}
-            disabled={!isValid}
-          >
-            <Text style={styles.applyToButtonText}>
-              Apply to
-            </Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Number Pad - Row 3 */}
-      <View style={styles.row}>
-        {['7', '8', '9'].map(key => (
-          <TouchableOpacity
-            key={key}
-            style={styles.keyButton}
-            onPress={() => handleInput(key)}
-          >
-            <Text style={styles.keyButtonText}>{key}</Text>
-          </TouchableOpacity>
-        ))}
-        <TouchableOpacity
-          style={[
-            styles.startTimerButton,
-            !isValid && styles.startTimerButton__disabled
-          ]}
-          onPress={handleStartTimer}
-          disabled={!isValid}
-        >
-          <Play size={16} color={COLORS.white} />
-          <Text style={styles.startTimerButtonText}>Start</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Number Pad - Row 4 */}
-      <View style={styles.row}>
-        <TouchableOpacity
-          style={styles.secondaryButton}
-          onPress={handleClear}
-        >
-          <Text style={styles.secondaryButtonText}>C</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.keyButton}
-          onPress={() => handleInput('0')}
-        >
-          <Text style={styles.keyButtonText}>0</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.secondaryButton}
-          onPress={handleBackspace}
-        >
-          <Text style={styles.secondaryButtonText}>⌫</Text>
-        </TouchableOpacity>
+          {isSelectionMode ? (
+            <TouchableOpacity
+              style={[
+                styles.applyToButton,
+                (selectedSetIds.size === 0 || !isValid) && styles.applyToButton__disabled
+              ]}
+              onPress={handleApplyTo}
+              disabled={selectedSetIds.size === 0 || !isValid}
+            >
+              <Text style={styles.applyToButtonText}>
+                Apply
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={[
+                styles.applyToButton,
+                !isValid && styles.applyToButton__disabled
+              ]}
+              onPress={handleApplyTo}
+              disabled={!isValid}
+            >
+              <Text style={styles.applyToButtonText}>
+                Apply to
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
     </View>
   );
@@ -384,32 +531,35 @@ const styles = StyleSheet.create({
     elevation: 11,
   },
   displayContainer: {
-    backgroundColor: COLORS.slate[100],
+    backgroundColor: 'transparent',
     paddingVertical: 4,
     paddingHorizontal: 16,
     marginBottom: 8,
     marginHorizontal: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    borderColor: COLORS.blue[600],
-    borderWidth: 2,
-    borderRadius: 8,
   },
   displayText: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: COLORS.blue[600],
+    color: COLORS.blue[550],
   },
-  row: {
+  keyboardContainer: {
     flexDirection: 'row',
     gap: 8,
-    marginBottom: 8,
+  },
+  numberColumnsWrapper: {
+    flexDirection: 'row',
+    flex: 3,
+    gap: 8,
+  },
+  column: {
+    flexDirection: 'column',
+    flex: 1,
+    gap: 8,
   },
   keyButton: {
-    flex: 1,
-    flexBasis: 0,
-    minWidth: 0,
-    maxWidth: '100%',
+    width: '100%',
     height: 52,
     backgroundColor: COLORS.slate[600],
     borderRadius: 8,
@@ -428,10 +578,7 @@ const styles = StyleSheet.create({
     color: COLORS.white,
   },
   closeButton: {
-    flex: 1,
-    flexBasis: 0,
-    minWidth: 0,
-    maxWidth: '100%',
+    width: '100%',
     height: 52,
     backgroundColor: COLORS.slate[800],
     borderRadius: 8,
@@ -444,11 +591,13 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
   },
+  closeButtonText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: COLORS.slate[200],
+  },
   secondaryButton: {
-    flex: 1,
-    flexBasis: 0,
-    minWidth: 0,
-    maxWidth: '100%',
+    width: '100%',
     height: 52,
     backgroundColor: COLORS.slate[700],
     borderRadius: 8,
@@ -469,7 +618,6 @@ const styles = StyleSheet.create({
   saveButton: {
     flex: 1,
     flexBasis: 0,
-    minWidth: 0,
     maxWidth: '100%',
     height: 52,
     backgroundColor: COLORS.blue[600],
@@ -492,10 +640,7 @@ const styles = StyleSheet.create({
     color: COLORS.white,
   },
   applyToButton: {
-    flex: 1,
-    flexBasis: 0,
-    minWidth: 0,
-    maxWidth: '100%',
+    width: '100%',
     height: 52,
     backgroundColor: COLORS.blue[600],
     borderRadius: 8,
@@ -517,10 +662,7 @@ const styles = StyleSheet.create({
     color: COLORS.white,
   },
   startTimerButton: {
-    flex: 1,
-    flexBasis: 0,
-    minWidth: 0,
-    maxWidth: '100%',
+    width: '100%',
     height: 52,
     backgroundColor: COLORS.blue[600],
     borderRadius: 8,
@@ -536,11 +678,40 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   startTimerButton__disabled: {
-    opacity: 0.5,
+    backgroundColor: 'transparent',
+    opacity: 1,
   },
   startTimerButtonText: {
     fontSize: 18,
     fontWeight: 'bold',
+    color: COLORS.white,
+  },
+  startTimerButtonText__disabled: {
+    color: COLORS.slate[600],
+  },
+  adjustButtonContainer: {
+    width: '100%',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  adjustButton: {
+    flex: 1,
+    flexBasis: 0,
+    height: 52,
+    backgroundColor: COLORS.slate[700],
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  adjustButtonText: {
+    fontSize: 24,
+    fontWeight: '600',
     color: COLORS.white,
   },
 });
