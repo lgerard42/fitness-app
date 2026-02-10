@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useState, useCallback, memo, useMemo } from 'react';
 import { View, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, runOnJS, withSpring } from 'react-native-reanimated';
@@ -23,7 +23,10 @@ interface SwipeToDeleteProps {
   itemId?: string;
 }
 
-const SwipeToDelete: React.FC<SwipeToDeleteProps> = ({
+// Cache screen width - it doesn't change during component lifecycle
+const getScreenWidth = () => Dimensions.get('window').width;
+
+const SwipeToDelete: React.FC<SwipeToDeleteProps> = memo(({
   children,
   onDelete,
   disabled = false,
@@ -36,7 +39,8 @@ const SwipeToDelete: React.FC<SwipeToDeleteProps> = ({
   isTrashVisible: externalTrashVisible,
   itemId,
 }) => {
-  const screenWidth = Dimensions.get('window').width;
+  // Memoize screen width - only computed once per mount
+  const screenWidth = useMemo(() => getScreenWidth(), []);
   const translateX = useSharedValue(0);
   const [internalTrashVisible, setInternalTrashVisible] = useState(false);
 
@@ -159,7 +163,7 @@ const SwipeToDelete: React.FC<SwipeToDeleteProps> = ({
     }
   }, [swipeThreshold, velocityThreshold, trashRevealThreshold, trashPosition, handleDelete, showTrash, hideTrash, onSwipeEnd]);
 
-  const swipeGesture = Gesture.Pan()
+  const swipeGesture = useMemo(() => Gesture.Pan()
     .enabled(!disabled)
     .activeOffsetX([-10, 10])
     .failOffsetY([-20, 20])
@@ -178,7 +182,7 @@ const SwipeToDelete: React.FC<SwipeToDeleteProps> = ({
     .onEnd((e) => {
       'worklet';
       handleSwipeEnd(e.translationX, e.velocityX);
-    });
+    }), [disabled, onSwipeStart, trashPosition, updateTranslation, handleSwipeEnd]);
 
   // Animated styles for the content
   const animatedContentStyle = useAnimatedStyle(() => {
@@ -239,7 +243,7 @@ const SwipeToDelete: React.FC<SwipeToDeleteProps> = ({
       </GestureDetector>
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -264,5 +268,8 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
 });
+
+// Display name for debugging
+SwipeToDelete.displayName = 'SwipeToDelete';
 
 export default SwipeToDelete;

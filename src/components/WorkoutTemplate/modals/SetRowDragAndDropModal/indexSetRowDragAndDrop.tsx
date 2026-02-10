@@ -569,6 +569,136 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
         return null;
     }, [exercise?.instanceId, restTimerInput?.setId]);
 
+    // Memoize currentWorkout for TimerKeyboard to prevent rebuilding on every render
+    const timerKeyboardWorkout = useMemo(() => {
+        if (!exercise || !restTimerInput) return null;
+        
+        // Build sets from localDragItems
+        const setsFromDragItems: Set[] = [];
+        localDragItems.forEach(item => {
+            if (isSetDragItem(item)) {
+                const set = (item as unknown as SetDragItem).set;
+                setsFromDragItems.push({
+                    ...set,
+                    restPeriodSeconds: set.id === restTimerInput?.setId && restTimerInputString
+                        ? parseRestTimeInput(restTimerInputString) > 0
+                            ? parseRestTimeInput(restTimerInputString)
+                            : undefined
+                        : set.restPeriodSeconds,
+                });
+            }
+        });
+        
+        const sets = setsFromDragItems.length > 0 
+            ? setsFromDragItems 
+            : exercise.sets.map((s: Set) => ({
+                ...s,
+                restPeriodSeconds: s.id === restTimerInput?.setId && restTimerInputString
+                    ? parseRestTimeInput(restTimerInputString) > 0
+                        ? parseRestTimeInput(restTimerInputString)
+                        : undefined
+                    : s.restPeriodSeconds,
+            }));
+        
+        return {
+            id: '',
+            name: '',
+            startedAt: Date.now(),
+            exercises: [{
+                ...exercise,
+                sets,
+            }],
+            date: new Date().toISOString(),
+        };
+    }, [exercise, restTimerInput, localDragItems, restTimerInputString]);
+
+    // Memoize TimerKeyboard display value
+    const timerKeyboardDisplayValue = useMemo(() => {
+        return restTimerInputString
+            ? formatRestTime(parseRestTimeInput(restTimerInputString))
+            : '0:00';
+    }, [restTimerInputString]);
+
+    // Memoize TimerKeyboard callbacks
+    const handleTimerClose = useCallback(() => {
+        setRestTimerInput(null);
+        setRestTimerInputString('');
+        setRestTimerSelectedSetIds(new globalThis.Set());
+    }, []);
+
+    const handleWorkoutUpdate = useCallback((workout: any) => {
+        // Only handle auto-updates as the user types (when keyboard is open)
+        // But don't apply changes if sets are selected - wait for "Apply to" button
+        if (!restTimerInput || addTimerMode) return;
+        
+        // If sets are selected, don't apply changes automatically - wait for "Apply to"
+        if (restTimerSelectedSetIds.size > 0) return;
+        
+        const exerciseItem = workout.exercises[0];
+        if (exerciseItem && exerciseItem.type === 'exercise') {
+            const updatedSet = exerciseItem.sets.find((s: Set) => s.id === restTimerInput.setId);
+            if (updatedSet) {
+                // Only update the single set (no selected sets means single set mode)
+                onUpdateRestTimer(restTimerInput.setId, updatedSet.restPeriodSeconds);
+            }
+        }
+    }, [restTimerInput, addTimerMode, restTimerSelectedSetIds.size, onUpdateRestTimer]);
+
+    const handleAddRestPeriod = useCallback(() => {
+        // When keyboard's "Save" is pressed (not "Start Timer"), just save the value
+        if (restTimerInput && restTimerInputString) {
+            const seconds = parseRestTimeInput(restTimerInputString);
+            if (seconds > 0) {
+                onUpdateRestTimer(restTimerInput.setId, seconds);
+            }
+        }
+        setRestTimerInput(null);
+        setRestTimerInputString('');
+        setRestTimerSelectedSetIds(new globalThis.Set());
+    }, [restTimerInput, restTimerInputString, onUpdateRestTimer]);
+
+    const handleSetSelectionMode = useCallback((enabled: boolean) => {
+        // Enable/disable selection mode without closing keyboard
+        // Sets can be toggled while keyboard is open
+        if (enabled) {
+            // If no sets are selected yet, select the current set
+            if (restTimerSelectedSetIds.size === 0 && restTimerInput) {
+                const newSet = new globalThis.Set<string>();
+                newSet.add(restTimerInput.setId);
+                setRestTimerSelectedSetIds(newSet);
+            }
+        }
+    }, [restTimerSelectedSetIds.size, restTimerInput]);
+
+    const handleToggleSetSelection = useCallback((exerciseId: string, setId: string) => {
+        // Toggle set selection while keyboard is open
+        const newSet = new globalThis.Set(restTimerSelectedSetIds);
+        if (newSet.has(setId)) {
+            newSet.delete(setId);
+        } else {
+            newSet.add(setId);
+        }
+        setRestTimerSelectedSetIds(newSet);
+    }, [restTimerSelectedSetIds]);
+
+    const handleApplyToSelectedSets = useCallback((setIds: string[], seconds: number) => {
+        // Apply rest timer to selected sets when "Apply to" is clicked
+        onUpdateRestTimerMultiple(setIds, seconds);
+    }, [onUpdateRestTimerMultiple]);
+
+    const handleRemoveTimersFromSelectedSets = useCallback((setIds: string[]) => {
+        // Remove rest timers from selected sets when "Remove" is clicked
+        onUpdateRestTimerMultiple(setIds, undefined);
+    }, [onUpdateRestTimerMultiple]);
+
+    // Memoize initial selection mode value
+    const timerKeyboardInitialSelectionMode = useMemo(() => {
+        return (initialAddTimerMode && initialSelectedSetIds.length > 0) || (!!restTimerInput && restTimerSelectedSetIds.size > 0);
+    }, [initialAddTimerMode, initialSelectedSetIds.length, restTimerInput, restTimerSelectedSetIds.size]);
+
+    // Empty callbacks for unused props
+    const noopCallback = useCallback(() => {}, []);
+
     // Handle drag end - expand groups and reconstruct dropset structure
     const handleLocalDragEnd = useCallback(
         createHandleLocalDragEnd(
@@ -580,6 +710,26 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
         ),
         [collapsedDropsetId, onDragEnd]
     );
+
+    // Stable callbacks for DraggableFlatList to prevent unnecessary re-renders
+    const handleDragBegin = useCallback(() => setIsDragging(true), []);
+    const handleDragEndWrapper = useCallback((params: { data: CollapsibleSetDragListItem[]; from: number; to: number }) => {
+        setIsDragging(false);
+        handleLocalDragEnd(params);
+    }, [handleLocalDragEnd]);
+
+    // Memoized ListFooterComponent to prevent re-creating JSX on every render
+    const listFooter = useMemo(() => (
+        restTimerInput && !addTimerMode ? null : (
+            <TouchableOpacity
+                onPress={onAddSet}
+                style={styles.addSetButton}
+            >
+                <Plus size={18} color={COLORS.blue[600]} />
+                <Text style={styles.addSetButtonText}>Add set</Text>
+            </TouchableOpacity>
+        )
+    ), [restTimerInput, addTimerMode, onAddSet]);
 
     if (!visible || !exercise) return null;
 
@@ -660,27 +810,20 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                                 data={localDragItems}
                                 keyExtractor={dragKeyExtractor}
                                 renderItem={renderDragItem}
-                                onDragBegin={() => setIsDragging(true)}
-                                onDragEnd={(params) => {
-                                    setIsDragging(false);
-                                    handleLocalDragEnd(params);
-                                }}
+                                onDragBegin={handleDragBegin}
+                                onDragEnd={handleDragEndWrapper}
                                 containerStyle={styles.listContainer}
                                 contentContainerStyle={[
                                     styles.listContent,
                                     restTimerInput && !addTimerMode && { paddingBottom: 200 }
                                 ]}
-                                ListFooterComponent={
-                                    restTimerInput && !addTimerMode ? null : (
-                                        <TouchableOpacity
-                                            onPress={onAddSet}
-                                            style={styles.addSetButton}
-                                        >
-                                            <Plus size={18} color={COLORS.blue[600]} />
-                                            <Text style={styles.addSetButtonText}>Add set</Text>
-                                        </TouchableOpacity>
-                                    )
-                                }
+                                ListFooterComponent={listFooter}
+                                // Virtualization props for performance
+                                initialNumToRender={10}
+                                maxToRenderPerBatch={5}
+                                windowSize={5}
+                                // Keep removeClippedSubviews false for drag-and-drop compatibility
+                                removeClippedSubviews={false}
                             />
                         )}
 
@@ -781,120 +924,28 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                 </View>
 
                 {/* Timer Keyboard - Rendered outside modalContainer to appear from bottom of screen with highest z-index */}
-                <TimerKeyboard
-                    visible={!!restTimerInput && !addTimerMode}
-                    onClose={() => {
-                        setRestTimerInput(null);
-                        setRestTimerInputString('');
-                        setRestTimerSelectedSetIds(new globalThis.Set());
-                    }}
-                    restTimerInput={restTimerInputString}
-                    setRestTimerInput={setRestTimerInputString}
-                    restPeriodSetInfo={restPeriodSetInfoMemo}
-                    showDisplayAtTop={true}
-                    displayValue={restTimerInputString
-                        ? formatRestTime(parseRestTimeInput(restTimerInputString))
-                        : '0:00'
-                    }
-                    currentWorkout={{
-                        id: '',
-                        name: '',
-                        startedAt: Date.now(),
-                        exercises: exercise ? [{
-                            ...exercise,
-                            sets: (() => {
-                                // Use sets from localDragItems instead of exercise.sets
-                                // to ensure IDs match what's actually in the modal
-                                const setsFromDragItems: Set[] = [];
-                                localDragItems.forEach(item => {
-                                    if (isSetDragItem(item)) {
-                                        const set = (item as unknown as SetDragItem).set;
-                                        setsFromDragItems.push({
-                                            ...set,
-                                            restPeriodSeconds: set.id === restTimerInput?.setId && restTimerInputString
-                                                ? parseRestTimeInput(restTimerInputString) > 0
-                                                    ? parseRestTimeInput(restTimerInputString)
-                                                    : undefined
-                                                : set.restPeriodSeconds,
-                                        });
-                                    }
-                                });
-                                return setsFromDragItems.length > 0 ? setsFromDragItems : exercise.sets.map((s: Set) => ({
-                                    ...s,
-                                    restPeriodSeconds: s.id === restTimerInput?.setId && restTimerInputString
-                                        ? parseRestTimeInput(restTimerInputString) > 0
-                                            ? parseRestTimeInput(restTimerInputString)
-                                            : undefined
-                                        : s.restPeriodSeconds,
-                                }));
-                            })(),
-                        }] : [],
-                        date: new Date().toISOString(),
-                    }}
-                    handleWorkoutUpdate={(workout: any) => {
-                        // Only handle auto-updates as the user types (when keyboard is open)
-                        // But don't apply changes if sets are selected - wait for "Apply to" button
-                        if (!restTimerInput || addTimerMode) return;
-                        
-                        // If sets are selected, don't apply changes automatically - wait for "Apply to"
-                        if (restTimerSelectedSetIds.size > 0) return;
-                        
-                        const exerciseItem = workout.exercises[0];
-                        if (exerciseItem && exerciseItem.type === 'exercise') {
-                            const updatedSet = exerciseItem.sets.find((s: Set) => s.id === restTimerInput.setId);
-                            if (updatedSet) {
-                                // Only update the single set (no selected sets means single set mode)
-                                onUpdateRestTimer(restTimerInput.setId, updatedSet.restPeriodSeconds);
-                            }
-                        }
-                    }}
-                    onAddRestPeriod={() => {
-                        // When keyboard's "Save" is pressed (not "Start Timer"), just save the value
-                        if (restTimerInput && restTimerInputString) {
-                            const seconds = parseRestTimeInput(restTimerInputString);
-                            if (seconds > 0) {
-                                onUpdateRestTimer(restTimerInput.setId, seconds);
-                            }
-                        }
-                        setRestTimerInput(null);
-                        setRestTimerInputString('');
-                        setRestTimerSelectedSetIds(new globalThis.Set());
-                    }}
-                    setActiveRestTimer={() => { }}
-                    setRestTimerPopupOpen={() => { }}
-                    onSetSelectionMode={(enabled: boolean) => {
-                        // Enable/disable selection mode without closing keyboard
-                        // Sets can be toggled while keyboard is open
-                        if (enabled) {
-                            // If no sets are selected yet, select the current set
-                            if (restTimerSelectedSetIds.size === 0 && restTimerInput) {
-                                const newSet = new globalThis.Set<string>();
-                                newSet.add(restTimerInput.setId);
-                                setRestTimerSelectedSetIds(newSet);
-                            }
-                        }
-                    }}
-                    selectedSetIds={restTimerSelectedSetIds}
-                    onToggleSetSelection={(exerciseId: string, setId: string) => {
-                        // Toggle set selection while keyboard is open
-                        const newSet = new globalThis.Set(restTimerSelectedSetIds);
-                        if (newSet.has(setId)) {
-                            newSet.delete(setId);
-                        } else {
-                            newSet.add(setId);
-                        }
-                        setRestTimerSelectedSetIds(newSet);
-                    }}
-                    onApplyToSelectedSets={(setIds: string[], seconds: number) => {
-                        // Apply rest timer to selected sets when "Apply to" is clicked
-                        onUpdateRestTimerMultiple(setIds, seconds);
-                    }}
-                    onRemoveTimersFromSelectedSets={(setIds: string[]) => {
-                        // Remove rest timers from selected sets when "Remove" is clicked
-                        onUpdateRestTimerMultiple(setIds, undefined);
-                    }}
-                    initialSelectionMode={initialAddTimerMode && initialSelectedSetIds.length > 0 || (!!restTimerInput && restTimerSelectedSetIds.size > 0)}
-                />
+                {timerKeyboardWorkout && (
+                    <TimerKeyboard
+                        visible={!!restTimerInput && !addTimerMode}
+                        onClose={handleTimerClose}
+                        restTimerInput={restTimerInputString}
+                        setRestTimerInput={setRestTimerInputString}
+                        restPeriodSetInfo={restPeriodSetInfoMemo}
+                        showDisplayAtTop={true}
+                        displayValue={timerKeyboardDisplayValue}
+                        currentWorkout={timerKeyboardWorkout}
+                        handleWorkoutUpdate={handleWorkoutUpdate}
+                        onAddRestPeriod={handleAddRestPeriod}
+                        setActiveRestTimer={noopCallback}
+                        setRestTimerPopupOpen={noopCallback}
+                        onSetSelectionMode={handleSetSelectionMode}
+                        selectedSetIds={restTimerSelectedSetIds}
+                        onToggleSetSelection={handleToggleSetSelection}
+                        onApplyToSelectedSets={handleApplyToSelectedSets}
+                        onRemoveTimersFromSelectedSets={handleRemoveTimersFromSelectedSets}
+                        initialSelectionMode={timerKeyboardInitialSelectionMode}
+                    />
+                )}
             </GestureHandlerRootView>
         </Modal>
     );

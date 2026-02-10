@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo, useRef, memo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { RenderItemParams } from 'react-native-draggable-flatlist';
 import { GripVertical, Timer, TrendingDown, Check, Square } from 'lucide-react-native';
@@ -21,6 +21,262 @@ export interface CollapsibleDropSetFooterItem extends DropSetFooterItem {
 }
 
 export type CollapsibleSetDragListItem = CollapsibleSetDragItem | CollapsibleDropSetHeaderItem | CollapsibleDropSetFooterItem;
+
+// Determine which selection mode is active for simpler prop passing
+type SelectionMode = 'restTimer' | 'warmup' | 'failure' | 'dropset' | null;
+
+// Props for the memoized row component - use primitive/stable types for effective memoization
+interface SetRowItemProps {
+    set: Set;
+    setId: string;
+    displayIndexText: string;
+    isSubIndex: boolean;
+    isActive: boolean;
+    isDragging: boolean;
+    category: string;
+    weightUnit: string;
+    hasRestTimer: boolean;
+    // Selection state - primitives only
+    selectionMode: SelectionMode;
+    isSelected: boolean;
+    isUngroupedSet: boolean;
+    // Trash state
+    showTrash: boolean;
+    // Timer preview (only set for the row being edited)
+    timerPreviewFormatted: string | null;
+    // Drag function
+    drag: () => void;
+    // Stable callbacks (must be memoized via useRef in parent)
+    onDelete: () => void;
+    onShowTrash: () => void;
+    onCloseTrash: () => void;
+    onToggleSelection: () => void;
+    onCycleSetType: () => void;
+    onOpenRestTimerInput: () => void;
+    onToggleDropset: () => void;
+    // Badge ref callback
+    onBadgeRef: (ref: View | null) => void;
+}
+
+// Memoized row component - only re-renders when its specific props change
+const SetRowItem = memo(function SetRowItem({
+    set,
+    setId,
+    displayIndexText,
+    isSubIndex,
+    isActive,
+    isDragging,
+    category,
+    weightUnit,
+    hasRestTimer,
+    selectionMode,
+    isSelected,
+    isUngroupedSet,
+    showTrash,
+    timerPreviewFormatted,
+    drag,
+    onDelete,
+    onShowTrash,
+    onCloseTrash,
+    onToggleSelection,
+    onCycleSetType,
+    onOpenRestTimerInput,
+    onToggleDropset,
+    onBadgeRef,
+}: SetRowItemProps) {
+    const isInSelectionMode = selectionMode !== null;
+    
+    // Determine checkbox color based on mode
+    const getCheckboxColor = () => {
+        switch (selectionMode) {
+            case 'restTimer': return COLORS.blue[600];
+            case 'warmup': return COLORS.orange[600];
+            case 'failure': return COLORS.red[600];
+            case 'dropset': return COLORS.indigo[600];
+            default: return COLORS.blue[600];
+        }
+    };
+
+    // Timer display value
+    const getTimerDisplayValue = () => {
+        if (timerPreviewFormatted && isSelected) {
+            return timerPreviewFormatted;
+        }
+        if (hasRestTimer && set.restPeriodSeconds) {
+            // Format inline - caller should provide formatted value ideally
+            const mins = Math.floor(set.restPeriodSeconds / 60);
+            const secs = set.restPeriodSeconds % 60;
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+        return 'rest';
+    };
+
+    const hasPreviewValue = timerPreviewFormatted !== null && isSelected;
+    const showTimerIcon = hasPreviewValue || hasRestTimer;
+
+    return (
+        <SwipeToDelete
+            onDelete={onDelete}
+            disabled={isActive || isInSelectionMode || isDragging}
+            itemId={setId}
+            isTrashVisible={showTrash}
+            onShowTrash={onShowTrash}
+            onCloseTrash={onCloseTrash}
+            trashBackgroundColor={COLORS.red[500]}
+            trashIconColor="#ffffff"
+        >
+            <TouchableOpacity
+                onLongPress={drag}
+                delayLongPress={100}
+                disabled={isActive}
+                activeOpacity={1}
+                onPress={isInSelectionMode ? onToggleSelection : undefined}
+                style={[
+                    styles.dragItem,
+                    isActive && styles.dragItem__active,
+                    isSelected && selectionMode === 'warmup' && styles.dragItem__selectedWarmup,
+                    isSelected && selectionMode === 'failure' && styles.dragItem__selectedFailure,
+                    isSelected && selectionMode === 'dropset' && styles.dragItem__selectedDropset,
+                    isSelected && selectionMode === 'restTimer' && styles.dragItem__selected,
+                    set.dropSetId && styles.dragItem__dropset,
+                ]}
+            >
+                <View ref={onBadgeRef}>
+                    <TouchableOpacity
+                        style={[
+                            styles.setIndexBadge,
+                            set.isWarmup && styles.setIndexBadge__warmup,
+                            set.isFailure && styles.setIndexBadge__failure,
+                        ]}
+                        onPress={(e) => {
+                            e.stopPropagation();
+                            onCycleSetType();
+                        }}
+                    >
+                        {isSubIndex ? (
+                            <Text style={[
+                                styles.setIndexText__groupSub,
+                                set.isWarmup && styles.setIndexText__groupSub__warmup,
+                                set.isFailure && styles.setIndexText__groupSub__failure,
+                            ]}>
+                                {displayIndexText}
+                            </Text>
+                        ) : (
+                            <Text style={[
+                                styles.setIndexText,
+                                set.isWarmup && styles.setIndexText__warmup,
+                                set.isFailure && styles.setIndexText__failure,
+                            ]}>
+                                {displayIndexText}
+                            </Text>
+                        )}
+                    </TouchableOpacity>
+                </View>
+
+                <View style={styles.setInfo}>
+                    {category === 'Lifts' ? (
+                        <Text style={styles.setInfoText}>
+                            {set.weight || '-'} {weightUnit} × {set.reps || '-'}
+                        </Text>
+                    ) : category === 'Cardio' ? (
+                        <Text style={styles.setInfoText}>
+                            {set.duration || '-'} / {set.distance || '-'}
+                        </Text>
+                    ) : (
+                        <Text style={styles.setInfoText}>
+                            {set.reps || '-'} reps
+                        </Text>
+                    )}
+                </View>
+
+                {selectionMode === 'restTimer' ? (
+                    <View style={styles.restTimerAndCheckboxContainer}>
+                        <View
+                            style={[
+                                styles.restTimerBadge,
+                                !hasRestTimer && styles.restTimerBadge__add,
+                                hasRestTimer 
+                                    ? styles.restTimerBadge__disabled__withTimer 
+                                    : styles.restTimerBadge__disabled__noTimer
+                            ]}
+                        >
+                            <Timer 
+                                size={12} 
+                                color={showTimerIcon ? COLORS.blue[500] : 'transparent'} 
+                            />
+                            <Text style={[
+                                styles.restTimerText,
+                                !hasRestTimer && !hasPreviewValue && styles.restTimerText__add,
+                                (hasRestTimer || hasPreviewValue)
+                                    ? styles.restTimerText__disabledWithTimer 
+                                    : styles.restTimerText__disabled__noTimer
+                            ]}>
+                                {getTimerDisplayValue()}
+                            </Text>
+                        </View>
+                        <View style={styles.checkboxContainer}>
+                            {isSelected ? (
+                                <Check size={20} color={COLORS.blue[600]} strokeWidth={3} />
+                            ) : (
+                                <Square size={20} color={COLORS.slate[400]} />
+                            )}
+                        </View>
+                    </View>
+                ) : selectionMode === 'warmup' || selectionMode === 'failure' || selectionMode === 'dropset' ? (
+                    <View style={styles.checkboxContainer}>
+                        {selectionMode === 'dropset' && !isUngroupedSet ? (
+                            <View style={{ width: 20, height: 20 }} />
+                        ) : isSelected ? (
+                            <Check size={20} color={getCheckboxColor()} strokeWidth={3} />
+                        ) : (
+                            <Square size={20} color={COLORS.slate[400]} />
+                        )}
+                    </View>
+                ) : (
+                    <>
+                        <TouchableOpacity
+                            onPress={(e) => {
+                                e.stopPropagation();
+                                onToggleDropset();
+                            }}
+                            style={styles.dropsetIconButton}
+                        >
+                            <TrendingDown 
+                                size={14} 
+                                color={set.dropSetId ? COLORS.indigo[600] : COLORS.slate[400]} 
+                            />
+                        </TouchableOpacity>
+                        {set.completed && (
+                            <View style={styles.completedIndicatorWrapper}>
+                                <Check size={14} color={COLORS.green[500]} />
+                            </View>
+                        )}
+
+                        <TouchableOpacity
+                            onPress={onOpenRestTimerInput}
+                            style={[
+                                styles.restTimerBadge,
+                                !set.restPeriodSeconds && styles.restTimerBadge__add
+                            ]}
+                        >
+                            <Timer size={12} color={set.restPeriodSeconds ? COLORS.blue[500] : COLORS.slate[400]} />
+                            <Text style={[
+                                styles.restTimerText,
+                                !set.restPeriodSeconds && styles.restTimerText__add
+                            ]}>
+                                {getTimerDisplayValue()}
+                            </Text>
+                        </TouchableOpacity>
+                    </>
+                )}
+
+                {set.dropSetId && !isActive && (
+                    <View style={styles.dropSetIndicator} />
+                )}
+            </TouchableOpacity>
+        </SwipeToDelete>
+    );
+});
 
 interface SetRowDragAndDropProps {
     localDragItems: CollapsibleSetDragListItem[];
@@ -103,6 +359,108 @@ export const useSetRowDragAndDrop = ({
     const isDropSetFooterItem = (item: CollapsibleSetDragListItem): item is CollapsibleDropSetFooterItem => {
         return 'type' in item && item.type === 'dropset_footer';
     };
+
+    // Pre-compute display indices for all sets in a single O(n) pass
+    // This avoids O(n^2) computation when each row computes its own index
+    const displayIndexMap = useMemo(() => {
+        const map = new Map<string, { displayIndexText: string; isSubIndex: boolean }>();
+        const allSets = localDragItems.filter(isSetDragItem);
+        
+        // Track group numbers and dropset positions
+        let groupNumber = 0;
+        const seenDropSetIds = new Set<string>();
+        const dropsetFirstGroupNumber = new Map<string, number>();
+        const dropsetSetIndices = new Map<string, number>(); // count within each dropset
+        
+        for (let i = 0; i < allSets.length; i++) {
+            const setItem = allSets[i];
+            const set = setItem.set;
+            
+            if (set.dropSetId) {
+                // Track which dropset we're in
+                if (!seenDropSetIds.has(set.dropSetId)) {
+                    seenDropSetIds.add(set.dropSetId);
+                    groupNumber++;
+                    dropsetFirstGroupNumber.set(set.dropSetId, groupNumber);
+                    dropsetSetIndices.set(set.dropSetId, 0);
+                }
+                
+                // Increment index within dropset
+                const currentDropsetIndex = (dropsetSetIndices.get(set.dropSetId) ?? 0) + 1;
+                dropsetSetIndices.set(set.dropSetId, currentDropsetIndex);
+                
+                const baseGroupNumber = dropsetFirstGroupNumber.get(set.dropSetId)!;
+                
+                if (currentDropsetIndex === 1) {
+                    // First set in dropset: show primary index
+                    map.set(set.id, { displayIndexText: baseGroupNumber.toString(), isSubIndex: false });
+                } else {
+                    // Subsequent sets: show subIndex with "."
+                    map.set(set.id, { displayIndexText: `.${currentDropsetIndex}`, isSubIndex: true });
+                }
+            } else {
+                // Not in a dropset
+                groupNumber++;
+                map.set(set.id, { displayIndexText: groupNumber.toString(), isSubIndex: false });
+            }
+        }
+        
+        return map;
+    }, [localDragItems]);
+
+    // Pre-compute timer preview so only the previewed row updates on keystroke
+    const timerPreview = useMemo(() => {
+        if (!restTimerInputString || !restTimerInputOpen) return null;
+        const seconds = parseRestTimeInput(restTimerInputString);
+        if (seconds <= 0) return null;
+        return { seconds, formatted: formatRestTime(seconds) };
+    }, [restTimerInputString, restTimerInputOpen, parseRestTimeInput, formatRestTime]);
+
+    // Determine current selection mode as a stable value
+    const currentSelectionMode: SelectionMode = useMemo(() => {
+        if (addTimerMode || restTimerInputOpen) return 'restTimer';
+        if (warmupMode) return 'warmup';
+        if (failureMode) return 'failure';
+        if (dropsetMode) return 'dropset';
+        return null;
+    }, [addTimerMode, restTimerInputOpen, warmupMode, failureMode, dropsetMode]);
+
+    // Stable callback refs - update refs synchronously, create stable wrappers
+    const handleDeleteSetRef = useRef(handleDeleteSet);
+    handleDeleteSetRef.current = handleDeleteSet;
+    
+    const closeTrashIconRef = useRef(closeTrashIcon);
+    closeTrashIconRef.current = closeTrashIcon;
+    
+    const setSwipedItemIdRef = useRef(setSwipedItemId);
+    setSwipedItemIdRef.current = setSwipedItemId;
+    
+    const onUpdateSetRef = useRef(onUpdateSet);
+    onUpdateSetRef.current = onUpdateSet;
+    
+    const handleUngroupDropsetRef = useRef(handleUngroupDropset);
+    handleUngroupDropsetRef.current = handleUngroupDropset;
+    
+    const handleEnterDropsetModeRef = useRef(handleEnterDropsetMode);
+    handleEnterDropsetModeRef.current = handleEnterDropsetMode;
+    
+    const setRestTimerInputRef = useRef(setRestTimerInput);
+    setRestTimerInputRef.current = setRestTimerInput;
+    
+    const setRestTimerInputStringRef = useRef(setRestTimerInputString);
+    setRestTimerInputStringRef.current = setRestTimerInputString;
+    
+    const setRestTimerSelectedSetIdsRef = useRef(setRestTimerSelectedSetIds);
+    setRestTimerSelectedSetIdsRef.current = setRestTimerSelectedSetIds;
+    
+    const setWarmupSelectedSetIdsRef = useRef(setWarmupSelectedSetIds);
+    setWarmupSelectedSetIdsRef.current = setWarmupSelectedSetIds;
+    
+    const setFailureSelectedSetIdsRef = useRef(setFailureSelectedSetIds);
+    setFailureSelectedSetIdsRef.current = setFailureSelectedSetIds;
+    
+    const setDropsetSelectedSetIdsRef = useRef(setDropsetSelectedSetIds);
+    setDropsetSelectedSetIdsRef.current = setDropsetSelectedSetIds;
 
     const renderDropSetHeader = useCallback((
         item: CollapsibleDropSetHeaderItem,
@@ -209,7 +567,7 @@ export const useSetRowDragAndDrop = ({
         );
     }, [isDragging, collapsedDropsetId]);
 
-    const renderDragItem = useCallback(({ item, drag, isActive, getIndex }: RenderItemParams<CollapsibleSetDragListItem>) => {
+    const renderDragItem = useCallback(({ item, drag, isActive }: RenderItemParams<CollapsibleSetDragListItem>) => {
         // Handle dropset headers - now draggable
         if (isDropSetHeaderItem(item)) {
             return renderDropSetHeader(item, drag, isActive);
@@ -233,388 +591,147 @@ export const useSetRowDragAndDrop = ({
         }
 
         const set = setItemData.set;
+        const setId = set.id;
         const category = exercise?.category || 'Lifts';
         const weightUnit = exercise?.weightUnit || 'lbs';
 
-        // Get the position in the full array (including headers/footers)
-        const fullArrayIndex = getIndex() ?? 0;
+        // Use pre-computed display index from useMemo (O(1) lookup vs O(n) computation)
+        const indexInfo = displayIndexMap.get(setId) ?? { displayIndexText: '?', isSubIndex: false };
 
-        // Count how many sets come before this position (excluding headers/footers)
-        let setCountBefore = 0;
-        for (let i = 0; i < fullArrayIndex; i++) {
-            const prevItem = localDragItems[i];
-            if (prevItem && isSetDragItem(prevItem)) {
-                setCountBefore++;
+        // Compute selection state for this specific row
+        const isSelected = currentSelectionMode === 'restTimer' && restTimerSelectedSetIds.has(setId)
+            || currentSelectionMode === 'warmup' && warmupSelectedSetIds.has(setId)
+            || currentSelectionMode === 'failure' && failureSelectedSetIds.has(setId)
+            || currentSelectionMode === 'dropset' && dropsetSelectedSetIds.has(setId);
+
+        const showTrash = swipedItemId === setId;
+        const isUngroupedSet = !set.dropSetId;
+
+        // Timer preview - only applies to selected sets in rest timer mode
+        const showTimerPreview = currentSelectionMode === 'restTimer' && isSelected && timerPreview;
+
+        // Create stable callbacks using refs (these never change reference)
+        const handleDelete = () => handleDeleteSetRef.current(setId);
+        const handleShowTrash = () => setSwipedItemIdRef.current(setId);
+        const handleCloseTrash = () => closeTrashIconRef.current();
+        
+        const handleToggleSelection = () => {
+            // Close trash if visible
+            if (swipedItemId) {
+                closeTrashIconRef.current();
             }
-        }
-
-        // Get all sets in order for dropset calculations
-        const allSets = localDragItems.filter(isSetDragItem);
-        const currentSetIndex = setCountBefore;
-
-        // Calculate display index based on dropset logic (matching SetRow.tsx)
-        let displayIndexText: string;
-        let isSubIndex = false;
-
-        if (set.dropSetId) {
-            // Find all sets in this dropset
-            const dropSetSets = allSets.filter(s => s.set.dropSetId === set.dropSetId);
-            const indexInDropSet = dropSetSets.findIndex(s => s.id === setItemData.id) + 1;
-
-            // Count group number: iterate through sets before this one, counting dropsets as single units
-            let groupNumber = 0;
-            const seenDropSetIds = new Set<string>();
-
-            for (let i = 0; i < currentSetIndex; i++) {
-                const prevSet = allSets[i].set;
-                if (prevSet.dropSetId) {
-                    if (!seenDropSetIds.has(prevSet.dropSetId)) {
-                        seenDropSetIds.add(prevSet.dropSetId);
-                        groupNumber++;
-                    }
+            
+            // Handle selection based on current mode
+            if (currentSelectionMode === 'restTimer') {
+                const newSet = new globalThis.Set(restTimerSelectedSetIds);
+                if (newSet.has(setId)) {
+                    newSet.delete(setId);
                 } else {
-                    groupNumber++;
+                    newSet.add(setId);
                 }
+                setRestTimerSelectedSetIdsRef.current(newSet);
+            } else if (currentSelectionMode === 'warmup') {
+                const newSet = new globalThis.Set(warmupSelectedSetIds);
+                if (newSet.has(setId)) {
+                    newSet.delete(setId);
+                } else {
+                    newSet.add(setId);
+                }
+                setWarmupSelectedSetIdsRef.current(newSet);
+            } else if (currentSelectionMode === 'failure') {
+                const newSet = new globalThis.Set(failureSelectedSetIds);
+                if (newSet.has(setId)) {
+                    newSet.delete(setId);
+                } else {
+                    newSet.add(setId);
+                }
+                setFailureSelectedSetIdsRef.current(newSet);
+            } else if (currentSelectionMode === 'dropset' && isUngroupedSet) {
+                const newSet = new globalThis.Set(dropsetSelectedSetIds);
+                if (newSet.has(setId)) {
+                    newSet.delete(setId);
+                } else {
+                    newSet.add(setId);
+                }
+                setDropsetSelectedSetIdsRef.current(newSet);
             }
+        };
 
-            // Check if this dropset was already counted
-            if (!seenDropSetIds.has(set.dropSetId)) {
-                groupNumber++;
-            }
-
-            if (indexInDropSet === 1) {
-                // First set in dropset: show only primary index
-                displayIndexText = groupNumber.toString();
+        const handleCycleSetType = () => {
+            if (set.isWarmup) {
+                onUpdateSetRef.current(setId, { isWarmup: false, isFailure: true });
+            } else if (set.isFailure) {
+                onUpdateSetRef.current(setId, { isFailure: false, isWarmup: false });
             } else {
-                // Subsequent sets: show only subIndex with "."
-                displayIndexText = `.${indexInDropSet}`;
-                isSubIndex = true;
+                onUpdateSetRef.current(setId, { isWarmup: true, isFailure: false });
             }
-        } else {
-            // Not in a dropset - count all sets (treating dropsets as single units)
-            let overallSetNumber = 0;
-            const seenDropSetIds = new Set<string>();
+        };
 
-            for (let i = 0; i < currentSetIndex; i++) {
-                const prevSet = allSets[i].set;
-                if (prevSet.dropSetId) {
-                    if (!seenDropSetIds.has(prevSet.dropSetId)) {
-                        seenDropSetIds.add(prevSet.dropSetId);
-                        overallSetNumber++;
-                    }
-                } else {
-                    overallSetNumber++;
-                }
+        const handleOpenRestTimerInput = () => {
+            const currentValue = set.restPeriodSeconds ? set.restPeriodSeconds.toString() : '';
+            setRestTimerInputStringRef.current(currentValue);
+            setRestTimerInputRef.current({ setId, currentValue });
+        };
+
+        const handleToggleDropset = () => {
+            if (set.dropSetId) {
+                handleUngroupDropsetRef.current(setId);
+            } else {
+                const newSet = new globalThis.Set<string>();
+                newSet.add(setId);
+                setDropsetSelectedSetIdsRef.current(newSet);
+                handleEnterDropsetModeRef.current();
             }
-            overallSetNumber++;
-            displayIndexText = overallSetNumber.toString();
-        }
+        };
 
-        const isInSelectionMode = addTimerMode || restTimerInputOpen || warmupMode || failureMode || dropsetMode;
-        const isSelected = (addTimerMode || restTimerInputOpen) && restTimerSelectedSetIds.has(set.id)
-            || warmupMode && warmupSelectedSetIds.has(set.id)
-            || failureMode && failureSelectedSetIds.has(set.id)
-            || dropsetMode && dropsetSelectedSetIds.has(set.id);
-        const showTrash = swipedItemId === set.id;
-        const isUngroupedSet = !set.dropSetId; // For dropset mode, only allow selecting ungrouped sets
+        const handleBadgeRef = (ref: View | null) => {
+            if (ref) {
+                badgeRefs.current.set(setId, ref);
+            } else {
+                badgeRefs.current.delete(setId);
+            }
+        };
 
         return (
-            <SwipeToDelete
-                onDelete={() => handleDeleteSet(set.id)}
-                disabled={isActive || isInSelectionMode || isDragging}
-                itemId={set.id}
-                isTrashVisible={showTrash}
-                onShowTrash={() => setSwipedItemId(set.id)}
-                onCloseTrash={closeTrashIcon}
-                trashBackgroundColor={COLORS.red[500]}
-                trashIconColor="#ffffff"
-            >
-                <TouchableOpacity
-                    onLongPress={drag}
-                    delayLongPress={100}
-                    disabled={isActive}
-                    activeOpacity={1}
-                    onPress={isInSelectionMode ? () => {
-                        // Close trash if visible
-                        if (swipedItemId) {
-                            closeTrashIcon();
-                        }
-                        
-                        // Handle selection based on current mode
-                        if (addTimerMode || restTimerInputOpen) {
-                            const newSet = new globalThis.Set(restTimerSelectedSetIds);
-                            if (newSet.has(set.id)) {
-                                newSet.delete(set.id);
-                            } else {
-                                newSet.add(set.id);
-                            }
-                            setRestTimerSelectedSetIds(newSet);
-                        } else if (warmupMode) {
-                            const newSet = new globalThis.Set(warmupSelectedSetIds);
-                            if (newSet.has(set.id)) {
-                                newSet.delete(set.id);
-                            } else {
-                                newSet.add(set.id);
-                            }
-                            setWarmupSelectedSetIds(newSet);
-                        } else if (failureMode) {
-                            const newSet = new globalThis.Set(failureSelectedSetIds);
-                            if (newSet.has(set.id)) {
-                                newSet.delete(set.id);
-                            } else {
-                                newSet.add(set.id);
-                            }
-                            setFailureSelectedSetIds(newSet);
-                        } else if (dropsetMode && isUngroupedSet) {
-                            // Only allow selecting ungrouped sets for dropset mode
-                            const newSet = new globalThis.Set(dropsetSelectedSetIds);
-                            if (newSet.has(set.id)) {
-                                newSet.delete(set.id);
-                            } else {
-                                newSet.add(set.id);
-                            }
-                            setDropsetSelectedSetIds(newSet);
-                        }
-                    } : undefined}
-                    style={[
-                        styles.dragItem,
-                        isActive && styles.dragItem__active,
-                        isSelected && warmupMode && styles.dragItem__selectedWarmup,
-                        isSelected && failureMode && styles.dragItem__selectedFailure,
-                        isSelected && dropsetMode && styles.dragItem__selectedDropset,
-                        isSelected && !warmupMode && !failureMode && !dropsetMode && styles.dragItem__selected,
-                        set.dropSetId && styles.dragItem__dropset,
-                    ]}
-                >
-                    <View
-                        ref={(ref) => {
-                            if (ref) {
-                                badgeRefs.current.set(set.id, ref);
-                            } else {
-                                badgeRefs.current.delete(set.id);
-                            }
-                        }}
-                    >
-                        <TouchableOpacity
-                            style={[
-                                styles.setIndexBadge,
-                                set.isWarmup && styles.setIndexBadge__warmup,
-                                set.isFailure && styles.setIndexBadge__failure,
-                            ]}
-                            onPress={(e) => {
-                                e.stopPropagation();
-                                // Cycle through: Normal -> Warmup -> Failure -> Normal
-                                if (set.isWarmup) {
-                                    // Currently warmup, switch to failure
-                                    onUpdateSet(set.id, {
-                                        isWarmup: false,
-                                        isFailure: true,
-                                    });
-                                } else if (set.isFailure) {
-                                    // Currently failure, switch to normal
-                                    onUpdateSet(set.id, {
-                                        isFailure: false,
-                                        isWarmup: false,
-                                    });
-                                } else {
-                                    // Currently normal, switch to warmup
-                                    onUpdateSet(set.id, {
-                                        isWarmup: true,
-                                        isFailure: false,
-                                    });
-                                }
-                            }}
-                        >
-                            {isSubIndex ? (
-                                <Text style={[
-                                    styles.setIndexText__groupSub,
-                                    set.isWarmup && styles.setIndexText__groupSub__warmup,
-                                    set.isFailure && styles.setIndexText__groupSub__failure,
-                                ]}>
-                                    {displayIndexText}
-                                </Text>
-                            ) : (
-                                <Text style={[
-                                    styles.setIndexText,
-                                    set.isWarmup && styles.setIndexText__warmup,
-                                    set.isFailure && styles.setIndexText__failure,
-                                ]}>
-                                    {displayIndexText}
-                                </Text>
-                            )}
-                        </TouchableOpacity>
-                    </View>
-
-                    <View style={styles.setInfo}>
-                        {category === 'Lifts' ? (
-                            <Text style={styles.setInfoText}>
-                                {set.weight || '-'} {weightUnit} × {set.reps || '-'}
-                            </Text>
-                        ) : category === 'Cardio' ? (
-                            <Text style={styles.setInfoText}>
-                                {set.duration || '-'} / {set.distance || '-'}
-                            </Text>
-                        ) : (
-                            <Text style={styles.setInfoText}>
-                                {set.reps || '-'} reps
-                            </Text>
-                        )}
-                    </View>
-
-                    {restTimerInputOpen ? (
-                        <View style={styles.restTimerAndCheckboxContainer}>
-                            <View
-                                style={[
-                                    styles.restTimerBadge,
-                                    !setItemData.hasRestTimer && styles.restTimerBadge__add,
-                                    setItemData.hasRestTimer 
-                                        ? styles.restTimerBadge__disabled__withTimer 
-                                        : styles.restTimerBadge__disabled__noTimer
-                                ]}
-                            >
-                                {(() => {
-                                    const isSelected = restTimerSelectedSetIds.has(set.id);
-                                    const previewSeconds = isSelected && restTimerInputString 
-                                        ? parseRestTimeInput(restTimerInputString) 
-                                        : null;
-                                    const hasPreviewValue = previewSeconds !== null && previewSeconds > 0;
-                                    const hasRestTimer = !!set.restPeriodSeconds;
-                                    const displayValue = hasPreviewValue
-                                        ? formatRestTime(previewSeconds)
-                                        : (hasRestTimer
-                                            ? formatRestTime(set.restPeriodSeconds!)
-                                            : 'rest');
-                                    const showTimerIcon = hasPreviewValue || hasRestTimer;
-                                    
-                                    return (
-                                        <>
-                                            <Timer 
-                                                size={12} 
-                                                color={showTimerIcon ? COLORS.blue[500] : 'transparent'} 
-                                            />
-                                            <Text style={[
-                                                styles.restTimerText,
-                                                !hasRestTimer && !hasPreviewValue && styles.restTimerText__add,
-                                                (hasRestTimer || hasPreviewValue)
-                                                    ? styles.restTimerText__disabledWithTimer 
-                                                    : styles.restTimerText__disabled__noTimer
-                                            ]}>
-                                                {displayValue}
-                                            </Text>
-                                        </>
-                                    );
-                                })()}
-                            </View>
-                            <View style={styles.checkboxContainer}>
-                                {restTimerSelectedSetIds.has(set.id) ? (
-                                    <Check size={20} color={COLORS.blue[600]} strokeWidth={3} />
-                                ) : (
-                                    <Square size={20} color={COLORS.slate[400]} />
-                                )}
-                            </View>
-                        </View>
-                    ) : addTimerMode ? (
-                        <View style={styles.checkboxContainer}>
-                            {restTimerSelectedSetIds.has(set.id) ? (
-                                <Check size={20} color={COLORS.blue[600]} strokeWidth={3} />
-                            ) : (
-                                <Square size={20} color={COLORS.slate[400]} />
-                            )}
-                        </View>
-                    ) : warmupMode ? (
-                        <View style={styles.checkboxContainer}>
-                            {warmupSelectedSetIds.has(set.id) ? (
-                                <Check size={20} color={COLORS.orange[600]} strokeWidth={3} />
-                            ) : (
-                                <Square size={20} color={COLORS.slate[400]} />
-                            )}
-                        </View>
-                    ) : failureMode ? (
-                        <View style={styles.checkboxContainer}>
-                            {failureSelectedSetIds.has(set.id) ? (
-                                <Check size={20} color={COLORS.red[600]} strokeWidth={3} />
-                            ) : (
-                                <Square size={20} color={COLORS.slate[400]} />
-                            )}
-                        </View>
-                    ) : dropsetMode ? (
-                        <View style={styles.checkboxContainer}>
-                            {isUngroupedSet ? (
-                                dropsetSelectedSetIds.has(set.id) ? (
-                                    <Check size={20} color={COLORS.indigo[600]} strokeWidth={3} />
-                                ) : (
-                                    <Square size={20} color={COLORS.slate[400]} />
-                                )
-                            ) : (
-                                <View style={{ width: 20, height: 20 }} />
-                            )}
-                        </View>
-                    ) : (
-                        <>
-                            <TouchableOpacity
-                                onPress={(e) => {
-                                    e.stopPropagation();
-                                    if (set.dropSetId) {
-                                        // Set is in a dropset, remove only this set from the dropset
-                                        handleUngroupDropset(set.id);
-                                    } else {
-                                        // Set is not in a dropset, enter dropset mode with this set selected
-                                        const newSet = new globalThis.Set<string>();
-                                        newSet.add(set.id);
-                                        setDropsetSelectedSetIds(newSet);
-                                        handleEnterDropsetMode();
-                                    }
-                                }}
-                                style={styles.dropsetIconButton}
-                            >
-                                <TrendingDown 
-                                    size={14} 
-                                    color={set.dropSetId ? COLORS.indigo[600] : COLORS.slate[400]} 
-                                />
-                            </TouchableOpacity>
-                            {set.completed && (
-                                <View style={styles.completedIndicatorWrapper}>
-                                    <Check size={14} color={COLORS.green[500]} />
-                                </View>
-                            )}
-
-                            <TouchableOpacity
-                                onPress={() => {
-                                    const currentValue = set.restPeriodSeconds
-                                        ? set.restPeriodSeconds.toString()
-                                        : '';
-                                    setRestTimerInputString(currentValue);
-                                    setRestTimerInput({
-                                        setId: set.id,
-                                        currentValue,
-                                    });
-                                }}
-                                style={[
-                                    styles.restTimerBadge,
-                                    !set.restPeriodSeconds && styles.restTimerBadge__add
-                                ]}
-                            >
-                                <Timer size={12} color={set.restPeriodSeconds ? COLORS.blue[500] : COLORS.slate[400]} />
-                                <Text style={[
-                                    styles.restTimerText,
-                                    !set.restPeriodSeconds && styles.restTimerText__add
-                                ]}>
-                                    {set.restPeriodSeconds
-                                        ? formatRestTime(set.restPeriodSeconds)
-                                        : 'rest'
-                                    }
-                                </Text>
-                            </TouchableOpacity>
-                        </>
-                    )}
-
-                    {set.dropSetId && !isActive && (
-                        <View style={styles.dropSetIndicator} />
-                    )}
-                </TouchableOpacity>
-            </SwipeToDelete>
+            <SetRowItem
+                set={set}
+                setId={setId}
+                displayIndexText={indexInfo.displayIndexText}
+                isSubIndex={indexInfo.isSubIndex}
+                isActive={isActive}
+                isDragging={isDragging}
+                category={category}
+                weightUnit={weightUnit}
+                hasRestTimer={!!set.restPeriodSeconds}
+                selectionMode={currentSelectionMode}
+                isSelected={isSelected}
+                isUngroupedSet={isUngroupedSet}
+                showTrash={showTrash}
+                timerPreviewFormatted={showTimerPreview ? timerPreview.formatted : null}
+                drag={drag}
+                onDelete={handleDelete}
+                onShowTrash={handleShowTrash}
+                onCloseTrash={handleCloseTrash}
+                onToggleSelection={handleToggleSelection}
+                onCycleSetType={handleCycleSetType}
+                onOpenRestTimerInput={handleOpenRestTimerInput}
+                onToggleDropset={handleToggleDropset}
+                onBadgeRef={handleBadgeRef}
+            />
         );
-    }, [exercise, localDragItems, renderDropSetHeader, renderDropSetFooter, addTimerMode, restTimerInputOpen, restTimerSelectedSetIds, restTimerInputString, warmupMode, warmupSelectedSetIds, failureMode, failureSelectedSetIds, dropsetMode, dropsetSelectedSetIds, collapsedDropsetId, swipedItemId, handleDeleteSet, closeTrashIcon, isDragging, badgeRefs, modalContainerRef, setSwipedItemId, setRestTimerSelectedSetIds, setWarmupSelectedSetIds, setFailureSelectedSetIds, setDropsetSelectedSetIds, setRestTimerInput, setRestTimerInputString, onUpdateSet, handleUngroupDropset, handleEnterDropsetMode, formatRestTime, parseRestTimeInput]);
+    }, [
+        // Minimal dependencies - only what's needed to compute row props
+        exercise?.category, exercise?.weightUnit,
+        displayIndexMap,
+        renderDropSetHeader, renderDropSetFooter,
+        currentSelectionMode,
+        restTimerSelectedSetIds, warmupSelectedSetIds, failureSelectedSetIds, dropsetSelectedSetIds,
+        collapsedDropsetId,
+        swipedItemId,
+        isDragging,
+        timerPreview,
+        badgeRefs,
+    ]);
 
     const keyExtractor = useCallback((item: CollapsibleSetDragListItem) => {
         if (isSetDragItem(item) || isDropSetHeaderItem(item) || isDropSetFooterItem(item)) {
