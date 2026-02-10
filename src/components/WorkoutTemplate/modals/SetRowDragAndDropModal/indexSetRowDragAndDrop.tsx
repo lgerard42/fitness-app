@@ -207,6 +207,7 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
         isDragging,
         exercise,
         addTimerMode,
+        restTimerInputOpen: !!restTimerInput,
         restTimerSelectedSetIds,
         swipedItemId,
         setIndexPopup,
@@ -517,36 +518,6 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                             );
                         })()}
 
-                        {/* Rest Timer Input Popup - Shows parsed time while keyboard is open */}
-                        {restTimerInput && (
-                            <Pressable
-                                onPress={() => {
-                                    // Don't close if in addTimerMode - let user select sets
-                                    if (addTimerMode) return;
-                                    setRestTimerInput(null);
-                                    setRestTimerInputString('');
-                                    setRestTimerSelectedSetIds(new globalThis.Set());
-                                }}
-                                style={styles.restTimerInputOverlay}
-                            >
-                                <Pressable
-                                    onPress={(e) => e.stopPropagation()}
-                                    style={styles.restTimerInputContainer}
-                                >
-                                    <View style={styles.restTimerInputContent}>
-                                        <View style={styles.restTimerInputDisplay}>
-                                            <Text style={styles.restTimerInputDisplayText}>
-                                                {restTimerInputString
-                                                    ? formatRestTime(parseRestTimeInput(restTimerInputString))
-                                                    : '0:00'
-                                                }
-                                            </Text>
-                                        </View>
-                                    </View>
-                                </Pressable>
-                            </Pressable>
-                        )}
-
                         <View style={styles.footer}>
                             {addTimerMode ? (
                                 <View style={styles.footerButtonsRow}>
@@ -604,6 +575,11 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                     restTimerInput={restTimerInputString}
                     setRestTimerInput={setRestTimerInputString}
                     restPeriodSetInfo={restPeriodSetInfoMemo}
+                    showDisplayAtTop={true}
+                    displayValue={restTimerInputString
+                        ? formatRestTime(parseRestTimeInput(restTimerInputString))
+                        : '0:00'
+                    }
                     currentWorkout={{
                         id: '',
                         name: '',
@@ -840,51 +816,6 @@ const styles = StyleSheet.create({
     checkboxContainer: {
         padding: 8,
         marginLeft: 8,
-    },
-    restTimerInputOverlay: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'center',
-        alignItems: 'stretch',
-        zIndex: 998,
-        elevation: 8,
-    },
-    restTimerInputContainer: {
-        top: 168,
-        backgroundColor: COLORS.white,
-        width: '100%',
-        marginHorizontal: 0,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.25,
-        shadowRadius: 8,
-        elevation: 10,
-        borderTopRightRadius: 16,
-        borderTopLeftRadius: 16,
-    },
-    restTimerInputContent: {
-        padding: 0,
-    },
-    restTimerInputDisplay: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 10,
-        paddingHorizontal: 16,
-        backgroundColor: COLORS.blue[100],
-        borderTopRightRadius: 12,
-        borderTopLeftRadius: 12,
-        borderWidth: 4,
-        borderBottomWidth: 0,
-        borderColor: COLORS.slate[800],
-    },
-    restTimerInputDisplayText: {
-        fontSize: 36,
-        fontWeight: 'bold',
-        color: COLORS.blue[600],
     },
     // Drag-related styles moved to SetRowDragAndDrop.tsx
     addSetButton: {

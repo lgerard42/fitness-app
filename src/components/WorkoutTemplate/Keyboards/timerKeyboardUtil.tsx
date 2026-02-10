@@ -19,6 +19,8 @@ export interface TimerKeyboardProps {
   onSetSelectionMode?: (enabled: boolean) => void;
   selectedSetIds?: globalThis.Set<string>;
   onToggleSetSelection?: (exerciseId: string, setId: string) => void;
+  showDisplayAtTop?: boolean; // If true, show formatted time display at top of keyboard
+  displayValue?: string; // Formatted time string to display at top
 }
 
 export const TimerKeyboard: React.FC<TimerKeyboardProps> = ({
@@ -35,6 +37,8 @@ export const TimerKeyboard: React.FC<TimerKeyboardProps> = ({
   onSetSelectionMode,
   selectedSetIds = new Set(),
   onToggleSetSelection,
+  showDisplayAtTop = false,
+  displayValue,
 }) => {
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const lastInputRef = useRef<string>('');
@@ -248,6 +252,14 @@ export const TimerKeyboard: React.FC<TimerKeyboardProps> = ({
 
   return (
     <View style={styles.container}>
+      {/* Display at top (only shown when showDisplayAtTop is true) */}
+      {showDisplayAtTop && (
+        <View style={styles.displayContainer}>
+          <Text style={styles.displayText}>
+            {displayValue || '0:00'}
+          </Text>
+        </View>
+      )}
       {/* Number Pad - Row 1 */}
       <View style={styles.row}>
         {['1', '2', '3'].map(key => (
@@ -370,6 +382,23 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     zIndex: 1001,
     elevation: 11,
+  },
+  displayContainer: {
+    backgroundColor: COLORS.slate[100],
+    paddingVertical: 4,
+    paddingHorizontal: 16,
+    marginBottom: 8,
+    marginHorizontal: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderColor: COLORS.blue[600],
+    borderWidth: 2,
+    borderRadius: 8,
+  },
+  displayText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: COLORS.blue[600],
   },
   row: {
     flexDirection: 'row',

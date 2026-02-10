@@ -28,6 +28,7 @@ interface SetRowDragAndDropProps {
     isDragging: boolean;
     exercise: Exercise | null;
     addTimerMode: boolean;
+    restTimerInputOpen: boolean; // true when rest timer keyboard/popup is open (show selected styling for pre-selected sets)
     restTimerSelectedSetIds: globalThis.Set<string>;
     swipedItemId: string | null;
     setIndexPopup: (popup: { setId: string; top: number; left: number } | null) => void;
@@ -49,6 +50,7 @@ export const useSetRowDragAndDrop = ({
     isDragging,
     exercise,
     addTimerMode,
+    restTimerInputOpen,
     restTimerSelectedSetIds,
     swipedItemId,
     setIndexPopup,
@@ -261,13 +263,13 @@ export const useSetRowDragAndDrop = ({
             displayIndexText = overallSetNumber.toString();
         }
 
-        const isSelected = addTimerMode && restTimerSelectedSetIds.has(set.id);
+        const isSelected = (addTimerMode || restTimerInputOpen) && restTimerSelectedSetIds.has(set.id);
         const showTrash = swipedItemId === set.id;
 
         return (
             <SwipeToDelete
                 onDelete={() => handleDeleteSet(set.id)}
-                disabled={isActive || addTimerMode || isDragging}
+                disabled={isActive || addTimerMode || restTimerInputOpen || isDragging}
                 itemId={set.id}
                 isTrashVisible={showTrash}
                 onShowTrash={() => setSwipedItemId(set.id)}
@@ -280,7 +282,7 @@ export const useSetRowDragAndDrop = ({
                     delayLongPress={100}
                     disabled={isActive}
                     activeOpacity={1}
-                    onPress={addTimerMode ? () => {
+                    onPress={addTimerMode && !restTimerInputOpen ? () => {
                         // Close trash if visible
                         if (swipedItemId) {
                             closeTrashIcon();
@@ -374,7 +376,7 @@ export const useSetRowDragAndDrop = ({
                         )}
                     </View>
 
-                    {addTimerMode ? (
+                    {(addTimerMode || restTimerInputOpen) ? (
                         <View style={styles.checkboxContainer}>
                             {restTimerSelectedSetIds.has(set.id) ? (
                                 <Check size={20} color={COLORS.blue[600]} strokeWidth={3} />
@@ -434,7 +436,7 @@ export const useSetRowDragAndDrop = ({
                 </TouchableOpacity>
             </SwipeToDelete>
         );
-    }, [exercise, localDragItems, renderDropSetHeader, renderDropSetFooter, addTimerMode, restTimerSelectedSetIds, collapsedDropsetId, swipedItemId, handleDeleteSet, closeTrashIcon, isDragging, badgeRefs, modalContainerRef, setIndexPopup, setSwipedItemId, setRestTimerSelectedSetIds, setRestTimerInput, setRestTimerInputString, formatRestTime]);
+    }, [exercise, localDragItems, renderDropSetHeader, renderDropSetFooter, addTimerMode, restTimerInputOpen, restTimerSelectedSetIds, collapsedDropsetId, swipedItemId, handleDeleteSet, closeTrashIcon, isDragging, badgeRefs, modalContainerRef, setIndexPopup, setSwipedItemId, setRestTimerSelectedSetIds, setRestTimerInput, setRestTimerInputString, formatRestTime]);
 
     const keyExtractor = useCallback((item: CollapsibleSetDragListItem) => item.id, []);
 
