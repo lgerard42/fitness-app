@@ -3,7 +3,7 @@ import { TouchableOpacity, Text, StyleSheet } from 'react-native';
 import type { NavigationProp, RouteProp } from '@react-navigation/native';
 import { COLORS } from '@/constants/colors';
 import { useWorkout } from '@/context/WorkoutContext';
-import WorkoutTemplate from '@/components/WorkoutTemplate/WorkoutTemplateIndex';
+import WorkoutTemplate from '@/components/WorkoutTemplate/indexWorkoutTemplate';
 import WorkoutHeader from '@/components/WorkoutTemplate/WorkoutHeader';
 import type { Workout } from '@/types/workout';
 

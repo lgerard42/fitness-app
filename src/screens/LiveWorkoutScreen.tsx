@@ -1,6 +1,6 @@
 import React from 'react';
 import type { NavigationProp } from '@react-navigation/native';
-import WorkoutTemplate from '@/components/WorkoutTemplate/WorkoutTemplateIndex';
+import WorkoutTemplate from '@/components/WorkoutTemplate/indexWorkoutTemplate';
 import { useWorkout } from '@/context/WorkoutContext';
 
 interface LiveWorkoutScreenProps {
