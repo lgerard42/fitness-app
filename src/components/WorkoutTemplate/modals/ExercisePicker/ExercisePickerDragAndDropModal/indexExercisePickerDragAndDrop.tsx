@@ -430,6 +430,8 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
   const [showSetDragModal, setShowSetDragModal] = useState(false);
   const [exerciseForSetDrag, setExerciseForSetDrag] = useState<ExerciseItem | null>(null);
   const [setDragItems, setSetDragItems] = useState<SetDragListItem[]>([]);
+  const [initialAddTimerMode, setInitialAddTimerMode] = useState(false);
+  const [initialSelectedSetIds, setInitialSelectedSetIds] = useState<string[]>([]);
 
   const buttonRefsMap = useRef<Map<string, any>>(new Map());
   const prevVisibleRef = useRef(visible);
@@ -1044,11 +1046,79 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
 
     setSetDragItems(items);
     setExerciseForSetDrag(exerciseItem);
+    setInitialAddTimerMode(false);
+    setInitialSelectedSetIds([]);
     setShowSetDragModal(true);
     setShowEditModal(false);
     setExerciseToEdit(null);
     setClickedSetGroupId(null);
     setEditDropdownPosition(null);
+  }, [convertSetGroupsToSets]);
+
+  // Handle opening SetDragModal in addTimerMode for a specific setGroup
+  const handleOpenTimerForSetGroup = useCallback((exerciseItem: ExerciseItem, setGroupId: string) => {
+    const sets = convertSetGroupsToSets(exerciseItem);
+
+    // Find the setGroup to get its count
+    const setGroup = exerciseItem.setGroups.find(sg => sg.id === setGroupId);
+    if (!setGroup) return;
+
+    // Get all set IDs that belong to this setGroup
+    // Set IDs are formatted as `${setGroup.id}-${i}` where i is 0 to count-1
+    const setIdsForGroup: string[] = [];
+    for (let i = 0; i < setGroup.count; i++) {
+      const setId = `${setGroup.id}-${i}`;
+      setIdsForGroup.push(setId);
+    }
+
+    // Convert Sets to SetDragListItem format (same as handleEditSets)
+    const items: SetDragListItem[] = [];
+    const processedDropSetIds = new Set<string>();
+
+    sets.forEach((set, index) => {
+      // Check if this is the start of a new dropset
+      const isDropSetStart = set.dropSetId &&
+        (index === 0 || sets[index - 1].dropSetId !== set.dropSetId);
+
+      // Check if this is the end of a dropset
+      const isDropSetEnd = set.dropSetId &&
+        (index === sets.length - 1 || sets[index + 1]?.dropSetId !== set.dropSetId);
+
+      // Add dropset header if this is the start
+      if (isDropSetStart && set.dropSetId && !processedDropSetIds.has(set.dropSetId)) {
+        const dropSetSets = sets.filter(s => s.dropSetId === set.dropSetId);
+        items.push({
+          id: `dropset-header-${set.dropSetId}`,
+          type: 'dropset_header',
+          dropSetId: set.dropSetId,
+          setCount: dropSetSets.length,
+        });
+        processedDropSetIds.add(set.dropSetId);
+      }
+
+      // Add the set itself
+      items.push({
+        id: set.id,
+        type: 'set',
+        set,
+        hasRestTimer: !!set.restPeriodSeconds,
+      });
+
+      // Add dropset footer if this is the end
+      if (isDropSetEnd && set.dropSetId) {
+        items.push({
+          id: `dropset-footer-${set.dropSetId}`,
+          type: 'dropset_footer',
+          dropSetId: set.dropSetId,
+        });
+      }
+    });
+
+    setSetDragItems(items);
+    setExerciseForSetDrag(exerciseItem);
+    setInitialAddTimerMode(true);
+    setInitialSelectedSetIds(setIdsForGroup);
+    setShowSetDragModal(true);
   }, [convertSetGroupsToSets]);
 
   const handleToggleWarmup = useCallback((exerciseItem: ExerciseItem, setGroupId: string) => {
@@ -1196,6 +1266,8 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
     setShowSetDragModal(false);
     setExerciseForSetDrag(null);
     setSetDragItems([]);
+    setInitialAddTimerMode(false);
+    setInitialSelectedSetIds([]);
   }, []);
 
   const handleSetDragSave = useCallback(() => {
@@ -1230,6 +1302,8 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
     setShowSetDragModal(false);
     setExerciseForSetDrag(null);
     setSetDragItems([]);
+    setInitialAddTimerMode(false);
+    setInitialSelectedSetIds([]);
   }, [exerciseForSetDrag, setDragItems, convertSetsToSetGroups]);
 
   const handleCreateDropset = useCallback((setId: string) => {
@@ -1707,6 +1781,12 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           <View style={styles.exerciseRight}>
             <View style={styles.setControls}>
               <TouchableOpacity
+                onPress={() => {
+                  if (swipedItemId) {
+                    closeTrashIcon();
+                  }
+                  handleOpenTimerForSetGroup(item, setGroup.id);
+                }}
                 disabled={isActive}
                 style={[
                   styles.setControlButton,
@@ -2145,6 +2225,12 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
                         {!isSelectionMode && (
                           <View style={styles.setControls}>
                             <TouchableOpacity
+                              onPress={() => {
+                                if (swipedItemId) {
+                                  closeTrashIcon();
+                                }
+                                handleOpenTimerForSetGroup(item, setGroup.id);
+                              }}
                               disabled={isActive}
                               style={[
                                 styles.setControlButton,
@@ -2640,6 +2726,8 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
               onAddSet={handleAddSet}
               onUpdateRestTimer={handleUpdateRestTimer}
               onUpdateRestTimerMultiple={handleUpdateRestTimerMultiple}
+              initialAddTimerMode={initialAddTimerMode}
+              initialSelectedSetIds={initialSelectedSetIds}
             />
           )}
 

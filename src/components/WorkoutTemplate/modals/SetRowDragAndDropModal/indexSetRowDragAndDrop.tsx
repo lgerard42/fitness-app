@@ -32,6 +32,8 @@ interface SetDragModalProps {
     onAddSet: () => void;
     onUpdateRestTimer: (setId: string, restPeriodSeconds: number | undefined) => void;
     onUpdateRestTimerMultiple: (setIds: string[], restPeriodSeconds: number | undefined) => void;
+    initialAddTimerMode?: boolean; // If true, open in addTimerMode with pre-selected sets
+    initialSelectedSetIds?: string[]; // Set IDs to pre-select when opening in addTimerMode
 }
 
 const SetDragModal: React.FC<SetDragModalProps> = ({
@@ -46,6 +48,8 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
     onAddSet,
     onUpdateRestTimer,
     onUpdateRestTimerMultiple,
+    initialAddTimerMode = false,
+    initialSelectedSetIds = [],
 }) => {
     const [indexPopup, setIndexPopup] = useState<{ setId: string; top: number; left: number } | null>(null);
     const [restTimerInput, setRestTimerInput] = useState<{ setId: string; currentValue: string } | null>(null);
@@ -61,18 +65,62 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
     const modalContainerRef = useRef<View>(null as any);
 
     // Sync local drag items with parent when not in collapsed state
+    // Don't sync while timer keyboard is open to prevent clearing input
     useEffect(() => {
-        if (!collapsedDropsetId) {
+        if (!collapsedDropsetId && !restTimerInput) {
             setLocalDragItems(setDragItems as CollapsibleSetDragListItem[]);
         }
-    }, [setDragItems, collapsedDropsetId]);
+    }, [setDragItems, collapsedDropsetId, restTimerInput]);
 
     // Reset swipe state when modal closes
     useEffect(() => {
         if (!visible) {
             setSwipedItemId(null);
+            setAddTimerMode(false);
+            setRestTimerSelectedSetIds(new globalThis.Set());
         }
     }, [visible]);
+
+    // Initialize addTimerMode when opening with initialAddTimerMode
+    const hasInitializedRef = useRef(false);
+    useEffect(() => {
+        if (visible && initialAddTimerMode && initialSelectedSetIds.length > 0 && localDragItems.length > 0 && !hasInitializedRef.current) {
+            // Pre-select all sets from the setGroup immediately
+            const selectedSetIds = new globalThis.Set<string>();
+            initialSelectedSetIds.forEach(id => {
+                // Verify the set exists in localDragItems
+                if (localDragItems.some(item => 
+                    isSetDragItem(item) && (item as any).id === id
+                )) {
+                    selectedSetIds.add(id);
+                }
+            });
+            
+            if (selectedSetIds.size > 0) {
+                // Set the selected sets immediately
+                setRestTimerSelectedSetIds(selectedSetIds);
+                
+                // Find the first set ID that exists in the drag items to open keyboard for
+                const firstSetId = initialSelectedSetIds.find(setId => {
+                    return localDragItems.some(item => 
+                        isSetDragItem(item) && (item as any).id === setId
+                    );
+                });
+
+                if (firstSetId) {
+                    // Open timer keyboard for the first set
+                    setRestTimerInput({ setId: firstSetId, currentValue: '' });
+                    setRestTimerInputString('');
+                }
+            }
+            hasInitializedRef.current = true;
+        }
+        
+        // Reset the flag when modal closes
+        if (!visible) {
+            hasInitializedRef.current = false;
+        }
+    }, [visible, initialAddTimerMode, initialSelectedSetIds, localDragItems]);
 
     // Effect to fire pending drag after collapse
     useEffect(() => {
@@ -570,25 +618,50 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                         startedAt: Date.now(),
                         exercises: exercise ? [{
                             ...exercise,
-                            sets: exercise.sets.map((s: Set) => ({
-                                ...s,
-                                restPeriodSeconds: s.id === restTimerInput?.setId && restTimerInputString
-                                    ? parseRestTimeInput(restTimerInputString) > 0
-                                        ? parseRestTimeInput(restTimerInputString)
-                                        : undefined
-                                    : s.restPeriodSeconds,
-                            })),
+                            sets: (() => {
+                                // Use sets from localDragItems instead of exercise.sets
+                                // to ensure IDs match what's actually in the modal
+                                const setsFromDragItems: Set[] = [];
+                                localDragItems.forEach(item => {
+                                    if (isSetDragItem(item)) {
+                                        const set = (item as unknown as SetDragItem).set;
+                                        setsFromDragItems.push({
+                                            ...set,
+                                            restPeriodSeconds: set.id === restTimerInput?.setId && restTimerInputString
+                                                ? parseRestTimeInput(restTimerInputString) > 0
+                                                    ? parseRestTimeInput(restTimerInputString)
+                                                    : undefined
+                                                : set.restPeriodSeconds,
+                                        });
+                                    }
+                                });
+                                return setsFromDragItems.length > 0 ? setsFromDragItems : exercise.sets.map((s: Set) => ({
+                                    ...s,
+                                    restPeriodSeconds: s.id === restTimerInput?.setId && restTimerInputString
+                                        ? parseRestTimeInput(restTimerInputString) > 0
+                                            ? parseRestTimeInput(restTimerInputString)
+                                            : undefined
+                                        : s.restPeriodSeconds,
+                                }));
+                            })(),
                         }] : [],
                         date: new Date().toISOString(),
                     }}
                     handleWorkoutUpdate={(workout: any) => {
-                        // Only handle single-set auto-updates as the user types
+                        // Only handle auto-updates as the user types
                         if (!restTimerInput || addTimerMode) return;
                         const exerciseItem = workout.exercises[0];
                         if (exerciseItem && exerciseItem.type === 'exercise') {
                             const updatedSet = exerciseItem.sets.find((s: Set) => s.id === restTimerInput.setId);
                             if (updatedSet) {
-                                onUpdateRestTimer(restTimerInput.setId, updatedSet.restPeriodSeconds);
+                                // If we have multiple sets pre-selected, update all of them
+                                if (restTimerSelectedSetIds.size > 0) {
+                                    const selectedIdsArray = Array.from(restTimerSelectedSetIds);
+                                    onUpdateRestTimerMultiple(selectedIdsArray, updatedSet.restPeriodSeconds);
+                                } else {
+                                    // Otherwise, just update the single set
+                                    onUpdateRestTimer(restTimerInput.setId, updatedSet.restPeriodSeconds);
+                                }
                             }
                         }
                     }}
@@ -609,8 +682,24 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                     onSetSelectionMode={(enabled: boolean) => {
                         if (enabled) {
                             // Enter addTimerMode: close keyboard and popup, enter selection mode
-                            // Auto-select the original set before closing
-                            if (restTimerInput) {
+                            // If sets are already pre-selected (from initialAddTimerMode), keep them
+                            // Otherwise, if we have initialSelectedSetIds, auto-select all those sets
+                            // Otherwise, auto-select just the original set from restTimerInput
+                            if (restTimerSelectedSetIds.size > 0) {
+                                // Sets already pre-selected, keep them
+                            } else if (initialSelectedSetIds.length > 0) {
+                                // Auto-select all sets from the setGroup
+                                const selectedSetIds = new globalThis.Set<string>();
+                                initialSelectedSetIds.forEach(id => {
+                                    // Verify the set exists in localDragItems
+                                    if (localDragItems.some(item => 
+                                        isSetDragItem(item) && (item as any).id === id
+                                    )) {
+                                        selectedSetIds.add(id);
+                                    }
+                                });
+                                setRestTimerSelectedSetIds(selectedSetIds);
+                            } else if (restTimerInput) {
                                 const newSet = new globalThis.Set<string>();
                                 newSet.add(restTimerInput.setId);
                                 setRestTimerSelectedSetIds(newSet);
