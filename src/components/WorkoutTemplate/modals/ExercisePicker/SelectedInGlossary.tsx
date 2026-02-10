@@ -8,7 +8,7 @@ import ExerciseListItem from './ExerciseListItem/ExerciseListItemIndex';
 import ExerciseTags from './ExerciseListItem/ExerciseTags';
 import UnselectedListScrollbar from './UnselectedListScrollbar';
 import type { ExerciseLibraryItem } from '@/types/workout';
-import type { SetGroup } from './DragAndDropModal';
+import type { SetGroup } from '@/utils/workoutInstanceHelpers';
 
 interface SelectedInGlossaryProps {
   exercises: ExerciseLibraryItem[];

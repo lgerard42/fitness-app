@@ -33,7 +33,7 @@ import RestTimerBar from './components/RestTimerBar';
 import { TimerKeyboard } from './Keyboards/timerKeyboardUtil';
 import ActiveRestTimerPopup from './modals/ActiveRestTimerPopup';
 import CustomNumberKeyboard from './modals/CustomNumberKeyboard';
-import SetDragModal from './modals/SetDragModal';
+import SetDragModal from './modals/SetRowDragAndDropModal/indexSetRowDragAndDrop';
 import WorkoutModals from './components/WorkoutModals';
 import SetRowHeadersPopup from './components/SetRowHeadersPopup/SetRowHeadersPopup';
 import { useSetDragAndDrop } from './hooks/useSetDragAndDrop';

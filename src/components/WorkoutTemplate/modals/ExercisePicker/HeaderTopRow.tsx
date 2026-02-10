@@ -3,7 +3,8 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { X, Plus } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { Z_INDEX, PADDING, BORDER_RADIUS, SPACING } from '@/constants/layout';
-import DragAndDropModal, { SetGroup } from './DragAndDropModal';
+import DragAndDropModal from './ExercisePickerDragAndDropModal/indexExercisePickerDragAndDrop';
+import type { SetGroup } from '@/utils/workoutInstanceHelpers';
 import type { ExerciseLibraryItem, GroupType } from '@/types/workout';
 
 interface ExerciseGroup {

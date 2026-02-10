@@ -1,8 +1,9 @@
 import React, { useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { RenderItemParams } from 'react-native-draggable-flatlist';
-import { GripVertical } from 'lucide-react-native';
+import { GripVertical, Timer, Flame, Zap, Check, Square } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
+import SwipeToDelete from '@/components/common/SwipeToDelete';
 import type { SetDragListItem, SetDragItem, DropSetHeaderItem, DropSetFooterItem } from '../hooks/useSetDragAndDrop';
 import type { Set, Exercise } from '@/types/workout';
 
@@ -263,9 +264,6 @@ export const useSetRowDragAndDrop = ({
         const isSelected = addTimerMode && restTimerSelectedSetIds.has(set.id);
         const showTrash = swipedItemId === set.id;
 
-        // Import SwipeToDelete dynamically to avoid circular dependencies
-        const SwipeToDelete = require('@/components/common/SwipeToDelete').default;
-
         return (
             <SwipeToDelete
                 onDelete={() => handleDeleteSet(set.id)}
@@ -376,12 +374,67 @@ export const useSetRowDragAndDrop = ({
                         )}
                     </View>
 
-                    {/* Rest of the render logic would go here - simplified for brevity */}
-                    {/* This includes timer badges, indicators, etc. */}
+                    {addTimerMode ? (
+                        <View style={styles.checkboxContainer}>
+                            {restTimerSelectedSetIds.has(set.id) ? (
+                                <Check size={20} color={COLORS.blue[600]} strokeWidth={3} />
+                            ) : (
+                                <Square size={20} color={COLORS.slate[400]} />
+                            )}
+                        </View>
+                    ) : (
+                        <>
+                            <View style={styles.setIndicators}>
+                                {set.isWarmup && (
+                                    <Flame size={14} color={COLORS.orange[500]} />
+                                )}
+                                {set.isFailure && (
+                                    <Zap size={14} color={COLORS.red[500]} />
+                                )}
+                                {set.completed && (
+                                    <View style={styles.completedIndicatorWrapper}>
+                                        <Check size={14} color={COLORS.green[500]} />
+                                    </View>
+                                )}
+                            </View>
+
+                            <TouchableOpacity
+                                onPress={() => {
+                                    const currentValue = set.restPeriodSeconds
+                                        ? set.restPeriodSeconds.toString()
+                                        : '';
+                                    setRestTimerInputString(currentValue);
+                                    setRestTimerInput({
+                                        setId: set.id,
+                                        currentValue,
+                                    });
+                                }}
+                                style={[
+                                    styles.restTimerBadge,
+                                    !setItemData.hasRestTimer && styles.restTimerBadge__add
+                                ]}
+                            >
+                                <Timer size={12} color={setItemData.hasRestTimer ? COLORS.blue[500] : COLORS.slate[400]} />
+                                <Text style={[
+                                    styles.restTimerText,
+                                    !setItemData.hasRestTimer && styles.restTimerText__add
+                                ]}>
+                                    {setItemData.hasRestTimer
+                                        ? formatRestTime(set.restPeriodSeconds!)
+                                        : '+ rest'
+                                    }
+                                </Text>
+                            </TouchableOpacity>
+                        </>
+                    )}
+
+                    {set.dropSetId && !isActive && (
+                        <View style={styles.dropSetIndicator} />
+                    )}
                 </TouchableOpacity>
             </SwipeToDelete>
         );
-    }, [exercise, localDragItems, renderDropSetHeader, renderDropSetFooter, addTimerMode, restTimerSelectedSetIds, collapsedDropsetId, swipedItemId, handleDeleteSet, closeTrashIcon, isDragging, badgeRefs, modalContainerRef, setIndexPopup, setSwipedItemId, setRestTimerSelectedSetIds]);
+    }, [exercise, localDragItems, renderDropSetHeader, renderDropSetFooter, addTimerMode, restTimerSelectedSetIds, collapsedDropsetId, swipedItemId, handleDeleteSet, closeTrashIcon, isDragging, badgeRefs, modalContainerRef, setIndexPopup, setSwipedItemId, setRestTimerSelectedSetIds, setRestTimerInput, setRestTimerInputString, formatRestTime]);
 
     const keyExtractor = useCallback((item: CollapsibleSetDragListItem) => item.id, []);
 
@@ -390,6 +443,261 @@ export const useSetRowDragAndDrop = ({
         renderDropSetHeader,
         renderDropSetFooter,
         keyExtractor,
+    };
+};
+
+// Export helper functions for drag-and-drop operations
+export const collapseDropset = (items: CollapsibleSetDragListItem[], dropsetId: string): CollapsibleSetDragListItem[] => {
+    return items.map(item => {
+        if (item.type === 'set' && item.set.dropSetId === dropsetId) {
+            return { ...item, isCollapsed: true };
+        }
+        if (item.type === 'dropset_header' && item.dropSetId === dropsetId) {
+            return { ...item, isCollapsed: true };
+        }
+        if (item.type === 'dropset_footer' && item.dropSetId === dropsetId) {
+            return { ...item, isCollapsed: true };
+        }
+        return item;
+    });
+};
+
+export const collapseAllOtherDropsets = (items: CollapsibleSetDragListItem[], draggedDropsetId: string): CollapsibleSetDragListItem[] => {
+    const otherDropsetIds = new globalThis.Set<string>();
+    items.forEach(item => {
+        if (item.type === 'set' && item.set.dropSetId && item.set.dropSetId !== draggedDropsetId) {
+            otherDropsetIds.add(item.set.dropSetId);
+        }
+    });
+
+    return items.map(item => {
+        if (item.type === 'set' && item.set.dropSetId && otherDropsetIds.has(item.set.dropSetId)) {
+            return { ...item, isCollapsed: true };
+        }
+        if (item.type === 'dropset_header' && otherDropsetIds.has(item.dropSetId)) {
+            return { ...item, isCollapsed: true };
+        }
+        if (item.type === 'dropset_footer' && otherDropsetIds.has(item.dropSetId)) {
+            return { ...item, isCollapsed: true };
+        }
+        return item;
+    });
+};
+
+export const expandAllDropsets = (items: CollapsibleSetDragListItem[]): CollapsibleSetDragListItem[] => {
+    return items.map(item => {
+        if ('isCollapsed' in item && item.isCollapsed) {
+            const { isCollapsed, ...rest } = item;
+            return rest as CollapsibleSetDragListItem;
+        }
+        return item;
+    });
+};
+
+export const reconstructItemsFromSets = (sets: Set[]): CollapsibleSetDragListItem[] => {
+    const items: CollapsibleSetDragListItem[] = [];
+    const processedDropSetIds = new Set<string>();
+
+    sets.forEach((set, index) => {
+        // Check if this is the start of a new dropset
+        const isDropSetStart = set.dropSetId &&
+            (index === 0 || sets[index - 1].dropSetId !== set.dropSetId);
+
+        // Check if this is the end of a dropset
+        const isDropSetEnd = set.dropSetId &&
+            (index === sets.length - 1 || sets[index + 1]?.dropSetId !== set.dropSetId);
+
+        // Add dropset header if this is the start
+        if (isDropSetStart && set.dropSetId && !processedDropSetIds.has(set.dropSetId)) {
+            // Count sets in this dropset
+            const dropSetSets = sets.filter(s => s.dropSetId === set.dropSetId);
+            items.push({
+                id: `dropset-header-${set.dropSetId}`,
+                type: 'dropset_header',
+                dropSetId: set.dropSetId,
+                setCount: dropSetSets.length,
+            });
+            processedDropSetIds.add(set.dropSetId);
+        }
+
+        // Add the set itself
+        items.push({
+            id: set.id,
+            type: 'set',
+            set,
+            hasRestTimer: !!set.restPeriodSeconds,
+        });
+
+        // Add dropset footer if this is the end
+        if (isDropSetEnd && set.dropSetId) {
+            items.push({
+                id: `dropset-footer-${set.dropSetId}`,
+                type: 'dropset_footer',
+                dropSetId: set.dropSetId,
+            });
+        }
+    });
+
+    return items;
+};
+
+export const createHandleLocalDragEnd = (
+    collapsedDropsetId: string | null,
+    setCollapsedDropsetId: (id: string | null) => void,
+    setLocalDragItems: (items: CollapsibleSetDragListItem[]) => void,
+    onDragEnd: (params: { data: SetDragListItem[]; from: number; to: number }) => void,
+    pendingDragRef: React.MutableRefObject<(() => void) | null>
+) => {
+    return ({ data, from, to }: { data: CollapsibleSetDragListItem[]; from: number; to: number }) => {
+        let updatedData = data;
+
+        // If a dropset was collapsed (dragging a dropset as a group)
+        if (collapsedDropsetId) {
+            const draggedDropsetId = collapsedDropsetId;
+
+            // Collect all items that belong to the dragged dropset (sets and footer)
+            const dropsetSets = data.filter(
+                (item): item is CollapsibleSetDragItem =>
+                    item.type === 'set' && item.set.dropSetId === draggedDropsetId
+            );
+            const dropsetFooter = data.find(
+                item => item.type === 'dropset_footer' && item.dropSetId === draggedDropsetId
+            );
+
+            // Collect all OTHER items (not part of the dragged dropset, except the header which stays in place)
+            const otherItems = data.filter(item => {
+                if (item.type === 'dropset_header' && item.dropSetId === draggedDropsetId) {
+                    return true; // Keep header in its new position
+                }
+                if (item.type === 'set' && item.set.dropSetId === draggedDropsetId) {
+                    return false; // Remove sets (we'll re-insert them)
+                }
+                if (item.type === 'dropset_footer' && item.dropSetId === draggedDropsetId) {
+                    return false; // Remove footer (we'll re-insert it)
+                }
+                return true; // Keep all other items
+            });
+
+            // Find where the header is in the otherItems array
+            const headerIndexInOthers = otherItems.findIndex(
+                item => item.type === 'dropset_header' && item.dropSetId === draggedDropsetId
+            );
+
+            // Insert sets right after header, then footer after sets
+            const reconstructedData: CollapsibleSetDragListItem[] = [
+                ...otherItems.slice(0, headerIndexInOthers + 1),
+                ...dropsetSets,
+                ...(dropsetFooter ? [dropsetFooter] : []),
+                ...otherItems.slice(headerIndexInOthers + 1),
+            ];
+
+            // Now expand all collapsed items and clear the collapsed state
+            updatedData = expandAllDropsets(reconstructedData);
+            setCollapsedDropsetId(null);
+
+            // For dropset drags, we DON'T recalculate dropset membership - 
+            // the sets keep their original dropSetId
+            // Extract all sets in their new order, preserving dropSetId
+            const reorderedSets: Set[] = [];
+            updatedData.forEach(item => {
+                if (item.type === 'set') {
+                    reorderedSets.push(item.set);
+                }
+            });
+
+            // Reconstruct items with headers/footers from the sets
+            const reconstructedItems = reconstructItemsFromSets(reorderedSets);
+            setLocalDragItems(reconstructedItems);
+            pendingDragRef.current = null;
+
+            // Pass the reconstructed data to parent
+            onDragEnd({
+                data: reconstructedItems as SetDragListItem[],
+                from,
+                to,
+            });
+            return;
+        }
+
+        // For non-dropset drags (individual sets), determine dropset membership based on position
+        // Extract only the sets (filter out headers/footers)
+        const reorderedSets: Set[] = [];
+        updatedData.forEach(item => {
+            if (item.type === 'set') {
+                reorderedSets.push(item.set);
+            }
+        });
+
+        // Determine dropset membership based on position between headers/footers
+        const updatedSets = reorderedSets.map((set, setIndex) => {
+            // Find the position of this set in the full data array
+            let positionInFullArray = -1;
+            let setCount = 0;
+            for (let i = 0; i < updatedData.length; i++) {
+                if (updatedData[i].type === 'set') {
+                    if (setCount === setIndex) {
+                        positionInFullArray = i;
+                        break;
+                    }
+                    setCount++;
+                }
+            }
+
+            if (positionInFullArray === -1) {
+                // Fallback: keep original dropSetId
+                return { ...set };
+            }
+
+            // Look backwards to find the nearest dropset header
+            let nearestHeader: CollapsibleDropSetHeaderItem | null = null;
+            for (let i = positionInFullArray; i >= 0; i--) {
+                if (updatedData[i].type === 'dropset_header') {
+                    nearestHeader = updatedData[i] as CollapsibleDropSetHeaderItem;
+                    break;
+                }
+                if (updatedData[i].type === 'dropset_footer') {
+                    // Hit a footer before a header, so we're outside a dropset
+                    break;
+                }
+            }
+
+            // Look forwards to find the nearest dropset footer
+            let nearestFooter: CollapsibleDropSetFooterItem | null = null;
+            for (let i = positionInFullArray; i < updatedData.length; i++) {
+                if (updatedData[i].type === 'dropset_footer') {
+                    nearestFooter = updatedData[i] as CollapsibleDropSetFooterItem;
+                    break;
+                }
+                if (updatedData[i].type === 'dropset_header') {
+                    // Hit a header before a footer, so we're outside a dropset
+                    break;
+                }
+            }
+
+            // If we're between a matching header and footer, we're in that dropset
+            let newDropSetId: string | undefined = undefined;
+            if (nearestHeader && nearestFooter &&
+                nearestHeader.dropSetId === nearestFooter.dropSetId) {
+                newDropSetId = nearestHeader.dropSetId;
+            }
+
+            return {
+                ...set,
+                dropSetId: newDropSetId,
+            };
+        });
+
+        // Reconstruct items with headers/footers from the updated sets
+        const reconstructedItems = reconstructItemsFromSets(updatedSets);
+        setLocalDragItems(reconstructedItems);
+        pendingDragRef.current = null;
+
+        // Pass the reconstructed data to parent
+        onDragEnd({
+            data: reconstructedItems as SetDragListItem[],
+            from,
+            to,
+        });
     };
 };
 
@@ -652,5 +960,43 @@ const styles = StyleSheet.create({
         fontSize: 15,
         fontWeight: '600',
         color: COLORS.slate[800],
+    },
+    setIndicators: {
+        flexDirection: 'row',
+        gap: 6,
+        marginLeft: 24,
+    },
+    completedIndicatorWrapper: {
+        backgroundColor: COLORS.green[150],
+        borderRadius: 100,
+        padding: 2,
+    },
+    restTimerBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: COLORS.blue[50],
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+        marginLeft: 8,
+    },
+    restTimerBadge__add: {
+        backgroundColor: COLORS.slate[50],
+        borderWidth: 1,
+        borderColor: COLORS.slate[200],
+        borderStyle: 'dashed',
+    },
+    restTimerText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: COLORS.blue[600],
+    },
+    restTimerText__add: {
+        color: COLORS.slate[500],
+    },
+    checkboxContainer: {
+        padding: 8,
+        marginLeft: 8,
     },
 });
