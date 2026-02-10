@@ -978,7 +978,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           currentGroup.isFailure === isFailure) {
           // Same type as current group, merge
           currentGroup.count++;
-          
+
           // If rest timers differ, clear group-level rest timer
           if (currentGroup.restPeriodSeconds !== restPeriodSeconds) {
             currentGroup.restPeriodSeconds = undefined;

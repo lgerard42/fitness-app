@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { RenderItemParams } from 'react-native-draggable-flatlist';
-import { GripVertical, Timer, Flame, Zap, Check, Square } from 'lucide-react-native';
+import { GripVertical, Timer, TrendingDown, Check, Square } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import SwipeToDelete from '@/components/common/SwipeToDelete';
 import type { SetDragListItem, SetDragItem, DropSetHeaderItem, DropSetFooterItem } from '../hooks/useSetDragAndDrop';
@@ -31,15 +31,26 @@ interface SetRowDragAndDropProps {
     restTimerInputOpen: boolean; // true when rest timer keyboard/popup is open (show selected styling for pre-selected sets)
     restTimerSelectedSetIds: globalThis.Set<string>;
     restTimerInputString: string; // current input value from the timer keyboard
+    warmupMode: boolean;
+    warmupSelectedSetIds: globalThis.Set<string>;
+    failureMode: boolean;
+    failureSelectedSetIds: globalThis.Set<string>;
+    dropsetMode: boolean;
+    dropsetSelectedSetIds: globalThis.Set<string>;
     swipedItemId: string | null;
-    setIndexPopup: (popup: { setId: string; top: number; left: number } | null) => void;
     setRestTimerInput: (input: { setId: string; currentValue: string } | null) => void;
     setRestTimerInputString: (value: string) => void;
     setRestTimerSelectedSetIds: (ids: globalThis.Set<string>) => void;
+    setWarmupSelectedSetIds: (ids: globalThis.Set<string>) => void;
+    setFailureSelectedSetIds: (ids: globalThis.Set<string>) => void;
+    setDropsetSelectedSetIds: (ids: globalThis.Set<string>) => void;
     setSwipedItemId: (id: string | null) => void;
     handleDeleteSet: (setId: string) => void;
     closeTrashIcon: () => void;
     initiateDropsetDrag: (dropsetId: string, drag: () => void) => void;
+    onUpdateSet: (setId: string, updates: Partial<Set>) => void;
+    handleUngroupDropset: (setId: string) => void;
+    handleEnterDropsetMode: () => void;
     badgeRefs: React.MutableRefObject<Map<string, View>>;
     modalContainerRef: React.RefObject<View>;
     formatRestTime: (seconds: number) => string;
@@ -55,15 +66,26 @@ export const useSetRowDragAndDrop = ({
     restTimerInputOpen,
     restTimerSelectedSetIds,
     restTimerInputString,
+    warmupMode,
+    warmupSelectedSetIds,
+    failureMode,
+    failureSelectedSetIds,
+    dropsetMode,
+    dropsetSelectedSetIds,
     swipedItemId,
-    setIndexPopup,
     setRestTimerInput,
     setRestTimerInputString,
     setRestTimerSelectedSetIds,
+    setWarmupSelectedSetIds,
+    setFailureSelectedSetIds,
+    setDropsetSelectedSetIds,
     setSwipedItemId,
     handleDeleteSet,
     closeTrashIcon,
     initiateDropsetDrag,
+    onUpdateSet,
+    handleUngroupDropset,
+    handleEnterDropsetMode,
     badgeRefs,
     modalContainerRef,
     formatRestTime,
@@ -267,13 +289,18 @@ export const useSetRowDragAndDrop = ({
             displayIndexText = overallSetNumber.toString();
         }
 
-        const isSelected = (addTimerMode || restTimerInputOpen) && restTimerSelectedSetIds.has(set.id);
+        const isInSelectionMode = addTimerMode || restTimerInputOpen || warmupMode || failureMode || dropsetMode;
+        const isSelected = (addTimerMode || restTimerInputOpen) && restTimerSelectedSetIds.has(set.id)
+            || warmupMode && warmupSelectedSetIds.has(set.id)
+            || failureMode && failureSelectedSetIds.has(set.id)
+            || dropsetMode && dropsetSelectedSetIds.has(set.id);
         const showTrash = swipedItemId === set.id;
+        const isUngroupedSet = !set.dropSetId; // For dropset mode, only allow selecting ungrouped sets
 
         return (
             <SwipeToDelete
                 onDelete={() => handleDeleteSet(set.id)}
-                disabled={isActive || addTimerMode || restTimerInputOpen || isDragging}
+                disabled={isActive || isInSelectionMode || isDragging}
                 itemId={set.id}
                 isTrashVisible={showTrash}
                 onShowTrash={() => setSwipedItemId(set.id)}
@@ -286,23 +313,55 @@ export const useSetRowDragAndDrop = ({
                     delayLongPress={100}
                     disabled={isActive}
                     activeOpacity={1}
-                    onPress={(addTimerMode || restTimerInputOpen) ? () => {
+                    onPress={isInSelectionMode ? () => {
                         // Close trash if visible
                         if (swipedItemId) {
                             closeTrashIcon();
                         }
-                        const newSet = new globalThis.Set(restTimerSelectedSetIds);
-                        if (newSet.has(set.id)) {
-                            newSet.delete(set.id);
-                        } else {
-                            newSet.add(set.id);
+                        
+                        // Handle selection based on current mode
+                        if (addTimerMode || restTimerInputOpen) {
+                            const newSet = new globalThis.Set(restTimerSelectedSetIds);
+                            if (newSet.has(set.id)) {
+                                newSet.delete(set.id);
+                            } else {
+                                newSet.add(set.id);
+                            }
+                            setRestTimerSelectedSetIds(newSet);
+                        } else if (warmupMode) {
+                            const newSet = new globalThis.Set(warmupSelectedSetIds);
+                            if (newSet.has(set.id)) {
+                                newSet.delete(set.id);
+                            } else {
+                                newSet.add(set.id);
+                            }
+                            setWarmupSelectedSetIds(newSet);
+                        } else if (failureMode) {
+                            const newSet = new globalThis.Set(failureSelectedSetIds);
+                            if (newSet.has(set.id)) {
+                                newSet.delete(set.id);
+                            } else {
+                                newSet.add(set.id);
+                            }
+                            setFailureSelectedSetIds(newSet);
+                        } else if (dropsetMode && isUngroupedSet) {
+                            // Only allow selecting ungrouped sets for dropset mode
+                            const newSet = new globalThis.Set(dropsetSelectedSetIds);
+                            if (newSet.has(set.id)) {
+                                newSet.delete(set.id);
+                            } else {
+                                newSet.add(set.id);
+                            }
+                            setDropsetSelectedSetIds(newSet);
                         }
-                        setRestTimerSelectedSetIds(newSet);
                     } : undefined}
                     style={[
                         styles.dragItem,
                         isActive && styles.dragItem__active,
-                        isSelected && styles.dragItem__selected,
+                        isSelected && warmupMode && styles.dragItem__selectedWarmup,
+                        isSelected && failureMode && styles.dragItem__selectedFailure,
+                        isSelected && dropsetMode && styles.dragItem__selectedDropset,
+                        isSelected && !warmupMode && !failureMode && !dropsetMode && styles.dragItem__selected,
                         set.dropSetId && styles.dragItem__dropset,
                     ]}
                 >
@@ -323,23 +382,24 @@ export const useSetRowDragAndDrop = ({
                             ]}
                             onPress={(e) => {
                                 e.stopPropagation();
-                                const badgeRef = badgeRefs.current.get(set.id);
-                                if (badgeRef && modalContainerRef.current) {
-                                    // Measure badge position relative to window
-                                    badgeRef.measureInWindow((badgeX, badgeY, badgeWidth, badgeHeight) => {
-                                        // Measure modal container position relative to window
-                                        modalContainerRef.current?.measureInWindow((containerX, containerY) => {
-                                            // Calculate position relative to modal container
-                                            const relativeX = badgeX - containerX;
-                                            const relativeY = badgeY - containerY;
-
-                                            // Position popup below the badge, aligned to the left edge
-                                            setIndexPopup({
-                                                setId: set.id,
-                                                top: relativeY + badgeHeight + 4,
-                                                left: relativeX,
-                                            });
-                                        });
+                                // Cycle through: Normal -> Warmup -> Failure -> Normal
+                                if (set.isWarmup) {
+                                    // Currently warmup, switch to failure
+                                    onUpdateSet(set.id, {
+                                        isWarmup: false,
+                                        isFailure: true,
+                                    });
+                                } else if (set.isFailure) {
+                                    // Currently failure, switch to normal
+                                    onUpdateSet(set.id, {
+                                        isFailure: false,
+                                        isWarmup: false,
+                                    });
+                                } else {
+                                    // Currently normal, switch to warmup
+                                    onUpdateSet(set.id, {
+                                        isWarmup: true,
+                                        isFailure: false,
                                     });
                                 }
                             }}
@@ -401,7 +461,7 @@ export const useSetRowDragAndDrop = ({
                                         ? formatRestTime(previewSeconds)
                                         : (setItemData.hasRestTimer
                                             ? formatRestTime(set.restPeriodSeconds!)
-                                            : '+ rest');
+                                            : 'rest');
                                     const showTimerIcon = hasPreviewValue || setItemData.hasRestTimer;
                                     
                                     return (
@@ -439,21 +499,62 @@ export const useSetRowDragAndDrop = ({
                                 <Square size={20} color={COLORS.slate[400]} />
                             )}
                         </View>
+                    ) : warmupMode ? (
+                        <View style={styles.checkboxContainer}>
+                            {warmupSelectedSetIds.has(set.id) ? (
+                                <Check size={20} color={COLORS.orange[600]} strokeWidth={3} />
+                            ) : (
+                                <Square size={20} color={COLORS.slate[400]} />
+                            )}
+                        </View>
+                    ) : failureMode ? (
+                        <View style={styles.checkboxContainer}>
+                            {failureSelectedSetIds.has(set.id) ? (
+                                <Check size={20} color={COLORS.red[600]} strokeWidth={3} />
+                            ) : (
+                                <Square size={20} color={COLORS.slate[400]} />
+                            )}
+                        </View>
+                    ) : dropsetMode ? (
+                        <View style={styles.checkboxContainer}>
+                            {isUngroupedSet ? (
+                                dropsetSelectedSetIds.has(set.id) ? (
+                                    <Check size={20} color={COLORS.indigo[600]} strokeWidth={3} />
+                                ) : (
+                                    <Square size={20} color={COLORS.slate[400]} />
+                                )
+                            ) : (
+                                <View style={{ width: 20, height: 20 }} />
+                            )}
+                        </View>
                     ) : (
                         <>
-                            <View style={styles.setIndicators}>
-                                {set.isWarmup && (
-                                    <Flame size={14} color={COLORS.orange[500]} />
-                                )}
-                                {set.isFailure && (
-                                    <Zap size={14} color={COLORS.red[500]} />
-                                )}
-                                {set.completed && (
-                                    <View style={styles.completedIndicatorWrapper}>
-                                        <Check size={14} color={COLORS.green[500]} />
-                                    </View>
-                                )}
-                            </View>
+                            <TouchableOpacity
+                                onPress={(e) => {
+                                    e.stopPropagation();
+                                    if (set.dropSetId) {
+                                        // Set is in a dropset, remove only this set from the dropset
+                                        handleUngroupDropset(set.id);
+                                    } else {
+                                        // Set is not in a dropset, enter dropset mode with this set selected
+                                        const newSet = new globalThis.Set<string>();
+                                        newSet.add(set.id);
+                                        setDropsetSelectedSetIds(newSet);
+                                        handleEnterDropsetMode();
+                                    }
+                                }}
+                                style={styles.dropsetIconButton}
+                            >
+                                <TrendingDown 
+                                    size={14} 
+                                    color={set.dropSetId ? COLORS.indigo[600] : COLORS.slate[400]} 
+                                />
+                            </TouchableOpacity>
+                            {set.completed && (
+                                <View style={styles.completedIndicatorWrapper}>
+                                    <Check size={14} color={COLORS.green[500]} />
+                                </View>
+                            )}
 
                             <TouchableOpacity
                                 onPress={() => {
@@ -478,7 +579,7 @@ export const useSetRowDragAndDrop = ({
                                 ]}>
                                     {setItemData.hasRestTimer
                                         ? formatRestTime(set.restPeriodSeconds!)
-                                        : '+ rest'
+                                        : 'rest'
                                     }
                                 </Text>
                             </TouchableOpacity>
@@ -491,7 +592,7 @@ export const useSetRowDragAndDrop = ({
                 </TouchableOpacity>
             </SwipeToDelete>
         );
-    }, [exercise, localDragItems, renderDropSetHeader, renderDropSetFooter, addTimerMode, restTimerInputOpen, restTimerSelectedSetIds, restTimerInputString, collapsedDropsetId, swipedItemId, handleDeleteSet, closeTrashIcon, isDragging, badgeRefs, modalContainerRef, setIndexPopup, setSwipedItemId, setRestTimerSelectedSetIds, setRestTimerInput, setRestTimerInputString, formatRestTime, parseRestTimeInput]);
+    }, [exercise, localDragItems, renderDropSetHeader, renderDropSetFooter, addTimerMode, restTimerInputOpen, restTimerSelectedSetIds, restTimerInputString, warmupMode, warmupSelectedSetIds, failureMode, failureSelectedSetIds, dropsetMode, dropsetSelectedSetIds, collapsedDropsetId, swipedItemId, handleDeleteSet, closeTrashIcon, isDragging, badgeRefs, modalContainerRef, setSwipedItemId, setRestTimerSelectedSetIds, setWarmupSelectedSetIds, setFailureSelectedSetIds, setDropsetSelectedSetIds, setRestTimerInput, setRestTimerInputString, onUpdateSet, handleUngroupDropset, handleEnterDropsetMode, formatRestTime, parseRestTimeInput]);
 
     const keyExtractor = useCallback((item: CollapsibleSetDragListItem) => item.id, []);
 
@@ -554,15 +655,36 @@ export const expandAllDropsets = (items: CollapsibleSetDragListItem[]): Collapsi
 export const reconstructItemsFromSets = (sets: Set[]): CollapsibleSetDragListItem[] => {
     const items: CollapsibleSetDragListItem[] = [];
     const processedDropSetIds = new Set<string>();
+    const processedFooterIds = new Set<string>();
+    const seenSetIds = new Set<string>(); // Track seen set IDs to prevent duplicates
+
+    // First pass: identify all dropset IDs and their end positions
+    const dropsetEndPositions = new Map<string, number>();
+    sets.forEach((set, index) => {
+        if (set.dropSetId) {
+            const isDropSetEnd = index === sets.length - 1 || sets[index + 1]?.dropSetId !== set.dropSetId;
+            if (isDropSetEnd) {
+                // Store the last end position for this dropset
+                dropsetEndPositions.set(set.dropSetId, index);
+            }
+        }
+    });
 
     sets.forEach((set, index) => {
+        // Skip duplicate sets
+        if (seenSetIds.has(set.id)) {
+            return;
+        }
+        seenSetIds.add(set.id);
+
         // Check if this is the start of a new dropset
         const isDropSetStart = set.dropSetId &&
-            (index === 0 || sets[index - 1].dropSetId !== set.dropSetId);
+            (index === 0 || sets[index - 1]?.dropSetId !== set.dropSetId);
 
-        // Check if this is the end of a dropset
+        // Check if this is the end of a dropset (use the stored end position to ensure uniqueness)
         const isDropSetEnd = set.dropSetId &&
-            (index === sets.length - 1 || sets[index + 1]?.dropSetId !== set.dropSetId);
+            dropsetEndPositions.has(set.dropSetId) &&
+            dropsetEndPositions.get(set.dropSetId) === index;
 
         // Add dropset header if this is the start
         if (isDropSetStart && set.dropSetId && !processedDropSetIds.has(set.dropSetId)) {
@@ -585,13 +707,14 @@ export const reconstructItemsFromSets = (sets: Set[]): CollapsibleSetDragListIte
             hasRestTimer: !!set.restPeriodSeconds,
         });
 
-        // Add dropset footer if this is the end
-        if (isDropSetEnd && set.dropSetId) {
+        // Add dropset footer if this is the end and we haven't added a footer for this dropset yet
+        if (isDropSetEnd && set.dropSetId && !processedFooterIds.has(set.dropSetId)) {
             items.push({
                 id: `dropset-footer-${set.dropSetId}`,
                 type: 'dropset_footer',
                 dropSetId: set.dropSetId,
             });
+            processedFooterIds.add(set.dropSetId);
         }
     });
 
@@ -973,6 +1096,21 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         backgroundColor: COLORS.blue[100],
     },
+    dragItem__selectedWarmup: {
+        borderColor: COLORS.orange[600],
+        borderWidth: 1,
+        backgroundColor: COLORS.orange[100],
+    },
+    dragItem__selectedFailure: {
+        borderColor: COLORS.red[600],
+        borderWidth: 1,
+        backgroundColor: COLORS.red[100],
+    },
+    dragItem__selectedDropset: {
+        borderColor: COLORS.indigo[600],
+        borderWidth: 1,
+        backgroundColor: COLORS.indigo[100],
+    },
     setIndexBadge: {
         width: 30,
         height: 26,
@@ -1023,6 +1161,10 @@ const styles = StyleSheet.create({
         gap: 6,
         marginLeft: 24,
     },
+    dropsetIconButton: {
+        padding: 4,
+        marginLeft: 8,
+    },
     completedIndicatorWrapper: {
         backgroundColor: COLORS.green[150],
         borderRadius: 100,
@@ -1037,6 +1179,8 @@ const styles = StyleSheet.create({
         paddingVertical: 4,
         borderRadius: 6,
         marginLeft: 8,
+        minWidth: 56,
+        justifyContent: 'center',
     },
     restTimerBadge__add: {
         backgroundColor: COLORS.slate[50],

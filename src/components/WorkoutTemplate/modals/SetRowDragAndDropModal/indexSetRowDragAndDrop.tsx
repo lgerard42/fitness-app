@@ -1,11 +1,10 @@
 import React, { useCallback, useMemo, useState, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import DraggableFlatList from 'react-native-draggable-flatlist';
-import { X, Timer, TrendingDown, Plus, Flame, Zap, Trash2 } from 'lucide-react-native';
+import { X, Timer, TrendingDown, Plus, Trash2, Flame, Zap } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { formatRestTime, parseRestTimeInput } from '@/utils/workoutHelpers';
-import { defaultPopupStyles } from '@/constants/defaultStyles';
 import type { Exercise, Set } from '@/types/workout';
 import type { SetDragListItem, SetDragItem } from '../../hooks/useSetDragAndDrop';
 import { TimerKeyboard } from '../../Keyboards/timerKeyboardUtil';
@@ -51,11 +50,16 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
     initialAddTimerMode = false,
     initialSelectedSetIds = [],
 }) => {
-    const [indexPopup, setIndexPopup] = useState<{ setId: string; top: number; left: number } | null>(null);
     const [restTimerInput, setRestTimerInput] = useState<{ setId: string; currentValue: string } | null>(null);
     const [restTimerInputString, setRestTimerInputString] = useState<string>('');
     const [addTimerMode, setAddTimerMode] = useState<boolean>(false);
     const [restTimerSelectedSetIds, setRestTimerSelectedSetIds] = useState<globalThis.Set<string>>(new globalThis.Set());
+    const [warmupMode, setWarmupMode] = useState<boolean>(false);
+    const [warmupSelectedSetIds, setWarmupSelectedSetIds] = useState<globalThis.Set<string>>(new globalThis.Set());
+    const [failureMode, setFailureMode] = useState<boolean>(false);
+    const [failureSelectedSetIds, setFailureSelectedSetIds] = useState<globalThis.Set<string>>(new globalThis.Set());
+    const [dropsetMode, setDropsetMode] = useState<boolean>(false);
+    const [dropsetSelectedSetIds, setDropsetSelectedSetIds] = useState<globalThis.Set<string>>(new globalThis.Set());
     const [isDragging, setIsDragging] = useState<boolean>(false);
     const [collapsedDropsetId, setCollapsedDropsetId] = useState<string | null>(null);
     const [localDragItems, setLocalDragItems] = useState<CollapsibleSetDragListItem[]>([]);
@@ -78,6 +82,12 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
             setSwipedItemId(null);
             setAddTimerMode(false);
             setRestTimerSelectedSetIds(new globalThis.Set());
+            setWarmupMode(false);
+            setWarmupSelectedSetIds(new globalThis.Set());
+            setFailureMode(false);
+            setFailureSelectedSetIds(new globalThis.Set());
+            setDropsetMode(false);
+            setDropsetSelectedSetIds(new globalThis.Set());
         }
     }, [visible]);
 
@@ -180,17 +190,13 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
             setSwipedItemId(null);
         }
 
-        // Close index popup if it was for this set
-        if (indexPopup && indexPopup.setId === setId) {
-            setIndexPopup(null);
-        }
 
         // Close rest timer input if it was for this set
         if (restTimerInput && restTimerInput.setId === setId) {
             setRestTimerInput(null);
             setRestTimerInputString('');
         }
-    }, [localDragItems, reconstructItemsFromSets, swipedItemId, indexPopup, restTimerInput, onDragEnd]);
+    }, [localDragItems, reconstructItemsFromSets, swipedItemId, restTimerInput, onDragEnd]);
 
     // Helper: Close trash icon
     const closeTrashIcon = useCallback(() => {
@@ -208,6 +214,311 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
         pendingDragRef.current = drag;
     }, [localDragItems]);
 
+    // Handle entering Warmup mode - pre-select all warmup sets
+    const handleEnterWarmupMode = useCallback(() => {
+        const warmupSetIds = new globalThis.Set<string>();
+        localDragItems.forEach(item => {
+            if (isSetDragItem(item)) {
+                const set = (item as unknown as SetDragItem).set;
+                if (set.isWarmup) {
+                    warmupSetIds.add(set.id);
+                }
+            }
+        });
+        setWarmupSelectedSetIds(warmupSetIds);
+        setWarmupMode(true);
+        setFailureMode(false);
+        setDropsetMode(false);
+        setAddTimerMode(false);
+        setRestTimerInput(null);
+        setRestTimerInputString('');
+    }, [localDragItems]);
+
+    // Handle entering Failure mode - pre-select all failure sets
+    const handleEnterFailureMode = useCallback(() => {
+        const failureSetIds = new globalThis.Set<string>();
+        localDragItems.forEach(item => {
+            if (isSetDragItem(item)) {
+                const set = (item as unknown as SetDragItem).set;
+                if (set.isFailure) {
+                    failureSetIds.add(set.id);
+                }
+            }
+        });
+        setFailureSelectedSetIds(failureSetIds);
+        setFailureMode(true);
+        setWarmupMode(false);
+        setDropsetMode(false);
+        setAddTimerMode(false);
+        setRestTimerInput(null);
+        setRestTimerInputString('');
+    }, [localDragItems]);
+
+    // Handle entering Dropset mode - clear selection
+    const handleEnterDropsetMode = useCallback(() => {
+        setDropsetSelectedSetIds(new globalThis.Set());
+        setDropsetMode(true);
+        setWarmupMode(false);
+        setFailureMode(false);
+        setAddTimerMode(false);
+        setRestTimerInput(null);
+        setRestTimerInputString('');
+    }, []);
+
+    // Handle saving Warmup mode - apply warmup property to selected sets
+    const handleSaveWarmupMode = useCallback(() => {
+        // Extract all current sets
+        const currentSets: Set[] = [];
+        localDragItems.forEach(item => {
+            if (isSetDragItem(item)) {
+                currentSets.push((item as unknown as SetDragItem).set);
+            }
+        });
+
+        // Update all sets: selected ones get warmup=true, failure=false; unselected ones lose warmup
+        const updatedSets = currentSets.map(set => {
+            if (warmupSelectedSetIds.has(set.id)) {
+                // Selected: set warmup, clear failure
+                return {
+                    ...set,
+                    isWarmup: true,
+                    isFailure: false,
+                };
+            } else if (set.isWarmup) {
+                // Not selected but currently warmup: remove warmup
+                return {
+                    ...set,
+                    isWarmup: false,
+                };
+            }
+            return set;
+        });
+
+        // Reconstruct items with headers/footers
+        const newItems = reconstructItemsFromSets(updatedSets);
+        setLocalDragItems(newItems);
+
+        // Update parent state via onDragEnd (atomic operation)
+        onDragEnd({
+            data: newItems as SetDragListItem[],
+            from: 0,
+            to: 0,
+        });
+
+        setWarmupMode(false);
+        setWarmupSelectedSetIds(new globalThis.Set());
+    }, [warmupSelectedSetIds, localDragItems, reconstructItemsFromSets, onDragEnd]);
+
+    // Handle saving Failure mode - apply failure property to selected sets
+    const handleSaveFailureMode = useCallback(() => {
+        // Extract all current sets
+        const currentSets: Set[] = [];
+        localDragItems.forEach(item => {
+            if (isSetDragItem(item)) {
+                currentSets.push((item as unknown as SetDragItem).set);
+            }
+        });
+
+        // Update all sets: selected ones get failure=true, warmup=false; unselected ones lose failure
+        const updatedSets = currentSets.map(set => {
+            if (failureSelectedSetIds.has(set.id)) {
+                // Selected: set failure, clear warmup
+                return {
+                    ...set,
+                    isFailure: true,
+                    isWarmup: false,
+                };
+            } else if (set.isFailure) {
+                // Not selected but currently failure: remove failure
+                return {
+                    ...set,
+                    isFailure: false,
+                };
+            }
+            return set;
+        });
+
+        // Reconstruct items with headers/footers
+        const newItems = reconstructItemsFromSets(updatedSets);
+        setLocalDragItems(newItems);
+
+        // Update parent state via onDragEnd (atomic operation)
+        onDragEnd({
+            data: newItems as SetDragListItem[],
+            from: 0,
+            to: 0,
+        });
+
+        setFailureMode(false);
+        setFailureSelectedSetIds(new globalThis.Set());
+    }, [failureSelectedSetIds, localDragItems, reconstructItemsFromSets, onDragEnd]);
+
+    // Handle saving Dropset mode - group selected sets into a dropset
+    const handleSaveDropsetMode = useCallback(() => {
+        if (dropsetSelectedSetIds.size < 2) {
+            // Need at least 2 sets for a dropset
+            return;
+        }
+
+        // Extract all current sets
+        const currentSets: Set[] = [];
+        localDragItems.forEach(item => {
+            if (isSetDragItem(item)) {
+                currentSets.push((item as unknown as SetDragItem).set);
+            }
+        });
+
+        // Find the index of the first selected set (that isn't already in a dropset)
+        let firstSelectedIndex = -1;
+        for (let i = 0; i < currentSets.length; i++) {
+            if (dropsetSelectedSetIds.has(currentSets[i].id) && !currentSets[i].dropSetId) {
+                firstSelectedIndex = i;
+                break;
+            }
+        }
+
+        if (firstSelectedIndex === -1) {
+            // No valid sets found to group
+            return;
+        }
+
+        // Separate selected sets (that aren't already in a dropset) from non-selected sets
+        const selectedSets: Set[] = [];
+        const nonSelectedSets: Set[] = [];
+        
+        currentSets.forEach(set => {
+            if (dropsetSelectedSetIds.has(set.id) && !set.dropSetId) {
+                selectedSets.push(set);
+            } else {
+                nonSelectedSets.push(set);
+            }
+        });
+
+        // Reorder: place selected sets together at the position of the first selected set
+        const reorderedSets: Set[] = [];
+        
+        // Add all non-selected sets that come before the first selected set
+        for (let i = 0; i < firstSelectedIndex; i++) {
+            const set = currentSets[i];
+            if (!dropsetSelectedSetIds.has(set.id) || set.dropSetId) {
+                reorderedSets.push(set);
+            }
+        }
+        
+        // Add all selected sets grouped together (with dropset ID)
+        const newDropSetId = `dropset-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        selectedSets.forEach(set => {
+            reorderedSets.push({
+                ...set,
+                dropSetId: newDropSetId,
+            });
+        });
+        
+        // Add all remaining non-selected sets (those that came after the first selected set)
+        for (let i = firstSelectedIndex; i < currentSets.length; i++) {
+            const set = currentSets[i];
+            if (!dropsetSelectedSetIds.has(set.id) || set.dropSetId) {
+                reorderedSets.push(set);
+            }
+        }
+
+        // Reconstruct items with headers/footers
+        const newItems = reconstructItemsFromSets(reorderedSets);
+        setLocalDragItems(newItems);
+
+        // Update parent state via onDragEnd (atomic operation)
+        onDragEnd({
+            data: newItems as SetDragListItem[],
+            from: 0,
+            to: 0,
+        });
+
+        // Clear selection but stay in dropset mode for creating another dropset
+        setDropsetSelectedSetIds(new globalThis.Set());
+    }, [dropsetSelectedSetIds, localDragItems, reconstructItemsFromSets, onDragEnd]);
+
+    // Handle canceling any mode
+    const handleCancelMode = useCallback(() => {
+        setWarmupMode(false);
+        setWarmupSelectedSetIds(new globalThis.Set());
+        setFailureMode(false);
+        setFailureSelectedSetIds(new globalThis.Set());
+        setDropsetMode(false);
+        setDropsetSelectedSetIds(new globalThis.Set());
+    }, []);
+
+    // Handle removing a single set from its dropset
+    const handleUngroupDropset = useCallback((setId: string) => {
+        // Extract all sets
+        const currentSets: Set[] = [];
+        localDragItems.forEach(item => {
+            if (isSetDragItem(item)) {
+                currentSets.push((item as unknown as SetDragItem).set);
+            }
+        });
+
+        // Find the set being removed and its dropSetId
+        const setToRemove = currentSets.find(s => s.id === setId);
+        if (!setToRemove || !setToRemove.dropSetId) {
+            return;
+        }
+
+        const dropSetIdToRemove = setToRemove.dropSetId;
+
+        // Find the index of the first set in the dropset (this is where we'll insert the removed set)
+        let firstDropsetSetIndex = -1;
+        for (let i = 0; i < currentSets.length; i++) {
+            if (currentSets[i].dropSetId === dropSetIdToRemove) {
+                firstDropsetSetIndex = i;
+                break;
+            }
+        }
+
+        if (firstDropsetSetIndex === -1) {
+            return;
+        }
+
+        // Remove dropSetId from the specified set
+        const removedSet: Set = (() => {
+            const { dropSetId: _, ...rest } = setToRemove;
+            return rest as Set;
+        })();
+
+        // Reorder: move the removed set before the first set of the dropset
+        const reorderedSets: Set[] = [];
+
+        // Add all sets before the dropset (excluding the set being removed)
+        for (let i = 0; i < firstDropsetSetIndex; i++) {
+            if (currentSets[i].id !== setId) {
+                reorderedSets.push(currentSets[i]);
+            }
+        }
+
+        // Add the removed set (without dropSetId) before the dropset
+        reorderedSets.push(removedSet);
+
+        // Add all remaining sets (excluding the set being removed, which is now at its new position)
+        for (let i = firstDropsetSetIndex; i < currentSets.length; i++) {
+            if (currentSets[i].id !== setId) {
+                reorderedSets.push(currentSets[i]);
+            }
+        }
+
+        // Reconstruct items with headers/footers
+        const newItems = reconstructItemsFromSets(reorderedSets);
+
+        // Update local state
+        setLocalDragItems(newItems);
+
+        // Update parent state via onDragEnd which sets setDragItems in one atomic operation
+        onDragEnd({
+            data: newItems as SetDragListItem[],
+            from: 0,
+            to: 0,
+        });
+
+    }, [localDragItems, reconstructItemsFromSets, onDragEnd, isSetDragItem]);
+
     // Use extracted drag-and-drop functionality
     const {
         renderDragItem,
@@ -221,58 +532,31 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
         restTimerInputOpen: !!restTimerInput,
         restTimerSelectedSetIds,
         restTimerInputString,
+        warmupMode,
+        warmupSelectedSetIds,
+        failureMode,
+        failureSelectedSetIds,
+        dropsetMode,
+        dropsetSelectedSetIds,
         swipedItemId,
-        setIndexPopup,
         setRestTimerInput,
         setRestTimerInputString,
         setRestTimerSelectedSetIds,
+        setWarmupSelectedSetIds,
+        setFailureSelectedSetIds,
+        setDropsetSelectedSetIds,
         setSwipedItemId,
         handleDeleteSet,
         closeTrashIcon,
         initiateDropsetDrag,
+        onUpdateSet,
+        handleUngroupDropset,
+        handleEnterDropsetMode,
         badgeRefs,
         modalContainerRef,
         formatRestTime,
         parseRestTimeInput,
     });
-
-    // Handle ungroup dropset - remove dropSetId from all sets in the dropset
-    const handleUngroupDropset = useCallback((dropSetId: string) => {
-        // Extract all current sets from localDragItems
-        const currentSets: Set[] = [];
-        localDragItems.forEach(item => {
-            if (isSetDragItem(item)) {
-                currentSets.push((item as unknown as SetDragItem).set);
-            }
-        });
-
-        // Remove dropSetId from all sets in this dropset
-        const updatedSets = currentSets.map(set => {
-            if (set.dropSetId === dropSetId) {
-                const { dropSetId: _, ...rest } = set;
-                return rest as Set;
-            }
-            return set;
-        });
-
-        // Reconstruct items with headers/footers (no more dropset headers/footers for this group)
-        const newItems = reconstructItemsFromSets(updatedSets);
-
-        // Update local state
-        setLocalDragItems(newItems);
-
-        // Update parent state via onDragEnd which sets setDragItems in one atomic operation
-        onDragEnd({
-            data: newItems as SetDragListItem[],
-            from: 0,
-            to: 0,
-        });
-
-        // Close index popup
-        if (indexPopup) {
-            setIndexPopup(null);
-        }
-    }, [localDragItems, reconstructItemsFromSets, indexPopup, onDragEnd]);
 
     // Memoize restPeriodSetInfo to prevent unnecessary effect re-fires in TimerKeyboard
     const restPeriodSetInfoMemo = useMemo(() => {
@@ -328,6 +612,45 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                             </Text>
                         </View>
 
+                        {/* Mode Selection Buttons */}
+                        {!addTimerMode && (
+                            <View style={styles.modeButtonsContainer}>
+                                <TouchableOpacity
+                                    onPress={handleEnterWarmupMode}
+                                    style={[
+                                        styles.modeButton,
+                                        styles.modeButton__warmup,
+                                        warmupMode && styles.modeButton__activeWarmup
+                                    ]}
+                                >
+                                    <Flame size={16} color={COLORS.orange[500]} />
+                                    <Text style={styles.modeButtonText}>Warmup</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    onPress={handleEnterFailureMode}
+                                    style={[
+                                        styles.modeButton,
+                                        styles.modeButton__failure,
+                                        failureMode && styles.modeButton__activeFailure
+                                    ]}
+                                >
+                                    <Zap size={16} color={COLORS.red[500]} />
+                                    <Text style={styles.modeButtonText}>Failure</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    onPress={handleEnterDropsetMode}
+                                    style={[
+                                        styles.modeButton,
+                                        styles.modeButton__dropset,
+                                        dropsetMode && styles.modeButton__activeDropset
+                                    ]}
+                                >
+                                    <TrendingDown size={16} color={COLORS.indigo[500]} />
+                                    <Text style={styles.modeButtonText}>Dropset</Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
+
                         {localDragItems.length === 0 ? (
                             <View style={styles.emptyContainer}>
                                 <Text style={styles.emptyText}>No sets to reorder</Text>
@@ -361,180 +684,6 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                             />
                         )}
 
-                        {/* Index Popup Menu */}
-                        {indexPopup && (() => {
-                            const setItem = localDragItems.find((i) => isSetDragItem(i) && (i as any).id === indexPopup.setId) as SetDragItem | undefined;
-                            const set = setItem?.set;
-                            if (!set) return null;
-
-                            return (
-                                <Pressable
-                                    onPress={() => setIndexPopup(null)}
-                                    style={defaultPopupStyles.backdrop as any}
-                                >
-                                    <Pressable
-                                        onPress={(e) => e.stopPropagation()}
-                                        style={[
-                                            defaultPopupStyles.container as any,
-                                            {
-                                                position: 'absolute' as const,
-                                                top: indexPopup.top,
-                                                left: indexPopup.left,
-                                            }
-                                        ]}
-                                    >
-                                        {/* Warmup/Failure Toggle Row */}
-                                        <View style={[
-                                            defaultPopupStyles.toggleRow as any,
-                                            !set.dropSetId && defaultPopupStyles.borderBottomLast as any
-                                        ]}>
-                                            <TouchableOpacity
-                                                style={[
-                                                    defaultPopupStyles.toggleOption as any,
-                                                    defaultPopupStyles.toggleOptionBorder as any,
-                                                    set.isWarmup ? defaultPopupStyles.toggleOptionBackgroundActive as any : defaultPopupStyles.toggleOptionBackgroundInactive as any,
-                                                    defaultPopupStyles.borderRadiusFirstLeft as any,
-                                                    !set.dropSetId && defaultPopupStyles.borderRadiusLastLeft as any,
-                                                ]}
-                                                onPress={() => {
-                                                    const newIsWarmup = !set.isWarmup;
-                                                    onUpdateSet(set.id, {
-                                                        isWarmup: newIsWarmup,
-                                                        isFailure: newIsWarmup ? false : set.isFailure,
-                                                    });
-                                                    setIndexPopup(null);
-                                                }}
-                                            >
-                                                <View style={defaultPopupStyles.optionContent as any}>
-                                                    <Flame size={18} color={set.isWarmup ? COLORS.white : COLORS.orange[500]} />
-                                                    <Text style={[
-                                                        defaultPopupStyles.toggleOptionText as any,
-                                                        set.isWarmup ? defaultPopupStyles.toggleOptionTextActive as any : defaultPopupStyles.toggleOptionTextInactive as any
-                                                    ]}>
-                                                        Warmup
-                                                    </Text>
-                                                </View>
-                                            </TouchableOpacity>
-
-                                            <TouchableOpacity
-                                                style={[
-                                                    defaultPopupStyles.toggleOption as any,
-                                                    set.isFailure ? defaultPopupStyles.toggleOptionBackgroundActive as any : defaultPopupStyles.toggleOptionBackgroundInactive as any,
-                                                    defaultPopupStyles.borderRadiusFirstRight as any,
-                                                    !set.dropSetId && defaultPopupStyles.borderRadiusLastRight as any,
-                                                ]}
-                                                onPress={() => {
-                                                    const newIsFailure = !set.isFailure;
-                                                    onUpdateSet(set.id, {
-                                                        isFailure: newIsFailure,
-                                                        isWarmup: newIsFailure ? false : set.isWarmup,
-                                                    });
-                                                    setIndexPopup(null);
-                                                }}
-                                            >
-                                                <View style={defaultPopupStyles.optionContent as any}>
-                                                    <Zap size={18} color={set.isFailure ? COLORS.white : COLORS.red[500]} />
-                                                    <Text style={[
-                                                        defaultPopupStyles.toggleOptionText as any,
-                                                        set.isFailure ? defaultPopupStyles.toggleOptionTextActive as any : defaultPopupStyles.toggleOptionTextInactive as any
-                                                    ]}>
-                                                        Failure
-                                                    </Text>
-                                                </View>
-                                            </TouchableOpacity>
-                                        </View>
-
-                                        {/* Create Dropset / Delete Set Row */}
-                                        {!set.dropSetId && (
-                                            <View style={[
-                                                defaultPopupStyles.optionRow as any,
-                                                defaultPopupStyles.borderBottomLast as any,
-                                            ]}>
-                                                <TouchableOpacity
-                                                    style={[
-                                                        defaultPopupStyles.optionInRow as any,
-                                                        defaultPopupStyles.optionBackground as any,
-                                                        defaultPopupStyles.optionFlex as any,
-                                                        defaultPopupStyles.optionRowWithBorder as any,
-                                                        defaultPopupStyles.borderRadiusLastLeft as any,
-                                                    ]}
-                                                    onPress={() => {
-                                                        onCreateDropset(set.id);
-                                                        setIndexPopup(null);
-                                                    }}
-                                                >
-                                                    <View style={defaultPopupStyles.optionContent as any}>
-                                                        <TrendingDown size={18} color={COLORS.indigo[400]} />
-                                                        <Text style={defaultPopupStyles.optionText as any}>Create dropset</Text>
-                                                    </View>
-                                                </TouchableOpacity>
-
-                                                <TouchableOpacity
-                                                    style={[
-                                                        defaultPopupStyles.iconOnlyOption as any,
-                                                        defaultPopupStyles.optionInRow as any,
-                                                        defaultPopupStyles.borderRadiusLastRight as any,
-                                                    ]}
-                                                    onPress={() => {
-                                                        handleDeleteSet(set.id);
-                                                        setIndexPopup(null);
-                                                    }}
-                                                >
-                                                    <View style={defaultPopupStyles.optionContent as any}>
-                                                        <Trash2 size={18} color={COLORS.white} />
-                                                    </View>
-                                                </TouchableOpacity>
-                                            </View>
-                                        )}
-
-                                        {/* Ungroup Dropset / Delete Set Row */}
-                                        {set.dropSetId && (
-                                            <View style={[
-                                                defaultPopupStyles.optionRow as any,
-                                                defaultPopupStyles.borderBottomLast as any,
-                                            ]}>
-                                                <TouchableOpacity
-                                                    style={[
-                                                        defaultPopupStyles.optionInRow as any,
-                                                        defaultPopupStyles.optionBackground as any,
-                                                        defaultPopupStyles.optionFlex as any,
-                                                        defaultPopupStyles.optionRowWithBorder as any,
-                                                        defaultPopupStyles.borderRadiusLastLeft as any,
-                                                    ]}
-                                                    onPress={() => {
-                                                        handleUngroupDropset(set.dropSetId!);
-                                                        setIndexPopup(null);
-                                                    }}
-                                                >
-                                                    <View style={defaultPopupStyles.optionContent as any}>
-                                                        <TrendingDown size={18} color={COLORS.indigo[400]} />
-                                                        <Text style={defaultPopupStyles.optionText as any}>
-                                                            Ungroup dropset
-                                                        </Text>
-                                                    </View>
-                                                </TouchableOpacity>
-
-                                                <TouchableOpacity
-                                                    style={[
-                                                        defaultPopupStyles.iconOnlyOption as any,
-                                                        defaultPopupStyles.optionInRow as any,
-                                                        defaultPopupStyles.borderRadiusLastRight as any,
-                                                    ]}
-                                                    onPress={() => {
-                                                        handleDeleteSet(set.id);
-                                                        setIndexPopup(null);
-                                                    }}
-                                                >
-                                                    <View style={defaultPopupStyles.optionContent as any}>
-                                                        <Trash2 size={18} color={COLORS.white} />
-                                                    </View>
-                                                </TouchableOpacity>
-                                            </View>
-                                        )}
-                                    </Pressable>
-                                </Pressable>
-                            );
-                        })()}
 
                         <View style={styles.footer}>
                             {addTimerMode ? (
@@ -569,6 +718,55 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                                             (restTimerSelectedSetIds.size === 0 || !restTimerInputString) && styles.saveButton__disabled
                                         ]}
                                         disabled={restTimerSelectedSetIds.size === 0 || !restTimerInputString}
+                                    >
+                                        <Text style={styles.saveButtonText}>Save</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            ) : warmupMode || failureMode ? (
+                                <View style={styles.footerButtonsRow}>
+                                    <TouchableOpacity
+                                        onPress={handleCancelMode}
+                                        style={styles.cancelButton}
+                                    >
+                                        <Text style={styles.cancelButtonText}>Cancel</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        onPress={warmupMode ? handleSaveWarmupMode : handleSaveFailureMode}
+                                        style={styles.saveButton}
+                                    >
+                                        <Text style={styles.saveButtonText}>Save</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            ) : dropsetMode ? (
+                                <View style={styles.footerButtonsRow}>
+                                    <TouchableOpacity
+                                        onPress={handleCancelMode}
+                                        style={styles.cancelButton}
+                                    >
+                                        <Text style={styles.cancelButtonText}>Cancel</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        onPress={handleSaveDropsetMode}
+                                        style={[
+                                            styles.saveButton,
+                                            dropsetSelectedSetIds.size < 2 && styles.saveButton__disabled
+                                        ]}
+                                        disabled={dropsetSelectedSetIds.size < 2}
+                                    >
+                                        <Text style={styles.saveButtonText}>New</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        onPress={() => {
+                                            if (dropsetSelectedSetIds.size >= 2) {
+                                                handleSaveDropsetMode();
+                                            }
+                                            handleCancelMode();
+                                        }}
+                                        style={[
+                                            styles.saveButton,
+                                            dropsetSelectedSetIds.size < 2 && styles.saveButton__disabled
+                                        ]}
+                                        disabled={dropsetSelectedSetIds.size < 2}
                                     >
                                         <Text style={styles.saveButtonText}>Save</Text>
                                     </TouchableOpacity>
@@ -755,6 +953,73 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: COLORS.slate[500],
         textAlign: 'center',
+    },
+    modeButtonsContainer: {
+        flexDirection: 'row',
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        gap: 8,
+        backgroundColor: COLORS.white,
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.slate[200],
+    },
+    modeButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        borderRadius: 8,
+        borderWidth: 1,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+        elevation: 2,
+    },
+    modeButton__warmup: {
+        backgroundColor: COLORS.orange[50],
+        borderColor: COLORS.orange[200],
+    },
+    modeButton__failure: {
+        backgroundColor: COLORS.red[50],
+        borderColor: COLORS.red[200],
+    },
+    modeButton__dropset: {
+        backgroundColor: COLORS.indigo[50],
+        borderColor: COLORS.indigo[200],
+    },
+    modeButton__active: {
+        borderWidth: 1,
+        opacity: 1,
+    },
+    modeButton__activeWarmup: {
+        borderWidth: 1,
+        borderColor: COLORS.orange[250],
+        backgroundColor: COLORS.orange[200],
+        opacity: 1,
+    },
+    modeButton__activeFailure: {
+        borderWidth: 1,
+        borderColor: COLORS.red[250],
+        backgroundColor: COLORS.red[200],
+        opacity: 1,
+    },
+    modeButton__activeDropset: {
+        borderWidth: 1,
+        borderColor: COLORS.indigo[250],
+        backgroundColor: COLORS.indigo[200],
+        opacity: 1,
+    },
+    modeButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: COLORS.slate[700],
     },
     listContainer: {
         flex: 1,
