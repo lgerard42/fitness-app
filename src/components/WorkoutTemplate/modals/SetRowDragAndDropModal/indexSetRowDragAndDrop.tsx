@@ -220,6 +220,7 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
         addTimerMode,
         restTimerInputOpen: !!restTimerInput,
         restTimerSelectedSetIds,
+        restTimerInputString,
         swipedItemId,
         setIndexPopup,
         setRestTimerInput,
@@ -232,6 +233,7 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
         badgeRefs,
         modalContainerRef,
         formatRestTime,
+        parseRestTimeInput,
     });
 
     // Handle ungroup dropset - remove dropSetId from all sets in the dropset
@@ -633,19 +635,18 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                     }}
                     handleWorkoutUpdate={(workout: any) => {
                         // Only handle auto-updates as the user types (when keyboard is open)
+                        // But don't apply changes if sets are selected - wait for "Apply to" button
                         if (!restTimerInput || addTimerMode) return;
+                        
+                        // If sets are selected, don't apply changes automatically - wait for "Apply to"
+                        if (restTimerSelectedSetIds.size > 0) return;
+                        
                         const exerciseItem = workout.exercises[0];
                         if (exerciseItem && exerciseItem.type === 'exercise') {
                             const updatedSet = exerciseItem.sets.find((s: Set) => s.id === restTimerInput.setId);
                             if (updatedSet) {
-                                // If we have multiple sets selected, update all of them
-                                if (restTimerSelectedSetIds.size > 0) {
-                                    const selectedIdsArray = Array.from(restTimerSelectedSetIds);
-                                    onUpdateRestTimerMultiple(selectedIdsArray, updatedSet.restPeriodSeconds);
-                                } else {
-                                    // Otherwise, just update the single set
-                                    onUpdateRestTimer(restTimerInput.setId, updatedSet.restPeriodSeconds);
-                                }
+                                // Only update the single set (no selected sets means single set mode)
+                                onUpdateRestTimer(restTimerInput.setId, updatedSet.restPeriodSeconds);
                             }
                         }
                     }}
@@ -686,8 +687,15 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                         }
                         setRestTimerSelectedSetIds(newSet);
                     }}
+                    onApplyToSelectedSets={(setIds: string[], seconds: number) => {
+                        // Apply rest timer to selected sets when "Apply to" is clicked
+                        onUpdateRestTimerMultiple(setIds, seconds);
+                    }}
+                    onRemoveTimersFromSelectedSets={(setIds: string[]) => {
+                        // Remove rest timers from selected sets when "Remove" is clicked
+                        onUpdateRestTimerMultiple(setIds, undefined);
+                    }}
                     initialSelectionMode={initialAddTimerMode && initialSelectedSetIds.length > 0 || (!!restTimerInput && restTimerSelectedSetIds.size > 0)}
-                    disableStartButton={true}
                 />
             </GestureHandlerRootView>
         </Modal>

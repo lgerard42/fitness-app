@@ -19,10 +19,11 @@ export interface TimerKeyboardProps {
   onSetSelectionMode?: (enabled: boolean) => void;
   selectedSetIds?: globalThis.Set<string>;
   onToggleSetSelection?: (exerciseId: string, setId: string) => void;
+  onApplyToSelectedSets?: (setIds: string[], seconds: number) => void; // Callback when "Apply to" is clicked with selected sets
+  onRemoveTimersFromSelectedSets?: (setIds: string[]) => void; // Callback when "Remove" is clicked to remove timers from selected sets
   showDisplayAtTop?: boolean; // If true, show formatted time display at top of keyboard
   displayValue?: string; // Formatted time string to display at top
   initialSelectionMode?: boolean; // If true, start in selection mode with keyboard open
-  disableStartButton?: boolean; // If true, disable the Start button
 }
 
 export const TimerKeyboard: React.FC<TimerKeyboardProps> = ({
@@ -39,10 +40,11 @@ export const TimerKeyboard: React.FC<TimerKeyboardProps> = ({
   onSetSelectionMode,
   selectedSetIds = new Set(),
   onToggleSetSelection,
+  onApplyToSelectedSets,
+  onRemoveTimersFromSelectedSets,
   showDisplayAtTop = false,
   displayValue,
   initialSelectionMode = false,
-  disableStartButton = false,
 }) => {
   const [isSelectionMode, setIsSelectionMode] = useState(initialSelectionMode);
   const lastInputRef = useRef<string>('');
@@ -145,6 +147,20 @@ export const TimerKeyboard: React.FC<TimerKeyboardProps> = ({
     setRestTimerPopupOpen(true);
   };
 
+  const handleRemoveTimers = () => {
+    if (!onRemoveTimersFromSelectedSets || !selectedSetIds || selectedSetIds.size === 0) return;
+    
+    const selectedIdsArray = Array.from(selectedSetIds);
+    onRemoveTimersFromSelectedSets(selectedIdsArray);
+    
+    setIsSelectionMode(false);
+    if (onSetSelectionMode) {
+      onSetSelectionMode(false);
+    }
+    onClose();
+    setRestTimerInput('');
+  };
+
   const handleSave = () => {
     if (onAddRestPeriod) {
       onAddRestPeriod();
@@ -159,53 +175,61 @@ export const TimerKeyboard: React.FC<TimerKeyboardProps> = ({
       const seconds = parseRestTimeInput(restTimerInput);
       if (seconds <= 0 || !selectedSetIds || selectedSetIds.size === 0) return;
 
-      // Update all selected sets with the rest timer
-      // Group sets by exerciseId to update efficiently
-      const setsByExercise = new Map<string, string[]>();
-      selectedSetIds.forEach((setId: string) => {
-        // Find which exercise contains this set by searching all exercises
-        const findExerciseWithSet = (items: ExerciseItem[]): string | null => {
-          for (const item of items) {
-            if (item.type === 'exercise' && item.sets.some((s: Set) => s.id === setId)) {
-              return item.instanceId;
+      // Use the dedicated callback if provided, otherwise use handleWorkoutUpdate
+      if (onApplyToSelectedSets) {
+        const selectedIdsArray = Array.from(selectedSetIds);
+        onApplyToSelectedSets(selectedIdsArray, seconds);
+      } else {
+        // Fallback to old behavior
+        // Update all selected sets with the rest timer
+        // Group sets by exerciseId to update efficiently
+        const setsByExercise = new Map<string, string[]>();
+        selectedSetIds.forEach((setId: string) => {
+          // Find which exercise contains this set by searching all exercises
+          const findExerciseWithSet = (items: ExerciseItem[]): string | null => {
+            for (const item of items) {
+              if (item.type === 'exercise' && item.sets.some((s: Set) => s.id === setId)) {
+                return item.instanceId;
+              }
+              if (item.type === 'group' && item.children) {
+                const found = findExerciseWithSet(item.children);
+                if (found) return found;
+              }
             }
-            if (item.type === 'group' && item.children) {
-              const found = findExerciseWithSet(item.children);
-              if (found) return found;
+            return null;
+          };
+
+          const exerciseId = findExerciseWithSet(currentWorkout.exercises);
+          if (exerciseId) {
+            if (!setsByExercise.has(exerciseId)) {
+              setsByExercise.set(exerciseId, []);
             }
+            setsByExercise.get(exerciseId)!.push(setId);
           }
-          return null;
-        };
+        });
 
-        const exerciseId = findExerciseWithSet(currentWorkout.exercises);
-        if (exerciseId) {
-          if (!setsByExercise.has(exerciseId)) {
-            setsByExercise.set(exerciseId, []);
-          }
-          setsByExercise.get(exerciseId)!.push(setId);
-        }
-      });
+        // Update each exercise with its selected sets
+        let updatedWorkout = currentWorkout;
+        setsByExercise.forEach((setIds, exerciseId) => {
+          updatedWorkout = {
+            ...updatedWorkout,
+            exercises: updateExercisesDeep(updatedWorkout.exercises, exerciseId, (ex: ExerciseItem) => {
+              if (ex.type === 'group') return ex;
+              return {
+                ...ex,
+                sets: ex.sets.map((s: Set) =>
+                  setIds.includes(s.id)
+                    ? { ...s, restPeriodSeconds: seconds, restTimerCompleted: false }
+                    : s
+                )
+              };
+            })
+          };
+        });
 
-      // Update each exercise with its selected sets
-      let updatedWorkout = currentWorkout;
-      setsByExercise.forEach((setIds, exerciseId) => {
-        updatedWorkout = {
-          ...updatedWorkout,
-          exercises: updateExercisesDeep(updatedWorkout.exercises, exerciseId, (ex: ExerciseItem) => {
-            if (ex.type === 'group') return ex;
-            return {
-              ...ex,
-              sets: ex.sets.map((s: Set) =>
-                setIds.includes(s.id)
-                  ? { ...s, restPeriodSeconds: seconds, restTimerCompleted: false }
-                  : s
-              )
-            };
-          })
-        };
-      });
-
-      handleWorkoutUpdate(updatedWorkout);
+        handleWorkoutUpdate(updatedWorkout);
+      }
+      
       setIsSelectionMode(false);
       if (onSetSelectionMode) {
         onSetSelectionMode(false);
@@ -468,20 +492,33 @@ export const TimerKeyboard: React.FC<TimerKeyboardProps> = ({
               <Text style={styles.adjustButtonText}>+</Text>
             </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            style={[
-              styles.startTimerButton,
-              (!isValid || disableStartButton) && styles.startTimerButton__disabled
-            ]}
-            onPress={handleStartTimer}
-            disabled={!isValid || disableStartButton}
-          >
-            <Play size={16} color={disableStartButton ? COLORS.slate[600] : COLORS.white} />
-            <Text style={[
-              styles.startTimerButtonText,
-              disableStartButton && styles.startTimerButtonText__disabled
-            ]}>Start</Text>
-          </TouchableOpacity>
+          {onRemoveTimersFromSelectedSets ? (
+            <TouchableOpacity
+              style={[
+                styles.removeButton,
+                (selectedSetIds.size === 0) && styles.removeButton__disabled
+              ]}
+              onPress={handleRemoveTimers}
+              disabled={selectedSetIds.size === 0}
+            >
+              <Text style={[
+                styles.removeButtonText,
+                (selectedSetIds.size === 0) && styles.removeButtonText__disabled
+              ]}>Remove</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={[
+                styles.startTimerButton,
+                !isValid && styles.startTimerButton__disabled
+              ]}
+              onPress={handleStartTimer}
+              disabled={!isValid}
+            >
+              <Play size={16} color={COLORS.white} />
+              <Text style={styles.startTimerButtonText}>Start</Text>
+            </TouchableOpacity>
+          )}
           {isSelectionMode ? (
             <TouchableOpacity
               style={[
@@ -678,16 +715,39 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   startTimerButton__disabled: {
-    backgroundColor: 'transparent',
-    opacity: 1,
+    opacity: 0.5,
   },
   startTimerButtonText: {
     fontSize: 18,
     fontWeight: 'bold',
     color: COLORS.white,
   },
-  startTimerButtonText__disabled: {
-    color: COLORS.slate[600],
+  removeButton: {
+    width: '100%',
+    height: 52,
+    backgroundColor: 'transparent',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: COLORS.red[500],
+  },
+  removeButton__disabled: {
+    opacity: 0.5,
+  },
+  removeButtonText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.red[500],
+  },
+  removeButtonText__disabled: {
+    opacity: 0.5,
   },
   adjustButtonContainer: {
     width: '100%',

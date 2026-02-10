@@ -30,6 +30,7 @@ interface SetRowDragAndDropProps {
     addTimerMode: boolean;
     restTimerInputOpen: boolean; // true when rest timer keyboard/popup is open (show selected styling for pre-selected sets)
     restTimerSelectedSetIds: globalThis.Set<string>;
+    restTimerInputString: string; // current input value from the timer keyboard
     swipedItemId: string | null;
     setIndexPopup: (popup: { setId: string; top: number; left: number } | null) => void;
     setRestTimerInput: (input: { setId: string; currentValue: string } | null) => void;
@@ -42,6 +43,7 @@ interface SetRowDragAndDropProps {
     badgeRefs: React.MutableRefObject<Map<string, View>>;
     modalContainerRef: React.RefObject<View>;
     formatRestTime: (seconds: number) => string;
+    parseRestTimeInput: (input: string) => number; // function to parse input string to seconds
 }
 
 export const useSetRowDragAndDrop = ({
@@ -52,6 +54,7 @@ export const useSetRowDragAndDrop = ({
     addTimerMode,
     restTimerInputOpen,
     restTimerSelectedSetIds,
+    restTimerInputString,
     swipedItemId,
     setIndexPopup,
     setRestTimerInput,
@@ -64,6 +67,7 @@ export const useSetRowDragAndDrop = ({
     badgeRefs,
     modalContainerRef,
     formatRestTime,
+    parseRestTimeInput,
 }: SetRowDragAndDropProps) => {
     const renderDropSetHeader = useCallback((
         item: CollapsibleDropSetHeaderItem,
@@ -387,22 +391,37 @@ export const useSetRowDragAndDrop = ({
                                         : styles.restTimerBadge__disabled__noTimer
                                 ]}
                             >
-                                <Timer 
-                                    size={12} 
-                                    color={setItemData.hasRestTimer ? COLORS.blue[500] : 'transparent'} 
-                                />
-                                <Text style={[
-                                    styles.restTimerText,
-                                    !setItemData.hasRestTimer && styles.restTimerText__add,
-                                    setItemData.hasRestTimer 
-                                        ? styles.restTimerText__disabledWithTimer 
-                                        : styles.restTimerText__disabled__noTimer
-                                ]}>
-                                    {setItemData.hasRestTimer
-                                        ? formatRestTime(set.restPeriodSeconds!)
-                                        : '+ rest'
-                                    }
-                                </Text>
+                                {(() => {
+                                    const isSelected = restTimerSelectedSetIds.has(set.id);
+                                    const previewSeconds = isSelected && restTimerInputString 
+                                        ? parseRestTimeInput(restTimerInputString) 
+                                        : null;
+                                    const hasPreviewValue = previewSeconds !== null && previewSeconds > 0;
+                                    const displayValue = hasPreviewValue
+                                        ? formatRestTime(previewSeconds)
+                                        : (setItemData.hasRestTimer
+                                            ? formatRestTime(set.restPeriodSeconds!)
+                                            : '+ rest');
+                                    const showTimerIcon = hasPreviewValue || setItemData.hasRestTimer;
+                                    
+                                    return (
+                                        <>
+                                            <Timer 
+                                                size={12} 
+                                                color={showTimerIcon ? COLORS.blue[500] : 'transparent'} 
+                                            />
+                                            <Text style={[
+                                                styles.restTimerText,
+                                                !setItemData.hasRestTimer && !hasPreviewValue && styles.restTimerText__add,
+                                                (setItemData.hasRestTimer || hasPreviewValue)
+                                                    ? styles.restTimerText__disabledWithTimer 
+                                                    : styles.restTimerText__disabled__noTimer
+                                            ]}>
+                                                {displayValue}
+                                            </Text>
+                                        </>
+                                    );
+                                })()}
                             </View>
                             <View style={styles.checkboxContainer}>
                                 {restTimerSelectedSetIds.has(set.id) ? (
@@ -472,7 +491,7 @@ export const useSetRowDragAndDrop = ({
                 </TouchableOpacity>
             </SwipeToDelete>
         );
-    }, [exercise, localDragItems, renderDropSetHeader, renderDropSetFooter, addTimerMode, restTimerInputOpen, restTimerSelectedSetIds, collapsedDropsetId, swipedItemId, handleDeleteSet, closeTrashIcon, isDragging, badgeRefs, modalContainerRef, setIndexPopup, setSwipedItemId, setRestTimerSelectedSetIds, setRestTimerInput, setRestTimerInputString, formatRestTime]);
+    }, [exercise, localDragItems, renderDropSetHeader, renderDropSetFooter, addTimerMode, restTimerInputOpen, restTimerSelectedSetIds, restTimerInputString, collapsedDropsetId, swipedItemId, handleDeleteSet, closeTrashIcon, isDragging, badgeRefs, modalContainerRef, setIndexPopup, setSwipedItemId, setRestTimerSelectedSetIds, setRestTimerInput, setRestTimerInputString, formatRestTime, parseRestTimeInput]);
 
     const keyExtractor = useCallback((item: CollapsibleSetDragListItem) => item.id, []);
 
