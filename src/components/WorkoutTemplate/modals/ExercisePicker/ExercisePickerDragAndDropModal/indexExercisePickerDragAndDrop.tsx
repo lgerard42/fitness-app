@@ -971,16 +971,20 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           }
         }
       } else {
-        // For non-dropset sets, merge sequential sets of the same type and rest timer
+        // For non-dropset sets, merge sequential sets of the same type (regardless of rest timer)
         if (currentGroup &&
           !currentGroup.isDropset &&
           currentGroup.isWarmup === isWarmup &&
-          currentGroup.isFailure === isFailure &&
-          currentGroup.restPeriodSeconds === restPeriodSeconds) {
-          // Same type and rest timer as current group, merge
+          currentGroup.isFailure === isFailure) {
+          // Same type as current group, merge
           currentGroup.count++;
+          
+          // If rest timers differ, clear group-level rest timer
+          if (currentGroup.restPeriodSeconds !== restPeriodSeconds) {
+            currentGroup.restPeriodSeconds = undefined;
+          }
         } else {
-          // Different type, rest timer, or first set, start new group
+          // Different type or first set, start new group
           currentGroup = {
             id: `setgroup-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
             count: 1,
@@ -1790,7 +1794,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
                 disabled={isActive}
                 style={[
                   styles.setControlButton,
-                  groupColorScheme && { backgroundColor: groupColorScheme[100] },
+                  { backgroundColor: 'transparent' },
                   isActive && styles.setControlButton__disabled,
                 ]}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -2234,6 +2238,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
                               disabled={isActive}
                               style={[
                                 styles.setControlButton,
+                                { backgroundColor: 'transparent' },
                                 isActive && styles.setControlButton__disabled,
                               ]}
                               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
