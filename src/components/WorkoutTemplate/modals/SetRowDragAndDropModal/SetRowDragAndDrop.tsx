@@ -4,7 +4,7 @@ import { RenderItemParams } from 'react-native-draggable-flatlist';
 import { GripVertical, Timer, TrendingDown, Check, Square } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import SwipeToDelete from '@/components/common/SwipeToDelete';
-import type { SetDragListItem, SetDragItem, DropSetHeaderItem, DropSetFooterItem } from '../hooks/useSetDragAndDrop';
+import type { SetDragListItem, SetDragItem, DropSetHeaderItem, DropSetFooterItem } from '../../hooks/useSetDragAndDrop';
 import type { Set, Exercise } from '@/types/workout';
 
 // Extended types for collapse functionality
@@ -91,45 +91,59 @@ export const useSetRowDragAndDrop = ({
     formatRestTime,
     parseRestTimeInput,
 }: SetRowDragAndDropProps) => {
+    // Type guard functions
+    const isSetDragItem = (item: CollapsibleSetDragListItem): item is CollapsibleSetDragItem => {
+        return 'type' in item && item.type === 'set';
+    };
+
+    const isDropSetHeaderItem = (item: CollapsibleSetDragListItem): item is CollapsibleDropSetHeaderItem => {
+        return 'type' in item && item.type === 'dropset_header';
+    };
+
+    const isDropSetFooterItem = (item: CollapsibleSetDragListItem): item is CollapsibleDropSetFooterItem => {
+        return 'type' in item && item.type === 'dropset_footer';
+    };
+
     const renderDropSetHeader = useCallback((
         item: CollapsibleDropSetHeaderItem,
         drag?: () => void,
         isActive?: boolean
     ) => {
-        const isCollapsed = item.isCollapsed || collapsedDropsetId === item.dropSetId;
-        const isDraggedDropset = collapsedDropsetId === item.dropSetId;
+        const dropSetId = item.dropSetId;
+        const isCollapsed = item.isCollapsed || collapsedDropsetId === dropSetId;
+        const isDraggedDropset = collapsedDropsetId === dropSetId;
         const shouldRenderGhosts = isCollapsed && !isDraggedDropset;
         const isActivelyDragging = isActive && isDraggedDropset;
 
         // Get all sets in this dropset for ghost rendering
         const dropsetSets = localDragItems.filter(
-            (i): i is CollapsibleSetDragItem => i.type === 'set' && i.set.dropSetId === item.dropSetId
+            (i): i is CollapsibleSetDragItem => isSetDragItem(i) && i.set.dropSetId === dropSetId
         );
 
         return (
-            <TouchableOpacity
-                onLongPress={() => initiateDropsetDrag(item.dropSetId, drag!)}
-                disabled={isActive}
-                delayLongPress={150}
-                activeOpacity={1}
-                style={[
-                    styles.dropsetHeaderContainer,
-                    isActive && styles.dropsetHeaderContainer__active,
-                    isDraggedDropset && styles.dropsetHeaderContainer__collapsed,
-                ]}
-            >
-                <View
+                <TouchableOpacity
+                    onLongPress={() => initiateDropsetDrag(dropSetId, drag!)}
+                    disabled={isActive}
+                    delayLongPress={150}
+                    activeOpacity={1}
                     style={[
-                        styles.dropsetHeader,
-                        isDragging && styles.dropsetHeader__dragging,
-                        isDraggedDropset && styles.dropsetHeader__collapsed,
-                        isActivelyDragging && styles.dropsetHeader__activelyDragging,
+                        styles.dropsetHeaderContainer,
+                        isActive && styles.dropsetHeaderContainer__active,
+                        isDraggedDropset && styles.dropsetHeaderContainer__collapsed,
                     ]}
                 >
-                    {!isDraggedDropset && <View style={styles.dropSetIndicatorHeader} />}
-                    <View style={styles.dropsetHeaderContent}>
-                        <View style={styles.dropsetHeaderLeft}>
-                            <Text style={styles.dropsetHeaderText}>Dropset ({item.setCount} sets)</Text>
+                    <View
+                        style={[
+                            styles.dropsetHeader,
+                            isDragging && styles.dropsetHeader__dragging,
+                            isDraggedDropset && styles.dropsetHeader__collapsed,
+                            isActivelyDragging && styles.dropsetHeader__activelyDragging,
+                        ]}
+                    >
+                        {!isDraggedDropset && <View style={styles.dropSetIndicatorHeader} />}
+                        <View style={styles.dropsetHeaderContent}>
+                            <View style={styles.dropsetHeaderLeft}>
+                                <Text style={styles.dropsetHeaderText}>Dropset ({item.setCount} sets)</Text>
                             {isDragging && (
                                 <View style={styles.dropsetHeaderLine} />
                             )}
@@ -174,7 +188,8 @@ export const useSetRowDragAndDrop = ({
     }, [isDragging, collapsedDropsetId, localDragItems, initiateDropsetDrag]);
 
     const renderDropSetFooter = useCallback((item: CollapsibleDropSetFooterItem) => {
-        const isCollapsed = item.isCollapsed || collapsedDropsetId === item.dropSetId;
+        const dropSetId = item.dropSetId;
+        const isCollapsed = item.isCollapsed || collapsedDropsetId === dropSetId;
 
         // If collapsed, don't render (it's shown in the header ghost)
         if (isCollapsed) {
@@ -196,15 +211,20 @@ export const useSetRowDragAndDrop = ({
 
     const renderDragItem = useCallback(({ item, drag, isActive, getIndex }: RenderItemParams<CollapsibleSetDragListItem>) => {
         // Handle dropset headers - now draggable
-        if (item.type === 'dropset_header') {
-            return renderDropSetHeader(item as CollapsibleDropSetHeaderItem, drag, isActive);
+        if (isDropSetHeaderItem(item)) {
+            return renderDropSetHeader(item, drag, isActive);
         }
-        if (item.type === 'dropset_footer') {
-            return renderDropSetFooter(item as CollapsibleDropSetFooterItem);
+        if (isDropSetFooterItem(item)) {
+            return renderDropSetFooter(item);
         }
 
-        // Handle regular sets
-        const setItemData = item as CollapsibleSetDragItem;
+        // Handle regular sets - TypeScript now knows this is a CollapsibleSetDragItem
+        if (!isSetDragItem(item)) {
+            return null;
+        }
+
+        // At this point, TypeScript knows item is CollapsibleSetDragItem
+        const setItemData: CollapsibleSetDragItem = item;
 
         // Handle collapsed sets - render hidden
         const isCollapsed = setItemData.isCollapsed || (setItemData.set.dropSetId && collapsedDropsetId === setItemData.set.dropSetId);
@@ -222,13 +242,14 @@ export const useSetRowDragAndDrop = ({
         // Count how many sets come before this position (excluding headers/footers)
         let setCountBefore = 0;
         for (let i = 0; i < fullArrayIndex; i++) {
-            if (localDragItems[i]?.type === 'set') {
+            const prevItem = localDragItems[i];
+            if (prevItem && isSetDragItem(prevItem)) {
                 setCountBefore++;
             }
         }
 
         // Get all sets in order for dropset calculations
-        const allSets = localDragItems.filter((i): i is CollapsibleSetDragItem => i.type === 'set');
+        const allSets = localDragItems.filter(isSetDragItem);
         const currentSetIndex = setCountBefore;
 
         // Calculate display index based on dropset logic (matching SetRow.tsx)
@@ -238,7 +259,7 @@ export const useSetRowDragAndDrop = ({
         if (set.dropSetId) {
             // Find all sets in this dropset
             const dropSetSets = allSets.filter(s => s.set.dropSetId === set.dropSetId);
-            const indexInDropSet = dropSetSets.findIndex(s => s.id === item.id) + 1;
+            const indexInDropSet = dropSetSets.findIndex(s => s.id === setItemData.id) + 1;
 
             // Count group number: iterate through sets before this one, counting dropsets as single units
             let groupNumber = 0;
@@ -457,12 +478,13 @@ export const useSetRowDragAndDrop = ({
                                         ? parseRestTimeInput(restTimerInputString) 
                                         : null;
                                     const hasPreviewValue = previewSeconds !== null && previewSeconds > 0;
+                                    const hasRestTimer = !!set.restPeriodSeconds;
                                     const displayValue = hasPreviewValue
                                         ? formatRestTime(previewSeconds)
-                                        : (setItemData.hasRestTimer
+                                        : (hasRestTimer
                                             ? formatRestTime(set.restPeriodSeconds!)
                                             : 'rest');
-                                    const showTimerIcon = hasPreviewValue || setItemData.hasRestTimer;
+                                    const showTimerIcon = hasPreviewValue || hasRestTimer;
                                     
                                     return (
                                         <>
@@ -472,8 +494,8 @@ export const useSetRowDragAndDrop = ({
                                             />
                                             <Text style={[
                                                 styles.restTimerText,
-                                                !setItemData.hasRestTimer && !hasPreviewValue && styles.restTimerText__add,
-                                                (setItemData.hasRestTimer || hasPreviewValue)
+                                                !hasRestTimer && !hasPreviewValue && styles.restTimerText__add,
+                                                (hasRestTimer || hasPreviewValue)
                                                     ? styles.restTimerText__disabledWithTimer 
                                                     : styles.restTimerText__disabled__noTimer
                                             ]}>
@@ -569,16 +591,16 @@ export const useSetRowDragAndDrop = ({
                                 }}
                                 style={[
                                     styles.restTimerBadge,
-                                    !setItemData.hasRestTimer && styles.restTimerBadge__add
+                                    !set.restPeriodSeconds && styles.restTimerBadge__add
                                 ]}
                             >
-                                <Timer size={12} color={setItemData.hasRestTimer ? COLORS.blue[500] : COLORS.slate[400]} />
+                                <Timer size={12} color={set.restPeriodSeconds ? COLORS.blue[500] : COLORS.slate[400]} />
                                 <Text style={[
                                     styles.restTimerText,
-                                    !setItemData.hasRestTimer && styles.restTimerText__add
+                                    !set.restPeriodSeconds && styles.restTimerText__add
                                 ]}>
-                                    {setItemData.hasRestTimer
-                                        ? formatRestTime(set.restPeriodSeconds!)
+                                    {set.restPeriodSeconds
+                                        ? formatRestTime(set.restPeriodSeconds)
                                         : 'rest'
                                     }
                                 </Text>
@@ -594,7 +616,12 @@ export const useSetRowDragAndDrop = ({
         );
     }, [exercise, localDragItems, renderDropSetHeader, renderDropSetFooter, addTimerMode, restTimerInputOpen, restTimerSelectedSetIds, restTimerInputString, warmupMode, warmupSelectedSetIds, failureMode, failureSelectedSetIds, dropsetMode, dropsetSelectedSetIds, collapsedDropsetId, swipedItemId, handleDeleteSet, closeTrashIcon, isDragging, badgeRefs, modalContainerRef, setSwipedItemId, setRestTimerSelectedSetIds, setWarmupSelectedSetIds, setFailureSelectedSetIds, setDropsetSelectedSetIds, setRestTimerInput, setRestTimerInputString, onUpdateSet, handleUngroupDropset, handleEnterDropsetMode, formatRestTime, parseRestTimeInput]);
 
-    const keyExtractor = useCallback((item: CollapsibleSetDragListItem) => item.id, []);
+    const keyExtractor = useCallback((item: CollapsibleSetDragListItem) => {
+        if (isSetDragItem(item) || isDropSetHeaderItem(item) || isDropSetFooterItem(item)) {
+            return item.id;
+        }
+        return '';
+    }, []);
 
     return {
         renderDragItem,
@@ -604,16 +631,29 @@ export const useSetRowDragAndDrop = ({
     };
 };
 
+// Type guard functions for helper functions
+const isSetDragItemHelper = (item: CollapsibleSetDragListItem): item is CollapsibleSetDragItem => {
+    return 'type' in item && item.type === 'set';
+};
+
+const isDropSetHeaderItemHelper = (item: CollapsibleSetDragListItem): item is CollapsibleDropSetHeaderItem => {
+    return 'type' in item && item.type === 'dropset_header';
+};
+
+const isDropSetFooterItemHelper = (item: CollapsibleSetDragListItem): item is CollapsibleDropSetFooterItem => {
+    return 'type' in item && item.type === 'dropset_footer';
+};
+
 // Export helper functions for drag-and-drop operations
 export const collapseDropset = (items: CollapsibleSetDragListItem[], dropsetId: string): CollapsibleSetDragListItem[] => {
     return items.map(item => {
-        if (item.type === 'set' && item.set.dropSetId === dropsetId) {
+        if (isSetDragItemHelper(item) && item.set.dropSetId === dropsetId) {
             return { ...item, isCollapsed: true };
         }
-        if (item.type === 'dropset_header' && item.dropSetId === dropsetId) {
+        if (isDropSetHeaderItemHelper(item) && item.dropSetId === dropsetId) {
             return { ...item, isCollapsed: true };
         }
-        if (item.type === 'dropset_footer' && item.dropSetId === dropsetId) {
+        if (isDropSetFooterItemHelper(item) && item.dropSetId === dropsetId) {
             return { ...item, isCollapsed: true };
         }
         return item;
@@ -623,19 +663,19 @@ export const collapseDropset = (items: CollapsibleSetDragListItem[], dropsetId: 
 export const collapseAllOtherDropsets = (items: CollapsibleSetDragListItem[], draggedDropsetId: string): CollapsibleSetDragListItem[] => {
     const otherDropsetIds = new globalThis.Set<string>();
     items.forEach(item => {
-        if (item.type === 'set' && item.set.dropSetId && item.set.dropSetId !== draggedDropsetId) {
+        if (isSetDragItemHelper(item) && item.set.dropSetId && item.set.dropSetId !== draggedDropsetId) {
             otherDropsetIds.add(item.set.dropSetId);
         }
     });
 
     return items.map(item => {
-        if (item.type === 'set' && item.set.dropSetId && otherDropsetIds.has(item.set.dropSetId)) {
+        if (isSetDragItemHelper(item) && item.set.dropSetId && otherDropsetIds.has(item.set.dropSetId)) {
             return { ...item, isCollapsed: true };
         }
-        if (item.type === 'dropset_header' && otherDropsetIds.has(item.dropSetId)) {
+        if (isDropSetHeaderItemHelper(item) && otherDropsetIds.has(item.dropSetId)) {
             return { ...item, isCollapsed: true };
         }
-        if (item.type === 'dropset_footer' && otherDropsetIds.has(item.dropSetId)) {
+        if (isDropSetFooterItemHelper(item) && otherDropsetIds.has(item.dropSetId)) {
             return { ...item, isCollapsed: true };
         }
         return item;
@@ -690,30 +730,33 @@ export const reconstructItemsFromSets = (sets: Set[]): CollapsibleSetDragListIte
         if (isDropSetStart && set.dropSetId && !processedDropSetIds.has(set.dropSetId)) {
             // Count sets in this dropset
             const dropSetSets = sets.filter(s => s.dropSetId === set.dropSetId);
-            items.push({
+            const headerItem: CollapsibleDropSetHeaderItem = {
                 id: `dropset-header-${set.dropSetId}`,
                 type: 'dropset_header',
                 dropSetId: set.dropSetId,
                 setCount: dropSetSets.length,
-            });
+            };
+            items.push(headerItem);
             processedDropSetIds.add(set.dropSetId);
         }
 
         // Add the set itself
-        items.push({
+        const setItem: CollapsibleSetDragItem = {
             id: set.id,
             type: 'set',
             set,
             hasRestTimer: !!set.restPeriodSeconds,
-        });
+        };
+        items.push(setItem);
 
         // Add dropset footer if this is the end and we haven't added a footer for this dropset yet
         if (isDropSetEnd && set.dropSetId && !processedFooterIds.has(set.dropSetId)) {
-            items.push({
+            const footerItem: CollapsibleDropSetFooterItem = {
                 id: `dropset-footer-${set.dropSetId}`,
                 type: 'dropset_footer',
                 dropSetId: set.dropSetId,
-            });
+            };
+            items.push(footerItem);
             processedFooterIds.add(set.dropSetId);
         }
     });
@@ -738,21 +781,22 @@ export const createHandleLocalDragEnd = (
             // Collect all items that belong to the dragged dropset (sets and footer)
             const dropsetSets = data.filter(
                 (item): item is CollapsibleSetDragItem =>
-                    item.type === 'set' && item.set.dropSetId === draggedDropsetId
+                    isSetDragItemHelper(item) && item.set.dropSetId === draggedDropsetId
             );
             const dropsetFooter = data.find(
-                item => item.type === 'dropset_footer' && item.dropSetId === draggedDropsetId
+                (item): item is CollapsibleDropSetFooterItem =>
+                    isDropSetFooterItemHelper(item) && item.dropSetId === draggedDropsetId
             );
 
             // Collect all OTHER items (not part of the dragged dropset, except the header which stays in place)
             const otherItems = data.filter(item => {
-                if (item.type === 'dropset_header' && item.dropSetId === draggedDropsetId) {
+                if (isDropSetHeaderItemHelper(item) && item.dropSetId === draggedDropsetId) {
                     return true; // Keep header in its new position
                 }
-                if (item.type === 'set' && item.set.dropSetId === draggedDropsetId) {
+                if (isSetDragItemHelper(item) && item.set.dropSetId === draggedDropsetId) {
                     return false; // Remove sets (we'll re-insert them)
                 }
-                if (item.type === 'dropset_footer' && item.dropSetId === draggedDropsetId) {
+                if (isDropSetFooterItemHelper(item) && item.dropSetId === draggedDropsetId) {
                     return false; // Remove footer (we'll re-insert it)
                 }
                 return true; // Keep all other items
@@ -760,7 +804,8 @@ export const createHandleLocalDragEnd = (
 
             // Find where the header is in the otherItems array
             const headerIndexInOthers = otherItems.findIndex(
-                item => item.type === 'dropset_header' && item.dropSetId === draggedDropsetId
+                (item): item is CollapsibleDropSetHeaderItem =>
+                    isDropSetHeaderItemHelper(item) && item.dropSetId === draggedDropsetId
             );
 
             // Insert sets right after header, then footer after sets
@@ -780,7 +825,7 @@ export const createHandleLocalDragEnd = (
             // Extract all sets in their new order, preserving dropSetId
             const reorderedSets: Set[] = [];
             updatedData.forEach(item => {
-                if (item.type === 'set') {
+                if (isSetDragItemHelper(item)) {
                     reorderedSets.push(item.set);
                 }
             });
@@ -803,7 +848,7 @@ export const createHandleLocalDragEnd = (
         // Extract only the sets (filter out headers/footers)
         const reorderedSets: Set[] = [];
         updatedData.forEach(item => {
-            if (item.type === 'set') {
+            if (isSetDragItemHelper(item)) {
                 reorderedSets.push(item.set);
             }
         });
@@ -814,7 +859,8 @@ export const createHandleLocalDragEnd = (
             let positionInFullArray = -1;
             let setCount = 0;
             for (let i = 0; i < updatedData.length; i++) {
-                if (updatedData[i].type === 'set') {
+                const item = updatedData[i];
+                if (isSetDragItemHelper(item)) {
                     if (setCount === setIndex) {
                         positionInFullArray = i;
                         break;
@@ -831,11 +877,12 @@ export const createHandleLocalDragEnd = (
             // Look backwards to find the nearest dropset header
             let nearestHeader: CollapsibleDropSetHeaderItem | null = null;
             for (let i = positionInFullArray; i >= 0; i--) {
-                if (updatedData[i].type === 'dropset_header') {
-                    nearestHeader = updatedData[i] as CollapsibleDropSetHeaderItem;
+                const item = updatedData[i];
+                if (isDropSetHeaderItemHelper(item)) {
+                    nearestHeader = item;
                     break;
                 }
-                if (updatedData[i].type === 'dropset_footer') {
+                if (isDropSetFooterItemHelper(item)) {
                     // Hit a footer before a header, so we're outside a dropset
                     break;
                 }
@@ -844,11 +891,12 @@ export const createHandleLocalDragEnd = (
             // Look forwards to find the nearest dropset footer
             let nearestFooter: CollapsibleDropSetFooterItem | null = null;
             for (let i = positionInFullArray; i < updatedData.length; i++) {
-                if (updatedData[i].type === 'dropset_footer') {
-                    nearestFooter = updatedData[i] as CollapsibleDropSetFooterItem;
+                const item = updatedData[i];
+                if (isDropSetFooterItemHelper(item)) {
+                    nearestFooter = item;
                     break;
                 }
-                if (updatedData[i].type === 'dropset_header') {
+                if (isDropSetHeaderItemHelper(item)) {
                     // Hit a header before a footer, so we're outside a dropset
                     break;
                 }
