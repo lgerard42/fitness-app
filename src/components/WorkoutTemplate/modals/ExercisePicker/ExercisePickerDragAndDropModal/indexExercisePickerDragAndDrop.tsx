@@ -935,19 +935,24 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
             isDropset: true,
             setTypes: [], // Initialize array to store individual set types
             restPeriodSeconds: restPeriodSeconds, // Initialize with first set's rest timer
-            restPeriodSecondsBySetId: restPeriodSeconds != null ? { [set.id]: restPeriodSeconds } : {},
+            restPeriodSecondsBySetId: {},
           };
           dropsetGroupsMap.set(dropSetId, dropsetGroup);
           setGroups.push(dropsetGroup);
           currentGroup = null; // Reset currentGroup when we hit a dropset
-        } else if (restPeriodSeconds != null) {
-          // Store per-set timer when sets have different timers
-          dropsetGroup.restPeriodSecondsBySetId = dropsetGroup.restPeriodSecondsBySetId ?? {};
-          dropsetGroup.restPeriodSecondsBySetId[set.id] = restPeriodSeconds;
         }
 
         // Add this set to the dropset group
+        const setIndexInDropset = dropsetGroup.count; // Index within this dropset group
         dropsetGroup.count++;
+        
+        // Store timer using expected format: ${setGroup.id}-${index}
+        if (restPeriodSeconds != null) {
+          dropsetGroup.restPeriodSecondsBySetId = dropsetGroup.restPeriodSecondsBySetId ?? {};
+          const expectedSetId = `${dropSetId}-${setIndexInDropset}`;
+          dropsetGroup.restPeriodSecondsBySetId[expectedSetId] = restPeriodSeconds;
+        }
+        
         if (dropsetGroup.setTypes) {
           dropsetGroup.setTypes.push({ isWarmup, isFailure });
         }
@@ -982,10 +987,14 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           currentGroup.isWarmup === isWarmup &&
           currentGroup.isFailure === isFailure) {
           // Same type as current group, merge
+          const setIndexInGroup = currentGroup.count; // Index within this group
           currentGroup.count++;
+          
+          // Store timer using expected format: ${setGroup.id}-${index}
           if (restPeriodSeconds != null) {
             currentGroup.restPeriodSecondsBySetId = currentGroup.restPeriodSecondsBySetId ?? {};
-            currentGroup.restPeriodSecondsBySetId[set.id] = restPeriodSeconds;
+            const expectedSetId = `${currentGroup.id}-${setIndexInGroup}`;
+            currentGroup.restPeriodSecondsBySetId[expectedSetId] = restPeriodSeconds;
           }
 
           // If rest timers differ, clear group-level rest timer
@@ -1006,8 +1015,15 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
             isWarmup: isWarmup,
             isFailure: isFailure,
             restPeriodSeconds: restPeriodSeconds,
-            restPeriodSecondsBySetId: restPeriodSeconds != null ? { [set.id]: restPeriodSeconds } : {},
+            restPeriodSecondsBySetId: {},
           };
+          
+          // Store timer using expected format: ${setGroup.id}-${index} (index is 0 for first set)
+          if (restPeriodSeconds != null) {
+            const expectedSetId = `${groupId}-0`;
+            currentGroup.restPeriodSecondsBySetId[expectedSetId] = restPeriodSeconds;
+          }
+          
           setGroups.push(currentGroup);
         }
       }
