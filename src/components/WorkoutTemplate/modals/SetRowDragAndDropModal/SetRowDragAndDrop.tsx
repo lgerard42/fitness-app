@@ -516,7 +516,9 @@ export const useSetRowDragAndDrop = ({
                 {/* Render ghost items when collapsed but not being dragged */}
                 {shouldRenderGhosts && (
                     <View>
-                        {dropsetSets.map((setItem, index) => (
+                        {dropsetSets.map((setItem, index) => {
+                            const indexInfo = displayIndexMap.get(setItem.set.id) ?? { displayIndexText: '·', isSubIndex: false };
+                            return (
                             <View
                                 key={setItem.id}
                                 style={[
@@ -528,14 +530,17 @@ export const useSetRowDragAndDrop = ({
                                 <View style={styles.dropSetIndicator} />
                                 <View style={styles.ghostItemContent}>
                                     <View style={styles.setIndexBadge}>
-                                        <Text style={styles.setIndexText}>·</Text>
+                                        <Text style={indexInfo.isSubIndex ? styles.setIndexText__groupSub : styles.setIndexText}>
+                                            {indexInfo.displayIndexText}
+                                        </Text>
                                     </View>
                                     <Text style={styles.ghostItemText}>
                                         {setItem.set.weight || '-'} × {setItem.set.reps || '-'}
                                     </Text>
                                 </View>
                             </View>
-                        ))}
+                            );
+                        })}
                         {/* Ghost footer */}
                         <View style={[styles.dropsetFooter, styles.ghostDropsetFooter]}>
                             <View style={styles.dropSetIndicatorFooter} />
@@ -544,7 +549,7 @@ export const useSetRowDragAndDrop = ({
                 )}
             </TouchableOpacity>
         );
-    }, [isDragging, collapsedDropsetId, localDragItems, initiateDropsetDrag]);
+    }, [isDragging, collapsedDropsetId, localDragItems, initiateDropsetDrag, displayIndexMap]);
 
     const renderDropSetFooter = useCallback((item: CollapsibleDropSetFooterItem) => {
         const dropSetId = item.dropSetId;
