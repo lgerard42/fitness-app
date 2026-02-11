@@ -166,15 +166,8 @@ const HeaderTopRow: React.FC<HeaderTopRowProps> = ({
             disabled={selectedIds.length === 0 || selectedOrder.length === 0}
             style={[styles.reviewButton, (selectedIds.length === 0 || selectedOrder.length === 0) && styles.reviewButtonDisabled]}
           >
-            <Text style={[styles.reviewButtonText, (selectedIds.length === 0 || selectedOrder.length === 0) && styles.reviewButtonTextDisabled]}>Review</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={onAdd}
-            disabled={selectedIds.length === 0}
-            style={[styles.addButton, selectedIds.length === 0 && styles.addButtonDisabled]}
-          >
-            <Text style={styles.addButtonText}>
-              Add {selectedIds.length > 0 && `(${selectedIds.length})`}
+            <Text style={[styles.reviewButtonText, (selectedIds.length === 0 || selectedOrder.length === 0) && styles.reviewButtonTextDisabled]}>
+              Review {selectedIds.length > 0 && `(${selectedIds.length})`}
             </Text>
           </TouchableOpacity>
         </View>
@@ -183,6 +176,7 @@ const HeaderTopRow: React.FC<HeaderTopRowProps> = ({
       <DragAndDropModal
         visible={isDragDropModalVisible}
         onClose={() => setIsDragDropModalVisible(false)}
+        onAdd={onAdd}
         selectedOrder={selectedOrder}
         exerciseGroups={exerciseGroups}
         groupedExercises={groupedExercises}
@@ -235,27 +229,6 @@ const styles = StyleSheet.create({
     zIndex: Z_INDEX.headerRight,
   },
   reviewButton: {
-    backgroundColor: COLORS.blue[50],
-    paddingHorizontal: PADDING.base,
-    paddingVertical: PADDING.sm,
-    borderRadius: BORDER_RADIUS.lg,
-    borderWidth: 1,
-    borderColor: COLORS.blue[400],
-    borderStyle: 'dashed',
-  },
-  reviewButtonDisabled: {
-    opacity: 0.5,
-    borderColor: COLORS.slate[400],
-  },
-  reviewButtonText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: COLORS.blue[700],
-  },
-  reviewButtonTextDisabled: {
-    color: COLORS.slate[600],
-  },
-  addButton: {
     backgroundColor: COLORS.blue[600],
     paddingHorizontal: PADDING.lg,
     paddingVertical: PADDING.sm,
@@ -263,13 +236,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.blue[600],
   },
-  addButtonDisabled: {
+  reviewButtonDisabled: {
     opacity: 0.5,
   },
-  addButtonText: {
+  reviewButtonText: {
     fontSize: 12,
     fontWeight: 'bold',
     color: COLORS.white,
+  },
+  reviewButtonTextDisabled: {
+    color: COLORS.slate[400],
   },
 });
 

@@ -3,7 +3,7 @@ import { View, Text, Modal, TouchableOpacity, StyleSheet, Dimensions } from 'rea
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DraggableFlatList from 'react-native-draggable-flatlist';
-import { MoreVertical, Check, Plus, Minus, TrendingDown, Flame, Zap, Users, Copy, Trash2, Layers, Timer } from 'lucide-react-native';
+import { MoreVertical, Check, Plus, Minus, TrendingDown, Flame, Zap, Users, Copy, Trash2, Layers, Timer, ChevronLeft } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { defaultSupersetColorScheme, defaultHiitColorScheme, defaultPopupStyles } from '@/constants/defaultStyles';
 import SwipeToDelete from '@/components/common/SwipeToDelete';
@@ -48,6 +48,7 @@ interface GroupExerciseData {
 interface DragAndDropModalProps {
   visible: boolean;
   onClose: () => void;
+  onAdd?: () => void;
   selectedOrder: string[];
   exerciseGroups: ExerciseGroup[];
   groupedExercises: GroupedExercise[];
@@ -69,6 +70,7 @@ interface ItemGroupContext {
 const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
   visible,
   onClose,
+  onAdd,
   selectedOrder,
   exerciseGroups,
   groupedExercises,
@@ -1654,7 +1656,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
     [collapsedGroupId]
   );
 
-  const handleSave = useCallback(() => {
+  const applyReorder = useCallback(() => {
     if (!onReorder) return;
 
     let finalItems = reorderedItems;
@@ -1664,8 +1666,6 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
 
     const newOrder: string[] = [];
     const updatedGroups: ExerciseGroup[] = [];
-    // Map to track which item IDs correspond to which positions in newOrder
-    // This preserves separate cards even if they have the same exercise ID
     const itemIdToOrderIndices: Record<string, number[]> = {};
 
     let currentGroup: ExerciseGroup | null = null;
@@ -1676,10 +1676,8 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
         currentGroup = { ...item.group };
         currentGroupIndices = [];
       } else if (item.type === 'Item') {
-        // Track which order indices this item occupies
         const itemOrderIndices: number[] = [];
 
-        // Iterate through setGroups to add exercises in order
         item.setGroups.forEach(setGroup => {
           for (let i = 0; i < setGroup.count; i++) {
             const orderIndex = newOrder.length;
@@ -1691,7 +1689,6 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           }
         });
 
-        // Store the mapping for this item
         itemIdToOrderIndices[item.id] = itemOrderIndices;
       } else if (item.type === 'GroupFooter') {
         if (currentGroup && currentGroupIndices.length > 0) {
@@ -1715,24 +1712,18 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
       });
     }
 
-    // Collect dropset exercise IDs and setGroups from finalItems
-    // Store setGroups per item ID (not just exercise ID) to preserve separate cards
     const dropsetExerciseIds: string[] = [];
     const setGroupsMap: Record<string, SetGroup[]> = {};
-    const itemSetGroupsMap: Record<string, SetGroup[]> = {}; // Map by item.id, not exercise.id
+    const itemSetGroupsMap: Record<string, SetGroup[]> = {};
 
     finalItems.forEach((item) => {
       if (item.type === 'Item') {
-        // Store setGroups by item ID to preserve separate cards
-        // Deep copy to preserve all properties including isWarmup and isFailure
         itemSetGroupsMap[item.id] = item.setGroups.map(sg => ({ ...sg }));
 
-        // Also store by exercise ID for backward compatibility (use first occurrence)
         if (!setGroupsMap[item.exercise.id]) {
           setGroupsMap[item.exercise.id] = item.setGroups.map(sg => ({ ...sg }));
         }
 
-        // Check if any setGroup is a dropset
         const hasDropset = item.setGroups.some(sg => sg.isDropset);
         if (hasDropset && !dropsetExerciseIds.includes(item.exercise.id)) {
           dropsetExerciseIds.push(item.exercise.id);
@@ -1740,10 +1731,19 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
       }
     });
 
-    // Pass item structure information to preserve separate cards
     onReorder(newOrder, updatedGroups, dropsetExerciseIds, setGroupsMap, itemIdToOrderIndices, itemSetGroupsMap);
+  }, [reorderedItems, collapsedGroupId, expandAllGroups, onReorder]);
+
+  const handleSave = useCallback(() => {
+    applyReorder();
     onClose();
-  }, [reorderedItems, collapsedGroupId, expandAllGroups, onReorder, onClose]);
+  }, [applyReorder, onClose]);
+
+  const handleAdd = useCallback(() => {
+    applyReorder();
+    onAdd?.();
+    onClose();
+  }, [applyReorder, onAdd, onClose]);
 
   const getItemGroupContext = useCallback((itemIndex: number): ItemGroupContext => {
     let currentGroupId: string | null = null;
@@ -2456,12 +2456,19 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaView style={styles.container} edges={[]}>
           <View style={styles.header}>
-            <TouchableOpacity onPress={onClose} style={styles.cancelButton}>
-              <Text style={styles.cancelButtonText}>Cancel</Text>
+            <TouchableOpacity onPress={handleSave} style={styles.saveButtonLeft}>
+              <ChevronLeft size={20} color={COLORS.white} />
+              <Text style={styles.saveButtonLeftText}>Save</Text>
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Reorder Items</Text>
-            <TouchableOpacity onPress={handleSave} style={styles.saveButton}>
-              <Text style={styles.saveButtonText}>Save</Text>
+            <TouchableOpacity
+              onPress={handleAdd}
+              disabled={!onAdd}
+              style={[styles.addButtonRight, !onAdd && styles.addButtonRightDisabled]}
+            >
+              <Text style={styles.addButtonRightText}>
+                Add
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -2882,24 +2889,36 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.slate[900],
   },
-  cancelButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    color: COLORS.slate[600],
-  },
-  saveButton: {
+  saveButtonLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     paddingHorizontal: 12,
     paddingVertical: 6,
     backgroundColor: COLORS.green[500],
     borderRadius: 6,
+    minWidth: 80,
   },
-  saveButtonText: {
+  saveButtonLeftText: {
     fontSize: 16,
     fontWeight: '600',
     color: COLORS.white,
+  },
+  addButtonRight: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: COLORS.blue[600],
+    borderRadius: 6,
+    minWidth: 80,
+  },
+  addButtonRightDisabled: {
+    opacity: 0.5,
+  },
+  addButtonRightText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.white,
+    textAlign: 'center',
   },
   instructionsContainer: {
     paddingHorizontal: 16,
