@@ -12,15 +12,11 @@ import SetDragModal from '../../SetRowDragAndDropModal/indexSetRowDragAndDrop';
 import type { SetDragListItem } from '@/components/WorkoutTemplate/hooks/useSetDragAndDrop';
 import type { SetGroup } from '@/utils/workoutInstanceHelpers';
 import {
-  collapseGroup,
-  collapseAllOtherGroups,
   expandAllGroups,
   createHandleDragEnd,
   createInitiateGroupDrag,
   keyExtractor as dragKeyExtractor,
   type DragItem,
-  type GroupHeaderItem,
-  type GroupFooterItem,
   type ExerciseItem,
 } from './exercisePickerDragAndDrop';
 
@@ -86,6 +82,25 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
   const dragItems = useMemo((): DragItem[] => {
     const items: DragItem[] = [];
     const processedIndices = new Set<number>();
+
+    const resolveSetGroupsForIndex = (orderIndex: number, exerciseId: string, count: number, isDropset: boolean): SetGroup[] => {
+      let setGroupsToUse: SetGroup[] | undefined;
+      if (itemIdToOrderIndices && itemSetGroupsMap) {
+        const itemIdForIndex = Object.keys(itemIdToOrderIndices).find(itemId =>
+          itemIdToOrderIndices[itemId].includes(orderIndex)
+        );
+        if (itemIdForIndex && itemSetGroupsMap[itemIdForIndex]) {
+          setGroupsToUse = itemSetGroupsMap[itemIdForIndex];
+        }
+      }
+      if (!setGroupsToUse) {
+        const preservedSetGroups = exerciseSetGroups?.[exerciseId];
+        setGroupsToUse = preservedSetGroups && preservedSetGroups.length > 0
+          ? preservedSetGroups
+          : [{ id: `setgroup-${exerciseId}-${orderIndex}-0`, count, isDropset }];
+      }
+      return setGroupsToUse;
+    };
 
     // If we have item structure maps, use them to preserve separate cards
     if (itemIdToOrderIndices && itemSetGroupsMap && Object.keys(itemIdToOrderIndices).length > 0) {
@@ -289,32 +304,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
         }
 
         const isDropset = dropsetExercises.has(exerciseId);
-
-        // First check if this exercise has an itemId in itemSetGroupsMap (from sync)
-        // If not, fall back to exerciseSetGroups, then create default
-        let setGroupsToUse: SetGroup[] | undefined;
-
-        // Check if there's an itemId for this orderIndex
-        if (itemIdToOrderIndices && itemSetGroupsMap) {
-          const itemIdForIndex = Object.keys(itemIdToOrderIndices).find(itemId =>
-            itemIdToOrderIndices[itemId].includes(orderIndex)
-          );
-          if (itemIdForIndex && itemSetGroupsMap[itemIdForIndex]) {
-            setGroupsToUse = itemSetGroupsMap[itemIdForIndex];
-          }
-        }
-
-        // Fall back to exerciseSetGroups if no itemId found
-        if (!setGroupsToUse) {
-          const preservedSetGroups = exerciseSetGroups?.[exerciseId];
-          setGroupsToUse = preservedSetGroups && preservedSetGroups.length > 0
-            ? preservedSetGroups
-            : [{
-              id: `setgroup-${exerciseId}-${orderIndex}-0`,
-              count: count,
-              isDropset: isDropset,
-            }];
-        }
+        const setGroupsToUse = resolveSetGroupsForIndex(orderIndex, exerciseId, count, isDropset);
         const totalCount = setGroupsToUse.reduce((sum, sg) => sum + sg.count, 0);
         const hasAnyDropset = setGroupsToUse.some(sg => sg.isDropset);
 
@@ -324,7 +314,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           exercise: exercise,
           orderIndex: orderIndex,
           count: totalCount,
-          setGroups: setGroupsToUse.map(sg => ({ ...sg })), // Deep copy to preserve all properties
+          setGroups: setGroupsToUse.map(sg => ({ ...sg })),
           groupId: exerciseGroup.id,
           isFirstInGroup: isFirstInGroup,
           isLastInGroup: isLastInGroup,
@@ -369,32 +359,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
 
         const isDropset = dropsetExercises.has(exerciseId);
         const itemCount = groupedExercise ? groupedExercise.count : 1;
-
-        // First check if this exercise has an itemId in itemSetGroupsMap (from sync)
-        // If not, fall back to exerciseSetGroups, then create default
-        let setGroupsToUse: SetGroup[] | undefined;
-
-        // Check if there's an itemId for this orderIndex
-        if (itemIdToOrderIndices && itemSetGroupsMap) {
-          const itemIdForIndex = Object.keys(itemIdToOrderIndices).find(itemId =>
-            itemIdToOrderIndices[itemId].includes(orderIndex)
-          );
-          if (itemIdForIndex && itemSetGroupsMap[itemIdForIndex]) {
-            setGroupsToUse = itemSetGroupsMap[itemIdForIndex];
-          }
-        }
-
-        // Fall back to exerciseSetGroups if no itemId found
-        if (!setGroupsToUse) {
-          const preservedSetGroups = exerciseSetGroups?.[exerciseId];
-          setGroupsToUse = preservedSetGroups && preservedSetGroups.length > 0
-            ? preservedSetGroups
-            : [{
-              id: `setgroup-${exerciseId}-${orderIndex}-0`,
-              count: itemCount,
-              isDropset: isDropset,
-            }];
-        }
+        const setGroupsToUse = resolveSetGroupsForIndex(orderIndex, exerciseId, itemCount, isDropset);
         const totalCount = setGroupsToUse.reduce((sum, sg) => sum + sg.count, 0);
         const hasAnyDropset = setGroupsToUse.some(sg => sg.isDropset);
 
@@ -404,7 +369,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           exercise: exercise,
           orderIndex: orderIndex,
           count: totalCount,
-          setGroups: setGroupsToUse.map(sg => ({ ...sg })), // Deep copy to preserve all properties
+          setGroups: setGroupsToUse.map(sg => ({ ...sg })),
           groupId: null,
           isFirstInGroup: false,
           isLastInGroup: false,
@@ -1308,39 +1273,26 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
     }));
   }, []);
 
-  // SetDragModal handlers
-  const handleSetDragEnd = useCallback(({ data, from, to }: { data: SetDragListItem[]; from: number; to: number }) => {
-    // Extract sets from drag items
-    const sets: Set[] = [];
-    data.forEach(item => {
-      if (item.type === 'set') {
-        sets.push(item.set);
+  const applySetGroupsToCurrentExercise = useCallback((newSetGroups: SetGroup[]) => {
+    if (!exerciseForSetDrag) return;
+    setReorderedItems(prev => prev.map(item => {
+      if (item.id === exerciseForSetDrag.id && item.type === 'Item') {
+        const totalCount = newSetGroups.reduce((sum, sg) => sum + sg.count, 0);
+        const hasAnyDropset = newSetGroups.some(sg => sg.isDropset);
+        return { ...item, setGroups: newSetGroups, count: totalCount, isDropset: hasAnyDropset };
       }
-    });
+      return item;
+    }));
+  }, [exerciseForSetDrag]);
 
-    // Convert Sets back to setGroups with merging
-    const newSetGroups = convertSetsToSetGroups(sets);
+  const getSetsFromDragItems = (dragItemsList: SetDragListItem[]): Set[] =>
+    dragItemsList.filter((item): item is SetDragListItem & { type: 'set'; set: Set } => item.type === 'set').map(item => item.set);
 
-    // Update the exercise item
-    if (exerciseForSetDrag) {
-      setReorderedItems(prev => prev.map(item => {
-        if (item.id === exerciseForSetDrag.id && item.type === 'Item') {
-          const totalCount = newSetGroups.reduce((sum, sg) => sum + sg.count, 0);
-          const hasAnyDropset = newSetGroups.some(sg => sg.isDropset);
-          return {
-            ...item,
-            setGroups: newSetGroups,
-            count: totalCount,
-            isDropset: hasAnyDropset,
-          };
-        }
-        return item;
-      }));
-    }
-
-    // Update local setDragItems
+  const handleSetDragEnd = useCallback(({ data }: { data: SetDragListItem[]; from: number; to: number }) => {
+    const newSetGroups = convertSetsToSetGroups(getSetsFromDragItems(data));
+    applySetGroupsToCurrentExercise(newSetGroups);
     setSetDragItems(data);
-  }, [exerciseForSetDrag, convertSetsToSetGroups]);
+  }, [convertSetsToSetGroups, applySetGroupsToCurrentExercise]);
 
   const handleSetDragCancel = useCallback(() => {
     setShowSetDragModal(false);
@@ -1351,40 +1303,14 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
   }, []);
 
   const handleSetDragSave = useCallback(() => {
-    // Extract sets from drag items
-    const sets: Set[] = [];
-    setDragItems.forEach(item => {
-      if (item.type === 'set') {
-        sets.push(item.set);
-      }
-    });
-
-    // Convert Sets back to setGroups with merging
-    const newSetGroups = convertSetsToSetGroups(sets);
-
-    // Update the exercise item
-    if (exerciseForSetDrag) {
-      setReorderedItems(prev => prev.map(item => {
-        if (item.id === exerciseForSetDrag.id && item.type === 'Item') {
-          const totalCount = newSetGroups.reduce((sum, sg) => sum + sg.count, 0);
-          const hasAnyDropset = newSetGroups.some(sg => sg.isDropset);
-          return {
-            ...item,
-            setGroups: newSetGroups,
-            count: totalCount,
-            isDropset: hasAnyDropset,
-          };
-        }
-        return item;
-      }));
-    }
-
+    const newSetGroups = convertSetsToSetGroups(getSetsFromDragItems(setDragItems));
+    applySetGroupsToCurrentExercise(newSetGroups);
     setShowSetDragModal(false);
     setExerciseForSetDrag(null);
     setSetDragItems([]);
     setInitialAddTimerMode(false);
     setInitialSelectedSetIds([]);
-  }, [exerciseForSetDrag, setDragItems, convertSetsToSetGroups]);
+  }, [setDragItems, convertSetsToSetGroups, applySetGroupsToCurrentExercise]);
 
   const handleCreateDropset = useCallback((setId: string) => {
     const newDropSetId = `dropset-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -2019,13 +1945,10 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           style={[
             styles.exerciseCard,
             styles.exerciseCard__groupChild,
-            item.setGroups.length > 1 && styles.exerciseCard__groupChild__multiRow,
             groupColorScheme && {
               borderColor: groupColorScheme[200],
               backgroundColor: groupColorScheme[100],
             },
-            isFirstInGroup && styles.exerciseCard__groupChild__first,
-            isLastInGroup && styles.exerciseCard__groupChild__last,
             isActive && styles.exerciseCard__active,
             isActive && styles.exerciseCard__groupChild__active,
             isActive && groupColorScheme && {
@@ -2245,7 +2168,6 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           style={[
             styles.exerciseCard,
             styles.exerciseCard__standalone,
-            (!item.setGroups || item.setGroups.length === 0 ? 1 : item.setGroups.length) > 1 && styles.exerciseCard__standalone__multiRow,
             isActive && styles.exerciseCard__active,
             isSelected && styles.exerciseCard__selected,
             isSelectable && !isSelected && styles.exerciseCard__selectable,
@@ -2294,7 +2216,6 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
                   >
                     <View style={[
                       styles.exerciseCardContent,
-                      styles.exerciseCardContent__standalone,
                       hasMultipleRows && styles.exerciseCardContent__standalone__multiRow,
                       hasMultipleRows && isFirstRow && styles.exerciseCardContent__standalone__multiRow__first,
                       hasMultipleRows && isLastRow && styles.exerciseCardContent__standalone__multiRow__last,
@@ -2992,15 +2913,6 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  groupHeaderBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
-  },
-  groupHeaderBadgeText: {
-    fontSize: 11,
-    fontWeight: 'bold',
-  },
   groupFooter: {
     paddingHorizontal: 12,
     paddingVertical: 2,
@@ -3027,18 +2939,10 @@ const styles = StyleSheet.create({
     marginVertical: 2,
     marginHorizontal: 0,
   },
-  exerciseCard__standalone__multiRow: {
-    // Container style for standalone exercises with multiple set rows
-  },
   exerciseCard__groupChild: {
     marginHorizontal: 0,
     borderWidth: 0,
   },
-  exerciseCard__groupChild__multiRow: {
-    // Container style for group child exercises with multiple set rows
-  },
-  exerciseCard__groupChild__first: {},
-  exerciseCard__groupChild__last: {},
   exerciseCard__active: {
     backgroundColor: COLORS.white,
     borderWidth: 2,
@@ -3079,8 +2983,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 6,
   },
-  exerciseCardContent__standalone: {
-  },
   exerciseCardContent__standalone__multiRow: {
     borderBottomWidth: 0,
     borderBottomColor: COLORS.slate[200],
@@ -3093,8 +2995,6 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 6,
   },
   exerciseCardContent__standalone__multiRow__last: {
-    // Last row in standalone multi-row exercise
-    borderBottomWidth: 0,
     borderBottomLeftRadius: 6,
     borderBottomRightRadius: 6,
     paddingBottom: 8,
@@ -3175,38 +3075,10 @@ const styles = StyleSheet.create({
     color: COLORS.slate[500],
     marginLeft: 0,
   },
-  setCountButton: {
-    paddingVertical: 2,
-    paddingHorizontal: 2,
-  },
-  exerciseMeta: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 4,
-  },
-  exerciseCategory: {
-    fontSize: 12,
-    color: COLORS.slate[500],
-  },
-  exerciseMuscle: {
-    fontSize: 12,
-    color: COLORS.slate[400],
-  },
   exerciseRight: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-  },
-  countBadge: {
-    backgroundColor: COLORS.blue[100],
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12,
-  },
-  countBadgeText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: COLORS.blue[700],
   },
   setControls: {
     flexDirection: 'row',

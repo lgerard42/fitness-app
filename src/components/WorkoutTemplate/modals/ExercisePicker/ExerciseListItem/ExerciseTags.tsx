@@ -12,40 +12,41 @@ interface ExerciseTagsProps {
   item: ExerciseLibraryItem;
   isCollapsedGroup: boolean;
   groupExercises: GroupExercise[] | null;
-  showAddMore: boolean;
-  renderingSection: 'selectedSection' | 'unselectedList' | null;
-  groupedStyles?: any;
 }
 
-const ExerciseTags: React.FC<ExerciseTagsProps> = ({ 
-  item, 
-  isCollapsedGroup, 
-  groupExercises, 
-  showAddMore, 
-  renderingSection,
-  groupedStyles = {},
+const tagContainerStyle = (backgroundColor: string) => ({
+  backgroundColor,
+  paddingHorizontal: 6,
+  paddingVertical: 2,
+  borderRadius: 4,
+});
+
+const tagTextStyle = (color: string, fontWeight?: '500') => ({
+  fontSize: 10,
+  color,
+  ...(fontWeight && { fontWeight }),
+});
+
+const collapsedGroupTagStyle = tagContainerStyle(COLORS.slate[100]);
+const collapsedGroupTagTextStyle = tagTextStyle(COLORS.slate[600], '500');
+const categoryTagStyle = tagContainerStyle(COLORS.slate[100]);
+const categoryTagTextStyle = tagTextStyle(COLORS.slate[500]);
+const muscleTagStyle = tagContainerStyle(COLORS.indigo[50]);
+const muscleTagTextStyle = tagTextStyle(COLORS.indigo[600]);
+
+const ExerciseTags: React.FC<ExerciseTagsProps> = ({
+  item,
+  isCollapsedGroup,
+  groupExercises,
 }) => {
   if (isCollapsedGroup && groupExercises) {
     return (
       <>
         {groupExercises.map((groupExercise, idx) => (
-          <View key={idx} style={[
-            {
-              backgroundColor: COLORS.slate[100],
-              paddingHorizontal: 6,
-              paddingVertical: 2,
-              borderRadius: 4,
-            },
-            groupedStyles.collapsedGroupItemContainer,
-          ]}>
-            <Text style={[
-              {
-                fontSize: 10,
-                color: COLORS.slate[600],
-                fontWeight: '500',
-              },
-              groupedStyles.collapsedGroupItemText,
-            ]}>{groupExercise.name} ({groupExercise.count})</Text>
+          <View key={idx} style={collapsedGroupTagStyle}>
+            <Text style={collapsedGroupTagTextStyle}>
+              {groupExercise.name} ({groupExercise.count})
+            </Text>
           </View>
         ))}
       </>
@@ -56,48 +57,12 @@ const ExerciseTags: React.FC<ExerciseTagsProps> = ({
 
   return (
     <>
-      <View style={[
-        {
-          backgroundColor: COLORS.slate[100],
-          paddingHorizontal: 6,
-          paddingVertical: 2,
-          borderRadius: 4,
-        },
-        showAddMore && {},
-        showAddMore && renderingSection === 'unselectedList' && {},
-        groupedStyles.categoryTagContainer,
-      ]}>
-        <Text style={[
-          {
-            fontSize: 10,
-            color: COLORS.slate[500],
-          },
-          showAddMore && {},
-          showAddMore && renderingSection === 'unselectedList' && {},
-          groupedStyles.categoryTagText,
-        ]}>{item.category}</Text>
+      <View style={categoryTagStyle}>
+        <Text style={categoryTagTextStyle}>{item.category}</Text>
       </View>
       {primaryMuscles.slice(0, 2).map(m => (
-        <View key={m} style={[
-          {
-            backgroundColor: COLORS.indigo[50],
-            paddingHorizontal: 6,
-            paddingVertical: 2,
-            borderRadius: 4,
-          },
-          showAddMore && {},
-          showAddMore && renderingSection === 'unselectedList' && {},
-          groupedStyles.muscleTagContainer,
-        ]}>
-          <Text style={[
-            {
-              fontSize: 10,
-              color: COLORS.indigo[600],
-            },
-            showAddMore && {},
-            showAddMore && renderingSection === 'unselectedList' && {},
-            groupedStyles.muscleTagText,
-          ]}>{m}</Text>
+        <View key={m} style={muscleTagStyle}>
+          <Text style={muscleTagTextStyle}>{m}</Text>
         </View>
       ))}
     </>

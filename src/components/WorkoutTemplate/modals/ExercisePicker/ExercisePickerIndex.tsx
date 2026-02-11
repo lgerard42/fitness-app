@@ -853,18 +853,15 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
 
     // Convert setGroups to Sets
     const sets = convertSetGroupsToSets(setGroups);
-    console.log('converted sets:', sets);
 
     // Convert Sets to SetDragListItem format
     const items = convertSetsToSetDragItems(sets);
-    console.log('converted items:', items);
 
     // Set state and open modal
     setSetDragItems(items);
     setEditingInstanceKey(instanceKey);
     setEditingExercise(exercise);
     setShowSetDragModal(true);
-    console.log('Modal state set, showSetDragModal should be true');
   }, [exerciseInstanceSetGroups, exercises, convertSetGroupsToSets, convertSetsToSetDragItems]);
 
   useEffect(() => {

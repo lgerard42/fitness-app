@@ -108,7 +108,7 @@ const Filters: React.FC<FiltersProps> = ({
                   onPress={() => handleToggleMuscle(item)}
                   style={[styles.filterOption, isSelected && styles.filterOptionSelected]}
                 >
-                  <Text style={[styles.filterOptionText, isSelected && styles.filterOptionTextSelected]}>
+                  <Text style={styles.filterOptionText}>
                     {item}
                   </Text>
                   {isSelected && <Check size={12} color={COLORS.white} />}
@@ -127,7 +127,7 @@ const Filters: React.FC<FiltersProps> = ({
                   onPress={() => handleToggleSecondary(item)}
                   style={[styles.filterOption, isSelected && styles.filterOptionSelected]}
                 >
-                  <Text style={[styles.filterOptionText, isSelected && styles.filterOptionTextSelected]}>
+                  <Text style={styles.filterOptionText}>
                     {item}
                   </Text>
                   {isSelected && <Check size={12} color={COLORS.white} />}

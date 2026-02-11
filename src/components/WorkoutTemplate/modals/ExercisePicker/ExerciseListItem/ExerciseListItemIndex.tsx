@@ -11,7 +11,7 @@ interface ExerciseGroup {
   number: number;
 }
 
-interface GroupExercise {
+export interface GroupExercise {
   name: string;
   count: number;
 }
@@ -81,24 +81,16 @@ const ExerciseListItem: React.FC<ExerciseListItemProps> = ({
   };
 
   const container_selected = isSelected && showAddMore;
-  const container_selectedInReviewContainer = isSelected && !showAddMore;
   const container_selectedInGlossary = isSelected && showAddMore && renderingSection === 'glossary';
-  const container_lastSelected = isLastSelected;
   const container_reorderingMode = isReordering && !isReordered;
   const container_reorderedItem = isReordering && isReordered;
 
-  const text_selected = isSelected && showAddMore;
-  const text_selectedInReviewContainer = isSelected && !showAddMore;
-  const text_selectedInGlossary = isSelected && showAddMore && renderingSection === 'glossary';
-  const text_reorderingMode = isReordering && !isReordered;
-
   const groupColorScheme = exerciseGroup ? getGroupColorScheme(exerciseGroup.type) : null;
   const isGrouped = !!exerciseGroup;
+  const isReviewContainerGroupStyle = !isReordering && !isGroupMode && renderingSection === 'reviewContainer';
 
   const container_groupModeSelected = isGroupMode && isSelectedInGroup;
   const container_groupModeUnselected = isGroupMode && !isSelectedInGroup;
-  const container_firstInGroup = isFirstInGroup && isGrouped;
-  const container_lastInGroup = isLastInGroup && isGrouped;
 
   const getGroupBackgroundColor = (shade: keyof typeof defaultSupersetColorScheme) => ({
     backgroundColor: groupColorScheme![shade],
@@ -116,18 +108,17 @@ const ExerciseListItem: React.FC<ExerciseListItemProps> = ({
       activeOpacity={disableTouch ? 1 : 0.7}
       style={[
         styles.itemContainer,
-        isSelected && !isReordering && !isGroupMode && isGrouped && renderingSection === 'reviewContainer' && getGroupBackgroundColor(100),
-        isSelected && !isReordering && !isGroupMode && !isGrouped && renderingSection === 'reviewContainer' && styles.containerSelectedInReviewContainer,
+        isSelected && isReviewContainerGroupStyle && isGrouped && getGroupBackgroundColor(100),
+        isSelected && isReviewContainerGroupStyle && !isGrouped && styles.containerSelectedInReviewContainer,
         container_selected && renderingSection !== 'reviewContainer' && styles.containerSelected,
-        container_selected && !isReordering && !isGroupMode && isGrouped && renderingSection === 'reviewContainer' && [
+        container_selected && isReviewContainerGroupStyle && isGrouped && [
           getGroupBackgroundColor(100),
           getGroupBorderColor(150),
         ],
         container_selectedInGlossary && styles.containerSelectedInGlossary,
-        container_lastSelected && styles.containerLastSelected,
-        isFirstInGroup && isGrouped && !isReordering && !isGroupMode && renderingSection === 'reviewContainer' && styles.containerFirstInGroup,
-        isLastInGroup && isGrouped && !isReordering && !isGroupMode && renderingSection === 'reviewContainer' && styles.containerLastInGroup,
-        isGrouped && !isGroupMode && renderingSection === 'reviewContainer' && !isLastInGroup && getGroupBorderColor(150),
+        isFirstInGroup && isGrouped && isReviewContainerGroupStyle && styles.containerFirstInGroup,
+        isLastInGroup && isGrouped && isReviewContainerGroupStyle && styles.containerLastInGroup,
+        isGrouped && isReviewContainerGroupStyle && !isLastInGroup && getGroupBorderColor(150),
         container_reorderingMode && styles.containerReorderingMode,
         container_reorderedItem && styles.containerReorderedItem,
         container_groupModeSelected && [
@@ -145,13 +136,7 @@ const ExerciseListItem: React.FC<ExerciseListItemProps> = ({
     >
       <View style={styles.contentContainer}>
         <View style={styles.nameRow}>
-          <Text style={[
-            styles.nameText,
-            text_selectedInReviewContainer && styles.nameTextSelectedInReviewContainer,
-            text_selected && styles.nameTextSelected,
-            text_selectedInGlossary && styles.nameTextSelectedInGlossary,
-            text_reorderingMode && styles.nameTextReorderingMode,
-          ]}>
+          <Text style={styles.nameText}>
             {item.name}
           </Text>
         </View>
@@ -160,8 +145,6 @@ const ExerciseListItem: React.FC<ExerciseListItemProps> = ({
             item={item}
             isCollapsedGroup={isCollapsedGroup}
             groupExercises={groupExercises}
-            showAddMore={showAddMore}
-            renderingSection={renderingSection === 'glossary' || renderingSection === 'reviewContainer' ? 'selectedSection' : null}
           />
         </View>
       </View>
@@ -200,9 +183,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
     flexWrap: 'wrap',
   },
-  nameTextSelectedInReviewContainer: {
-    color: COLORS.slate[900],
-  },
   containerSelectedInReviewContainer: {
     backgroundColor: COLORS.slate[50],
     borderWidth: 2,
@@ -216,19 +196,12 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.slate[50],
     borderRadius: 0,
   },
-  nameTextSelected: {
-    color: COLORS.slate[900],
-  },
   containerSelectedInGlossary: {
     borderWidth: 1,
     borderBottomLeftRadius: 1,
     borderBottomRightRadius: 1,
     borderBottomColor: COLORS.slate[50],
   },
-  nameTextSelectedInGlossary: {
-    color: COLORS.slate[900],
-  },
-  containerLastSelected: {},
   containerFirstInGroup: {
     borderTopLeftRadius: 8,
     borderTopRightRadius: 8,
@@ -244,7 +217,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderColor: COLORS.slate[100],
   },
-  nameTextReorderingMode: {},
   containerReorderedItem: {
     backgroundColor: COLORS.slate[50],
     borderWidth: 2,

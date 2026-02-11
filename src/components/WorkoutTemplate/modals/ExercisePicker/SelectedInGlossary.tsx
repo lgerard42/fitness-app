@@ -207,7 +207,6 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
         key={setGroup.id}
         style={[
           styles.setGroupRow,
-          isFirstRow && styles.setGroupRowFirst,
           isLastRow && styles.setGroupRowLast,
         ]}
       >
@@ -352,8 +351,6 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
                   item={item}
                   isCollapsedGroup={false}
                   groupExercises={null}
-                  showAddMore={false}
-                  renderingSection={null}
                 />
               </View>
             </View>
@@ -459,118 +456,116 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
       const renderableBadgeInstances = exerciseInstances.filter(
         (inst) => inst.setGroups && inst.setGroups.length > 0,
       );
-      
+
       // Only render summary badges if we have renderable instances
       if (renderableBadgeInstances.length > 0) {
         const hasThreeOrMoreBadges = renderableBadgeInstances.length >= 3;
 
         return (
-        <View
-          key={`summary-${itemId}`}
-          style={[
-            styles.summaryExerciseContainer,
-            hasThreeOrMoreBadges && styles.summaryExerciseContainerTall,
-          ]}
-        >
-          <TouchableOpacity
-            onPress={() => {
-              // Don't toggle selection - clicking on selected exercises shouldn't unselect them
-            }}
-            style={styles.summaryExerciseContent}
-          >
-            <View style={styles.summaryExerciseInfo}>
-              <Text style={styles.summaryExerciseName}>{item.name}</Text>
-              <View style={styles.summaryTagsContainer}>
-                <ExerciseTags
-                  item={item}
-                  isCollapsedGroup={false}
-                  groupExercises={null}
-                  showAddMore={false}
-                  renderingSection={null}
-                />
-              </View>
-            </View>
-          </TouchableOpacity>
-
-          {/* Summary badges stacked vertically - one per instance */}
           <View
+            key={`summary-${itemId}`}
             style={[
-              styles.summaryBadgesContainer,
-              hasThreeOrMoreBadges && styles.summaryBadgesContainerTall,
+              styles.summaryExerciseContainer,
+              hasThreeOrMoreBadges && styles.summaryExerciseContainerTall,
             ]}
           >
-            {renderableBadgeInstances.map((instance, badgeIndex) => {
-              const setGroups = instance.setGroups!;
-              const isPopupOpen = openSummaryPopupInstanceKey === instance.instanceKey;
-              const instanceKey = instance.instanceKey;
-              const isFirstBadge = badgeIndex === 0;
-              const isLastBadge = badgeIndex === renderableBadgeInstances.length - 1;
-              const applyFirstLastMargins = hasThreeOrMoreBadges;
+            <TouchableOpacity
+              onPress={() => {
+                // Don't toggle selection - clicking on selected exercises shouldn't unselect them
+              }}
+              style={styles.summaryExerciseContent}
+            >
+              <View style={styles.summaryExerciseInfo}>
+                <Text style={styles.summaryExerciseName}>{item.name}</Text>
+                <View style={styles.summaryTagsContainer}>
+                  <ExerciseTags
+                    item={item}
+                    isCollapsedGroup={false}
+                    groupExercises={null}
+                  />
+                </View>
+              </View>
+            </TouchableOpacity>
 
-              return (
-                <TouchableOpacity
-                  key={instanceKey}
-                  ref={(ref) => {
-                    if (ref) {
-                      summaryBadgeRefs.current.set(instanceKey, ref);
-                    } else {
-                      summaryBadgeRefs.current.delete(instanceKey);
-                    }
-                  }}
-                  onPress={() => {
-                    const isCurrentlyOpen = openSummaryPopupInstanceKey === instanceKey;
-                    if (isCurrentlyOpen) {
-                      setOpenSummaryPopupInstanceKey(null);
-                      setSummaryPopupPosition(null);
-                    } else {
-                      // Set state immediately for instant visual feedback
-                      setOpenSummaryPopupInstanceKey(instanceKey);
+            {/* Summary badges stacked vertically - one per instance */}
+            <View
+              style={[
+                styles.summaryBadgesContainer,
+                hasThreeOrMoreBadges && styles.summaryBadgesContainerTall,
+              ]}
+            >
+              {renderableBadgeInstances.map((instance, badgeIndex) => {
+                const setGroups = instance.setGroups!;
+                const isPopupOpen = openSummaryPopupInstanceKey === instance.instanceKey;
+                const instanceKey = instance.instanceKey;
+                const isFirstBadge = badgeIndex === 0;
+                const isLastBadge = badgeIndex === renderableBadgeInstances.length - 1;
+                const applyFirstLastMargins = hasThreeOrMoreBadges;
 
-                      // Defer heavy operations (Modal mount + measureInWindow) until after paint
-                      // This allows the badge selected style to appear instantly
-                      InteractionManager.runAfterInteractions(() => {
-                        requestAnimationFrame(() => {
-                          const measureBadge = () => {
-                            const badgeRef = summaryBadgeRefs.current.get(instanceKey);
-                            if (badgeRef) {
-                              badgeRef.measureInWindow((x: number, y: number, width: number, height: number) => {
-                                const popupWidth = 180;
-                                const padding = 16;
-                                let popupX = x + width - popupWidth;
-                                if (popupX + popupWidth > screenWidth - padding) {
-                                  popupX = screenWidth - popupWidth - padding;
-                                }
-                                if (popupX < padding) {
-                                  popupX = padding;
-                                }
-                                setSummaryPopupPosition({ x: popupX, y: y + height + 4 });
-                              });
-                            } else {
-                              // Retry on next frame if ref not ready
-                              requestAnimationFrame(measureBadge);
-                            }
-                          };
-                          measureBadge();
+                return (
+                  <TouchableOpacity
+                    key={instanceKey}
+                    ref={(ref) => {
+                      if (ref) {
+                        summaryBadgeRefs.current.set(instanceKey, ref);
+                      } else {
+                        summaryBadgeRefs.current.delete(instanceKey);
+                      }
+                    }}
+                    onPress={() => {
+                      const isCurrentlyOpen = openSummaryPopupInstanceKey === instanceKey;
+                      if (isCurrentlyOpen) {
+                        setOpenSummaryPopupInstanceKey(null);
+                        setSummaryPopupPosition(null);
+                      } else {
+                        // Set state immediately for instant visual feedback
+                        setOpenSummaryPopupInstanceKey(instanceKey);
+
+                        // Defer heavy operations (Modal mount + measureInWindow) until after paint
+                        // This allows the badge selected style to appear instantly
+                        InteractionManager.runAfterInteractions(() => {
+                          requestAnimationFrame(() => {
+                            const measureBadge = () => {
+                              const badgeRef = summaryBadgeRefs.current.get(instanceKey);
+                              if (badgeRef) {
+                                badgeRef.measureInWindow((x: number, y: number, width: number, height: number) => {
+                                  const popupWidth = 180;
+                                  const padding = 16;
+                                  let popupX = x + width - popupWidth;
+                                  if (popupX + popupWidth > screenWidth - padding) {
+                                    popupX = screenWidth - popupWidth - padding;
+                                  }
+                                  if (popupX < padding) {
+                                    popupX = padding;
+                                  }
+                                  setSummaryPopupPosition({ x: popupX, y: y + height + 4 });
+                                });
+                              } else {
+                                // Retry on next frame if ref not ready
+                                requestAnimationFrame(measureBadge);
+                              }
+                            };
+                            measureBadge();
+                          });
                         });
-                      });
-                    }
-                  }}
-                  style={[
-                    isPopupOpen ? [styles.summaryBadge, styles.summaryBadgeSelected] : styles.summaryBadge,
-                    applyFirstLastMargins && isFirstBadge && styles.summaryBadgeFirstOfMany,
-                    applyFirstLastMargins && isLastBadge && styles.summaryBadgeLastOfMany,
-                  ]}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.summaryBadgeContent}>
-                    {renderSetGroupBadgeItems(setGroups)}
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
+                      }
+                    }}
+                    style={[
+                      isPopupOpen ? [styles.summaryBadge, styles.summaryBadgeSelected] : styles.summaryBadge,
+                      applyFirstLastMargins && isFirstBadge && styles.summaryBadgeFirstOfMany,
+                      applyFirstLastMargins && isLastBadge && styles.summaryBadgeLastOfMany,
+                    ]}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.summaryBadgeContent}>
+                      {renderSetGroupBadgeItems(setGroups)}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
-        </View>
-      );
+        );
       }
     }
 
@@ -893,35 +888,6 @@ const styles = StyleSheet.create({
     color: COLORS.slate[400],
     fontSize: 14,
   },
-  // Expanded exercise styles
-  expandedExerciseContainer: {
-    backgroundColor: COLORS.blue[100],
-    marginHorizontal: 0,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.slate[100],
-    overflow: 'visible',
-  },
-  expandedExerciseHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  expandedExerciseInfo: {
-    flex: 1,
-  },
-  expandedExerciseName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: COLORS.slate[900],
-  },
-  expandedTagsContainer: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 4,
-    flexWrap: 'wrap',
-  },
   summaryExerciseContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1025,15 +991,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: -14, // Match inlineSetGroupMenuButton margin
   },
-  setGroupsContainer: {
-    overflow: 'visible',
-    borderWidth: 2,
-    borderColor: COLORS.blue[200],
-    backgroundColor: COLORS.blue[200],
-    marginHorizontal: 4,
-    borderRadius: 6,
-    marginBottom: 4,
-  },
   setGroupRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1046,7 +1003,6 @@ const styles = StyleSheet.create({
     position: 'relative',
     zIndex: 1000,
   },
-  setGroupRowFirst: {},
   setGroupRowLast: {
     borderBottomWidth: 0,
   },
@@ -1317,9 +1273,6 @@ const styles = StyleSheet.create({
     marginRight: -14,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  inlineSetGroupButtonDisabled: {
-    opacity: 0.5,
   },
   inlineSetGroupMenu: {
     position: 'absolute',
