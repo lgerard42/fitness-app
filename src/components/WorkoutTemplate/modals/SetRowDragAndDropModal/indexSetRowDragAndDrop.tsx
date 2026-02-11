@@ -722,7 +722,6 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
     // Stable callbacks for DraggableFlatList to prevent unnecessary re-renders
     const handleDragBegin = useCallback(() => setIsDragging(true), []);
     const handleDragEndWrapper = useCallback((params: { data: CollapsibleSetDragListItem[]; from: number; to: number }) => {
-        console.log('handleDragEndWrapper', params);
         setIsDragging(false);
         handleLocalDragEnd(params);
     }, [handleLocalDragEnd]);

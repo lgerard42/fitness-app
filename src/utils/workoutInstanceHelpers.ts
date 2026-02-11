@@ -124,6 +124,12 @@ export const createExerciseInstanceWithSetGroups = (
       
       const setType: SetType = isWarmup ? "Warmup" : isFailure ? "Failure" : "Working";
       
+      // Create set ID that matches format used in restPeriodSecondsBySetId (setGroup.id-index)
+      const setId = `${setGroup.id}-${i}`;
+      
+      // Get rest timer: prefer per-set timer, fall back to group-level timer
+      const restPeriodSeconds = setGroup.restPeriodSecondsBySetId?.[setId] ?? setGroup.restPeriodSeconds;
+      
       sets.push({
         id: `s-${Date.now()}-${Math.random()}-${sets.length}`,
         type: setType,
@@ -132,6 +138,7 @@ export const createExerciseInstanceWithSetGroups = (
         duration: "",
         distance: "",
         completed: false,
+        ...(restPeriodSeconds != null && { restPeriodSeconds }),
         ...(dropSetId && { dropSetId, isDropset: true }),
         ...(isWarmup && { isWarmup: true }),
         ...(isFailure && { isFailure: true })

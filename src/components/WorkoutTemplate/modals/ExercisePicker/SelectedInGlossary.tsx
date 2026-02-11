@@ -1,5 +1,5 @@
 import React, { useRef, useCallback, useMemo, useState } from 'react';
-import { View, Text, SectionList, StyleSheet, TouchableOpacity, Modal, Dimensions } from 'react-native';
+import { View, Text, SectionList, StyleSheet, TouchableOpacity, Modal, Dimensions, InteractionManager } from 'react-native';
 import { Plus, Minus, MoreVertical, TrendingDown, Flame, Zap, Trash2, Edit } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { PADDING } from '@/constants/layout';
@@ -171,12 +171,12 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
   const renderSetGroupBadgeItems = useCallback((setGroups: SetGroup[]) => {
     return setGroups.map((sg, index) => {
       const isLast = index === setGroups.length - 1;
-      const textColor = sg.isWarmup 
-        ? COLORS.orange[500] 
-        : sg.isFailure 
-          ? COLORS.red[500] 
+      const textColor = sg.isWarmup
+        ? COLORS.orange[500]
+        : sg.isFailure
+          ? COLORS.red[500]
           : COLORS.slate[900]; // Black/default
-      
+
       return (
         <View key={sg.id} style={styles.summaryBadgeItem}>
           {sg.isDropset && (
@@ -185,7 +185,6 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
           <Text style={[styles.summaryBadgeItemText, { color: textColor }]}>
             {sg.count}
           </Text>
-          {!isLast && <Text style={styles.summaryBadgeSeparator}> • </Text>}
         </View>
       );
     });
@@ -318,13 +317,6 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
     // Always use itemId (captured from render props) to prevent stale closures
     const exerciseInstances = exerciseInstancesMap.get(itemId) || [];
 
-    // Check if any instance has multiple rows (but not if there's only 1 instance with 1 row)
-    const hasAnyExpandedInstance = exerciseInstances.some(instance => {
-      const setGroups = instance.setGroups;
-      // Only consider it expanded if there are multiple rows, OR multiple instances
-      return setGroups && setGroups.length > 1;
-    });
-
     // Check if this is a simple case: 1 instance, 1 row (regardless of count or special properties)
     const isSimpleCase = isAlreadySelected &&
       exerciseInstances.length === 1 &&
@@ -344,7 +336,11 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
         <View key={`inline-${itemId}`} style={styles.inlineExerciseContainer}>
           <TouchableOpacity
             onPress={() => {
-              // Do nothing - clicking on selected exercises shouldn't toggle them
+              // If there's only 1 set, clicking removes it and deselects the exercise
+              if (setGroup.count === 1) {
+                onDecrementSetGroup?.(currentInstanceKey, currentSetGroupId);
+              }
+              // Otherwise, do nothing - clicking on selected exercises shouldn't toggle them
               // User should use the +/- buttons to modify sets
             }}
             style={styles.inlineExerciseContent}
@@ -451,32 +447,31 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
       );
     }
 
-    // If selected and has any expanded instance, show summary badges instead of expanded rows
-    if (isAlreadySelected && hasAnyExpandedInstance && exerciseInstances.length > 0) {
-      // Filter instances that have multiple set rows (more than 1 setGroup)
-      const instancesWithMultipleRows = exerciseInstances.filter(instance => {
-        const setGroups = instance.setGroups;
-        return setGroups && setGroups.length > 1;
-      });
+    // Check if any instance has multiple rows (for single instance case)
+    const hasAnyExpandedInstance = exerciseInstances.some(instance => {
+      const setGroups = instance.setGroups;
+      return setGroups && setGroups.length > 1;
+    });
 
-      // If no instances have multiple rows, fall through to default rendering
-      if (instancesWithMultipleRows.length === 0) {
+    // If selected and (has multiple instances OR has any instance with multiple rows), show summary badges
+    if (isAlreadySelected && exerciseInstances.length > 0 && (exerciseInstances.length > 1 || hasAnyExpandedInstance)) {
+      // Filter to instances that have setGroups (all instances should have setGroups, but filter for safety)
+      const renderableBadgeInstances = exerciseInstances.filter(
+        (inst) => inst.setGroups && inst.setGroups.length > 0,
+      );
+      
+      // Only render summary badges if we have renderable instances
+      if (renderableBadgeInstances.length > 0) {
+        const hasThreeOrMoreBadges = renderableBadgeInstances.length >= 3;
+
         return (
-          <View key={`list-item-${itemId}`}>
-            <ExerciseListItem
-              item={item}
-              isSelected={isAlreadySelected}
-              isLastSelected={false}
-              onToggle={onToggleSelect}
-              showAddMore={false}
-              renderingSection="glossary"
-            />
-          </View>
-        );
-      }
-
-      return (
-        <View key={`summary-${itemId}`} style={styles.summaryExerciseContainer}>
+        <View
+          key={`summary-${itemId}`}
+          style={[
+            styles.summaryExerciseContainer,
+            hasThreeOrMoreBadges && styles.summaryExerciseContainerTall,
+          ]}
+        >
           <TouchableOpacity
             onPress={() => {
               // Don't toggle selection - clicking on selected exercises shouldn't unselect them
@@ -497,54 +492,73 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
             </View>
           </TouchableOpacity>
 
-          {/* Summary badges stacked vertically - one per instance with multiple rows */}
-          <View style={styles.summaryBadgesContainer}>
-            {instancesWithMultipleRows.map((instance) => {
-              const setGroups = instance.setGroups;
-              if (!setGroups || setGroups.length <= 1) return null;
+          {/* Summary badges stacked vertically - one per instance */}
+          <View
+            style={[
+              styles.summaryBadgesContainer,
+              hasThreeOrMoreBadges && styles.summaryBadgesContainerTall,
+            ]}
+          >
+            {renderableBadgeInstances.map((instance, badgeIndex) => {
+              const setGroups = instance.setGroups!;
               const isPopupOpen = openSummaryPopupInstanceKey === instance.instanceKey;
+              const instanceKey = instance.instanceKey;
+              const isFirstBadge = badgeIndex === 0;
+              const isLastBadge = badgeIndex === renderableBadgeInstances.length - 1;
+              const applyFirstLastMargins = hasThreeOrMoreBadges;
+
               return (
                 <TouchableOpacity
-                  key={instance.instanceKey}
+                  key={instanceKey}
                   ref={(ref) => {
                     if (ref) {
-                      summaryBadgeRefs.current.set(instance.instanceKey, ref);
+                      summaryBadgeRefs.current.set(instanceKey, ref);
                     } else {
-                      summaryBadgeRefs.current.delete(instance.instanceKey);
+                      summaryBadgeRefs.current.delete(instanceKey);
                     }
                   }}
                   onPress={() => {
-                    const isCurrentlyOpen = openSummaryPopupInstanceKey === instance.instanceKey;
+                    const isCurrentlyOpen = openSummaryPopupInstanceKey === instanceKey;
                     if (isCurrentlyOpen) {
                       setOpenSummaryPopupInstanceKey(null);
                       setSummaryPopupPosition(null);
                     } else {
-                      setOpenSummaryPopupInstanceKey(instance.instanceKey);
-                      const measureBadge = () => {
-                        const badgeRef = summaryBadgeRefs.current.get(instance.instanceKey);
-                        if (badgeRef) {
-                          badgeRef.measureInWindow((x: number, y: number, width: number, height: number) => {
-                            const popupWidth = 180;
-                            const padding = 16;
-                            let popupX = x + width - popupWidth;
-                            if (popupX + popupWidth > screenWidth - padding) {
-                              popupX = screenWidth - popupWidth - padding;
+                      // Set state immediately for instant visual feedback
+                      setOpenSummaryPopupInstanceKey(instanceKey);
+
+                      // Defer heavy operations (Modal mount + measureInWindow) until after paint
+                      // This allows the badge selected style to appear instantly
+                      InteractionManager.runAfterInteractions(() => {
+                        requestAnimationFrame(() => {
+                          const measureBadge = () => {
+                            const badgeRef = summaryBadgeRefs.current.get(instanceKey);
+                            if (badgeRef) {
+                              badgeRef.measureInWindow((x: number, y: number, width: number, height: number) => {
+                                const popupWidth = 180;
+                                const padding = 16;
+                                let popupX = x + width - popupWidth;
+                                if (popupX + popupWidth > screenWidth - padding) {
+                                  popupX = screenWidth - popupWidth - padding;
+                                }
+                                if (popupX < padding) {
+                                  popupX = padding;
+                                }
+                                setSummaryPopupPosition({ x: popupX, y: y + height + 4 });
+                              });
+                            } else {
+                              // Retry on next frame if ref not ready
+                              requestAnimationFrame(measureBadge);
                             }
-                            if (popupX < padding) {
-                              popupX = padding;
-                            }
-                            setSummaryPopupPosition({ x: popupX, y: y + height + 4 });
-                          });
-                        } else {
-                          setTimeout(measureBadge, 10);
-                        }
-                      };
-                      setTimeout(measureBadge, 0);
+                          };
+                          measureBadge();
+                        });
+                      });
                     }
                   }}
                   style={[
-                    styles.summaryBadge,
-                    isPopupOpen && styles.summaryBadgeSelected,
+                    isPopupOpen ? [styles.summaryBadge, styles.summaryBadgeSelected] : styles.summaryBadge,
+                    applyFirstLastMargins && isFirstBadge && styles.summaryBadgeFirstOfMany,
+                    applyFirstLastMargins && isLastBadge && styles.summaryBadgeLastOfMany,
                   ]}
                   activeOpacity={0.7}
                 >
@@ -557,6 +571,7 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
           </View>
         </View>
       );
+      }
     }
 
     // For unselected exercises or simple selected exercises that don't meet the simple case criteria,
@@ -574,13 +589,13 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
         />
       </View>
     );
-  }, [selectedIds, exerciseInstancesMap, renderSetGroupRow, openMenuExerciseId, openMenuSetGroupId, onToggleSelect, onIncrementSetGroup, onDecrementSetGroup, onToggleDropset, onToggleWarmup, onToggleFailure, onInsertRow, renderSetGroupBadgeItems, screenWidth]);
+  }, [selectedIds, exerciseInstancesMap, renderSetGroupRow, openMenuExerciseId, openMenuSetGroupId, openSummaryPopupInstanceKey, onToggleSelect, onIncrementSetGroup, onDecrementSetGroup, onToggleDropset, onToggleWarmup, onToggleFailure, onInsertRow, renderSetGroupBadgeItems, screenWidth]);
 
   // Helper to render menu content
   const renderMenuContent = useCallback((setGroup: SetGroup, instanceKey: string, isExpanded: boolean = false, canDeleteRow: boolean = false) => {
     const isWarmup = setGroup.isWarmup || false;
     const isFailure = setGroup.isFailure || false;
-    
+
     return (
       <>
         {/* Warmup / Failure Toggle Row - at the top */}
@@ -782,24 +797,25 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
       </Modal>
 
       {/* Summary badge popup modal */}
-      <Modal
-        visible={!!openSummaryPopupInstanceKey}
-        transparent={true}
-        animationType="none"
-        onRequestClose={() => {
-          setOpenSummaryPopupInstanceKey(null);
-          setSummaryPopupPosition(null);
-        }}
-      >
-        <TouchableOpacity
-          style={styles.modalBackdrop}
-          activeOpacity={1}
-          onPress={() => {
+      {/* Only render Modal when position is ready to avoid heavy mount during state update */}
+      {openSummaryPopupInstanceKey && summaryPopupPosition && (
+        <Modal
+          visible={true}
+          transparent={true}
+          animationType="none"
+          onRequestClose={() => {
             setOpenSummaryPopupInstanceKey(null);
             setSummaryPopupPosition(null);
           }}
         >
-          {openSummaryPopupInstanceKey && summaryPopupPosition && (
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => {
+              setOpenSummaryPopupInstanceKey(null);
+              setSummaryPopupPosition(null);
+            }}
+          >
             <View style={[styles.summaryPopupContainer, { left: summaryPopupPosition.x, top: summaryPopupPosition.y }]}>
               <View style={[styles.summaryPopupOptionRow, defaultPopupStyles.borderRadiusFirst, defaultPopupStyles.borderRadiusLast, defaultPopupStyles.borderBottomLast]}>
                 <TouchableOpacity
@@ -838,9 +854,9 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
                 </TouchableOpacity>
               </View>
             </View>
-          )}
-        </TouchableOpacity>
-      </Modal>
+          </TouchableOpacity>
+        </Modal>
+      )}
     </View>
   );
 };
@@ -918,6 +934,9 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.slate[100],
     overflow: 'visible',
   },
+  summaryExerciseContainerTall: {
+    alignItems: 'flex-start',
+  },
   summaryExerciseContent: {
     flex: 1,
     marginRight: 8,
@@ -945,36 +964,50 @@ const styles = StyleSheet.create({
     minWidth: 60,
     maxHeight: 48, // Limit height to prevent vertical expansion
   },
+  summaryBadgesContainerTall: {
+    maxHeight: 9999, // Allow height to grow for 3+ badges
+  },
   summaryBadge: {
-    backgroundColor: COLORS.slate[100],
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    backgroundColor: COLORS.blue[200],
+    paddingHorizontal: 4,
+    paddingVertical: 0,
     borderRadius: 4,
     maxWidth: 140,
-    minHeight: 20, // Minimum height per badge
     justifyContent: 'center',
     alignItems: 'flex-end',
     borderWidth: 1,
-    borderColor: 'transparent',
+    borderColor: COLORS.blue[200],
   },
   summaryBadgeSelected: {
-    backgroundColor: COLORS.blue[200],
+    backgroundColor: COLORS.blue[250],
     borderWidth: 1,
     borderColor: COLORS.blue[400],
+  },
+  summaryBadgeFirstOfMany: {
+    marginTop: -4,
+  },
+  summaryBadgeLastOfMany: {
+    marginBottom: -4,
   },
   summaryBadgeContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
+    gap: 1,
   },
   summaryBadgeItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
+    gap: 0,
+    paddingVertical: 2,
+    paddingHorizontal: 4,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    borderRadius: 4,
   },
   summaryBadgeDropsetIndicator: {
     width: 2,
-    height: 12,
+    height: 14,
     backgroundColor: COLORS.slate[500],
     borderRadius: 1,
   },
@@ -982,12 +1015,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     includeFontPadding: false,
-  },
-  summaryBadgeSeparator: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: COLORS.slate[400],
-    marginHorizontal: 0,
   },
   summaryMenuButton: {
     width: 28,
@@ -1256,9 +1283,9 @@ const styles = StyleSheet.create({
     width: 3,
     backgroundColor: COLORS.slate[500],
     position: 'absolute',
-    left: -12,
-    top: -10,
-    bottom: -10,
+    left: -6,
+    top: -1,
+    bottom: -1,
   },
   inlineSetGroupCount: {
     fontSize: 15,
