@@ -1847,14 +1847,35 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
                 ]}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Timer
-                  size={16}
-                  color={
-                    setGroup.restPeriodSeconds || (setGroup.restPeriodSecondsBySetId && Object.keys(setGroup.restPeriodSecondsBySetId).length > 0)
-                      ? COLORS.blue[600]
-                      : (groupColorScheme ? groupColorScheme[400] : COLORS.slate[300])
+                {(() => {
+                  const disabledColor = groupColorScheme ? groupColorScheme[400] : COLORS.slate[300];
+                  const prefix = setGroup.id + '-';
+                  const countWithTimers = Object.keys(setGroup.restPeriodSecondsBySetId || {}).filter(sid => {
+                    if (!sid.startsWith(prefix)) return false;
+                    const idx = parseInt(sid.slice(prefix.length), 10);
+                    return !Number.isNaN(idx) && idx >= 0 && idx < setGroup.count;
+                  }).length;
+                  const hasAnyTimer = setGroup.restPeriodSeconds != null || countWithTimers > 0;
+                  const hasPartialTimers = countWithTimers > 0 && countWithTimers < setGroup.count;
+                  if (hasPartialTimers) {
+                    return (
+                      <View style={styles.timerIconSplit}>
+                        <Timer size={16} color={disabledColor} />
+                        <View style={[styles.timerIconSplitRight, { width: 8, height: 16 }]} pointerEvents="none">
+                          <View style={{ position: 'absolute', right: 0 }}>
+                            <Timer size={16} color={COLORS.blue[600]} />
+                          </View>
+                        </View>
+                      </View>
+                    );
                   }
-                />
+                  return (
+                    <Timer
+                      size={16}
+                      color={hasAnyTimer ? COLORS.blue[600] : disabledColor}
+                    />
+                  );
+                })()}
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => handleDecrementSetGroup(item, setGroup.id)}
@@ -2291,14 +2312,35 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
                               ]}
                               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                             >
-                              <Timer
-                                size={16}
-                                color={
-                                  setGroup.restPeriodSeconds || (setGroup.restPeriodSecondsBySetId && Object.keys(setGroup.restPeriodSecondsBySetId).length > 0)
-                                    ? COLORS.blue[600]
-                                    : COLORS.slate[300]
+                              {(() => {
+                                const disabledColor = COLORS.slate[300];
+                                const prefix = setGroup.id + '-';
+                                const countWithTimers = Object.keys(setGroup.restPeriodSecondsBySetId || {}).filter(sid => {
+                                  if (!sid.startsWith(prefix)) return false;
+                                  const idx = parseInt(sid.slice(prefix.length), 10);
+                                  return !Number.isNaN(idx) && idx >= 0 && idx < setGroup.count;
+                                }).length;
+                                const hasAnyTimer = setGroup.restPeriodSeconds != null || countWithTimers > 0;
+                                const hasPartialTimers = countWithTimers > 0 && countWithTimers < setGroup.count;
+                                if (hasPartialTimers) {
+                                  return (
+                                    <View style={styles.timerIconSplit}>
+                                      <Timer size={16} color={disabledColor} />
+                                      <View style={[styles.timerIconSplitRight, { width: 8, height: 16 }]} pointerEvents="none">
+                                        <View style={{ position: 'absolute', right: 0 }}>
+                                          <Timer size={16} color={COLORS.blue[600]} />
+                                        </View>
+                                      </View>
+                                    </View>
+                                  );
                                 }
-                              />
+                                return (
+                                  <Timer
+                                    size={16}
+                                    color={hasAnyTimer ? COLORS.blue[600] : disabledColor}
+                                  />
+                                );
+                              })()}
                             </TouchableOpacity>
                             <TouchableOpacity
                               onPress={() => handleDecrementSetGroup(item, setGroup.id)}
@@ -3137,6 +3179,17 @@ const styles = StyleSheet.create({
   },
   setControlButton__disabled: {
     opacity: 0.5,
+  },
+  timerIconSplit: {
+    width: 16,
+    height: 16,
+    position: 'relative',
+  },
+  timerIconSplitRight: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    overflow: 'hidden',
   },
   groupIconButton: {
     padding: 0,
