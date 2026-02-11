@@ -599,10 +599,21 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
   // Convert setGroups to Sets format for SetDragModal
   const convertSetGroupsToSets = useCallback((setGroups: SetGroup[]): Set[] => {
     const sets: Set[] = [];
+    const usedSetIds = new Set<string>(); // Track used set IDs to prevent duplicates
 
     setGroups.forEach((setGroup) => {
       for (let i = 0; i < setGroup.count; i++) {
-        const setId = `${setGroup.id}-${i}`;
+        let setId = `${setGroup.id}-${i}`;
+        
+        // Ensure set ID is unique
+        let uniqueId = setId;
+        let counter = 0;
+        while (usedSetIds.has(uniqueId)) {
+          uniqueId = `${setId}-${counter}`;
+          counter++;
+        }
+        usedSetIds.add(uniqueId);
+        setId = uniqueId;
 
         // For dropsets with setTypes array, use individual set types
         let isWarmup = setGroup.isWarmup || false;
@@ -613,6 +624,10 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
           isFailure = setGroup.setTypes[i].isFailure;
         }
 
+        // Look up timer using the expected format before potentially modifying setId
+        const expectedSetIdForTimer = `${setGroup.id}-${i}`;
+        const restPeriodSeconds = setGroup.restPeriodSecondsBySetId?.[expectedSetIdForTimer] ?? setGroup.restPeriodSeconds;
+        
         const set: Set = {
           id: setId,
           type: 'Working',
@@ -624,7 +639,7 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
           isWarmup: isWarmup,
           isFailure: isFailure,
           dropSetId: setGroup.isDropset ? setGroup.id : undefined,
-          restPeriodSeconds: setGroup.restPeriodSecondsBySetId?.[setId] ?? setGroup.restPeriodSeconds,
+          restPeriodSeconds: restPeriodSeconds,
         };
         sets.push(set);
       }
@@ -684,11 +699,22 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
   const convertSetsToSetGroups = useCallback((sets: Set[]): SetGroup[] => {
     if (sets.length === 0) return [];
 
+    // Deduplicate sets by ID to prevent processing the same set twice
+    const seenSetIds = new Set<string>();
+    const uniqueSets = sets.filter(set => {
+      if (seenSetIds.has(set.id)) {
+        return false; // Skip duplicate
+      }
+      seenSetIds.add(set.id);
+      return true;
+    });
+
     const setGroups: SetGroup[] = [];
     let currentGroup: SetGroup | null = null;
     const dropsetGroupsMap = new Map<string, SetGroup>();
+    const usedGroupIds = new Set<string>(); // Track used group IDs to prevent duplicates
 
-    sets.forEach((set) => {
+    uniqueSets.forEach((set) => {
       const isDropset = !!set.dropSetId;
       const isWarmup = set.isWarmup || false;
       const isFailure = set.isFailure || false;
@@ -701,23 +727,32 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
 
         if (!dropsetGroup) {
           // Create new dropset group
+          // Dropset IDs should already be unique (generated with timestamps), but track them anyway
+          usedGroupIds.add(dropSetId);
           dropsetGroup = {
             id: dropSetId,
             count: 0,
             isDropset: true,
             setTypes: [],
             restPeriodSeconds: restPeriodSeconds,
-            restPeriodSecondsBySetId: restPeriodSeconds != null ? { [set.id]: restPeriodSeconds } : {},
+            restPeriodSecondsBySetId: {},
           };
           dropsetGroupsMap.set(dropSetId, dropsetGroup);
           setGroups.push(dropsetGroup);
           currentGroup = null;
-        } else if (restPeriodSeconds != null) {
-          dropsetGroup.restPeriodSecondsBySetId = dropsetGroup.restPeriodSecondsBySetId ?? {};
-          dropsetGroup.restPeriodSecondsBySetId[set.id] = restPeriodSeconds;
         }
 
+        // Add this set to the dropset group
+        const setIndexInDropset = dropsetGroup.count; // Index within this dropset group
         dropsetGroup.count++;
+        
+        // Store timer using expected format: ${setGroup.id}-${index}
+        if (restPeriodSeconds != null) {
+          dropsetGroup.restPeriodSecondsBySetId = dropsetGroup.restPeriodSecondsBySetId ?? {};
+          const expectedSetId = `${dropSetId}-${setIndexInDropset}`;
+          dropsetGroup.restPeriodSecondsBySetId[expectedSetId] = restPeriodSeconds;
+        }
+        
         if (dropsetGroup.setTypes) {
           dropsetGroup.setTypes.push({ isWarmup, isFailure });
         }
@@ -728,11 +763,17 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
           currentGroup.isWarmup === isWarmup &&
           currentGroup.isFailure === isFailure) {
           // Same type as current group, merge
+          const setIndexInGroup = currentGroup.count; // Index within this group
           currentGroup.count++;
-          if (restPeriodSeconds != null) {
-            currentGroup.restPeriodSecondsBySetId = currentGroup.restPeriodSecondsBySetId ?? {};
-            currentGroup.restPeriodSecondsBySetId[set.id] = restPeriodSeconds;
+          
+        // Store timer using expected format: ${setGroup.id}-${index}
+        if (restPeriodSeconds != null) {
+          if (!currentGroup.restPeriodSecondsBySetId) {
+            currentGroup.restPeriodSecondsBySetId = {};
           }
+          const expectedSetId = `${currentGroup.id}-${setIndexInGroup}`;
+          currentGroup.restPeriodSecondsBySetId[expectedSetId] = restPeriodSeconds;
+        }
 
           // If rest timers differ, clear group-level rest timer
           if (currentGroup.restPeriodSeconds !== restPeriodSeconds) {
@@ -740,11 +781,39 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
           }
         } else {
           // Different type or first set, start new group.
-          // Use stripped set id as group id so set ids stay stable (groupId-0, groupId-1).
-          // If that would duplicate an existing group id (e.g. two groups from same prefix), use full set.id so ids stay unique.
-          const strippedId = /-\d+$/.test(set.id) ? set.id.replace(/-\d+$/, '') : set.id;
-          const idAlreadyUsed = setGroups.some(sg => sg.id === strippedId) || (currentGroup?.id === strippedId);
-          const groupId = idAlreadyUsed ? set.id : strippedId;
+          // Check if set.id matches the expected format: ${groupId}-${index}
+          // If so, extract the groupId to preserve original structure
+          let groupId: string;
+          const setIdMatch = set.id.match(/^(.+)-(\d+)$/);
+          if (setIdMatch) {
+            const [, potentialGroupId, indexStr] = setIdMatch;
+            const index = parseInt(indexStr, 10);
+            // Only use this if index is 0 (first set in group) to avoid conflicts
+            if (index === 0 && !usedGroupIds.has(potentialGroupId) && currentGroup?.id !== potentialGroupId) {
+              groupId = potentialGroupId;
+            } else {
+              // Use stripped set id as group id
+              const strippedId = /-\d+$/.test(set.id) ? set.id.replace(/-\d+$/, '') : set.id;
+              const idAlreadyUsed = usedGroupIds.has(strippedId) || (currentGroup?.id === strippedId);
+              groupId = idAlreadyUsed ? set.id : strippedId;
+            }
+          } else {
+            // Set ID doesn't match expected format, use stripped ID
+            const strippedId = /-\d+$/.test(set.id) ? set.id.replace(/-\d+$/, '') : set.id;
+            const idAlreadyUsed = usedGroupIds.has(strippedId) || (currentGroup?.id === strippedId);
+            groupId = idAlreadyUsed ? set.id : strippedId;
+          }
+          
+          // Ensure groupId is unique
+          let uniqueGroupId = groupId;
+          let counter = 0;
+          while (usedGroupIds.has(uniqueGroupId)) {
+            uniqueGroupId = `${groupId}-${counter}`;
+            counter++;
+          }
+          usedGroupIds.add(uniqueGroupId);
+          groupId = uniqueGroupId;
+          
           currentGroup = {
             id: groupId,
             count: 1,
@@ -752,8 +821,9 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
             isWarmup: isWarmup,
             isFailure: isFailure,
             restPeriodSeconds: restPeriodSeconds,
-            restPeriodSecondsBySetId: restPeriodSeconds != null ? { [set.id]: restPeriodSeconds } : {},
+            restPeriodSecondsBySetId: restPeriodSeconds != null ? { [`${groupId}-0`]: restPeriodSeconds } : {},
           };
+          
           setGroups.push(currentGroup);
         }
       }
@@ -1600,10 +1670,12 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
   const handleSetDragSave = useCallback(() => {
     if (!editingInstanceKey) return;
 
-    // Extract sets from drag items
+    // Extract sets from drag items, deduplicating by set ID
+    const seenSetIds = new Set<string>();
     const sets: Set[] = [];
     setDragItems.forEach(item => {
-      if (item.type === 'set') {
+      if (item.type === 'set' && !seenSetIds.has(item.set.id)) {
+        seenSetIds.add(item.set.id);
         sets.push(item.set);
       }
     });

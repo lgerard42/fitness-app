@@ -912,11 +912,22 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
   const convertSetsToSetGroups = useCallback((sets: Set[]): SetGroup[] => {
     if (sets.length === 0) return [];
 
+    // Deduplicate sets by ID to prevent processing the same set twice
+    const seenSetIds = new Set<string>();
+    const uniqueSets = sets.filter(set => {
+      if (seenSetIds.has(set.id)) {
+        return false; // Skip duplicate
+      }
+      seenSetIds.add(set.id);
+      return true;
+    });
+
     const setGroups: SetGroup[] = [];
     let currentGroup: SetGroup | null = null;
     const dropsetGroupsMap = new Map<string, SetGroup>();
+    const usedGroupIds = new Set<string>(); // Track used group IDs to prevent duplicates
 
-    sets.forEach((set, index) => {
+    uniqueSets.forEach((set) => {
       const isDropset = !!set.dropSetId;
       const isWarmup = set.isWarmup || false;
       const isFailure = set.isFailure || false;
@@ -929,17 +940,19 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
 
         if (!dropsetGroup) {
           // Create new dropset group
+          // Dropset IDs should already be unique (generated with timestamps), but track them anyway
+          usedGroupIds.add(dropSetId);
           dropsetGroup = {
             id: dropSetId,
             count: 0,
             isDropset: true,
-            setTypes: [], // Initialize array to store individual set types
-            restPeriodSeconds: restPeriodSeconds, // Initialize with first set's rest timer
+            setTypes: [],
+            restPeriodSeconds: restPeriodSeconds,
             restPeriodSecondsBySetId: {},
           };
           dropsetGroupsMap.set(dropSetId, dropsetGroup);
           setGroups.push(dropsetGroup);
-          currentGroup = null; // Reset currentGroup when we hit a dropset
+          currentGroup = null;
         }
 
         // Add this set to the dropset group
@@ -955,30 +968,6 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
         
         if (dropsetGroup.setTypes) {
           dropsetGroup.setTypes.push({ isWarmup, isFailure });
-        }
-
-        // Check if all sets in dropset have the same rest timer
-        if (dropsetGroup.restPeriodSeconds !== restPeriodSeconds) {
-          // Different rest timers, clear group-level rest timer
-          dropsetGroup.restPeriodSeconds = undefined;
-        }
-
-        // Check if all sets in dropset have the same type
-        if (dropsetGroup.setTypes && dropsetGroup.setTypes.length > 0) {
-          const firstType = dropsetGroup.setTypes[0];
-          const allSameType = dropsetGroup.setTypes.every(
-            t => t.isWarmup === firstType.isWarmup && t.isFailure === firstType.isFailure
-          );
-
-          if (allSameType) {
-            // All sets have the same type, set group-level properties for backward compatibility
-            dropsetGroup.isWarmup = firstType.isWarmup;
-            dropsetGroup.isFailure = firstType.isFailure;
-          } else {
-            // Multiple types in dropset, clear group-level properties
-            dropsetGroup.isWarmup = undefined;
-            dropsetGroup.isFailure = undefined;
-          }
         }
       } else {
         // For non-dropset sets, merge sequential sets of the same type (regardless of rest timer)
@@ -1003,11 +992,39 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           }
         } else {
           // Different type or first set, start new group.
-          // Use stripped set id as group id so set ids stay stable (groupId-0, groupId-1).
-          // If that would duplicate an existing group id (e.g. two groups from same prefix), use full set.id so ids stay unique.
-          const strippedId = /-\d+$/.test(set.id) ? set.id.replace(/-\d+$/, '') : set.id;
-          const idAlreadyUsed = setGroups.some(sg => sg.id === strippedId) || (currentGroup?.id === strippedId);
-          const groupId = idAlreadyUsed ? set.id : strippedId;
+          // Check if set.id matches the expected format: ${groupId}-${index}
+          // If so, extract the groupId to preserve original structure
+          let groupId: string;
+          const setIdMatch = set.id.match(/^(.+)-(\d+)$/);
+          if (setIdMatch) {
+            const [, potentialGroupId, indexStr] = setIdMatch;
+            const index = parseInt(indexStr, 10);
+            // Only use this if index is 0 (first set in group) to avoid conflicts
+            if (index === 0 && !usedGroupIds.has(potentialGroupId) && currentGroup?.id !== potentialGroupId) {
+              groupId = potentialGroupId;
+            } else {
+              // Use stripped set id as group id
+              const strippedId = /-\d+$/.test(set.id) ? set.id.replace(/-\d+$/, '') : set.id;
+              const idAlreadyUsed = usedGroupIds.has(strippedId) || (currentGroup?.id === strippedId);
+              groupId = idAlreadyUsed ? set.id : strippedId;
+            }
+          } else {
+            // Set ID doesn't match expected format, use stripped ID
+            const strippedId = /-\d+$/.test(set.id) ? set.id.replace(/-\d+$/, '') : set.id;
+            const idAlreadyUsed = usedGroupIds.has(strippedId) || (currentGroup?.id === strippedId);
+            groupId = idAlreadyUsed ? set.id : strippedId;
+          }
+          
+          // Ensure groupId is unique
+          let uniqueGroupId = groupId;
+          let counter = 0;
+          while (usedGroupIds.has(uniqueGroupId)) {
+            uniqueGroupId = `${groupId}-${counter}`;
+            counter++;
+          }
+          usedGroupIds.add(uniqueGroupId);
+          groupId = uniqueGroupId;
+          
           currentGroup = {
             id: groupId,
             count: 1,
@@ -1015,14 +1032,8 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
             isWarmup: isWarmup,
             isFailure: isFailure,
             restPeriodSeconds: restPeriodSeconds,
-            restPeriodSecondsBySetId: {},
+            restPeriodSecondsBySetId: restPeriodSeconds != null ? { [`${groupId}-0`]: restPeriodSeconds } : {},
           };
-          
-          // Store timer using expected format: ${setGroup.id}-${index} (index is 0 for first set)
-          if (restPeriodSeconds != null) {
-            const expectedSetId = `${groupId}-0`;
-            currentGroup.restPeriodSecondsBySetId[expectedSetId] = restPeriodSeconds;
-          }
           
           setGroups.push(currentGroup);
         }
