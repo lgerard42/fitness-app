@@ -1,9 +1,10 @@
 import React, { useRef, useCallback, useMemo, useState } from 'react';
 import { View, Text, SectionList, StyleSheet, TouchableOpacity, Modal, Dimensions } from 'react-native';
-import { Plus, Minus, MoreVertical, TrendingDown, Flame, XCircle, Trash2 } from 'lucide-react-native';
+import { Plus, Minus, MoreVertical, TrendingDown, Flame, Zap, Trash2, Edit } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { PADDING } from '@/constants/layout';
 import { groupExercisesAlphabetically } from '@/utils/workoutHelpers';
+import { defaultPopupStyles } from '@/constants/defaultStyles';
 import ExerciseListItem from './ExerciseListItem/ExerciseListItemIndex';
 import ExerciseTags from './ExerciseListItem/ExerciseTags';
 import UnselectedListScrollbar from './UnselectedListScrollbar';
@@ -29,6 +30,8 @@ interface SelectedInGlossaryProps {
   onToggleFailure?: ((instanceKey: string, setGroupId: string) => void) | null;
   onInsertRow?: ((instanceKey: string, setGroupId: string) => void) | null;
   onDeleteRow?: ((instanceKey: string, setGroupId: string) => void) | null;
+  onEditInstanceSets?: ((instanceKey: string, exerciseId: string) => void) | null;
+  onDeleteInstance?: ((instanceKey: string) => void) | null;
 }
 
 interface Section {
@@ -55,12 +58,17 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
   onToggleFailure = null,
   onInsertRow = null,
   onDeleteRow = null,
+  onEditInstanceSets = null,
+  onDeleteInstance = null,
 }) => {
   const sectionListRef = useRef<SectionList<ExerciseLibraryItem, Section>>(null);
   const [openMenuExerciseId, setOpenMenuExerciseId] = useState<string | null>(null);
   const [openMenuSetGroupId, setOpenMenuSetGroupId] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
+  const [openSummaryPopupInstanceKey, setOpenSummaryPopupInstanceKey] = useState<string | null>(null);
+  const [summaryPopupPosition, setSummaryPopupPosition] = useState<{ x: number; y: number } | null>(null);
   const menuButtonRefs = useRef<Map<string, any>>(new Map());
+  const summaryBadgeRefs = useRef<Map<string, any>>(new Map());
   const screenWidth = Dimensions.get('window').width;
 
   const sections = useMemo(() => {
@@ -158,6 +166,30 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
       <Text style={styles.sectionHeaderText}>{section.title}</Text>
     </View>
   ), []);
+
+  // Helper to render set group badge items with indicators and colors
+  const renderSetGroupBadgeItems = useCallback((setGroups: SetGroup[]) => {
+    return setGroups.map((sg, index) => {
+      const isLast = index === setGroups.length - 1;
+      const textColor = sg.isWarmup 
+        ? COLORS.orange[500] 
+        : sg.isFailure 
+          ? COLORS.red[500] 
+          : COLORS.slate[900]; // Black/default
+      
+      return (
+        <View key={sg.id} style={styles.summaryBadgeItem}>
+          {sg.isDropset && (
+            <View style={styles.summaryBadgeDropsetIndicator} />
+          )}
+          <Text style={[styles.summaryBadgeItemText, { color: textColor }]}>
+            {sg.count}
+          </Text>
+          {!isLast && <Text style={styles.summaryBadgeSeparator}> • </Text>}
+        </View>
+      );
+    });
+  }, []);
 
   const renderSetGroupRow = useCallback((
     instanceKey: string,
@@ -409,7 +441,7 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
                 style={styles.inlineSetGroupMenuButton}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <MoreVertical size={14} color={COLORS.blue[600]} />
+                <MoreVertical size={18} color={COLORS.blue[600]} />
               </TouchableOpacity>
             </View>
 
@@ -419,21 +451,41 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
       );
     }
 
-    // If selected and has any expanded instance, show expanded view for all instances in one card
+    // If selected and has any expanded instance, show summary badges instead of expanded rows
     if (isAlreadySelected && hasAnyExpandedInstance && exerciseInstances.length > 0) {
+      // Filter instances that have multiple set rows (more than 1 setGroup)
+      const instancesWithMultipleRows = exerciseInstances.filter(instance => {
+        const setGroups = instance.setGroups;
+        return setGroups && setGroups.length > 1;
+      });
+
+      // If no instances have multiple rows, fall through to default rendering
+      if (instancesWithMultipleRows.length === 0) {
+        return (
+          <View key={`list-item-${itemId}`}>
+            <ExerciseListItem
+              item={item}
+              isSelected={isAlreadySelected}
+              isLastSelected={false}
+              onToggle={onToggleSelect}
+              showAddMore={false}
+              renderingSection="glossary"
+            />
+          </View>
+        );
+      }
+
       return (
-        <View key={`expanded-${itemId}`} style={styles.expandedExerciseContainer}>
-          {/* Exercise header - shown once for all instances */}
+        <View key={`summary-${itemId}`} style={styles.summaryExerciseContainer}>
           <TouchableOpacity
             onPress={() => {
               // Don't toggle selection - clicking on selected exercises shouldn't unselect them
-              // The user should use the controls to modify the exercise
             }}
-            style={styles.expandedExerciseHeader}
+            style={styles.summaryExerciseContent}
           >
-            <View style={styles.expandedExerciseInfo}>
-              <Text style={styles.expandedExerciseName}>{item.name}</Text>
-              <View style={styles.expandedTagsContainer}>
+            <View style={styles.summaryExerciseInfo}>
+              <Text style={styles.summaryExerciseName}>{item.name}</Text>
+              <View style={styles.summaryTagsContainer}>
                 <ExerciseTags
                   item={item}
                   isCollapsedGroup={false}
@@ -445,21 +497,64 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
             </View>
           </TouchableOpacity>
 
-          {/* Each instance's setGroups in its own container */}
-          {exerciseInstances.map((instance, instanceIndex) => {
-            const setGroups = instance.setGroups;
-            const hasMultipleRows = setGroups && (setGroups.length > 1 || (setGroups.length === 1 && (setGroups[0].count > 1 || setGroups[0].isDropset || setGroups[0].isWarmup || setGroups[0].isFailure)));
-
-            if (!hasMultipleRows) return null;
-
-            return (
-              <View key={instance.instanceKey} style={styles.setGroupsContainer}>
-                {setGroups.map((setGroup, index) =>
-                  renderSetGroupRow(instance.instanceKey, setGroup, index, setGroups.length, setGroups.length === 1, item.name)
-                )}
-              </View>
-            );
-          })}
+          {/* Summary badges stacked vertically - one per instance with multiple rows */}
+          <View style={styles.summaryBadgesContainer}>
+            {instancesWithMultipleRows.map((instance) => {
+              const setGroups = instance.setGroups;
+              if (!setGroups || setGroups.length <= 1) return null;
+              const isPopupOpen = openSummaryPopupInstanceKey === instance.instanceKey;
+              return (
+                <TouchableOpacity
+                  key={instance.instanceKey}
+                  ref={(ref) => {
+                    if (ref) {
+                      summaryBadgeRefs.current.set(instance.instanceKey, ref);
+                    } else {
+                      summaryBadgeRefs.current.delete(instance.instanceKey);
+                    }
+                  }}
+                  onPress={() => {
+                    const isCurrentlyOpen = openSummaryPopupInstanceKey === instance.instanceKey;
+                    if (isCurrentlyOpen) {
+                      setOpenSummaryPopupInstanceKey(null);
+                      setSummaryPopupPosition(null);
+                    } else {
+                      setOpenSummaryPopupInstanceKey(instance.instanceKey);
+                      const measureBadge = () => {
+                        const badgeRef = summaryBadgeRefs.current.get(instance.instanceKey);
+                        if (badgeRef) {
+                          badgeRef.measureInWindow((x: number, y: number, width: number, height: number) => {
+                            const popupWidth = 180;
+                            const padding = 16;
+                            let popupX = x + width - popupWidth;
+                            if (popupX + popupWidth > screenWidth - padding) {
+                              popupX = screenWidth - popupWidth - padding;
+                            }
+                            if (popupX < padding) {
+                              popupX = padding;
+                            }
+                            setSummaryPopupPosition({ x: popupX, y: y + height + 4 });
+                          });
+                        } else {
+                          setTimeout(measureBadge, 10);
+                        }
+                      };
+                      setTimeout(measureBadge, 0);
+                    }
+                  }}
+                  style={[
+                    styles.summaryBadge,
+                    isPopupOpen && styles.summaryBadgeSelected,
+                  ]}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.summaryBadgeContent}>
+                    {renderSetGroupBadgeItems(setGroups)}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
       );
     }
@@ -479,84 +574,129 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
         />
       </View>
     );
-  }, [selectedIds, exerciseInstancesMap, renderSetGroupRow, openMenuExerciseId, openMenuSetGroupId, onToggleSelect, onIncrementSetGroup, onDecrementSetGroup, onToggleDropset, onToggleWarmup, onToggleFailure, onInsertRow]);
+  }, [selectedIds, exerciseInstancesMap, renderSetGroupRow, openMenuExerciseId, openMenuSetGroupId, onToggleSelect, onIncrementSetGroup, onDecrementSetGroup, onToggleDropset, onToggleWarmup, onToggleFailure, onInsertRow, renderSetGroupBadgeItems, screenWidth]);
 
   // Helper to render menu content
   const renderMenuContent = useCallback((setGroup: SetGroup, instanceKey: string, isExpanded: boolean = false, canDeleteRow: boolean = false) => {
+    const isWarmup = setGroup.isWarmup || false;
+    const isFailure = setGroup.isFailure || false;
+    
     return (
       <>
+        {/* Warmup / Failure Toggle Row - at the top */}
+        <View style={[
+          styles.menuToggleRow,
+          defaultPopupStyles.borderRadiusFirst,
+        ]}>
+          <View style={styles.menuToggleButtonsWrapper}>
+            <TouchableOpacity
+              activeOpacity={1}
+              style={[
+                styles.menuToggleOption,
+                styles.menuToggleOptionInactive,
+                isWarmup && styles.menuToggleOptionActiveWarmup,
+              ]}
+              onPress={() => {
+                onToggleWarmup?.(instanceKey, setGroup.id);
+              }}
+            >
+              <View style={styles.menuToggleOptionContent}>
+                <Flame
+                  size={18}
+                  color={isWarmup ? COLORS.white : COLORS.orange[500]}
+                />
+                <Text style={[
+                  styles.menuToggleOptionText,
+                  styles.menuToggleOptionTextInactive,
+                  isWarmup && styles.menuToggleOptionTextActive,
+                ]}>
+                  Warmup
+                </Text>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              activeOpacity={1}
+              style={[
+                styles.menuToggleOption,
+                styles.menuToggleOptionInactive,
+                isFailure && styles.menuToggleOptionActiveFailure,
+              ]}
+              onPress={() => {
+                onToggleFailure?.(instanceKey, setGroup.id);
+              }}
+            >
+              <View style={styles.menuToggleOptionContent}>
+                <Zap
+                  size={18}
+                  color={isFailure ? COLORS.white : COLORS.red[500]}
+                />
+                <Text style={[
+                  styles.menuToggleOptionText,
+                  styles.menuToggleOptionTextInactive,
+                  isFailure && styles.menuToggleOptionTextActive,
+                ]}>
+                  Failure
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Dropset */}
         <TouchableOpacity
           style={[
             styles.menuItem,
-            setGroup.isDropset && { backgroundColor: COLORS.indigo[500] }
+            setGroup.isDropset && styles.menuItemActive,
           ]}
           onPress={() => {
             onToggleDropset?.(instanceKey, setGroup.id);
           }}
         >
-          <TrendingDown size={14} color={setGroup.isDropset ? COLORS.white : COLORS.indigo[400]} />
-          <Text style={[styles.menuItemText, setGroup.isDropset && { color: COLORS.white }]}>Dropset</Text>
+          <View style={styles.menuItemContent}>
+            <TrendingDown size={18} color={setGroup.isDropset ? COLORS.white : COLORS.indigo[400]} />
+            <Text style={[styles.menuItemText, setGroup.isDropset && { color: COLORS.white }]}>Dropset</Text>
+          </View>
         </TouchableOpacity>
 
-        {/* Warmup / Failure Row */}
-        <View style={styles.menuItemRow}>
-          <TouchableOpacity
-            style={[
-              styles.menuItemHalf,
-              setGroup.isWarmup && { backgroundColor: COLORS.orange[500] }
-            ]}
-            onPress={() => {
-              onToggleWarmup?.(instanceKey, setGroup.id);
-            }}
-          >
-            <Flame size={14} color={setGroup.isWarmup ? COLORS.white : COLORS.orange[500]} />
-            <Text style={[styles.menuItemText, setGroup.isWarmup && { color: COLORS.white }]}>Warmup</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.menuItemHalf,
-              setGroup.isFailure && { backgroundColor: COLORS.red[500] }
-            ]}
-            onPress={() => {
-              onToggleFailure?.(instanceKey, setGroup.id);
-            }}
-          >
-            <XCircle size={14} color={setGroup.isFailure ? COLORS.white : COLORS.red[500]} />
-            <Text style={[styles.menuItemText, setGroup.isFailure && { color: COLORS.white }]}>Failure</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Insert Row */}
+        {/* Edit Sets */}
         <TouchableOpacity
           style={styles.menuItem}
           onPress={() => {
-            onInsertRow?.(instanceKey, setGroup.id);
+            if (onEditInstanceSets) {
+              const exerciseId = instanceKey.split('::')[0];
+              onEditInstanceSets(instanceKey, exerciseId);
+            }
             setOpenMenuExerciseId(null);
             setOpenMenuSetGroupId(null);
+            setMenuPosition(null);
           }}
         >
-          <Plus size={14} color={COLORS.slate[200]} />
-          <Text style={styles.menuItemText}>Insert Row</Text>
+          <View style={styles.menuItemContent}>
+            <Edit size={18} color={defaultPopupStyles.optionText.color} />
+            <Text style={styles.menuItemText}>Edit Sets</Text>
+          </View>
         </TouchableOpacity>
 
         {/* Delete Row - only show if there are multiple rows */}
         {canDeleteRow && (
           <TouchableOpacity
-            style={styles.menuItem}
+            style={[styles.menuItem, defaultPopupStyles.borderRadiusLast, defaultPopupStyles.borderBottomLast]}
             onPress={() => {
               onDeleteRow?.(instanceKey, setGroup.id);
               setOpenMenuExerciseId(null);
               setOpenMenuSetGroupId(null);
+              setMenuPosition(null);
             }}
           >
-            <Trash2 size={14} color={COLORS.red[500]} />
-            <Text style={[styles.menuItemText, { color: COLORS.red[500] }]}>Delete Row</Text>
+            <View style={styles.menuItemContent}>
+              <Trash2 size={18} color={COLORS.red[500]} />
+              <Text style={[styles.menuItemText, { color: COLORS.red[500] }]}>Delete Row</Text>
+            </View>
           </TouchableOpacity>
         )}
       </>
     );
-  }, [onToggleDropset, onToggleWarmup, onToggleFailure, onInsertRow, onDeleteRow]);
+  }, [onToggleDropset, onToggleWarmup, onToggleFailure, onDeleteRow, onEditInstanceSets]);
 
   // Find the currently open menu's setGroup data
   const openMenuData = useMemo(() => {
@@ -640,6 +780,67 @@ const SelectedInGlossary: React.FC<SelectedInGlossaryProps> = ({
           )}
         </TouchableOpacity>
       </Modal>
+
+      {/* Summary badge popup modal */}
+      <Modal
+        visible={!!openSummaryPopupInstanceKey}
+        transparent={true}
+        animationType="none"
+        onRequestClose={() => {
+          setOpenSummaryPopupInstanceKey(null);
+          setSummaryPopupPosition(null);
+        }}
+      >
+        <TouchableOpacity
+          style={styles.modalBackdrop}
+          activeOpacity={1}
+          onPress={() => {
+            setOpenSummaryPopupInstanceKey(null);
+            setSummaryPopupPosition(null);
+          }}
+        >
+          {openSummaryPopupInstanceKey && summaryPopupPosition && (
+            <View style={[styles.summaryPopupContainer, { left: summaryPopupPosition.x, top: summaryPopupPosition.y }]}>
+              <View style={[styles.summaryPopupOptionRow, defaultPopupStyles.borderRadiusFirst, defaultPopupStyles.borderRadiusLast, defaultPopupStyles.borderBottomLast]}>
+                <TouchableOpacity
+                  style={[styles.summaryPopupOptionInRow, styles.summaryPopupOptionInRowFlex]}
+                  onPress={() => {
+                    console.log('Edit Set clicked, onEditInstanceSets:', !!onEditInstanceSets, 'instanceKey:', openSummaryPopupInstanceKey);
+                    if (onEditInstanceSets && openSummaryPopupInstanceKey) {
+                      // Find the exercise ID for this instance
+                      const instanceKey = openSummaryPopupInstanceKey;
+                      const exerciseId = instanceKey.split('::')[0];
+                      console.log('Calling onEditInstanceSets with:', { instanceKey, exerciseId });
+                      onEditInstanceSets(instanceKey, exerciseId);
+                      setOpenSummaryPopupInstanceKey(null);
+                      setSummaryPopupPosition(null);
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.summaryPopupOptionContent}>
+                    <Edit size={16} color={defaultPopupStyles.optionText.color} />
+                    <Text style={styles.summaryPopupOptionText}>Edit Set</Text>
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.summaryPopupOptionInRow, styles.summaryPopupOptionInRowWithBorder, styles.summaryPopupOptionIconOnly]}
+                  onPress={() => {
+                    if (onDeleteInstance && openSummaryPopupInstanceKey) {
+                      onDeleteInstance(openSummaryPopupInstanceKey);
+                      setOpenSummaryPopupInstanceKey(null);
+                      setSummaryPopupPosition(null);
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Trash2 size={16} color={defaultPopupStyles.optionText.color} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 };
@@ -704,6 +905,98 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 4,
     flexWrap: 'wrap',
+  },
+  summaryExerciseContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: COLORS.blue[100],
+    borderWidth: 1,
+    borderColor: 'transparent',
+    borderBottomColor: COLORS.slate[100],
+    overflow: 'visible',
+  },
+  summaryExerciseContent: {
+    flex: 1,
+    marginRight: 8,
+  },
+  summaryExerciseInfo: {
+    flex: 1,
+  },
+  summaryExerciseName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.slate[900],
+  },
+  summaryTagsContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+    flexWrap: 'wrap',
+  },
+  summaryBadgesContainer: {
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    gap: 4,
+    marginRight: 8,
+    minWidth: 60,
+    maxHeight: 48, // Limit height to prevent vertical expansion
+  },
+  summaryBadge: {
+    backgroundColor: COLORS.slate[100],
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    maxWidth: 140,
+    minHeight: 20, // Minimum height per badge
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  summaryBadgeSelected: {
+    backgroundColor: COLORS.blue[200],
+    borderWidth: 1,
+    borderColor: COLORS.blue[400],
+  },
+  summaryBadgeContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  summaryBadgeItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  summaryBadgeDropsetIndicator: {
+    width: 2,
+    height: 12,
+    backgroundColor: COLORS.slate[500],
+    borderRadius: 1,
+  },
+  summaryBadgeItemText: {
+    fontSize: 14,
+    fontWeight: '600',
+    includeFontPadding: false,
+  },
+  summaryBadgeSeparator: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: COLORS.slate[400],
+    marginHorizontal: 0,
+  },
+  summaryMenuButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: -14, // Match inlineSetGroupMenuButton margin
   },
   setGroupsContainer: {
     overflow: 'visible',
@@ -820,33 +1113,6 @@ const styles = StyleSheet.create({
     zIndex: 99999,
     overflow: 'hidden',
   },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.slate[600],
-  },
-  menuItemRow: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.slate[600],
-  },
-  menuItemHalf: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-  },
-  menuItemText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.white,
-  },
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'transparent',
@@ -855,15 +1121,94 @@ const styles = StyleSheet.create({
     position: 'absolute',
   },
   modalMenu: {
-    backgroundColor: COLORS.slate[700],
-    borderRadius: 8,
-    minWidth: 180,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 99999,
+    backgroundColor: defaultPopupStyles.container.backgroundColor,
+    borderRadius: defaultPopupStyles.container.borderRadius,
+    minWidth: defaultPopupStyles.container.minWidth,
+    shadowColor: defaultPopupStyles.container.shadowColor,
+    shadowOffset: defaultPopupStyles.container.shadowOffset,
+    shadowOpacity: defaultPopupStyles.container.shadowOpacity,
+    shadowRadius: defaultPopupStyles.container.shadowRadius,
+    elevation: defaultPopupStyles.container.elevation,
+    zIndex: defaultPopupStyles.container.zIndex,
+    borderWidth: defaultPopupStyles.container.borderWidth,
+    borderColor: defaultPopupStyles.container.borderColor,
     overflow: 'hidden',
+  },
+  menuToggleRow: {
+    flexDirection: defaultPopupStyles.optionToggleRow.flexDirection as 'row',
+    padding: defaultPopupStyles.optionToggleRow.padding,
+    margin: defaultPopupStyles.optionToggleRow.margin,
+    borderRadius: defaultPopupStyles.optionToggleRow.borderRadius,
+    borderBottomWidth: defaultPopupStyles.optionToggleRow.borderBottomWidth,
+    borderBottomColor: defaultPopupStyles.optionToggleRow.borderBottomColor,
+    flexShrink: defaultPopupStyles.optionToggleRow.flexShrink,
+    flexWrap: defaultPopupStyles.optionToggleRow.flexWrap as 'nowrap',
+    opacity: defaultPopupStyles.optionToggleRow.opacity,
+  },
+  menuToggleButtonsWrapper: {
+    flexDirection: defaultPopupStyles.optionToggleButtonsWrapper.flexDirection as 'row',
+    backgroundColor: defaultPopupStyles.optionToggleButtonsWrapper.backgroundColor,
+    padding: defaultPopupStyles.optionToggleButtonsWrapper.padding,
+    margin: defaultPopupStyles.optionToggleButtonsWrapper.margin,
+    flex: defaultPopupStyles.optionToggleButtonsWrapper.flex,
+    width: defaultPopupStyles.optionToggleButtonsWrapper.width as '100%',
+    borderRadius: defaultPopupStyles.optionToggleButtonsWrapper.borderRadius,
+    opacity: defaultPopupStyles.optionToggleButtonsWrapper.opacity,
+  },
+  menuToggleOption: {
+    flex: defaultPopupStyles.optionToggleButton.flex,
+    paddingVertical: defaultPopupStyles.optionToggleButton.paddingVertical,
+    alignItems: defaultPopupStyles.optionToggleButton.alignItems as 'center',
+    justifyContent: defaultPopupStyles.optionToggleButton.justifyContent as 'center',
+    borderRadius: defaultPopupStyles.optionToggleButton.borderRadius,
+    minHeight: defaultPopupStyles.optionToggleButton.minHeight,
+  },
+  menuToggleOptionInactive: {
+    ...defaultPopupStyles.optionToggleButtonUnselected,
+  },
+  menuToggleOptionActiveWarmup: {
+    ...defaultPopupStyles.optionToggleButtonSelected,
+    ...defaultPopupStyles.optionToggleButtonSelectedWarmup,
+  },
+  menuToggleOptionActiveFailure: {
+    ...defaultPopupStyles.optionToggleButtonSelected,
+    ...defaultPopupStyles.optionToggleButtonSelectedFailure,
+  },
+  menuToggleOptionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  menuToggleOptionText: {
+    fontSize: defaultPopupStyles.optionToggleText.fontSize,
+    fontWeight: 'bold' as const,
+    flexShrink: defaultPopupStyles.optionToggleText.flexShrink,
+  },
+  menuToggleOptionTextInactive: {
+    ...defaultPopupStyles.optionToggleTextUnselected,
+  },
+  menuToggleOptionTextActive: {
+    ...defaultPopupStyles.optionToggleTextSelected,
+  },
+  menuItem: {
+    ...defaultPopupStyles.option,
+    ...defaultPopupStyles.optionBackground,
+  },
+  menuItemActive: {
+    ...defaultPopupStyles.optionBackgroundActive,
+  },
+  menuItemText: {
+    fontSize: defaultPopupStyles.optionText.fontSize,
+    fontWeight: '600' as const,
+    color: defaultPopupStyles.optionText.color,
+    flexShrink: defaultPopupStyles.optionText.flexShrink,
+  },
+  menuItemContent: {
+    flexDirection: defaultPopupStyles.optionContent.flexDirection as 'row',
+    alignItems: defaultPopupStyles.optionContent.alignItems as 'center',
+    gap: defaultPopupStyles.optionContent.gap,
+    flexShrink: defaultPopupStyles.optionContent.flexShrink,
+    flexWrap: defaultPopupStyles.optionContent.flexWrap as 'nowrap',
   },
   // Inline exercise styles (for simple case)
   inlineExerciseContainer: {
@@ -963,6 +1308,58 @@ const styles = StyleSheet.create({
     elevation: 99999,
     zIndex: 99999,
     overflow: 'hidden',
+  },
+  summaryPopupContainer: {
+    position: 'absolute',
+    backgroundColor: defaultPopupStyles.container.backgroundColor,
+    borderRadius: defaultPopupStyles.container.borderRadius,
+    minWidth: defaultPopupStyles.container.minWidth,
+    shadowColor: defaultPopupStyles.container.shadowColor,
+    shadowOffset: defaultPopupStyles.container.shadowOffset,
+    shadowOpacity: defaultPopupStyles.container.shadowOpacity,
+    shadowRadius: defaultPopupStyles.container.shadowRadius,
+    elevation: defaultPopupStyles.container.elevation,
+    zIndex: defaultPopupStyles.container.zIndex,
+    borderWidth: defaultPopupStyles.container.borderWidth,
+    borderColor: defaultPopupStyles.container.borderColor,
+    overflow: 'hidden',
+  },
+  summaryPopupOptionRow: {
+    flexDirection: defaultPopupStyles.optionRow.flexDirection as 'row',
+    alignItems: defaultPopupStyles.optionRow.alignItems as 'stretch',
+    padding: defaultPopupStyles.optionRow.padding,
+    borderBottomWidth: defaultPopupStyles.optionRow.borderBottomWidth,
+    borderBottomColor: defaultPopupStyles.optionRow.borderBottomColor,
+    flexShrink: defaultPopupStyles.optionRow.flexShrink,
+    flexWrap: defaultPopupStyles.optionRow.flexWrap as 'nowrap',
+  },
+  summaryPopupOptionInRow: {
+    ...defaultPopupStyles.optionInRow,
+    ...defaultPopupStyles.optionBackground,
+  },
+  summaryPopupOptionInRowFlex: {
+    ...defaultPopupStyles.optionFlex,
+  },
+  summaryPopupOptionInRowWithBorder: {
+    ...defaultPopupStyles.optionRowWithBorder,
+  },
+  summaryPopupOptionIconOnly: {
+    ...defaultPopupStyles.iconOnlyOption,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  summaryPopupOptionContent: {
+    flexDirection: defaultPopupStyles.optionContent.flexDirection as 'row',
+    alignItems: defaultPopupStyles.optionContent.alignItems as 'center',
+    gap: defaultPopupStyles.optionContent.gap,
+    flexShrink: defaultPopupStyles.optionContent.flexShrink,
+    flexWrap: defaultPopupStyles.optionContent.flexWrap as 'nowrap',
+  },
+  summaryPopupOptionText: {
+    fontSize: defaultPopupStyles.optionText.fontSize,
+    fontWeight: '600' as const,
+    color: defaultPopupStyles.optionText.color,
+    flexShrink: defaultPopupStyles.optionText.flexShrink,
   },
 });
 

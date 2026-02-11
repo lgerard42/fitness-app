@@ -9,8 +9,10 @@ import HeaderTopRow from './HeaderTopRow';
 import SearchBar from './SearchBar';
 import Filters from './Filters';
 import SelectedInGlossary from './SelectedInGlossary';
-import type { ExerciseLibraryItem, GroupType } from '@/types/workout';
+import SetDragModal from '../SetRowDragAndDropModal/indexSetRowDragAndDrop';
+import type { ExerciseLibraryItem, GroupType, Set } from '@/types/workout';
 import type { SetGroup } from '@/utils/workoutInstanceHelpers';
+import type { SetDragListItem } from '../../hooks/useSetDragAndDrop';
 
 interface ExercisePickerProps {
   isOpen: boolean;
@@ -72,6 +74,12 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
   const [exerciseInstanceSetGroups, setExerciseInstanceSetGroups] = useState<Record<string, SetGroup[]>>({});
   const [itemIdToOrderIndices, setItemIdToOrderIndices] = useState<Record<string, number[]>>({});
   const [itemSetGroupsMap, setItemSetGroupsMap] = useState<Record<string, SetGroup[]>>({});
+  
+  // SetRowDragAndDropModal state
+  const [showSetDragModal, setShowSetDragModal] = useState(false);
+  const [setDragItems, setSetDragItems] = useState<SetDragListItem[]>([]);
+  const [editingInstanceKey, setEditingInstanceKey] = useState<string | null>(null);
+  const [editingExercise, setEditingExercise] = useState<ExerciseLibraryItem | null>(null);
 
   // Sync data from drag and drop modal to instance-based structure
   // This runs when itemSetGroupsMap is updated from drag and drop modal
@@ -507,6 +515,221 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
       });
     }
   }, [exerciseInstanceSetGroups]);
+
+  const handleDeleteInstance = useCallback((instanceKey: string) => {
+    // Remove the instance from exerciseInstanceSetGroups
+    setExerciseInstanceSetGroups(prev => {
+      const updated = { ...prev };
+      delete updated[instanceKey];
+      return updated;
+    });
+
+    // Remove from selectedOrder
+    setSelectedOrder(prevOrder => {
+      const newOrder = prevOrder.filter(key => key !== instanceKey);
+      
+      // Check if exercise should be removed from selectedIds
+      const exerciseId = instanceKey.split('::')[0];
+      const remainingCount = newOrder.filter(i => i.startsWith(exerciseId)).length;
+      if (remainingCount === 0) {
+        setSelectedIds(prevIds => prevIds.filter(i => i !== exerciseId));
+      }
+      
+      return newOrder;
+    });
+  }, []);
+
+  // Convert setGroups to Sets format for SetDragModal
+  const convertSetGroupsToSets = useCallback((setGroups: SetGroup[]): Set[] => {
+    const sets: Set[] = [];
+
+    setGroups.forEach((setGroup) => {
+      for (let i = 0; i < setGroup.count; i++) {
+        const setId = `${setGroup.id}-${i}`;
+
+        // For dropsets with setTypes array, use individual set types
+        let isWarmup = setGroup.isWarmup || false;
+        let isFailure = setGroup.isFailure || false;
+
+        if (setGroup.isDropset && setGroup.setTypes && setGroup.setTypes[i]) {
+          isWarmup = setGroup.setTypes[i].isWarmup;
+          isFailure = setGroup.setTypes[i].isFailure;
+        }
+
+        const set: Set = {
+          id: setId,
+          type: 'Working',
+          weight: '',
+          reps: '',
+          duration: '',
+          distance: '',
+          completed: false,
+          isWarmup: isWarmup,
+          isFailure: isFailure,
+          dropSetId: setGroup.isDropset ? setGroup.id : undefined,
+          restPeriodSeconds: setGroup.restPeriodSecondsBySetId?.[setId] ?? setGroup.restPeriodSeconds,
+        };
+        sets.push(set);
+      }
+    });
+
+    return sets;
+  }, []);
+
+  // Convert Sets to SetDragListItem format
+  const convertSetsToSetDragItems = useCallback((sets: Set[]): SetDragListItem[] => {
+    const items: SetDragListItem[] = [];
+    const processedDropSetIds = new Set<string>();
+
+    sets.forEach((set, index) => {
+      // Check if this is the start of a new dropset
+      const isDropSetStart = set.dropSetId &&
+        (index === 0 || sets[index - 1].dropSetId !== set.dropSetId);
+
+      // Check if this is the end of a dropset
+      const isDropSetEnd = set.dropSetId &&
+        (index === sets.length - 1 || sets[index + 1]?.dropSetId !== set.dropSetId);
+
+      // Add dropset header if this is the start
+      if (isDropSetStart && set.dropSetId && !processedDropSetIds.has(set.dropSetId)) {
+        const dropSetSets = sets.filter(s => s.dropSetId === set.dropSetId);
+        items.push({
+          id: `dropset-header-${set.dropSetId}`,
+          type: 'dropset_header',
+          dropSetId: set.dropSetId,
+          setCount: dropSetSets.length,
+        });
+        processedDropSetIds.add(set.dropSetId);
+      }
+
+      // Add the set itself
+      items.push({
+        id: set.id,
+        type: 'set',
+        set,
+        hasRestTimer: !!set.restPeriodSeconds,
+      });
+
+      // Add dropset footer if this is the end
+      if (isDropSetEnd && set.dropSetId) {
+        items.push({
+          id: `dropset-footer-${set.dropSetId}`,
+          type: 'dropset_footer',
+          dropSetId: set.dropSetId,
+        });
+      }
+    });
+
+    return items;
+  }, []);
+
+  // Convert Sets back to setGroups
+  const convertSetsToSetGroups = useCallback((sets: Set[]): SetGroup[] => {
+    if (sets.length === 0) return [];
+
+    const setGroups: SetGroup[] = [];
+    let currentGroup: SetGroup | null = null;
+    const dropsetGroupsMap = new Map<string, SetGroup>();
+
+    sets.forEach((set) => {
+      const isDropset = !!set.dropSetId;
+      const isWarmup = set.isWarmup || false;
+      const isFailure = set.isFailure || false;
+      const restPeriodSeconds = set.restPeriodSeconds;
+
+      if (isDropset) {
+        // For dropsets, collect all sets with the same dropSetId
+        const dropSetId = set.dropSetId!;
+        let dropsetGroup = dropsetGroupsMap.get(dropSetId);
+
+        if (!dropsetGroup) {
+          // Create new dropset group
+          dropsetGroup = {
+            id: dropSetId,
+            count: 0,
+            isDropset: true,
+            setTypes: [],
+            restPeriodSeconds: restPeriodSeconds,
+            restPeriodSecondsBySetId: restPeriodSeconds != null ? { [set.id]: restPeriodSeconds } : {},
+          };
+          dropsetGroupsMap.set(dropSetId, dropsetGroup);
+          setGroups.push(dropsetGroup);
+          currentGroup = null;
+        } else if (restPeriodSeconds != null) {
+          dropsetGroup.restPeriodSecondsBySetId = dropsetGroup.restPeriodSecondsBySetId ?? {};
+          dropsetGroup.restPeriodSecondsBySetId[set.id] = restPeriodSeconds;
+        }
+
+        dropsetGroup.count++;
+        if (dropsetGroup.setTypes) {
+          dropsetGroup.setTypes.push({ isWarmup, isFailure });
+        }
+      } else {
+        // For non-dropsets, merge sequential sets of same type
+        const strippedId = /-\d+$/.test(set.id) ? set.id.replace(/-\d+$/, '') : set.id;
+        const idAlreadyUsed = setGroups.some(sg => sg.id === strippedId) || (currentGroup?.id === strippedId);
+        const groupId = idAlreadyUsed ? set.id : strippedId;
+
+        if (currentGroup && currentGroup.id === groupId && !currentGroup.isDropset) {
+          // Merge into current group
+          currentGroup.count++;
+          if (restPeriodSeconds != null) {
+            currentGroup.restPeriodSecondsBySetId = currentGroup.restPeriodSecondsBySetId ?? {};
+            currentGroup.restPeriodSecondsBySetId[set.id] = restPeriodSeconds;
+          }
+        } else {
+          // Start new group
+          currentGroup = {
+            id: groupId,
+            count: 1,
+            isDropset: false,
+            isWarmup: isWarmup,
+            isFailure: isFailure,
+            restPeriodSeconds: restPeriodSeconds,
+            restPeriodSecondsBySetId: restPeriodSeconds != null ? { [set.id]: restPeriodSeconds } : {},
+          };
+          setGroups.push(currentGroup);
+        }
+      }
+    });
+
+    return setGroups;
+  }, []);
+
+  const handleEditInstanceSets = useCallback((instanceKey: string, exerciseId: string) => {
+    console.log('handleEditInstanceSets called:', { instanceKey, exerciseId });
+    
+    // Get the setGroups for this instance
+    const setGroups = exerciseInstanceSetGroups[instanceKey];
+    console.log('setGroups found:', setGroups);
+    if (!setGroups || setGroups.length === 0) {
+      console.log('No setGroups found for instanceKey:', instanceKey);
+      return;
+    }
+
+    // Find the exercise
+    const exercise = exercises.find(ex => ex.id === exerciseId);
+    console.log('exercise found:', exercise);
+    if (!exercise) {
+      console.log('No exercise found for exerciseId:', exerciseId);
+      return;
+    }
+
+    // Convert setGroups to Sets
+    const sets = convertSetGroupsToSets(setGroups);
+    console.log('converted sets:', sets);
+
+    // Convert Sets to SetDragListItem format
+    const items = convertSetsToSetDragItems(sets);
+    console.log('converted items:', items);
+
+    // Set state and open modal
+    setSetDragItems(items);
+    setEditingInstanceKey(instanceKey);
+    setEditingExercise(exercise);
+    setShowSetDragModal(true);
+    console.log('Modal state set, showSetDragModal should be true');
+  }, [exerciseInstanceSetGroups, exercises, convertSetGroupsToSets, convertSetsToSetDragItems]);
 
   useEffect(() => {
     if (newlyCreatedId && !selectedIds.includes(newlyCreatedId)) {
@@ -1236,6 +1459,118 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
     []
   );
 
+  // SetRowDragAndDropModal handlers
+  const handleSetDragEnd = useCallback(({ data }: { data: SetDragListItem[]; from: number; to: number }) => {
+    setSetDragItems(data);
+  }, []);
+
+  const handleSetDragCancel = useCallback(() => {
+    setShowSetDragModal(false);
+    setEditingInstanceKey(null);
+    setEditingExercise(null);
+    setSetDragItems([]);
+  }, []);
+
+  const handleSetDragSave = useCallback(() => {
+    if (!editingInstanceKey) return;
+
+    // Extract sets from drag items
+    const sets: Set[] = [];
+    setDragItems.forEach(item => {
+      if (item.type === 'set') {
+        sets.push(item.set);
+      }
+    });
+
+    // Convert Sets back to setGroups
+    const newSetGroups = convertSetsToSetGroups(sets);
+
+    // Update the instance setGroups
+    setExerciseInstanceSetGroups(prev => ({
+      ...prev,
+      [editingInstanceKey]: newSetGroups,
+    }));
+
+    setShowSetDragModal(false);
+    setEditingInstanceKey(null);
+    setEditingExercise(null);
+    setSetDragItems([]);
+  }, [editingInstanceKey, setDragItems, convertSetsToSetGroups]);
+
+  const handleCreateDropset = useCallback((setId: string) => {
+    // Find the set and create a dropset
+    const updatedItems = setDragItems.map(item => {
+      if (item.type === 'set' && item.set.id === setId) {
+        const dropSetId = `dropset-${Date.now()}`;
+        const updatedSet = { ...item.set, dropSetId };
+        return { ...item, set: updatedSet };
+      }
+      return item;
+    });
+    setSetDragItems(updatedItems);
+  }, [setDragItems]);
+
+  const handleUpdateSet = useCallback((setId: string, updates: Partial<Set>) => {
+    const updatedItems = setDragItems.map(item => {
+      if (item.type === 'set' && item.set.id === setId) {
+        return { ...item, set: { ...item.set, ...updates } };
+      }
+      return item;
+    });
+    setSetDragItems(updatedItems);
+  }, [setDragItems]);
+
+  const handleAddSetToDragItems = useCallback(() => {
+    if (!editingExercise) return;
+    const newSetId = `set-${Date.now()}`;
+    const newSet: Set = {
+      id: newSetId,
+      type: 'Working',
+      weight: '',
+      reps: '',
+      duration: '',
+      distance: '',
+      completed: false,
+      isWarmup: false,
+      isFailure: false,
+    };
+    const newItem: SetDragListItem = {
+      id: newSetId,
+      type: 'set',
+      set: newSet,
+      hasRestTimer: false,
+    };
+    setSetDragItems(prev => [...prev, newItem]);
+  }, [editingExercise]);
+
+  const handleUpdateRestTimer = useCallback((setId: string, restPeriodSeconds: number | undefined) => {
+    const updatedItems = setDragItems.map(item => {
+      if (item.type === 'set' && item.set.id === setId) {
+        return {
+          ...item,
+          set: { ...item.set, restPeriodSeconds },
+          hasRestTimer: !!restPeriodSeconds,
+        };
+      }
+      return item;
+    });
+    setSetDragItems(updatedItems);
+  }, [setDragItems]);
+
+  const handleUpdateRestTimerMultiple = useCallback((setIds: string[], restPeriodSeconds: number | undefined) => {
+    const updatedItems = setDragItems.map(item => {
+      if (item.type === 'set' && setIds.includes(item.set.id)) {
+        return {
+          ...item,
+          set: { ...item.set, restPeriodSeconds },
+          hasRestTimer: !!restPeriodSeconds,
+        };
+      }
+      return item;
+    });
+    setSetDragItems(updatedItems);
+  }, [setDragItems]);
+
   return (
     <Modal visible={isOpen} animationType="slide" presentationStyle="overFullScreen" transparent={true} onRequestClose={handleClose}>
       <View style={styles.modalOverlay}>
@@ -1308,10 +1643,45 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
                     onToggleFailure={handleToggleFailureList}
                     onInsertRow={handleInsertRowList}
                     onDeleteRow={handleDeleteRowList}
+                    onEditInstanceSets={handleEditInstanceSets}
+                    onDeleteInstance={handleDeleteInstance}
                   />
                 )}
               </View>
             </GestureDetector>
+
+            {/* SetRowDragAndDropModal for editing instance sets */}
+            {showSetDragModal && editingExercise && editingInstanceKey && (
+              <SetDragModal
+                visible={showSetDragModal}
+                exercise={{
+                  instanceId: editingInstanceKey,
+                  exerciseId: editingExercise.id,
+                  name: editingExercise.name,
+                  category: editingExercise.category,
+                  type: 'exercise',
+                  sets: (() => {
+                    const sets: Set[] = [];
+                    setDragItems.forEach(item => {
+                      if (item.type === 'set') {
+                        sets.push(item.set);
+                      }
+                    });
+                    return sets;
+                  })(),
+                  weightUnit: 'lbs' as const,
+                }}
+                setDragItems={setDragItems}
+                onDragEnd={handleSetDragEnd}
+                onCancel={handleSetDragCancel}
+                onSave={handleSetDragSave}
+                onCreateDropset={handleCreateDropset}
+                onUpdateSet={handleUpdateSet}
+                onAddSet={handleAddSetToDragItems}
+                onUpdateRestTimer={handleUpdateRestTimer}
+                onUpdateRestTimerMultiple={handleUpdateRestTimerMultiple}
+              />
+            )}
           </SafeAreaView>
         </View>
       </View>
