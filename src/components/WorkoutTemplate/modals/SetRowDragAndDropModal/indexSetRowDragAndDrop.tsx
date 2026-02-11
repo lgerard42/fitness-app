@@ -697,6 +697,12 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
         return (initialAddTimerMode && initialSelectedSetIds.length > 0) || (!!restTimerInput && restTimerSelectedSetIds.size > 0);
     }, [initialAddTimerMode, initialSelectedSetIds.length, restTimerInput, restTimerSelectedSetIds.size]);
 
+    // Save enabled when: (selection + timer value) OR (user unchecked some sets that had timers = remove timer from those)
+    const canSaveAddTimerMode = useMemo(() => {
+        return (restTimerSelectedSetIds.size > 0 && !!restTimerInputString) ||
+            (initialSelectedSetIds.length > 0 && restTimerSelectedSetIds.size < initialSelectedSetIds.length);
+    }, [restTimerSelectedSetIds.size, restTimerInputString, initialSelectedSetIds.length]);
+
     // Empty callbacks for unused props
     const noopCallback = useCallback(() => {}, []);
 
@@ -819,7 +825,7 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                                 containerStyle={styles.listContainer}
                                 contentContainerStyle={[
                                     styles.listContent,
-                                    restTimerInput && !addTimerMode && { paddingBottom: 200 }
+                                    restTimerInput && !addTimerMode && { paddingBottom: 250 }
                                 ]}
                                 ListFooterComponent={listFooter}
                                 // Virtualization props for performance
@@ -848,6 +854,12 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         onPress={() => {
+                                            // Remove timer from sets that were initially selected but user unchecked
+                                            const uncheckedIds = initialSelectedSetIds.filter(id => !restTimerSelectedSetIds.has(id));
+                                            if (uncheckedIds.length > 0) {
+                                                onUpdateRestTimerMultiple(uncheckedIds, undefined);
+                                            }
+                                            // Apply timer to currently selected sets
                                             if (restTimerSelectedSetIds.size > 0 && restTimerInputString) {
                                                 const seconds = parseRestTimeInput(restTimerInputString);
                                                 if (seconds > 0) {
@@ -862,9 +874,9 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                                         }}
                                         style={[
                                             styles.saveButton,
-                                            (restTimerSelectedSetIds.size === 0 || !restTimerInputString) && styles.saveButton__disabled
+                                            !canSaveAddTimerMode && styles.saveButton__disabled
                                         ]}
-                                        disabled={restTimerSelectedSetIds.size === 0 || !restTimerInputString}
+                                        disabled={!canSaveAddTimerMode}
                                     >
                                         <Text style={styles.saveButtonText}>Save</Text>
                                     </TouchableOpacity>
@@ -970,7 +982,7 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.white,
         borderRadius: 16,
         width: '100%',
-        minHeight: '80%',
+        minHeight: '85%',
         overflow: 'hidden',
         flexDirection: 'column',
     },

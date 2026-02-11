@@ -899,7 +899,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           isWarmup: isWarmup,
           isFailure: isFailure,
           dropSetId: setGroup.isDropset ? setGroup.id : undefined,
-          restPeriodSeconds: setGroup.restPeriodSeconds,
+          restPeriodSeconds: setGroup.restPeriodSecondsBySetId?.[setId] ?? setGroup.restPeriodSeconds,
         };
         sets.push(set);
       }
@@ -935,10 +935,15 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
             isDropset: true,
             setTypes: [], // Initialize array to store individual set types
             restPeriodSeconds: restPeriodSeconds, // Initialize with first set's rest timer
+            restPeriodSecondsBySetId: restPeriodSeconds != null ? { [set.id]: restPeriodSeconds } : {},
           };
           dropsetGroupsMap.set(dropSetId, dropsetGroup);
           setGroups.push(dropsetGroup);
           currentGroup = null; // Reset currentGroup when we hit a dropset
+        } else if (restPeriodSeconds != null) {
+          // Store per-set timer when sets have different timers
+          dropsetGroup.restPeriodSecondsBySetId = dropsetGroup.restPeriodSecondsBySetId ?? {};
+          dropsetGroup.restPeriodSecondsBySetId[set.id] = restPeriodSeconds;
         }
 
         // Add this set to the dropset group
@@ -978,20 +983,30 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
           currentGroup.isFailure === isFailure) {
           // Same type as current group, merge
           currentGroup.count++;
+          if (restPeriodSeconds != null) {
+            currentGroup.restPeriodSecondsBySetId = currentGroup.restPeriodSecondsBySetId ?? {};
+            currentGroup.restPeriodSecondsBySetId[set.id] = restPeriodSeconds;
+          }
 
           // If rest timers differ, clear group-level rest timer
           if (currentGroup.restPeriodSeconds !== restPeriodSeconds) {
             currentGroup.restPeriodSeconds = undefined;
           }
         } else {
-          // Different type or first set, start new group
+          // Different type or first set, start new group.
+          // Use stripped set id as group id so set ids stay stable (groupId-0, groupId-1).
+          // If that would duplicate an existing group id (e.g. two groups from same prefix), use full set.id so ids stay unique.
+          const strippedId = /-\d+$/.test(set.id) ? set.id.replace(/-\d+$/, '') : set.id;
+          const idAlreadyUsed = setGroups.some(sg => sg.id === strippedId) || (currentGroup?.id === strippedId);
+          const groupId = idAlreadyUsed ? set.id : strippedId;
           currentGroup = {
-            id: `setgroup-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
+            id: groupId,
             count: 1,
             isDropset: false,
             isWarmup: isWarmup,
             isFailure: isFailure,
             restPeriodSeconds: restPeriodSeconds,
+            restPeriodSecondsBySetId: restPeriodSeconds != null ? { [set.id]: restPeriodSeconds } : {},
           };
           setGroups.push(currentGroup);
         }
@@ -1067,13 +1082,17 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
     const setGroup = exerciseItem.setGroups.find(sg => sg.id === setGroupId);
     if (!setGroup) return;
 
-    // Get all set IDs that belong to this setGroup
-    // Set IDs are formatted as `${setGroup.id}-${i}` where i is 0 to count-1
-    const setIdsForGroup: string[] = [];
-    for (let i = 0; i < setGroup.count; i++) {
-      const setId = `${setGroup.id}-${i}`;
-      setIdsForGroup.push(setId);
-    }
+    // Pre-select sets when opening timer modal: sets that already have a timer, or all sets in the row if none have timers.
+    const prefix = setGroup.id + '-';
+    const setIdsWithTimers = setGroup.restPeriodSecondsBySetId && Object.keys(setGroup.restPeriodSecondsBySetId).length > 0
+      ? Object.keys(setGroup.restPeriodSecondsBySetId).filter(sid => {
+          if (!sid.startsWith(prefix)) return false;
+          const idx = parseInt(sid.slice(prefix.length), 10);
+          return !Number.isNaN(idx) && idx >= 0 && idx < setGroup.count;
+        })
+      : setGroup.restPeriodSeconds != null
+        ? Array.from({ length: setGroup.count }, (_, i) => `${setGroup.id}-${i}`)
+        : Array.from({ length: setGroup.count }, (_, i) => `${setGroup.id}-${i}`); // No timers: pre-select all sets in the row
 
     // Convert Sets to SetDragListItem format (same as handleEditSets)
     const items: SetDragListItem[] = [];
@@ -1121,7 +1140,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
     setSetDragItems(items);
     setExerciseForSetDrag(exerciseItem);
     setInitialAddTimerMode(true);
-    setInitialSelectedSetIds(setIdsForGroup);
+    setInitialSelectedSetIds(setIdsWithTimers);
     setShowSetDragModal(true);
   }, [convertSetGroupsToSets]);
 
@@ -1529,6 +1548,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
         setGroups: exerciseItem.setGroups.map(sg => ({
           ...sg,
           id: `setgroup-${exerciseItem.exercise.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          restPeriodSecondsBySetId: undefined, // New group id makes old set-id keys invalid; keep group-level restPeriodSeconds only
         })),
         isDropset: exerciseItem.isDropset, // Preserve dropset state
       };
@@ -1830,7 +1850,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
                 <Timer
                   size={16}
                   color={
-                    setGroup.restPeriodSeconds
+                    setGroup.restPeriodSeconds || (setGroup.restPeriodSecondsBySetId && Object.keys(setGroup.restPeriodSecondsBySetId).length > 0)
                       ? COLORS.blue[600]
                       : (groupColorScheme ? groupColorScheme[400] : COLORS.slate[300])
                   }
@@ -2274,7 +2294,7 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
                               <Timer
                                 size={16}
                                 color={
-                                  setGroup.restPeriodSeconds
+                                  setGroup.restPeriodSeconds || (setGroup.restPeriodSecondsBySetId && Object.keys(setGroup.restPeriodSecondsBySetId).length > 0)
                                     ? COLORS.blue[600]
                                     : COLORS.slate[300]
                                 }
@@ -3119,7 +3139,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   groupIconButton: {
-    padding: 2,
+    padding: 0,
     marginLeft: 0,
   },
   emptyGroupPlaceholder: {
