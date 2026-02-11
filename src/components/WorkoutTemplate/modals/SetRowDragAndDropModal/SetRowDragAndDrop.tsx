@@ -887,7 +887,8 @@ export const createHandleLocalDragEnd = (
     setCollapsedDropsetId: (id: string | null) => void,
     setLocalDragItems: (items: CollapsibleSetDragListItem[]) => void,
     onDragEnd: (params: { data: SetDragListItem[]; from: number; to: number }) => void,
-    pendingDragRef: React.MutableRefObject<(() => void) | null>
+    pendingDragRef: React.MutableRefObject<(() => void) | null>,
+    onDropsetDragComplete?: () => void
 ) => {
     return ({ data, from, to }: { data: CollapsibleSetDragListItem[]; from: number; to: number }) => {
         let updatedData = data;
@@ -952,6 +953,7 @@ export const createHandleLocalDragEnd = (
             const reconstructedItems = reconstructItemsFromSets(reorderedSets);
             setLocalDragItems(reconstructedItems);
             pendingDragRef.current = null;
+            onDropsetDragComplete?.();
 
             // Pass the reconstructed data to parent
             onDragEnd({

@@ -62,6 +62,7 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
     const [dropsetSelectedSetIds, setDropsetSelectedSetIds] = useState<globalThis.Set<string>>(new globalThis.Set());
     const [isDragging, setIsDragging] = useState<boolean>(false);
     const [collapsedDropsetId, setCollapsedDropsetId] = useState<string | null>(null);
+    const [listLayoutKey, setListLayoutKey] = useState(0);
     const [localDragItems, setLocalDragItems] = useState<CollapsibleSetDragListItem[]>([]);
     const [swipedItemId, setSwipedItemId] = useState<string | null>(null);
     const pendingDragRef = useRef<(() => void) | null>(null);
@@ -706,7 +707,8 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
             setCollapsedDropsetId,
             setLocalDragItems,
             onDragEnd,
-            pendingDragRef
+            pendingDragRef,
+            () => setListLayoutKey(k => k + 1)
         ),
         [collapsedDropsetId, onDragEnd]
     );
@@ -714,6 +716,7 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
     // Stable callbacks for DraggableFlatList to prevent unnecessary re-renders
     const handleDragBegin = useCallback(() => setIsDragging(true), []);
     const handleDragEndWrapper = useCallback((params: { data: CollapsibleSetDragListItem[]; from: number; to: number }) => {
+        console.log('handleDragEndWrapper', params);
         setIsDragging(false);
         handleLocalDragEnd(params);
     }, [handleLocalDragEnd]);
@@ -807,6 +810,7 @@ const SetDragModal: React.FC<SetDragModalProps> = ({
                             </View>
                         ) : (
                             <DraggableFlatList
+                                key={listLayoutKey}
                                 data={localDragItems}
                                 keyExtractor={dragKeyExtractor}
                                 renderItem={renderDragItem}
@@ -1009,8 +1013,8 @@ const styles = StyleSheet.create({
     },
     modeButtonsContainer: {
         flexDirection: 'row',
-        paddingHorizontal: 20,
-        paddingVertical: 12,
+        paddingHorizontal: 8,
+        paddingVertical: 8,
         gap: 8,
         backgroundColor: COLORS.white,
         borderBottomWidth: 1,

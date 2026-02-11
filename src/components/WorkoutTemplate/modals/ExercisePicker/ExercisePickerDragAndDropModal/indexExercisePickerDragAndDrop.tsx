@@ -1195,21 +1195,49 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
   }, []);
 
   const handleDecrementSetGroup = useCallback((exerciseItem: ExerciseItem, setGroupId: string) => {
-    setReorderedItems(prev => prev.map(item => {
-      if (item.id === exerciseItem.id && item.type === 'Item') {
-        const updatedSetGroups = item.setGroups.map(sg =>
-          sg.id === setGroupId && sg.count > 1 ? { ...sg, count: sg.count - 1 } : sg
-        );
-        const totalCount = updatedSetGroups.reduce((sum, sg) => sum + sg.count, 0);
-        return {
-          ...item,
-          setGroups: updatedSetGroups,
-          count: totalCount,
-        };
+    const setGroup = exerciseItem.setGroups.find(sg => sg.id === setGroupId);
+    if (!setGroup) return;
+
+    if (setGroup.count > 1) {
+      // Decrement the set count
+      setReorderedItems(prev => prev.map(item => {
+        if (item.id === exerciseItem.id && item.type === 'Item') {
+          const updatedSetGroups = item.setGroups.map(sg =>
+            sg.id === setGroupId && sg.count > 1 ? { ...sg, count: sg.count - 1 } : sg
+          );
+          const totalCount = updatedSetGroups.reduce((sum, sg) => sum + sg.count, 0);
+          return {
+            ...item,
+            setGroups: updatedSetGroups,
+            count: totalCount,
+          };
+        }
+        return item;
+      }));
+    } else {
+      // Only one set left: remove the entire set row
+      if (exerciseItem.setGroups.length <= 1) {
+        // Last set row - remove entire exercise
+        handleDeleteExercise(exerciseItem.id);
+      } else {
+        // Remove the set group
+        setReorderedItems(prev => prev.map(item => {
+          if (item.id === exerciseItem.id && item.type === 'Item') {
+            const updatedSetGroups = item.setGroups.filter(sg => sg.id !== setGroupId);
+            const totalCount = updatedSetGroups.reduce((sum, sg) => sum + sg.count, 0);
+            const hasAnyDropset = updatedSetGroups.some(sg => sg.isDropset);
+            return {
+              ...item,
+              setGroups: updatedSetGroups,
+              count: totalCount,
+              isDropset: hasAnyDropset,
+            };
+          }
+          return item;
+        }));
       }
-      return item;
-    }));
-  }, []);
+    }
+  }, [handleDeleteExercise]);
 
   const handleDeleteSetGroup = useCallback((exerciseItem: ExerciseItem, setGroupId: string) => {
     setReorderedItems(prev => prev.map(item => {
@@ -1810,19 +1838,19 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => handleDecrementSetGroup(item, setGroup.id)}
-                disabled={isActive || setGroup.count <= 1}
+                disabled={isActive}
                 style={[
                   styles.setControlButton,
                   groupColorScheme && { backgroundColor: groupColorScheme[100] },
-                  (isActive || setGroup.count <= 1) && styles.setControlButton__disabled,
+                  isActive && styles.setControlButton__disabled,
                 ]}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
                 <Minus
                   size={16}
                   color={
-                    setGroup.count <= 1
-                      ? (groupColorScheme ? groupColorScheme[700] : COLORS.slate[300])
+                    isActive
+                      ? (groupColorScheme ? groupColorScheme[400] : COLORS.slate[300])
                       : (groupColorScheme ? groupColorScheme[700] : COLORS.slate[700])
                   }
                 />
@@ -2254,14 +2282,14 @@ const DragAndDropModal: React.FC<DragAndDropModalProps> = ({
                             </TouchableOpacity>
                             <TouchableOpacity
                               onPress={() => handleDecrementSetGroup(item, setGroup.id)}
-                              disabled={isActive || setGroup.count <= 1}
+                              disabled={isActive}
                               style={[
                                 styles.setControlButton,
-                                (isActive || setGroup.count <= 1) && styles.setControlButton__disabled,
+                                isActive && styles.setControlButton__disabled,
                               ]}
                               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                             >
-                              <Minus size={16} color={setGroup.count <= 1 ? COLORS.slate[300] : COLORS.slate[700]} />
+                              <Minus size={16} color={isActive ? COLORS.slate[300] : COLORS.slate[700]} />
                             </TouchableOpacity>
                             <TouchableOpacity
                               onPress={() => handleIncrementSetGroup(item, setGroup.id)}
