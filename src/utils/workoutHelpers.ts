@@ -1,4 +1,4 @@
-import type { ExerciseItem, Exercise, ExerciseGroup, FlatExerciseRow, GroupType } from '@/types/workout';
+import type { ExerciseItem, Exercise, ExerciseGroup, FlatExerciseRow, GroupType, Set } from '@/types/workout';
 import { defaultSupersetColorScheme, defaultHiitColorScheme } from '@/constants/defaultStyles';
 
 export const updateExercisesDeep = (
@@ -250,4 +250,24 @@ export const groupExercisesAlphabetically = <T extends { name: string }>(
  */
 export const getGroupColorScheme = (type: GroupType | null | undefined): typeof defaultSupersetColorScheme => {
   return type === 'HIIT' ? defaultHiitColorScheme : defaultSupersetColorScheme;
+};
+
+/**
+ * Effective weight for a set: for assisted/negative Machine (Selectorized), use bodyWeight - weightInput; otherwise use weightInput.
+ * Used for PR/history/volume calculations.
+ */
+export const getEffectiveWeight = (
+  exercise: Exercise,
+  set: Set,
+  bodyWeight?: number | null
+): number => {
+  const inputWeight = parseFloat(set.weight || '0') || 0;
+  const isAssistedNegative =
+    exercise.assistedNegative === true &&
+    exercise.weightEquipTags &&
+    exercise.weightEquipTags.includes('Machine (Selectorized)');
+  if (isAssistedNegative && bodyWeight != null && bodyWeight > 0) {
+    return Math.max(0, bodyWeight - inputWeight);
+  }
+  return inputWeight;
 };

@@ -2,25 +2,28 @@ import React from 'react';
 import type { NavigationProp } from '@react-navigation/native';
 import WorkoutTemplate from '@/components/WorkoutTemplate/indexWorkoutTemplate';
 import { useWorkout } from '@/context/WorkoutContext';
+import { useBodyStats } from '@/screens/ProfileTab/hooks/useBodyStats';
 
 interface LiveWorkoutScreenProps {
   navigation: NavigationProp<any>;
 }
 
 const LiveWorkoutScreen: React.FC<LiveWorkoutScreenProps> = ({ navigation }) => {
-  const { 
-    activeWorkout, 
-    updateWorkout, 
-    finishWorkout, 
-    cancelWorkout, 
-    exercisesLibrary, 
-    addExerciseToLibrary, 
-    updateExerciseInLibrary, 
-    exerciseStats 
+  const {
+    activeWorkout,
+    updateWorkout,
+    finishWorkout,
+    cancelWorkout,
+    exercisesLibrary,
+    addExerciseToLibrary,
+    updateExerciseInLibrary,
+    exerciseStats
   } = useWorkout();
+  const { latestMeasurement } = useBodyStats();
+  const bodyWeight = latestMeasurement?.weight;
 
   const handleFinish = () => {
-    finishWorkout();
+    finishWorkout(bodyWeight);
     navigation.goBack();
   };
 

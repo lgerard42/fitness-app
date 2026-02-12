@@ -84,6 +84,7 @@ export const createExerciseInstance = (
     ...(ex.trackReps !== undefined && { trackReps: ex.trackReps }),
     ...(ex.trackDistance !== undefined && { trackDistance: ex.trackDistance }),
     ...(ex.weightEquipTags && ex.weightEquipTags.length > 0 && { weightEquipTags: ex.weightEquipTags }),
+    ...(ex.assistedNegative === true && { assistedNegative: true }),
     // Set default distance unit system and unit if trackDistance is true
     ...(ex.trackDistance === true && {
       distanceUnitSystem: (ex.distanceUnitSystem as 'US' | 'Metric' | undefined) || defaultDistSystem,
@@ -166,6 +167,7 @@ export const createExerciseInstanceWithSetGroups = (
     ...(ex.trackReps !== undefined && { trackReps: ex.trackReps }),
     ...(ex.trackDistance !== undefined && { trackDistance: ex.trackDistance }),
     ...(ex.weightEquipTags && ex.weightEquipTags.length > 0 && { weightEquipTags: ex.weightEquipTags }),
+    ...(ex.assistedNegative === true && { assistedNegative: true }),
     // Set default distance unit system and unit if trackDistance is true
     ...(ex.trackDistance === true && {
       distanceUnitSystem: (ex.distanceUnitSystem as 'US' | 'Metric' | undefined) || defaultDistSystem,

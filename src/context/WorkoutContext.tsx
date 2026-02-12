@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { EXERCISE_LIBRARY, migrateExercise, formatDuration } from '@/constants/data';
+import { EXERCISE_LIBRARY, migrateExercise, migrateAssistedMachine, formatDuration } from '@/constants/data';
+import { getEffectiveWeight } from '@/utils/workoutHelpers';
 import type { Workout, Exercise, ExerciseLibraryItem, ExerciseStatsMap, ExerciseStats } from '@/types/workout';
 
 interface WorkoutContextValue {
@@ -11,7 +12,7 @@ interface WorkoutContextValue {
   startEmptyWorkout: () => void;
   updateWorkout: (updatedWorkout: Workout) => void;
   updateHistory: (updatedWorkout: Workout) => void;
-  finishWorkout: () => void;
+  finishWorkout: (bodyWeight?: number) => void;
   cancelWorkout: () => void;
   addExerciseToLibrary: (newExercise: ExerciseLibraryItem) => string;
   updateExerciseInLibrary: (exerciseId: string, updates: Partial<ExerciseLibraryItem>) => void;
@@ -49,7 +50,10 @@ export const WorkoutProvider = ({ children }: WorkoutProviderProps) => {
         ]);
 
         if (history) setWorkoutHistory(JSON.parse(history) as Workout[]);
-        if (library) setExercisesLibrary(JSON.parse(library) as ExerciseLibraryItem[]);
+        if (library) {
+          const parsed = JSON.parse(library) as ExerciseLibraryItem[];
+          setExercisesLibrary(parsed.map(migrateAssistedMachine));
+        }
         if (active) setActiveWorkout(JSON.parse(active) as Workout);
         if (stats) setExerciseStats(JSON.parse(stats) as ExerciseStatsMap);
       } catch (e) {
@@ -109,7 +113,7 @@ export const WorkoutProvider = ({ children }: WorkoutProviderProps) => {
     setWorkoutHistory(workoutHistory.map(w => w.id === updatedWorkout.id ? updatedWorkout : w));
   };
 
-  const updateStatsForExercise = (stats: ExerciseStatsMap, exercise: Exercise, date: string): void => {
+  const updateStatsForExercise = (stats: ExerciseStatsMap, exercise: Exercise, date: string, bodyWeight?: number | null): void => {
     const { exerciseId, category, sets } = exercise;
     if (!stats[exerciseId]) {
       stats[exerciseId] = {
@@ -118,14 +122,14 @@ export const WorkoutProvider = ({ children }: WorkoutProviderProps) => {
         history: []
       };
     }
-    
+
     const currentStats = stats[exerciseId];
-    
+
     sets.forEach(set => {
       if (!set.completed) return;
-      
+
       if (category === 'Lifts') {
-        const weight = parseFloat(set.weight) || 0;
+        const weight = getEffectiveWeight(exercise, set, bodyWeight);
         if (weight > (currentStats.pr || 0)) {
           currentStats.pr = weight;
         }
@@ -134,21 +138,21 @@ export const WorkoutProvider = ({ children }: WorkoutProviderProps) => {
 
     currentStats.history.unshift({
       date: date,
-      sets: sets.filter(s => s.completed).map(s => ({ 
-        weight: s.weight, 
-        reps: s.reps, 
-        duration: s.duration, 
+      sets: sets.filter(s => s.completed).map(s => ({
+        weight: String(getEffectiveWeight(exercise, s, bodyWeight)),
+        reps: s.reps,
+        duration: s.duration,
         distance: s.distance,
         isWarmup: s.isWarmup || false,
         isFailure: s.isFailure || false,
         dropSetId: s.dropSetId || null
       }))
     });
-    
+
     currentStats.lastPerformed = date;
   };
 
-  const finishWorkout = () => {
+  const finishWorkout = (bodyWeight?: number) => {
     if (!activeWorkout) return;
     const finishedWorkout: Workout = {
       ...activeWorkout,
@@ -160,9 +164,9 @@ export const WorkoutProvider = ({ children }: WorkoutProviderProps) => {
     const newStats = { ...exerciseStats };
     finishedWorkout.exercises.forEach(ex => {
       if (ex.type === 'group') {
-        ex.children.forEach(child => updateStatsForExercise(newStats, child, finishedWorkout.date!));
+        ex.children.forEach(child => updateStatsForExercise(newStats, child, finishedWorkout.date!, bodyWeight));
       } else {
-        updateStatsForExercise(newStats, ex, finishedWorkout.date!);
+        updateStatsForExercise(newStats, ex, finishedWorkout.date!, bodyWeight);
       }
     });
     setExerciseStats(newStats);
@@ -177,14 +181,14 @@ export const WorkoutProvider = ({ children }: WorkoutProviderProps) => {
 
   const addExerciseToLibrary = (newExercise: ExerciseLibraryItem): string => {
     const newId = newExercise.id || `e${Date.now()}`;
-    const exerciseToAdd = { ...newExercise, id: newId };
+    const exerciseToAdd = migrateAssistedMachine({ ...newExercise, id: newId });
     setExercisesLibrary([exerciseToAdd, ...exercisesLibrary]);
     return newId;
   };
 
   const updateExerciseInLibrary = (exerciseId: string, updates: Partial<ExerciseLibraryItem>) => {
-    setExercisesLibrary(exercisesLibrary.map(ex => 
-      ex.id === exerciseId ? { ...ex, ...updates } : ex
+    setExercisesLibrary(exercisesLibrary.map(ex =>
+      ex.id === exerciseId ? migrateAssistedMachine({ ...ex, ...updates }) : ex
     ));
   };
 

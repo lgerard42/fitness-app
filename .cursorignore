@@ -13,6 +13,9 @@ ios/
 
 # Assets (unless specifically working on UI assets)
 assets/
+# Allow equipment icons so AI can apply them in the UI
+!assets/Equipment/
+!assets/Equipment/**
 android/app/src/main/res/
 
 # Temporary files

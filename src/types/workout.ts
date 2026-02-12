@@ -48,6 +48,8 @@ export interface Exercise {
   repsConfigMode?: '1x' | '2x' | 'lrSplit';
   distanceUnitSystem?: DistanceUnitSystem;
   distanceUnit?: DistanceUnit;
+  /** When true (Machine (Selectorized) only), effective weight for history/volume = bodyWeight - weight input */
+  assistedNegative?: boolean;
 }
 
 export interface ExerciseGroup {
@@ -148,6 +150,8 @@ export interface ExerciseLibraryItem {
   name: string;
   category: ExerciseCategory;
   pinnedNotes?: Note[];
+  /** When true (Machine (Selectorized) only), effective weight = bodyWeight - weight input */
+  assistedNegative?: boolean;
   [key: string]: unknown;
 }
 
@@ -221,6 +225,8 @@ export interface UserProfile {
   profilePictureUri?: string; // Local URI for the profile picture
   dateOfBirth?: string; // ISO date string
   bio?: string;
+  /** Body weight (lbs or kg per weightUnit) for assisted-negative machine calculations */
+  bodyWeight?: number;
   createdAt: string;
   updatedAt: string;
 }
