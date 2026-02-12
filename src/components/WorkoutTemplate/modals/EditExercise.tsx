@@ -354,7 +354,7 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
 
                             {editState.category === 'Lifts' && (
                                 <View style={styles.labelToggleRow}>
-                                    <Text style={[styles.label, { marginBottom: 0, color: editState.trackDuration ? COLORS.slate[500] : COLORS.slate[400] }]}>TRACK DURATION BY DEFAULT</Text>
+                                    <Text style={[styles.label, { marginBottom: 0, color: editState.trackDuration ? COLORS.slate[500] : COLORS.slate[400] }]}>ALLOW DURATION TRACKING</Text>
                                     <TouchableOpacity
                                         style={styles.toggleContainer}
                                         onPress={() => setEditState(prev => ({ ...prev, trackDuration: !prev.trackDuration }))}
@@ -382,7 +382,7 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                                 <Text style={styles.label}>ADDITIONAL SETTINGS:</Text>
                             </View>
                             <View style={styles.labelToggleRow}>
-                                <Text style={[styles.label, { marginBottom: 0, color: editState.trackDistance ? COLORS.slate[500] : COLORS.slate[400] }]}>TRACK DISTANCE BY DEFAULT</Text>
+                                <Text style={[styles.label, { marginBottom: 0, color: editState.trackDistance ? COLORS.slate[500] : COLORS.slate[400] }]}>ALLOW DISTANCE TRACKING</Text>
                                 <TouchableOpacity
                                     style={styles.toggleContainer}
                                     onPress={() => setEditState(prev => ({ ...prev, trackDistance: !prev.trackDistance }))}
@@ -560,7 +560,7 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                             {editState.category === 'Training' && (
                                 <>
                                     <View style={styles.labelToggleRow}>
-                                        <Text style={[styles.label, { marginBottom: 0, color: editState.trackReps ? COLORS.slate[500] : COLORS.slate[400] }]}>TRACK REPS BY DEFAULT</Text>
+                                        <Text style={[styles.label, { marginBottom: 0, color: editState.trackReps ? COLORS.slate[500] : COLORS.slate[400] }]}>ALLOW REPS TRACKING</Text>
                                         <TouchableOpacity
                                             style={styles.toggleContainer}
                                             onPress={() => setEditState(prev => ({ ...prev, trackReps: !prev.trackReps }))}
@@ -570,7 +570,7 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                                         </TouchableOpacity>
                                     </View>
                                     <View style={styles.labelToggleRow}>
-                                        <Text style={[styles.label, { marginBottom: 0, color: editState.trackDuration ? COLORS.slate[500] : COLORS.slate[400] }]}>TRACK DURATION BY DEFAULT</Text>
+                                        <Text style={[styles.label, { marginBottom: 0, color: editState.trackDuration ? COLORS.slate[500] : COLORS.slate[400] }]}>ALLOW DURATION TRACKING</Text>
                                         <TouchableOpacity
                                             style={styles.toggleContainer}
                                             onPress={() => setEditState(prev => ({ ...prev, trackDuration: !prev.trackDuration }))}
@@ -580,7 +580,7 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                                         </TouchableOpacity>
                                     </View>
                                     <View style={styles.labelToggleRow}>
-                                        <Text style={[styles.label, { marginBottom: 0, color: editState.trackDistance ? COLORS.slate[500] : COLORS.slate[400] }]}>TRACK DISTANCE BY DEFAULT</Text>
+                                        <Text style={[styles.label, { marginBottom: 0, color: editState.trackDistance ? COLORS.slate[500] : COLORS.slate[400] }]}>ALLOW DISTANCE TRACKING</Text>
                                         <TouchableOpacity
                                             style={styles.toggleContainer}
                                             onPress={() => setEditState(prev => ({ ...prev, trackDistance: !prev.trackDistance }))}
