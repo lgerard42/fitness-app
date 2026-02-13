@@ -9,7 +9,7 @@ import { formatDuration } from '@/constants/data';
 import SetRow from './SetRow';
 import SavedNoteItem from '@/components/SavedNoteItem';
 import ExercisePicker from './modals/ExercisePicker/ExercisePickerIndex';
-import EditExercise from './modals/EditExercise';
+import EditExercise from '@/components/ExerciseEditor';
 import { CATEGORIES } from '@/constants/data';
 import {
   updateExercisesDeep,

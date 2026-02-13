@@ -1,22 +1,22 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, FlatList, StyleSheet, Image } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, FlatList, StyleSheet, Image, ImageSourcePropType } from 'react-native';
 import { Check } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
-import { StanceTypeImages } from '@/constants/stanceImages';
+import { GripImages } from '@/constants/gripImages';
 
-const PLACEHOLDER_STANCE_IMAGE = require('../../assets/Equipment/UnselectedOrOtherGrip.png');
+const PLACEHOLDER_GRIP_IMAGE = require('../../../assets/Equipment/UnselectedOrOtherGrip.png');
 
-interface StanceTypeWidthPickerProps {
-  stanceType: string;
-  stanceWidth: string;
-  onStanceTypeChange: (type: string) => void;
-  onStanceWidthChange: (width: string) => void;
-  stanceTypeOptions: string[];
-  stanceWidthOptions: string[];
+interface GripTypeWidthPickerProps {
+  gripType: string;
+  gripWidth: string;
+  onGripTypeChange: (type: string) => void;
+  onGripWidthChange: (width: string) => void;
+  gripTypeOptions: string[];
+  gripWidthOptions: string[];
   allowClear?: boolean;
 }
 
-// Width spacing multipliers (relative to base circle button width) - same as grip
+// Width spacing multipliers (relative to base circle button width)
 const WIDTH_SPACING: Record<string, number> = {
   'Extra Narrow': 0.1,
   'Narrow': 0.2,
@@ -25,56 +25,51 @@ const WIDTH_SPACING: Record<string, number> = {
   'Extra Wide': 0.65,
 };
 
-const StanceTypeWidthPicker: React.FC<StanceTypeWidthPickerProps> = ({
-  stanceType,
-  stanceWidth,
-  onStanceTypeChange,
-  onStanceWidthChange,
-  stanceTypeOptions,
-  stanceWidthOptions,
+const GripTypeWidthPicker: React.FC<GripTypeWidthPickerProps> = ({
+  gripType,
+  gripWidth,
+  onGripTypeChange,
+  onGripWidthChange,
+  gripTypeOptions,
+  gripWidthOptions,
   allowClear = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   const handleSelectType = (type: string) => {
-    if (type === stanceType) {
-      // If clicking the same type, unselect it
-      onStanceTypeChange('');
+    if (type === gripType) {
+      onGripTypeChange('');
       setIsOpen(false);
     } else {
-      onStanceTypeChange(type);
-      // Don't close modal - user can still select width
+      onGripTypeChange(type);
     }
   };
 
   const handleSelectWidth = (width: string) => {
-    if (width === stanceWidth) {
-      // If clicking the same width, unselect it
-      onStanceWidthChange('');
+    if (width === gripWidth) {
+      onGripWidthChange('');
     } else {
-      onStanceWidthChange(width);
+      onGripWidthChange(width);
     }
-    // Don't close modal - user can continue selecting
   };
 
   const renderCircleButton = (isPreview: boolean = false) => {
-    const effectiveWidth = stanceWidth || 'Shoulder Width';
+    const effectiveWidth = gripWidth || 'Shoulder Width';
     const spacingMultiplier = WIDTH_SPACING[effectiveWidth] || WIDTH_SPACING['Shoulder Width'];
-    const spacing = spacingMultiplier * 40; // Max spacing ~26px for Extra Wide
-    const buttonWidth = 72 + spacing; // Base 72px + spacing adjustment
-    const buttonHeight = 72; // Fixed height
-    const imageSize = 44; // Fixed image size
+    const spacing = spacingMultiplier * 40;
+    const buttonWidth = 72 + spacing;
+    const buttonHeight = 72;
+    const imageSize = 44;
 
-    const stanceImage = stanceType ? StanceTypeImages[stanceType] : null;
-    const isPlaceholder = !stanceType || !stanceImage;
-    const displayImage = stanceImage || PLACEHOLDER_STANCE_IMAGE;
-    
-    // Determine button styling based on selection state
-    const hasStanceType = !!stanceType;
-    const hasStanceWidth = !!stanceWidth;
-    const bothSelected = hasStanceType && hasStanceWidth;
-    const oneSelected = (hasStanceType || hasStanceWidth) && !bothSelected;
-    
+    const gripImage = gripType ? GripImages[gripType] : null;
+    const isPlaceholder = !gripType || !gripImage;
+    const displayImage = gripImage || PLACEHOLDER_GRIP_IMAGE;
+
+    const hasGripType = !!gripType;
+    const hasGripWidth = !!gripWidth;
+    const bothSelected = hasGripType && hasGripWidth;
+    const oneSelected = (hasGripType || hasGripWidth) && !bothSelected;
+
     const buttonStyle = [
       styles.circleButton,
       bothSelected && styles.circleButtonSelected,
@@ -86,20 +81,18 @@ const StanceTypeWidthPicker: React.FC<StanceTypeWidthPickerProps> = ({
       return (
         <View style={buttonStyle}>
           <View style={[styles.splitImageContainer, { height: imageSize }]}>
-            {/* Left half */}
             <View style={[styles.imageHalf, { marginRight: spacing / 2, width: imageSize / 2, height: imageSize }]}>
-              <Image 
-                source={displayImage} 
-                style={[styles.splitImageLeft, { width: imageSize, height: imageSize }, styles.placeholderImage]} 
-                resizeMode="contain" 
+              <Image
+                source={displayImage}
+                style={[styles.splitImageLeft, { width: imageSize, height: imageSize }, styles.placeholderImage]}
+                resizeMode="contain"
               />
             </View>
-            {/* Right half */}
             <View style={[styles.imageHalf, { marginLeft: spacing / 2, width: imageSize / 2, height: imageSize }]}>
-              <Image 
-                source={displayImage} 
-                style={[styles.splitImageRight, { width: imageSize, height: imageSize, marginLeft: -imageSize / 2 }, styles.placeholderImage]} 
-                resizeMode="contain" 
+              <Image
+                source={displayImage}
+                style={[styles.splitImageRight, { width: imageSize, height: imageSize, marginLeft: -imageSize / 2 }, styles.placeholderImage]}
+                resizeMode="contain"
               />
             </View>
           </View>
@@ -110,18 +103,16 @@ const StanceTypeWidthPicker: React.FC<StanceTypeWidthPickerProps> = ({
     return (
       <View style={buttonStyle}>
         <View style={[styles.splitImageContainer, { height: imageSize }]}>
-          {/* Left half - shows left side of image */}
           <View style={[styles.imageHalf, { marginRight: spacing / 2, width: imageSize / 2, height: imageSize }]}>
             <Image
-              source={stanceImage}
+              source={gripImage}
               style={[styles.splitImageLeft, { width: imageSize, height: imageSize }]}
               resizeMode="contain"
             />
           </View>
-          {/* Right half - shows right side of image */}
           <View style={[styles.imageHalf, { marginLeft: spacing / 2, width: imageSize / 2, height: imageSize }]}>
             <Image
-              source={stanceImage}
+              source={gripImage}
               style={[styles.splitImageRight, { width: imageSize, height: imageSize, marginLeft: -imageSize / 2 }]}
               resizeMode="contain"
             />
@@ -140,19 +131,19 @@ const StanceTypeWidthPicker: React.FC<StanceTypeWidthPickerProps> = ({
       >
         {renderCircleButton(false)}
         <View style={styles.labelContainer}>
-          {stanceType ? (
+          {gripType ? (
             <Text style={[styles.circleLabel, styles.textSelected]} numberOfLines={1}>
-              Option {stanceType}
+              {gripType} Grip
             </Text>
           ) : null}
-          {stanceWidth ? (
+          {gripWidth ? (
             <Text style={[styles.circleLabel, styles.textSelected]} numberOfLines={1}>
-              {stanceWidth}
+              {gripWidth}
             </Text>
           ) : null}
-          {!stanceType && !stanceWidth && (
+          {!gripType && !gripWidth && (
             <Text style={[styles.circleLabel, styles.textPlaceholder]} numberOfLines={1}>
-              Stance
+              Grip
             </Text>
           )}
         </View>
@@ -171,25 +162,22 @@ const StanceTypeWidthPicker: React.FC<StanceTypeWidthPickerProps> = ({
         >
           <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
             <View style={styles.modalContentInner}>
-              {/* Preview Circle Button */}
               <View style={styles.previewContainer}>
                 {renderCircleButton(true)}
               </View>
-              {/* Side-by-side containers */}
               <View style={styles.sideBySideContainer}>
-                {/* Type Column */}
                 <View style={styles.columnContainer}>
                   <View style={[styles.columnHeader, styles.columnHeaderFirst]}>
                     <Text style={styles.columnHeaderText}>Type</Text>
                   </View>
                   <FlatList
-                    data={stanceTypeOptions}
+                    data={gripTypeOptions}
                     keyExtractor={(item) => item}
                     style={styles.scrollableList}
                     renderItem={({ item, index }) => {
-                      const isSelected = stanceType === item;
-                      const icon = StanceTypeImages[item];
-                      const isLastItem = index === stanceTypeOptions.length - 1;
+                      const isSelected = gripType === item;
+                      const icon = GripImages[item];
+                      const isLastItem = index === gripTypeOptions.length - 1;
                       return (
                         <TouchableOpacity
                           style={[
@@ -213,19 +201,17 @@ const StanceTypeWidthPicker: React.FC<StanceTypeWidthPickerProps> = ({
                     }}
                   />
                 </View>
-
-                {/* Width Column */}
                 <View style={[styles.columnContainer, styles.columnContainerLast]}>
                   <View style={[styles.columnHeader, styles.columnHeaderLast]}>
                     <Text style={styles.columnHeaderText}>Width</Text>
                   </View>
                   <FlatList
-                    data={stanceWidthOptions}
+                    data={gripWidthOptions}
                     keyExtractor={(item) => item}
                     style={styles.scrollableList}
                     renderItem={({ item, index }) => {
-                      const isSelected = stanceWidth === item;
-                      const isLastItem = index === stanceWidthOptions.length - 1;
+                      const isSelected = gripWidth === item;
+                      const isLastItem = index === gripWidthOptions.length - 1;
                       return (
                         <TouchableOpacity
                           style={[
@@ -247,7 +233,6 @@ const StanceTypeWidthPicker: React.FC<StanceTypeWidthPickerProps> = ({
                 </View>
               </View>
             </View>
-            {/* Footer */}
             <View style={styles.footerRow}>
               <TouchableOpacity onPress={() => setIsOpen(false)} style={styles.cancelButtonInRow}>
                 <Text style={styles.cancelButtonText}>Cancel</Text>
@@ -263,15 +248,9 @@ const StanceTypeWidthPicker: React.FC<StanceTypeWidthPickerProps> = ({
   );
 };
 
-// Reuse the exact same styles from GripTypeWidthPicker
 const styles = StyleSheet.create({
-  container: {
-    width: '100%',
-  },
-  triggerCircleWrapper: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  container: { width: '100%' },
+  triggerCircleWrapper: { alignItems: 'center', justifyContent: 'center' },
   circleButton: {
     borderRadius: 36,
     backgroundColor: COLORS.slate[100],
@@ -282,95 +261,36 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     overflow: 'hidden',
   },
-  circleButtonSelected: {
-    backgroundColor: COLORS.blue[50],
-    borderColor: COLORS.blue[200],
-  },
-  circleButtonPartiallySelected: {
-    borderColor: COLORS.blue[200],
-    // Keep default background color (slate[100])
-  },
-  circleButtonPlaceholder: {
-    width: 44,
-    height: 44,
-  },
-  splitImageContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  imageHalf: {
-    overflow: 'hidden',
-  },
-  splitImageLeft: {
-    marginLeft: 0,
-  },
-  splitImageRight: {
-    // marginLeft will be set dynamically based on size
-  },
-  placeholderImage: {
-    opacity: 0.4,
-    tintColor: COLORS.slate[400],
-  },
-  labelContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  circleLabel: {
-    fontSize: 13,
-    textAlign: 'center',
-    maxWidth: 120,
-  },
-  textSelected: {
-    color: COLORS.slate[900],
-    fontWeight: '500',
-  },
-  textPlaceholder: {
-    color: COLORS.slate[400],
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.2)',
-    justifyContent: 'center',
-    padding: 20,
-  },
+  circleButtonSelected: { backgroundColor: COLORS.blue[50], borderColor: COLORS.blue[200] },
+  circleButtonPartiallySelected: { borderColor: COLORS.blue[200] },
+  circleButtonPlaceholder: { width: 44, height: 44 },
+  splitImageContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  imageHalf: { overflow: 'hidden' },
+  splitImageLeft: { marginLeft: 0 },
+  splitImageRight: {},
+  placeholderImage: { opacity: 0.4, tintColor: COLORS.slate[400] },
+  labelContainer: { alignItems: 'center', justifyContent: 'center' },
+  circleLabel: { fontSize: 13, textAlign: 'center', maxWidth: 120 },
+  textSelected: { color: COLORS.slate[900], fontWeight: '500' },
+  textPlaceholder: { color: COLORS.slate[400] },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.2)', justifyContent: 'center', padding: 20 },
   modalContent: {
     backgroundColor: COLORS.white,
     borderRadius: 12,
     maxHeight: 400,
     overflow: 'visible',
     shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
     flexDirection: 'column',
   },
-  modalContentInner: {
-    overflow: 'visible',
-  },
-  previewContainer: {
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    marginTop: -36, // Extend above the popup (half of 72px circle button height)
-    zIndex: 10,
-    height: 48,
-  },
-  sideBySideContainer: {
-    flexDirection: 'row',
-    maxHeight: 320,
-  },
-  columnContainer: {
-    flex: 1,
-    borderRightWidth: 1,
-    borderRightColor: COLORS.slate[200],
-  },
-  columnContainerLast: {
-    borderRightWidth: 0,
-  },
+  modalContentInner: { overflow: 'visible' },
+  previewContainer: { alignItems: 'center', justifyContent: 'flex-end', marginTop: -36, zIndex: 10, height: 48 },
+  sideBySideContainer: { flexDirection: 'row', maxHeight: 320 },
+  columnContainer: { flex: 1, borderRightWidth: 1, borderRightColor: COLORS.slate[200] },
+  columnContainerLast: { borderRightWidth: 0 },
   columnHeader: {
     paddingRight: 16,
     paddingLeft: 52,
@@ -380,21 +300,10 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.slate[50],
     marginTop: -36,
   },
-  columnHeaderFirst: {
-    borderTopLeftRadius: 12,
-  },
-  columnHeaderLast: {
-    borderTopRightRadius: 12,
-  },
-  columnHeaderText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.slate[500],
-    letterSpacing: 0.5,
-  },
-  scrollableList: {
-    maxHeight: 280,
-  },
+  columnHeaderFirst: { borderTopLeftRadius: 12 },
+  columnHeaderLast: { borderTopRightRadius: 12 },
+  columnHeaderText: { fontSize: 12, fontWeight: '700', color: COLORS.slate[500], letterSpacing: 0.5 },
+  scrollableList: { maxHeight: 280 },
   option: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -404,32 +313,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.slate[100],
   },
-  optionLast: {
-    borderBottomWidth: 1,
-  },
-  iconPlaceholder: {
-    width: 24,
-    height: 24,
-    marginRight: 12,
-  },
-  optionIcon: {
-    width: 24,
-    height: 24,
-    marginRight: 12,
-  },
-  optionSelected: {
-    backgroundColor: COLORS.blue[50],
-  },
-  optionText: {
-    fontSize: 15,
-    color: COLORS.slate[700],
-    fontWeight: '500',
-    flex: 1,
-  },
-  optionTextSelected: {
-    color: COLORS.blue[600],
-    fontWeight: '500',
-  },
+  optionLast: { borderBottomWidth: 1 },
+  iconPlaceholder: { width: 24, height: 24, marginRight: 12 },
+  optionIcon: { width: 24, height: 24, marginRight: 12 },
+  optionSelected: { backgroundColor: COLORS.blue[50] },
+  optionText: { fontSize: 15, color: COLORS.slate[700], fontWeight: '500', flex: 1 },
+  optionTextSelected: { color: COLORS.blue[600], fontWeight: '500' },
   footerRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -448,11 +337,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     marginRight: 8,
   },
-  cancelButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.slate[600],
-  },
+  cancelButtonText: { fontSize: 16, fontWeight: '600', color: COLORS.slate[600] },
   doneButton: {
     flex: 1,
     paddingVertical: 8,
@@ -461,11 +346,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.blue[600],
     borderRadius: 6,
   },
-  doneButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.white,
-  },
+  doneButtonText: { fontSize: 16, fontWeight: '600', color: COLORS.white },
 });
 
-export default StanceTypeWidthPicker;
+export default GripTypeWidthPicker;

@@ -19,11 +19,11 @@ import { GripWidthImages } from '@/constants/gripWidthImages';
 import { StanceTypeImages } from '@/constants/stanceImages';
 import { StanceWidthImages } from '@/constants/stanceWidthImages';
 import { EquipmentImages } from '@/constants/equipmentImages';
-import Chip from '@/components/Chip';
-import CustomDropdown from '@/components/CustomDropdown';
-import EquipmentPickerModal, { EquipmentIcon } from '@/components/EquipmentPickerModal';
-import GripTypeWidthPicker from '@/components/GripTypeWidthPicker';
-import StanceTypeWidthPicker from '@/components/StanceTypeWidthPicker';
+import Chip from './Chip';
+import CustomDropdown from './CustomDropdown';
+import EquipmentPickerModal, { EquipmentIcon } from './EquipmentPickerModal';
+import GripTypeWidthPicker from './GripTypeWidthPicker';
+import StanceTypeWidthPicker from './StanceTypeWidthPicker';
 import type { ExerciseLibraryItem, ExerciseCategory } from '@/types/workout';
 
 interface EditExerciseProps {

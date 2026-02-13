@@ -5,7 +5,7 @@ import { Plus } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { CATEGORIES } from '@/constants/data';
 import { useWorkout } from '@/context/WorkoutContext';
-import EditExercise from '@/components/WorkoutTemplate/modals/EditExercise';
+import EditExercise from '@/components/ExerciseEditor';
 import ExerciseHistoryModal from '@/components/ExerciseHistoryModal';
 import type { ExerciseLibraryItem } from '@/types/workout';
 
