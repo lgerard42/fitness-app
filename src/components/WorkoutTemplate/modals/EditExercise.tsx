@@ -15,9 +15,14 @@ import {
   CABLE_ATTACHMENT_GRIP_STANCE_OPTIONS,
 } from '@/constants/data';
 import { GripImages } from '@/constants/gripImages';
+import { GripWidthImages } from '@/constants/gripWidthImages';
+import { StanceTypeImages } from '@/constants/stanceImages';
+import { StanceWidthImages } from '@/constants/stanceWidthImages';
+import { EquipmentImages } from '@/constants/equipmentImages';
 import Chip from '@/components/Chip';
 import CustomDropdown from '@/components/CustomDropdown';
 import EquipmentPickerModal, { EquipmentIcon } from '@/components/EquipmentPickerModal';
+import GripTypeWidthPicker from '@/components/GripTypeWidthPicker';
 import type { ExerciseLibraryItem, ExerciseCategory } from '@/types/workout';
 
 interface EditExerciseProps {
@@ -456,54 +461,85 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                                         {showSecondEquip ? <ToggleRight size={24} color={COLORS.blue[600]} /> : <ToggleLeft size={24} color={COLORS.slate[300]} />}
                                     </TouchableOpacity>
                                 </View>
-                                <View style={styles.equipAndSingleDoubleRow}>
-                                    <View style={[styles.dropdownStack, styles.dropdownStackShrink]}>
+                                {showSecondEquip && (
+                                    <View style={{ marginBottom: 12 }}>
                                         <TouchableOpacity
                                             style={styles.equipmentTrigger}
-                                            onPress={() => setEquipmentPickerSlot(0)}
+                                            onPress={() => setEquipmentPickerSlot(1)}
                                         >
-                                            <EquipmentIcon equipment={editState.weightEquipTags[0] || ''} size={24} />
-                                            <Text style={[styles.equipmentTriggerText, editState.weightEquipTags[0] ? styles.textSelected : styles.textPlaceholder]}>
-                                                {editState.weightEquipTags[0] || "Select Equipment..."}
+                                            <EquipmentIcon equipment={editState.weightEquipTags[1] || ''} size={24} />
+                                            <Text style={[styles.equipmentTriggerText, editState.weightEquipTags[1] ? styles.textSelected : styles.textPlaceholder]}>
+                                                {editState.weightEquipTags[1] || "Select 2nd Equipment..."}
                                             </Text>
                                             <ChevronDown size={16} color={COLORS.slate[400]} />
                                         </TouchableOpacity>
-                                        {showSecondEquip && (
-                                            <TouchableOpacity
-                                                style={styles.equipmentTrigger}
-                                                onPress={() => setEquipmentPickerSlot(1)}
-                                            >
-                                                <EquipmentIcon equipment={editState.weightEquipTags[1] || ''} size={24} />
-                                                <Text style={[styles.equipmentTriggerText, editState.weightEquipTags[1] ? styles.textSelected : styles.textPlaceholder]}>
-                                                    {editState.weightEquipTags[1] || "Select 2nd Equipment..."}
-                                                </Text>
-                                                <ChevronDown size={16} color={COLORS.slate[400]} />
-                                            </TouchableOpacity>
-                                        )}
                                     </View>
-                                    {shouldShowSingleDouble() && (
-                                        <View style={styles.singleDoubleInEquipRow}>
-                                            <View style={styles.categoryContainer}>
-                                                {SINGLE_DOUBLE_OPTIONS.map(option => (
-                                                    <TouchableOpacity
-                                                        key={option}
-                                                        onPress={() => handleSingleDoubleChange(option)}
-                                                        style={[
-                                                            styles.categoryButton,
-                                                            editState.singleDouble === option ? styles.categoryButtonSelected : styles.categoryButtonUnselected
-                                                        ]}
-                                                    >
-                                                        <Text style={[
-                                                            styles.categoryText,
-                                                            editState.singleDouble === option ? styles.categoryTextSelected : styles.categoryTextUnselected
-                                                        ]}>
-                                                            {option}
-                                                        </Text>
-                                                    </TouchableOpacity>
-                                                ))}
+                                )}
+                                <View style={styles.equipmentGripRow}>
+                                    {/* Equipment Circle Button */}
+                                    <View style={styles.circleButtonWrapper}>
+                                        <TouchableOpacity
+                                            style={styles.equipmentCircleButton}
+                                            onPress={() => setEquipmentPickerSlot(0)}
+                                            activeOpacity={0.7}
+                                        >
+                                            <View style={[styles.circleButton, editState.weightEquipTags[0] && styles.circleButtonSelected]}>
+                                                <EquipmentIcon equipment={editState.weightEquipTags[0] || ''} size={44} noMargin />
                                             </View>
-                                        </View>
-                                    )}
+                                            <Text style={[styles.circleLabel, editState.weightEquipTags[0] ? styles.textSelected : styles.textPlaceholder]} numberOfLines={1}>
+                                                {editState.weightEquipTags[0] || "Equipment"}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                    {/* Combined Grip Type/Width Circle Button */}
+                                    {(() => {
+                                        const opts = getPrimaryEquipmentGripStanceOptions();
+                                        return (opts.gripTypeOptions || opts.gripWidthOptions) ? (
+                                            <View style={styles.circleButtonWrapper}>
+                                                <GripTypeWidthPicker
+                                                    gripType={editState.gripType}
+                                                    gripWidth={editState.gripWidth}
+                                                    onGripTypeChange={(val) => setEditState({ ...editState, gripType: val })}
+                                                    onGripWidthChange={(val) => setEditState({ ...editState, gripWidth: val })}
+                                                    gripTypeOptions={opts.gripTypeOptions || []}
+                                                    gripWidthOptions={opts.gripWidthOptions || []}
+                                                    allowClear
+                                                />
+                                            </View>
+                                        ) : null;
+                                    })()}
+                                    {/* Stance Type Circle Button */}
+                                    {(() => {
+                                        const opts = getPrimaryEquipmentGripStanceOptions();
+                                        return opts.stanceTypeOptions ? (
+                                            <View style={styles.circleButtonWrapper}>
+                                                <CustomDropdown
+                                                    value={editState.stanceType}
+                                                    onChange={(val) => setEditState({ ...editState, stanceType: val })}
+                                                    options={opts.stanceTypeOptions}
+                                                    placeholder="Stance Type"
+                                                    allowClear
+                                                    optionIcons={StanceTypeImages}
+                                                />
+                                            </View>
+                                        ) : null;
+                                    })()}
+                                    {/* Stance Width Circle Button */}
+                                    {(() => {
+                                        const opts = getPrimaryEquipmentGripStanceOptions();
+                                        return opts.stanceWidthOptions ? (
+                                            <View style={styles.circleButtonWrapper}>
+                                                <CustomDropdown
+                                                    value={editState.stanceWidth}
+                                                    onChange={(val) => setEditState({ ...editState, stanceWidth: val })}
+                                                    options={opts.stanceWidthOptions}
+                                                    placeholder="Stance Width"
+                                                    allowClear
+                                                    optionIcons={StanceWidthImages}
+                                                />
+                                            </View>
+                                        ) : null;
+                                    })()}
                                 </View>
                             </View>
 
@@ -536,73 +572,6 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                                 </View>
                             )}
 
-                            {/* Grip Type, Grip Width, Stance Type, Stance Width (per primary equipment) */}
-                            {(() => {
-                                const opts = getPrimaryEquipmentGripStanceOptions();
-                                const showGripRow = opts.gripTypeOptions || opts.gripWidthOptions;
-                                const showStanceRow = opts.stanceTypeOptions || opts.stanceWidthOptions;
-                                return (
-                                    <>
-                                        {showGripRow && (
-                                            <View style={styles.gripStanceRow}>
-                                                {opts.gripTypeOptions && (
-                                                    <View style={styles.gripStanceField}>
-                                                        <Text style={styles.label}>GRIP TYPE</Text>
-                                                        <CustomDropdown
-                                                            value={editState.gripType}
-                                                            onChange={(val) => setEditState({ ...editState, gripType: val })}
-                                                            options={opts.gripTypeOptions}
-                                                            placeholder="Select Grip Type..."
-                                                            allowClear
-                                                            optionIcons={GripImages}
-                                                        />
-                                                    </View>
-                                                )}
-                                                {opts.gripWidthOptions && (
-                                                    <View style={styles.gripStanceField}>
-                                                        <Text style={styles.label}>GRIP WIDTH</Text>
-                                                        <CustomDropdown
-                                                            value={editState.gripWidth}
-                                                            onChange={(val) => setEditState({ ...editState, gripWidth: val })}
-                                                            options={opts.gripWidthOptions}
-                                                            placeholder="Select Grip Width..."
-                                                            allowClear
-                                                        />
-                                                    </View>
-                                                )}
-                                            </View>
-                                        )}
-                                        {showStanceRow && (
-                                            <View style={styles.gripStanceRow}>
-                                                {opts.stanceTypeOptions && (
-                                                    <View style={styles.gripStanceField}>
-                                                        <Text style={styles.label}>STANCE TYPE</Text>
-                                                        <CustomDropdown
-                                                            value={editState.stanceType}
-                                                            onChange={(val) => setEditState({ ...editState, stanceType: val })}
-                                                            options={opts.stanceTypeOptions}
-                                                            placeholder="Select Stance Type..."
-                                                            allowClear
-                                                        />
-                                                    </View>
-                                                )}
-                                                {opts.stanceWidthOptions && (
-                                                    <View style={styles.gripStanceField}>
-                                                        <Text style={styles.label}>STANCE WIDTH</Text>
-                                                        <CustomDropdown
-                                                            value={editState.stanceWidth}
-                                                            onChange={(val) => setEditState({ ...editState, stanceWidth: val })}
-                                                            options={opts.stanceWidthOptions}
-                                                            placeholder="Select Stance Width..."
-                                                            allowClear
-                                                        />
-                                                    </View>
-                                                )}
-                                            </View>
-                                        )}
-                                    </>
-                                );
-                            })()}
 
                             <View style={styles.additionalSettings}>
                                 <Text style={styles.label}>ADDITIONAL SETTINGS:</Text>
@@ -710,40 +679,89 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                             </TouchableOpacity>
                             {showWeightEquip && (
                                 <View style={{ marginBottom: 24 }}>
-                                    <View style={styles.equipAndSingleDoubleRow}>
-                                        <View style={[styles.dropdownStack, styles.dropdownStackShrink]}>
-                                            <TouchableOpacity style={styles.equipmentTrigger} onPress={() => setEquipmentPickerSlot(0)}>
-                                                <EquipmentIcon equipment={editState.weightEquipTags[0] || ''} size={24} />
-                                                <Text style={[styles.equipmentTriggerText, editState.weightEquipTags[0] ? styles.textSelected : styles.textPlaceholder]}>
-                                                    {editState.weightEquipTags[0] || "Select Equipment..."}
+                                    {showSecondEquip && (
+                                        <View style={{ marginBottom: 12 }}>
+                                            <TouchableOpacity style={styles.equipmentTrigger} onPress={() => setEquipmentPickerSlot(1)}>
+                                                <EquipmentIcon equipment={editState.weightEquipTags[1] || ''} size={24} />
+                                                <Text style={[styles.equipmentTriggerText, editState.weightEquipTags[1] ? styles.textSelected : styles.textPlaceholder]}>
+                                                    {editState.weightEquipTags[1] || "Select 2nd Equipment..."}
                                                 </Text>
                                                 <ChevronDown size={16} color={COLORS.slate[400]} />
                                             </TouchableOpacity>
-                                            {showSecondEquip && (
-                                                <TouchableOpacity style={styles.equipmentTrigger} onPress={() => setEquipmentPickerSlot(1)}>
-                                                    <EquipmentIcon equipment={editState.weightEquipTags[1] || ''} size={24} />
-                                                    <Text style={[styles.equipmentTriggerText, editState.weightEquipTags[1] ? styles.textSelected : styles.textPlaceholder]}>
-                                                        {editState.weightEquipTags[1] || "Select 2nd Equipment..."}
-                                                    </Text>
-                                                    <ChevronDown size={16} color={COLORS.slate[400]} />
-                                                </TouchableOpacity>
-                                            )}
                                         </View>
+                                    )}
+                                    <View style={styles.equipmentGripRow}>
+                                        {/* Equipment Circle Button */}
+                                        <View style={styles.circleButtonWrapper}>
+                                            <TouchableOpacity
+                                                style={styles.equipmentCircleButton}
+                                                onPress={() => setEquipmentPickerSlot(0)}
+                                                activeOpacity={0.7}
+                                            >
+                                                <View style={[styles.circleButton, editState.weightEquipTags[0] && styles.circleButtonSelected]}>
+                                                    <EquipmentIcon equipment={editState.weightEquipTags[0] || ''} size={44} noMargin />
+                                                </View>
+                                                <Text style={[styles.circleLabel, editState.weightEquipTags[0] ? styles.textSelected : styles.textPlaceholder]} numberOfLines={1}>
+                                                    {editState.weightEquipTags[0] || "Equipment"}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                        {/* Single/Double Toggle */}
                                         {shouldShowSingleDouble() && (
-                                            <View style={styles.singleDoubleInEquipRow}>
+                                            <View style={styles.singleDoubleToggleWrapper}>
                                                 <View style={styles.categoryContainer}>
                                                     {SINGLE_DOUBLE_OPTIONS.map(option => (
                                                         <TouchableOpacity
                                                             key={option}
                                                             onPress={() => handleSingleDoubleChange(option)}
-                                                            style={[styles.categoryButton, editState.singleDouble === option ? styles.categoryButtonSelected : styles.categoryButtonUnselected]}
+                                                            style={[
+                                                                styles.categoryButton,
+                                                                editState.singleDouble === option ? styles.categoryButtonSelected : styles.categoryButtonUnselected
+                                                            ]}
                                                         >
-                                                            <Text style={[styles.categoryText, editState.singleDouble === option ? styles.categoryTextSelected : styles.categoryTextUnselected]}>{option}</Text>
+                                                            <Text style={[
+                                                                styles.categoryText,
+                                                                editState.singleDouble === option ? styles.categoryTextSelected : styles.categoryTextUnselected
+                                                            ]}>
+                                                                {option}
+                                                            </Text>
                                                         </TouchableOpacity>
                                                     ))}
                                                 </View>
                                             </View>
                                         )}
+                                        {/* Grip Type Circle Button */}
+                                        {(() => {
+                                            const opts = getPrimaryEquipmentGripStanceOptions();
+                                            return opts.gripTypeOptions ? (
+                                                <View style={styles.circleButtonWrapper}>
+                                                    <CustomDropdown
+                                                        value={editState.gripType}
+                                                        onChange={(val) => setEditState({ ...editState, gripType: val })}
+                                                        options={opts.gripTypeOptions}
+                                                        placeholder="Grip Type"
+                                                        allowClear
+                                                        optionIcons={GripImages}
+                                                    />
+                                                </View>
+                                            ) : null;
+                                        })()}
+                                        {/* Grip Width Circle Button */}
+                                        {(() => {
+                                            const opts = getPrimaryEquipmentGripStanceOptions();
+                                            return opts.gripWidthOptions ? (
+                                                <View style={styles.circleButtonWrapper}>
+                                                    <CustomDropdown
+                                                        value={editState.gripWidth}
+                                                        onChange={(val) => setEditState({ ...editState, gripWidth: val })}
+                                                        options={opts.gripWidthOptions}
+                                                        placeholder="Grip Width"
+                                                        allowClear
+                                                        optionIcons={GripWidthImages}
+                                                    />
+                                                </View>
+                                            ) : null;
+                                        })()}
                                     </View>
                                 </View>
                             )}
@@ -768,47 +786,6 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                                             </View>
                                         </View>
                                     )}
-                                    {(() => {
-                                        const opts = getPrimaryEquipmentGripStanceOptions();
-                                        const showGripRow = opts.gripTypeOptions || opts.gripWidthOptions;
-                                        const showStanceRow = opts.stanceTypeOptions || opts.stanceWidthOptions;
-                                        return (
-                                            <>
-                                                {showGripRow && (
-                                                    <View style={styles.gripStanceRow}>
-                                                        {opts.gripTypeOptions && (
-                                                            <View style={styles.gripStanceField}>
-                                                                <Text style={styles.label}>GRIP TYPE</Text>
-                                                                <CustomDropdown value={editState.gripType} onChange={(val) => setEditState({ ...editState, gripType: val })} options={opts.gripTypeOptions} placeholder="Select Grip Type..." allowClear optionIcons={GripImages} />
-                                                            </View>
-                                                        )}
-                                                        {opts.gripWidthOptions && (
-                                                            <View style={styles.gripStanceField}>
-                                                                <Text style={styles.label}>GRIP WIDTH</Text>
-                                                                <CustomDropdown value={editState.gripWidth} onChange={(val) => setEditState({ ...editState, gripWidth: val })} options={opts.gripWidthOptions} placeholder="Select Grip Width..." allowClear />
-                                                            </View>
-                                                        )}
-                                                    </View>
-                                                )}
-                                                {showStanceRow && (
-                                                    <View style={styles.gripStanceRow}>
-                                                        {opts.stanceTypeOptions && (
-                                                            <View style={styles.gripStanceField}>
-                                                                <Text style={styles.label}>STANCE TYPE</Text>
-                                                                <CustomDropdown value={editState.stanceType} onChange={(val) => setEditState({ ...editState, stanceType: val })} options={opts.stanceTypeOptions} placeholder="Select Stance Type..." allowClear />
-                                                            </View>
-                                                        )}
-                                                        {opts.stanceWidthOptions && (
-                                                            <View style={styles.gripStanceField}>
-                                                                <Text style={styles.label}>STANCE WIDTH</Text>
-                                                                <CustomDropdown value={editState.stanceWidth} onChange={(val) => setEditState({ ...editState, stanceWidth: val })} options={opts.stanceWidthOptions} placeholder="Select Stance Width..." allowClear />
-                                                            </View>
-                                                        )}
-                                                    </View>
-                                                )}
-                                            </>
-                                        );
-                                    })()}
                                 </>
                             )}
                         </View>
@@ -936,40 +913,89 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                             </TouchableOpacity>
                             {showWeightEquip && (
                                 <View style={{ marginBottom: 24 }}>
-                                    <View style={styles.equipAndSingleDoubleRow}>
-                                        <View style={[styles.dropdownStack, styles.dropdownStackShrink]}>
-                                            <TouchableOpacity style={styles.equipmentTrigger} onPress={() => setEquipmentPickerSlot(0)}>
-                                                <EquipmentIcon equipment={editState.weightEquipTags[0] || ''} size={24} />
-                                                <Text style={[styles.equipmentTriggerText, editState.weightEquipTags[0] ? styles.textSelected : styles.textPlaceholder]}>
-                                                    {editState.weightEquipTags[0] || "Select Equipment..."}
+                                    {showSecondEquip && (
+                                        <View style={{ marginBottom: 12 }}>
+                                            <TouchableOpacity style={styles.equipmentTrigger} onPress={() => setEquipmentPickerSlot(1)}>
+                                                <EquipmentIcon equipment={editState.weightEquipTags[1] || ''} size={24} />
+                                                <Text style={[styles.equipmentTriggerText, editState.weightEquipTags[1] ? styles.textSelected : styles.textPlaceholder]}>
+                                                    {editState.weightEquipTags[1] || "Select 2nd Equipment..."}
                                                 </Text>
                                                 <ChevronDown size={16} color={COLORS.slate[400]} />
                                             </TouchableOpacity>
-                                            {showSecondEquip && (
-                                                <TouchableOpacity style={styles.equipmentTrigger} onPress={() => setEquipmentPickerSlot(1)}>
-                                                    <EquipmentIcon equipment={editState.weightEquipTags[1] || ''} size={24} />
-                                                    <Text style={[styles.equipmentTriggerText, editState.weightEquipTags[1] ? styles.textSelected : styles.textPlaceholder]}>
-                                                        {editState.weightEquipTags[1] || "Select 2nd Equipment..."}
-                                                    </Text>
-                                                    <ChevronDown size={16} color={COLORS.slate[400]} />
-                                                </TouchableOpacity>
-                                            )}
                                         </View>
+                                    )}
+                                    <View style={styles.equipmentGripRow}>
+                                        {/* Equipment Circle Button */}
+                                        <View style={styles.circleButtonWrapper}>
+                                            <TouchableOpacity
+                                                style={styles.equipmentCircleButton}
+                                                onPress={() => setEquipmentPickerSlot(0)}
+                                                activeOpacity={0.7}
+                                            >
+                                                <View style={[styles.circleButton, editState.weightEquipTags[0] && styles.circleButtonSelected]}>
+                                                    <EquipmentIcon equipment={editState.weightEquipTags[0] || ''} size={44} noMargin />
+                                                </View>
+                                                <Text style={[styles.circleLabel, editState.weightEquipTags[0] ? styles.textSelected : styles.textPlaceholder]} numberOfLines={1}>
+                                                    {editState.weightEquipTags[0] || "Equipment"}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                        {/* Single/Double Toggle */}
                                         {shouldShowSingleDouble() && (
-                                            <View style={styles.singleDoubleInEquipRow}>
+                                            <View style={styles.singleDoubleToggleWrapper}>
                                                 <View style={styles.categoryContainer}>
                                                     {SINGLE_DOUBLE_OPTIONS.map(option => (
                                                         <TouchableOpacity
                                                             key={option}
                                                             onPress={() => handleSingleDoubleChange(option)}
-                                                            style={[styles.categoryButton, editState.singleDouble === option ? styles.categoryButtonSelected : styles.categoryButtonUnselected]}
+                                                            style={[
+                                                                styles.categoryButton,
+                                                                editState.singleDouble === option ? styles.categoryButtonSelected : styles.categoryButtonUnselected
+                                                            ]}
                                                         >
-                                                            <Text style={[styles.categoryText, editState.singleDouble === option ? styles.categoryTextSelected : styles.categoryTextUnselected]}>{option}</Text>
+                                                            <Text style={[
+                                                                styles.categoryText,
+                                                                editState.singleDouble === option ? styles.categoryTextSelected : styles.categoryTextUnselected
+                                                            ]}>
+                                                                {option}
+                                                            </Text>
                                                         </TouchableOpacity>
                                                     ))}
                                                 </View>
                                             </View>
                                         )}
+                                        {/* Grip Type Circle Button */}
+                                        {(() => {
+                                            const opts = getPrimaryEquipmentGripStanceOptions();
+                                            return opts.gripTypeOptions ? (
+                                                <View style={styles.circleButtonWrapper}>
+                                                    <CustomDropdown
+                                                        value={editState.gripType}
+                                                        onChange={(val) => setEditState({ ...editState, gripType: val })}
+                                                        options={opts.gripTypeOptions}
+                                                        placeholder="Grip Type"
+                                                        allowClear
+                                                        optionIcons={GripImages}
+                                                    />
+                                                </View>
+                                            ) : null;
+                                        })()}
+                                        {/* Grip Width Circle Button */}
+                                        {(() => {
+                                            const opts = getPrimaryEquipmentGripStanceOptions();
+                                            return opts.gripWidthOptions ? (
+                                                <View style={styles.circleButtonWrapper}>
+                                                    <CustomDropdown
+                                                        value={editState.gripWidth}
+                                                        onChange={(val) => setEditState({ ...editState, gripWidth: val })}
+                                                        options={opts.gripWidthOptions}
+                                                        placeholder="Grip Width"
+                                                        allowClear
+                                                        optionIcons={GripWidthImages}
+                                                    />
+                                                </View>
+                                            ) : null;
+                                        })()}
                                     </View>
                                 </View>
                             )}
@@ -994,47 +1020,6 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                                             </View>
                                         </View>
                                     )}
-                                    {(() => {
-                                        const opts = getPrimaryEquipmentGripStanceOptions();
-                                        const showGripRow = opts.gripTypeOptions || opts.gripWidthOptions;
-                                        const showStanceRow = opts.stanceTypeOptions || opts.stanceWidthOptions;
-                                        return (
-                                            <>
-                                                {showGripRow && (
-                                                    <View style={styles.gripStanceRow}>
-                                                        {opts.gripTypeOptions && (
-                                                            <View style={styles.gripStanceField}>
-                                                                <Text style={styles.label}>GRIP TYPE</Text>
-                                                                <CustomDropdown value={editState.gripType} onChange={(val) => setEditState({ ...editState, gripType: val })} options={opts.gripTypeOptions} placeholder="Select Grip Type..." allowClear optionIcons={GripImages} />
-                                                            </View>
-                                                        )}
-                                                        {opts.gripWidthOptions && (
-                                                            <View style={styles.gripStanceField}>
-                                                                <Text style={styles.label}>GRIP WIDTH</Text>
-                                                                <CustomDropdown value={editState.gripWidth} onChange={(val) => setEditState({ ...editState, gripWidth: val })} options={opts.gripWidthOptions} placeholder="Select Grip Width..." allowClear />
-                                                            </View>
-                                                        )}
-                                                    </View>
-                                                )}
-                                                {showStanceRow && (
-                                                    <View style={styles.gripStanceRow}>
-                                                        {opts.stanceTypeOptions && (
-                                                            <View style={styles.gripStanceField}>
-                                                                <Text style={styles.label}>STANCE TYPE</Text>
-                                                                <CustomDropdown value={editState.stanceType} onChange={(val) => setEditState({ ...editState, stanceType: val })} options={opts.stanceTypeOptions} placeholder="Select Stance Type..." allowClear />
-                                                            </View>
-                                                        )}
-                                                        {opts.stanceWidthOptions && (
-                                                            <View style={styles.gripStanceField}>
-                                                                <Text style={styles.label}>STANCE WIDTH</Text>
-                                                                <CustomDropdown value={editState.stanceWidth} onChange={(val) => setEditState({ ...editState, stanceWidth: val })} options={opts.stanceWidthOptions} placeholder="Select Stance Width..." allowClear />
-                                                            </View>
-                                                        )}
-                                                    </View>
-                                                )}
-                                            </>
-                                        );
-                                    })()}
                                 </>
                             )}
 
@@ -1309,6 +1294,66 @@ const styles = StyleSheet.create({
     },
     textPlaceholder: {
         color: COLORS.slate[400],
+    },
+    equipmentGripRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 12,
+        marginTop: 12,
+        flexWrap: 'wrap',
+    },
+    circleButtonWrapper: {
+        alignItems: 'center',
+        flex: 1,
+        minWidth: 70,
+    },
+    equipmentCircleButton: {
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    circleButton: {
+        width: 72,
+        height: 72,
+        borderRadius: 36,
+        backgroundColor: COLORS.slate[100],
+        borderWidth: 2,
+        borderColor: COLORS.slate[200],
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 8,
+    },
+    circleButtonSelected: {
+        backgroundColor: COLORS.blue[50],
+        borderColor: COLORS.blue[200],
+    },
+    circleButtonPlaceholder: {
+        width: 44,
+        height: 44,
+    },
+    circleLabel: {
+        fontSize: 13,
+        textAlign: 'center',
+        maxWidth: 120,
+    },
+    singleDoubleToggleWrapper: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: 72,
+        flexShrink: 1,
+        minWidth: 100,
+    },
+    singleDoubleContainer: {
+        flexDirection: 'column',
+        backgroundColor: COLORS.slate[100],
+        padding: 4,
+        borderRadius: 8,
+        gap: 4,
+        minWidth: 100,
+    },
+    singleDoubleButton: {
+        paddingVertical: 8,
+        alignItems: 'center',
+        borderRadius: 6,
     },
     gripStanceRow: {
         flexDirection: 'row',

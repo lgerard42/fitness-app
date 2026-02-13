@@ -29,6 +29,8 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({ value, onChange, option
     return <Image source={src} style={styles.gripIcon} resizeMode="contain" />;
   };
 
+  const isCircleTrigger = !!optionIcons;
+
   return (
     <View 
       style={[styles.container, isOpen && styles.containerOpen]}
@@ -36,21 +38,39 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({ value, onChange, option
     >
       <TouchableOpacity
         onPress={() => setIsOpen(true)}
-        style={styles.trigger}
+        style={isCircleTrigger ? styles.triggerCircleWrapper : styles.trigger}
+        activeOpacity={0.7}
       >
-        {value && optionIcons?.[value] ? (
-          <Image source={optionIcons[value]} style={styles.triggerIcon} resizeMode="contain" />
-        ) : optionIcons ? (
-          <View style={styles.triggerIconPlaceholder} />
-        ) : null}
-        <Text style={[styles.text, value ? styles.textSelected : styles.textPlaceholder]}>
-          {value || placeholder}
-        </Text>
-        <ChevronDown 
-          size={16} 
-          color={isOpen ? COLORS.blue[500] : COLORS.slate[400]} 
-          style={{ transform: [{ rotate: isOpen ? '180deg' : '0deg' }] }}
-        />
+        {isCircleTrigger ? (
+          <>
+            <View style={[styles.circleButton, value && styles.circleButtonSelected]}>
+              {value && optionIcons[value] ? (
+                <Image source={optionIcons[value]} style={styles.circleButtonIcon} resizeMode="contain" />
+              ) : (
+                <View style={styles.circleButtonPlaceholder} />
+              )}
+            </View>
+            <Text style={[styles.circleLabel, value ? styles.textSelected : styles.textPlaceholder]} numberOfLines={1}>
+              {value || placeholder}
+            </Text>
+          </>
+        ) : (
+          <>
+            {value && optionIcons?.[value] ? (
+              <Image source={optionIcons[value]} style={styles.triggerIcon} resizeMode="contain" />
+            ) : optionIcons ? (
+              <View style={styles.triggerIconPlaceholder} />
+            ) : null}
+            <Text style={[styles.text, value ? styles.textSelected : styles.textPlaceholder]}>
+              {value || placeholder}
+            </Text>
+            <ChevronDown 
+              size={16} 
+              color={isOpen ? COLORS.blue[500] : COLORS.slate[400]} 
+              style={{ transform: [{ rotate: isOpen ? '180deg' : '0deg' }] }}
+            />
+          </>
+        )}
       </TouchableOpacity>
 
       <Modal
@@ -119,6 +139,38 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
+  },
+  triggerCircleWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  circleButton: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: COLORS.slate[100],
+    borderWidth: 2,
+    borderColor: COLORS.slate[200],
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  circleButtonSelected: {
+    backgroundColor: COLORS.blue[50],
+    borderColor: COLORS.blue[200],
+  },
+  circleButtonIcon: {
+    width: 44,
+    height: 44,
+  },
+  circleButtonPlaceholder: {
+    width: 44,
+    height: 44,
+  },
+  circleLabel: {
+    fontSize: 13,
+    textAlign: 'center',
+    maxWidth: 120,
   },
   triggerIcon: {
     width: 24,

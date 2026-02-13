@@ -30,9 +30,9 @@ const EQUIPMENT_ICON_SOURCES: Record<string, ImageSourcePropType | 'repsOnly' | 
 };
 
 /** Renders equipment icon for use in triggers (e.g. EditExercise). Size defaults to 24. */
-export const EquipmentIcon: React.FC<{ equipment: string; size?: number }> = ({ equipment, size = 24 }) => {
+export const EquipmentIcon: React.FC<{ equipment: string; size?: number; noMargin?: boolean }> = ({ equipment, size = 24, noMargin = false }) => {
   const src = EQUIPMENT_ICON_SOURCES[equipment];
-  const boxStyle = { width: size, height: size, marginRight: 10 };
+  const boxStyle = { width: size, height: size, ...(noMargin ? {} : { marginRight: 10 }) };
   if (!equipment || src === 'other' || src === undefined) {
     return <View style={boxStyle} />;
   }

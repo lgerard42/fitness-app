@@ -42,7 +42,7 @@ export const CABLE_ATTACHMENTS = [
 // Grip Type options for upper body exercises
 export const GRIP_TYPES = [
   "Neutral", "Pronated", "Supinated", "Semi-Pronated", "Semi-Supinated", 
-  "Rotating", "1up/1down", "Flat Palms", "Other"
+  "Rotating", "1up/1down", "Flat Palms Up", "Other"
 ];
 
 // Grip Width options for upper body exercises
@@ -122,7 +122,7 @@ export const EQUIPMENT_GRIP_STANCE_OPTIONS = {
     stanceWidth: STANCE_WIDTH_FULL,
   },
   "Plate": {
-    gripType: ["Pronated", "Neutral", "Other", "Semi-Pronated", "Semi-Supinated", "Flat Palms", "Supinated"],
+    gripType: ["Pronated", "Neutral", "Other", "Semi-Pronated", "Semi-Supinated", "Flat Palms Up", "Supinated"],
     gripWidth: null,
     stanceType: STANCE_TYPE_FULL,
     stanceWidth: STANCE_WIDTH_FULL,
@@ -323,7 +323,7 @@ export const CABLE_ATTACHMENT_GRIP_STANCE_OPTIONS = {
     stanceWidth: null,
   },
   "Other": {
-    gripType: ["Neutral", "Pronated", "Supinated", "Semi-Pronated", "Semi-Supinated", "Rotating", "1up/1down", "Flat Palms", "Other"],
+    gripType: ["Neutral", "Pronated", "Supinated", "Semi-Pronated", "Semi-Supinated", "Rotating", "1up/1down", "Flat Palms Up", "Other"],
     gripWidth: GRIP_WIDTH_FULL,
     stanceType: ["Narrow", "Shoulder Width", "Wide", "Extra Narrow", "Extra Wide"],
     stanceWidth: ["Extra Wide", "Extra Narrow", "Wide", "Shoulder Width", "Narrow"],

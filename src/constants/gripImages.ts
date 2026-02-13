@@ -10,5 +10,7 @@ export const GripImages: Record<string, ImageSourcePropType> = {
   'Semi-Pronated': require('../../assets/Equipment/SemiPronatedGrip.png'),
   'Semi-Supinated': require('../../assets/Equipment/SemiSupinatedGrip.png'),
   '1up/1down': require('../../assets/Equipment/1u1downGrip.png'),
-  // Note: "Flat Palms" and "Other" don't have images - will show no icon
+  'Rotating': require('../../assets/Equipment/Rotating.png'),
+  'Flat Palms Up': require('../../assets/Equipment/FlatPalmsUpGrip.png'),
+  // Note: "Other" doesn't have an image - will show no icon
 };
