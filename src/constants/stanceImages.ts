@@ -4,6 +4,7 @@
 import type { ImageSourcePropType } from 'react-native';
 
 export const StanceTypeImages: Record<string, ImageSourcePropType> = {
-  // Note: No stance type images exist yet, but this structure allows for future additions
+  'Other': require('../../assets/Equipment/UnselectedOrOtherGrip.png'),
+  // Note: Other stance type images can be added here in the future
   // Options: "Neutral (Feet Forward)", "Toes Out (External Rotation)", "Toes In (Internal Rotation)", "Split Stance", "Other"
 };

@@ -23,6 +23,7 @@ import Chip from '@/components/Chip';
 import CustomDropdown from '@/components/CustomDropdown';
 import EquipmentPickerModal, { EquipmentIcon } from '@/components/EquipmentPickerModal';
 import GripTypeWidthPicker from '@/components/GripTypeWidthPicker';
+import StanceTypeWidthPicker from '@/components/StanceTypeWidthPicker';
 import type { ExerciseLibraryItem, ExerciseCategory } from '@/types/workout';
 
 interface EditExerciseProps {
@@ -508,34 +509,18 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                                             </View>
                                         ) : null;
                                     })()}
-                                    {/* Stance Type Circle Button */}
+                                    {/* Stance Type/Width Picker */}
                                     {(() => {
                                         const opts = getPrimaryEquipmentGripStanceOptions();
-                                        return opts.stanceTypeOptions ? (
+                                        return (opts.stanceTypeOptions || opts.stanceWidthOptions) ? (
                                             <View style={styles.circleButtonWrapper}>
-                                                <CustomDropdown
-                                                    value={editState.stanceType}
-                                                    onChange={(val) => setEditState({ ...editState, stanceType: val })}
-                                                    options={opts.stanceTypeOptions}
-                                                    placeholder="Stance Type"
-                                                    allowClear
-                                                    optionIcons={StanceTypeImages}
-                                                />
-                                            </View>
-                                        ) : null;
-                                    })()}
-                                    {/* Stance Width Circle Button */}
-                                    {(() => {
-                                        const opts = getPrimaryEquipmentGripStanceOptions();
-                                        return opts.stanceWidthOptions ? (
-                                            <View style={styles.circleButtonWrapper}>
-                                                <CustomDropdown
-                                                    value={editState.stanceWidth}
-                                                    onChange={(val) => setEditState({ ...editState, stanceWidth: val })}
-                                                    options={opts.stanceWidthOptions}
-                                                    placeholder="Stance Width"
-                                                    allowClear
-                                                    optionIcons={StanceWidthImages}
+                                                <StanceTypeWidthPicker
+                                                    stanceType={editState.stanceType}
+                                                    stanceWidth={editState.stanceWidth}
+                                                    onStanceTypeChange={(val) => setEditState({ ...editState, stanceType: val })}
+                                                    onStanceWidthChange={(val) => setEditState({ ...editState, stanceWidth: val })}
+                                                    stanceTypeOptions={opts.stanceTypeOptions || []}
+                                                    stanceWidthOptions={opts.stanceWidthOptions || []}
                                                 />
                                             </View>
                                         ) : null;

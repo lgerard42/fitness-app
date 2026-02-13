@@ -12,5 +12,5 @@ export const GripImages: Record<string, ImageSourcePropType> = {
   '1up/1down': require('../../assets/Equipment/1u1downGrip.png'),
   'Rotating': require('../../assets/Equipment/Rotating.png'),
   'Flat Palms Up': require('../../assets/Equipment/FlatPalmsUpGrip.png'),
-  // Note: "Other" doesn't have an image - will show no icon
+  'Other': require('../../assets/Equipment/UnselectedOrOtherGrip.png'),
 };

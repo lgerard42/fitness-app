@@ -1,22 +1,22 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, FlatList, StyleSheet, Image, ImageSourcePropType } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, FlatList, StyleSheet, Image } from 'react-native';
 import { Check } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
-import { GripImages } from '@/constants/gripImages';
+import { StanceTypeImages } from '@/constants/stanceImages';
 
-const PLACEHOLDER_GRIP_IMAGE = require('../../assets/Equipment/UnselectedOrOtherGrip.png');
+const PLACEHOLDER_STANCE_IMAGE = require('../../assets/Equipment/UnselectedOrOtherGrip.png');
 
-interface GripTypeWidthPickerProps {
-  gripType: string;
-  gripWidth: string;
-  onGripTypeChange: (type: string) => void;
-  onGripWidthChange: (width: string) => void;
-  gripTypeOptions: string[];
-  gripWidthOptions: string[];
+interface StanceTypeWidthPickerProps {
+  stanceType: string;
+  stanceWidth: string;
+  onStanceTypeChange: (type: string) => void;
+  onStanceWidthChange: (width: string) => void;
+  stanceTypeOptions: string[];
+  stanceWidthOptions: string[];
   allowClear?: boolean;
 }
 
-// Width spacing multipliers (relative to base circle button width)
+// Width spacing multipliers (relative to base circle button width) - same as grip
 const WIDTH_SPACING: Record<string, number> = {
   'Extra Narrow': 0.1,
   'Narrow': 0.2,
@@ -25,56 +25,56 @@ const WIDTH_SPACING: Record<string, number> = {
   'Extra Wide': 0.65,
 };
 
-const GripTypeWidthPicker: React.FC<GripTypeWidthPickerProps> = ({
-  gripType,
-  gripWidth,
-  onGripTypeChange,
-  onGripWidthChange,
-  gripTypeOptions,
-  gripWidthOptions,
+const StanceTypeWidthPicker: React.FC<StanceTypeWidthPickerProps> = ({
+  stanceType,
+  stanceWidth,
+  onStanceTypeChange,
+  onStanceWidthChange,
+  stanceTypeOptions,
+  stanceWidthOptions,
   allowClear = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   const handleSelectType = (type: string) => {
-    if (type === gripType) {
+    if (type === stanceType) {
       // If clicking the same type, unselect it
-      onGripTypeChange('');
+      onStanceTypeChange('');
       setIsOpen(false);
     } else {
-      onGripTypeChange(type);
+      onStanceTypeChange(type);
       // Don't close modal - user can still select width
     }
   };
 
   const handleSelectWidth = (width: string) => {
-    if (width === gripWidth) {
+    if (width === stanceWidth) {
       // If clicking the same width, unselect it
-      onGripWidthChange('');
+      onStanceWidthChange('');
     } else {
-      onGripWidthChange(width);
+      onStanceWidthChange(width);
     }
     // Don't close modal - user can continue selecting
   };
 
   const renderCircleButton = (isPreview: boolean = false) => {
-    const effectiveWidth = gripWidth || 'Shoulder Width';
+    const effectiveWidth = stanceWidth || 'Shoulder Width';
     const spacingMultiplier = WIDTH_SPACING[effectiveWidth] || WIDTH_SPACING['Shoulder Width'];
     const spacing = spacingMultiplier * 40; // Max spacing ~26px for Extra Wide
     const buttonWidth = 72 + spacing; // Base 72px + spacing adjustment
     const buttonHeight = 72; // Fixed height
     const imageSize = 44; // Fixed image size
 
-    const gripImage = gripType ? GripImages[gripType] : null;
-    const isPlaceholder = !gripType || !gripImage;
-    const displayImage = gripImage || PLACEHOLDER_GRIP_IMAGE;
-
+    const stanceImage = stanceType ? StanceTypeImages[stanceType] : null;
+    const isPlaceholder = !stanceType || !stanceImage;
+    const displayImage = stanceImage || PLACEHOLDER_STANCE_IMAGE;
+    
     // Determine button styling based on selection state
-    const hasGripType = !!gripType;
-    const hasGripWidth = !!gripWidth;
-    const bothSelected = hasGripType && hasGripWidth;
-    const oneSelected = (hasGripType || hasGripWidth) && !bothSelected;
-
+    const hasStanceType = !!stanceType;
+    const hasStanceWidth = !!stanceWidth;
+    const bothSelected = hasStanceType && hasStanceWidth;
+    const oneSelected = (hasStanceType || hasStanceWidth) && !bothSelected;
+    
     const buttonStyle = [
       styles.circleButton,
       bothSelected && styles.circleButtonSelected,
@@ -88,18 +88,18 @@ const GripTypeWidthPicker: React.FC<GripTypeWidthPickerProps> = ({
           <View style={[styles.splitImageContainer, { height: imageSize }]}>
             {/* Left half */}
             <View style={[styles.imageHalf, { marginRight: spacing / 2, width: imageSize / 2, height: imageSize }]}>
-              <Image
-                source={displayImage}
-                style={[styles.splitImageLeft, { width: imageSize, height: imageSize }, styles.placeholderImage]}
-                resizeMode="contain"
+              <Image 
+                source={displayImage} 
+                style={[styles.splitImageLeft, { width: imageSize, height: imageSize }, styles.placeholderImage]} 
+                resizeMode="contain" 
               />
             </View>
             {/* Right half */}
             <View style={[styles.imageHalf, { marginLeft: spacing / 2, width: imageSize / 2, height: imageSize }]}>
-              <Image
-                source={displayImage}
-                style={[styles.splitImageRight, { width: imageSize, height: imageSize, marginLeft: -imageSize / 2 }, styles.placeholderImage]}
-                resizeMode="contain"
+              <Image 
+                source={displayImage} 
+                style={[styles.splitImageRight, { width: imageSize, height: imageSize, marginLeft: -imageSize / 2 }, styles.placeholderImage]} 
+                resizeMode="contain" 
               />
             </View>
           </View>
@@ -113,7 +113,7 @@ const GripTypeWidthPicker: React.FC<GripTypeWidthPickerProps> = ({
           {/* Left half - shows left side of image */}
           <View style={[styles.imageHalf, { marginRight: spacing / 2, width: imageSize / 2, height: imageSize }]}>
             <Image
-              source={gripImage}
+              source={stanceImage}
               style={[styles.splitImageLeft, { width: imageSize, height: imageSize }]}
               resizeMode="contain"
             />
@@ -121,7 +121,7 @@ const GripTypeWidthPicker: React.FC<GripTypeWidthPickerProps> = ({
           {/* Right half - shows right side of image */}
           <View style={[styles.imageHalf, { marginLeft: spacing / 2, width: imageSize / 2, height: imageSize }]}>
             <Image
-              source={gripImage}
+              source={stanceImage}
               style={[styles.splitImageRight, { width: imageSize, height: imageSize, marginLeft: -imageSize / 2 }]}
               resizeMode="contain"
             />
@@ -140,19 +140,19 @@ const GripTypeWidthPicker: React.FC<GripTypeWidthPickerProps> = ({
       >
         {renderCircleButton(false)}
         <View style={styles.labelContainer}>
-          {gripType ? (
+          {stanceType ? (
             <Text style={[styles.circleLabel, styles.textSelected]} numberOfLines={1}>
-              {gripType} Grip
+              Option {stanceType}
             </Text>
           ) : null}
-          {gripWidth ? (
+          {stanceWidth ? (
             <Text style={[styles.circleLabel, styles.textSelected]} numberOfLines={1}>
-              {gripWidth}
+              {stanceWidth}
             </Text>
           ) : null}
-          {!gripType && !gripWidth && (
+          {!stanceType && !stanceWidth && (
             <Text style={[styles.circleLabel, styles.textPlaceholder]} numberOfLines={1}>
-              Grip
+              Stance
             </Text>
           )}
         </View>
@@ -183,13 +183,13 @@ const GripTypeWidthPicker: React.FC<GripTypeWidthPickerProps> = ({
                     <Text style={styles.columnHeaderText}>Type</Text>
                   </View>
                   <FlatList
-                    data={gripTypeOptions}
+                    data={stanceTypeOptions}
                     keyExtractor={(item) => item}
                     style={styles.scrollableList}
                     renderItem={({ item, index }) => {
-                      const isSelected = gripType === item;
-                      const icon = GripImages[item];
-                      const isLastItem = index === gripTypeOptions.length - 1;
+                      const isSelected = stanceType === item;
+                      const icon = StanceTypeImages[item];
+                      const isLastItem = index === stanceTypeOptions.length - 1;
                       return (
                         <TouchableOpacity
                           style={[
@@ -220,12 +220,12 @@ const GripTypeWidthPicker: React.FC<GripTypeWidthPickerProps> = ({
                     <Text style={styles.columnHeaderText}>Width</Text>
                   </View>
                   <FlatList
-                    data={gripWidthOptions}
+                    data={stanceWidthOptions}
                     keyExtractor={(item) => item}
                     style={styles.scrollableList}
                     renderItem={({ item, index }) => {
-                      const isSelected = gripWidth === item;
-                      const isLastItem = index === gripWidthOptions.length - 1;
+                      const isSelected = stanceWidth === item;
+                      const isLastItem = index === stanceWidthOptions.length - 1;
                       return (
                         <TouchableOpacity
                           style={[
@@ -263,6 +263,7 @@ const GripTypeWidthPicker: React.FC<GripTypeWidthPickerProps> = ({
   );
 };
 
+// Reuse the exact same styles from GripTypeWidthPicker
 const styles = StyleSheet.create({
   container: {
     width: '100%',
@@ -467,4 +468,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default GripTypeWidthPicker;
+export default StanceTypeWidthPicker;
