@@ -116,7 +116,7 @@ export const EQUIPMENT_GRIP_STANCE_OPTIONS = {
     stanceWidth: STANCE_WIDTH_FULL,
   },
   "Kettlebell": {
-    gripType: ["Neutral", "Semi-Pronated", "Semi-Supinated", "Other"],
+    gripType: ["Pronated", "Supinated", "Neutral", "Semi-Pronated", "Semi-Supinated"],
     gripWidth: GRIP_WIDTH_FULL,
     stanceType: STANCE_TYPE_FULL,
     stanceWidth: STANCE_WIDTH_FULL,

@@ -29,12 +29,33 @@ const EQUIPMENT_ICON_SOURCES: Record<string, ImageSourcePropType | 'repsOnly' | 
   'Other': 'other',
 };
 
+/** Renders equipment icon for use in triggers (e.g. EditExercise). Size defaults to 24. */
+export const EquipmentIcon: React.FC<{ equipment: string; size?: number }> = ({ equipment, size = 24 }) => {
+  const src = EQUIPMENT_ICON_SOURCES[equipment];
+  const boxStyle = { width: size, height: size, marginRight: 10 };
+  if (!equipment || src === 'other' || src === undefined) {
+    return <View style={boxStyle} />;
+  }
+  if (src === 'repsOnly') {
+    return (
+      <View style={[boxStyle, { alignItems: 'center', justifyContent: 'center' }]}>
+        <Hash size={size * 0.75} color={COLORS.slate[600]} />
+      </View>
+    );
+  }
+  if (typeof src !== 'number' && typeof src !== 'object') {
+    return <View style={boxStyle} />;
+  }
+  return <Image source={src} style={[boxStyle]} resizeMode="contain" />;
+};
+
 interface EquipmentPickerModalProps {
   visible: boolean;
   onClose: () => void;
   onSelect: (value: string) => void;
   selectedValue: string;
   placeholder?: string;
+  allowClear?: boolean;
 }
 
 const ALL_SECTIONS: EquipmentSection[] = Object.entries(WEIGHT_EQUIP_CATEGORIES).map(
@@ -47,6 +68,7 @@ const EquipmentPickerModal: React.FC<EquipmentPickerModalProps> = ({
   onSelect,
   selectedValue,
   placeholder = 'Select Equipment...',
+  allowClear = false,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
@@ -67,6 +89,12 @@ const EquipmentPickerModal: React.FC<EquipmentPickerModalProps> = ({
 
   const handleSelect = (item: string) => {
     onSelect(item);
+    setSearchQuery('');
+    onClose();
+  };
+
+  const handleClear = () => {
+    onSelect('');
     setSearchQuery('');
     onClose();
   };
@@ -120,6 +148,12 @@ const EquipmentPickerModal: React.FC<EquipmentPickerModalProps> = ({
           <View style={styles.modal} onStartShouldSetResponder={() => true}>
             <View style={styles.header}>
               <Text style={styles.headerTitle}>Select Equipment</Text>
+              {selectedValue ? (
+                <View style={styles.selectedRow}>
+                  {renderEquipmentIcon(selectedValue)}
+                  <Text style={styles.selectedText} numberOfLines={1}>{selectedValue}</Text>
+                </View>
+              ) : null}
               <View style={styles.searchRow}>
                 <Search size={18} color={COLORS.slate[400]} style={styles.searchIcon} />
                 <TextInput
@@ -171,9 +205,16 @@ const EquipmentPickerModal: React.FC<EquipmentPickerModalProps> = ({
               contentContainerStyle={styles.listContent}
               style={styles.list}
             />
-            <TouchableOpacity onPress={onClose} style={styles.cancelButton}>
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
+            <View style={styles.footerRow}>
+              {allowClear && (
+                <TouchableOpacity onPress={handleClear} style={styles.clearButton}>
+                  <Text style={styles.clearButtonText}>Clear</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity onPress={onClose} style={allowClear ? styles.cancelButtonInRow : styles.cancelButton}>
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </KeyboardAvoidingView>
       </TouchableOpacity>
@@ -211,6 +252,17 @@ const styles = StyleSheet.create({
     color: COLORS.slate[900],
     marginBottom: 12,
   },
+  selectedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  selectedText: {
+    fontSize: 15,
+    color: COLORS.slate[800],
+    fontWeight: '500',
+    flex: 1,
+  },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -230,15 +282,15 @@ const styles = StyleSheet.create({
     color: COLORS.slate[900],
   },
   list: {
-    maxHeight: 320,
+    maxHeight: '80%',
   },
   listContent: {
-    paddingBottom: 8,
+    paddingBottom: 0,
   },
   sectionHeader: {
     backgroundColor: COLORS.slate[50],
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 6,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.slate[100],
   },
@@ -253,7 +305,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.slate[100],
   },
   iconPlaceholder: {
     width: 28,
@@ -272,7 +326,8 @@ const styles = StyleSheet.create({
   },
   optionText: {
     fontSize: 15,
-    color: COLORS.slate[800],
+    color: COLORS.slate[700],
+    fontWeight: '500',
     flex: 1,
   },
   optionTextSelected: {
@@ -287,11 +342,38 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.slate[500],
   },
-  cancelButton: {
-    paddingVertical: 14,
+  footerRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 12,
     borderTopWidth: 1,
     borderTopColor: COLORS.slate[100],
+  },
+  clearButton: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  clearButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.red[600],
+  },
+  cancelButton: {
+    flex: 1,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  cancelButtonInRow: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.slate[300],
+    borderRadius: 6,
   },
   cancelButtonText: {
     fontSize: 16,

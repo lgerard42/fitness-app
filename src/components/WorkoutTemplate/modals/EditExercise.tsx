@@ -14,9 +14,10 @@ import {
   EQUIPMENT_GRIP_STANCE_OPTIONS,
   CABLE_ATTACHMENT_GRIP_STANCE_OPTIONS,
 } from '@/constants/data';
+import { GripImages } from '@/constants/gripImages';
 import Chip from '@/components/Chip';
 import CustomDropdown from '@/components/CustomDropdown';
-import EquipmentPickerModal from '@/components/EquipmentPickerModal';
+import EquipmentPickerModal, { EquipmentIcon } from '@/components/EquipmentPickerModal';
 import type { ExerciseLibraryItem, ExerciseCategory } from '@/types/workout';
 
 interface EditExerciseProps {
@@ -198,7 +199,8 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
             return {
                 ...prev,
                 weightEquipTags: newTags,
-                ...(!shouldKeepSingleDouble && { singleDouble: "" }),
+                ...(primaryEquip === "Dumbbell" && { singleDouble: "Double" }),
+                ...(!shouldKeepSingleDouble && primaryEquip !== "Dumbbell" && { singleDouble: "" }),
                 ...(!shouldKeepCableAttachment && { cableAttachment: "" }),
                 ...(!isMachineSelectorized && { assistedNegative: false }),
                 ...(!gripTypeOk && { gripType: "" }),
@@ -454,55 +456,56 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                                         {showSecondEquip ? <ToggleRight size={24} color={COLORS.blue[600]} /> : <ToggleLeft size={24} color={COLORS.slate[300]} />}
                                     </TouchableOpacity>
                                 </View>
-                                <View style={styles.dropdownStack}>
-                                    <TouchableOpacity
-                                        style={styles.equipmentTrigger}
-                                        onPress={() => setEquipmentPickerSlot(0)}
-                                    >
-                                        <Text style={[styles.equipmentTriggerText, editState.weightEquipTags[0] ? styles.textSelected : styles.textPlaceholder]}>
-                                            {editState.weightEquipTags[0] || "Select Equipment..."}
-                                        </Text>
-                                        <ChevronDown size={16} color={COLORS.slate[400]} />
-                                    </TouchableOpacity>
-                                    {showSecondEquip && (
+                                <View style={styles.equipAndSingleDoubleRow}>
+                                    <View style={[styles.dropdownStack, styles.dropdownStackShrink]}>
                                         <TouchableOpacity
                                             style={styles.equipmentTrigger}
-                                            onPress={() => setEquipmentPickerSlot(1)}
+                                            onPress={() => setEquipmentPickerSlot(0)}
                                         >
-                                            <Text style={[styles.equipmentTriggerText, editState.weightEquipTags[1] ? styles.textSelected : styles.textPlaceholder]}>
-                                                {editState.weightEquipTags[1] || "Select 2nd Equipment..."}
+                                            <EquipmentIcon equipment={editState.weightEquipTags[0] || ''} size={24} />
+                                            <Text style={[styles.equipmentTriggerText, editState.weightEquipTags[0] ? styles.textSelected : styles.textPlaceholder]}>
+                                                {editState.weightEquipTags[0] || "Select Equipment..."}
                                             </Text>
                                             <ChevronDown size={16} color={COLORS.slate[400]} />
                                         </TouchableOpacity>
+                                        {showSecondEquip && (
+                                            <TouchableOpacity
+                                                style={styles.equipmentTrigger}
+                                                onPress={() => setEquipmentPickerSlot(1)}
+                                            >
+                                                <EquipmentIcon equipment={editState.weightEquipTags[1] || ''} size={24} />
+                                                <Text style={[styles.equipmentTriggerText, editState.weightEquipTags[1] ? styles.textSelected : styles.textPlaceholder]}>
+                                                    {editState.weightEquipTags[1] || "Select 2nd Equipment..."}
+                                                </Text>
+                                                <ChevronDown size={16} color={COLORS.slate[400]} />
+                                            </TouchableOpacity>
+                                        )}
+                                    </View>
+                                    {shouldShowSingleDouble() && (
+                                        <View style={styles.singleDoubleInEquipRow}>
+                                            <View style={styles.categoryContainer}>
+                                                {SINGLE_DOUBLE_OPTIONS.map(option => (
+                                                    <TouchableOpacity
+                                                        key={option}
+                                                        onPress={() => handleSingleDoubleChange(option)}
+                                                        style={[
+                                                            styles.categoryButton,
+                                                            editState.singleDouble === option ? styles.categoryButtonSelected : styles.categoryButtonUnselected
+                                                        ]}
+                                                    >
+                                                        <Text style={[
+                                                            styles.categoryText,
+                                                            editState.singleDouble === option ? styles.categoryTextSelected : styles.categoryTextUnselected
+                                                        ]}>
+                                                            {option}
+                                                        </Text>
+                                                    </TouchableOpacity>
+                                                ))}
+                                            </View>
+                                        </View>
                                     )}
                                 </View>
                             </View>
-
-                            {/* Single/Double Toggle */}
-                            {shouldShowSingleDouble() && (
-                                <View style={styles.fieldGroup}>
-                                    <Text style={styles.label}>SINGLE / DOUBLE</Text>
-                                    <View style={styles.categoryContainer}>
-                                        {SINGLE_DOUBLE_OPTIONS.map(option => (
-                                            <TouchableOpacity
-                                                key={option}
-                                                onPress={() => handleSingleDoubleChange(option)}
-                                                style={[
-                                                    styles.categoryButton,
-                                                    editState.singleDouble === option ? styles.categoryButtonSelected : styles.categoryButtonUnselected
-                                                ]}
-                                            >
-                                                <Text style={[
-                                                    styles.categoryText,
-                                                    editState.singleDouble === option ? styles.categoryTextSelected : styles.categoryTextUnselected
-                                                ]}>
-                                                    {option}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        ))}
-                                    </View>
-                                </View>
-                            )}
 
                             {/* Cable Attachments */}
                             {shouldShowCableAttachments() && (
@@ -550,6 +553,8 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                                                             onChange={(val) => setEditState({ ...editState, gripType: val })}
                                                             options={opts.gripTypeOptions}
                                                             placeholder="Select Grip Type..."
+                                                            allowClear
+                                                            optionIcons={GripImages}
                                                         />
                                                     </View>
                                                 )}
@@ -561,6 +566,7 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                                                             onChange={(val) => setEditState({ ...editState, gripWidth: val })}
                                                             options={opts.gripWidthOptions}
                                                             placeholder="Select Grip Width..."
+                                                            allowClear
                                                         />
                                                     </View>
                                                 )}
@@ -576,6 +582,7 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                                                             onChange={(val) => setEditState({ ...editState, stanceType: val })}
                                                             options={opts.stanceTypeOptions}
                                                             placeholder="Select Stance Type..."
+                                                            allowClear
                                                         />
                                                     </View>
                                                 )}
@@ -587,6 +594,7 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                                                             onChange={(val) => setEditState({ ...editState, stanceWidth: val })}
                                                             options={opts.stanceWidthOptions}
                                                             placeholder="Select Stance Width..."
+                                                            allowClear
                                                         />
                                                     </View>
                                                 )}
@@ -702,44 +710,47 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                             </TouchableOpacity>
                             {showWeightEquip && (
                                 <View style={{ marginBottom: 24 }}>
-                                    <View style={styles.dropdownStack}>
-                                        <TouchableOpacity style={styles.equipmentTrigger} onPress={() => setEquipmentPickerSlot(0)}>
-                                            <Text style={[styles.equipmentTriggerText, editState.weightEquipTags[0] ? styles.textSelected : styles.textPlaceholder]}>
-                                                {editState.weightEquipTags[0] || "Select Equipment..."}
-                                            </Text>
-                                            <ChevronDown size={16} color={COLORS.slate[400]} />
-                                        </TouchableOpacity>
-                                        {showSecondEquip && (
-                                            <TouchableOpacity style={styles.equipmentTrigger} onPress={() => setEquipmentPickerSlot(1)}>
-                                                <Text style={[styles.equipmentTriggerText, editState.weightEquipTags[1] ? styles.textSelected : styles.textPlaceholder]}>
-                                                    {editState.weightEquipTags[1] || "Select 2nd Equipment..."}
+                                    <View style={styles.equipAndSingleDoubleRow}>
+                                        <View style={[styles.dropdownStack, styles.dropdownStackShrink]}>
+                                            <TouchableOpacity style={styles.equipmentTrigger} onPress={() => setEquipmentPickerSlot(0)}>
+                                                <EquipmentIcon equipment={editState.weightEquipTags[0] || ''} size={24} />
+                                                <Text style={[styles.equipmentTriggerText, editState.weightEquipTags[0] ? styles.textSelected : styles.textPlaceholder]}>
+                                                    {editState.weightEquipTags[0] || "Select Equipment..."}
                                                 </Text>
                                                 <ChevronDown size={16} color={COLORS.slate[400]} />
                                             </TouchableOpacity>
+                                            {showSecondEquip && (
+                                                <TouchableOpacity style={styles.equipmentTrigger} onPress={() => setEquipmentPickerSlot(1)}>
+                                                    <EquipmentIcon equipment={editState.weightEquipTags[1] || ''} size={24} />
+                                                    <Text style={[styles.equipmentTriggerText, editState.weightEquipTags[1] ? styles.textSelected : styles.textPlaceholder]}>
+                                                        {editState.weightEquipTags[1] || "Select 2nd Equipment..."}
+                                                    </Text>
+                                                    <ChevronDown size={16} color={COLORS.slate[400]} />
+                                                </TouchableOpacity>
+                                            )}
+                                        </View>
+                                        {shouldShowSingleDouble() && (
+                                            <View style={styles.singleDoubleInEquipRow}>
+                                                <View style={styles.categoryContainer}>
+                                                    {SINGLE_DOUBLE_OPTIONS.map(option => (
+                                                        <TouchableOpacity
+                                                            key={option}
+                                                            onPress={() => handleSingleDoubleChange(option)}
+                                                            style={[styles.categoryButton, editState.singleDouble === option ? styles.categoryButtonSelected : styles.categoryButtonUnselected]}
+                                                        >
+                                                            <Text style={[styles.categoryText, editState.singleDouble === option ? styles.categoryTextSelected : styles.categoryTextUnselected]}>{option}</Text>
+                                                        </TouchableOpacity>
+                                                    ))}
+                                                </View>
+                                            </View>
                                         )}
                                     </View>
                                 </View>
                             )}
 
-                            {/* Single/Double, Cable Attachments, Grip/Stance when Cardio has weight equipment */}
+                            {/* Cable Attachments, Grip/Stance when Cardio has weight equipment */}
                             {showWeightEquip && editState.weightEquipTags.filter(Boolean).length > 0 && (
                                 <>
-                                    {shouldShowSingleDouble() && (
-                                        <View style={styles.fieldGroup}>
-                                            <Text style={styles.label}>SINGLE / DOUBLE</Text>
-                                            <View style={styles.categoryContainer}>
-                                                {SINGLE_DOUBLE_OPTIONS.map(option => (
-                                                    <TouchableOpacity
-                                                        key={option}
-                                                        onPress={() => handleSingleDoubleChange(option)}
-                                                        style={[styles.categoryButton, editState.singleDouble === option ? styles.categoryButtonSelected : styles.categoryButtonUnselected]}
-                                                    >
-                                                        <Text style={[styles.categoryText, editState.singleDouble === option ? styles.categoryTextSelected : styles.categoryTextUnselected]}>{option}</Text>
-                                                    </TouchableOpacity>
-                                                ))}
-                                            </View>
-                                        </View>
-                                    )}
                                     {shouldShowCableAttachments() && (
                                         <View style={styles.fieldGroup}>
                                             <Text style={styles.label}>CABLE ATTACHMENTS</Text>
@@ -768,13 +779,13 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                                                         {opts.gripTypeOptions && (
                                                             <View style={styles.gripStanceField}>
                                                                 <Text style={styles.label}>GRIP TYPE</Text>
-                                                                <CustomDropdown value={editState.gripType} onChange={(val) => setEditState({ ...editState, gripType: val })} options={opts.gripTypeOptions} placeholder="Select Grip Type..." />
+                                                                <CustomDropdown value={editState.gripType} onChange={(val) => setEditState({ ...editState, gripType: val })} options={opts.gripTypeOptions} placeholder="Select Grip Type..." allowClear optionIcons={GripImages} />
                                                             </View>
                                                         )}
                                                         {opts.gripWidthOptions && (
                                                             <View style={styles.gripStanceField}>
                                                                 <Text style={styles.label}>GRIP WIDTH</Text>
-                                                                <CustomDropdown value={editState.gripWidth} onChange={(val) => setEditState({ ...editState, gripWidth: val })} options={opts.gripWidthOptions} placeholder="Select Grip Width..." />
+                                                                <CustomDropdown value={editState.gripWidth} onChange={(val) => setEditState({ ...editState, gripWidth: val })} options={opts.gripWidthOptions} placeholder="Select Grip Width..." allowClear />
                                                             </View>
                                                         )}
                                                     </View>
@@ -784,13 +795,13 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                                                         {opts.stanceTypeOptions && (
                                                             <View style={styles.gripStanceField}>
                                                                 <Text style={styles.label}>STANCE TYPE</Text>
-                                                                <CustomDropdown value={editState.stanceType} onChange={(val) => setEditState({ ...editState, stanceType: val })} options={opts.stanceTypeOptions} placeholder="Select Stance Type..." />
+                                                                <CustomDropdown value={editState.stanceType} onChange={(val) => setEditState({ ...editState, stanceType: val })} options={opts.stanceTypeOptions} placeholder="Select Stance Type..." allowClear />
                                                             </View>
                                                         )}
                                                         {opts.stanceWidthOptions && (
                                                             <View style={styles.gripStanceField}>
                                                                 <Text style={styles.label}>STANCE WIDTH</Text>
-                                                                <CustomDropdown value={editState.stanceWidth} onChange={(val) => setEditState({ ...editState, stanceWidth: val })} options={opts.stanceWidthOptions} placeholder="Select Stance Width..." />
+                                                                <CustomDropdown value={editState.stanceWidth} onChange={(val) => setEditState({ ...editState, stanceWidth: val })} options={opts.stanceWidthOptions} placeholder="Select Stance Width..." allowClear />
                                                             </View>
                                                         )}
                                                     </View>
@@ -925,44 +936,47 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                             </TouchableOpacity>
                             {showWeightEquip && (
                                 <View style={{ marginBottom: 24 }}>
-                                    <View style={styles.dropdownStack}>
-                                        <TouchableOpacity style={styles.equipmentTrigger} onPress={() => setEquipmentPickerSlot(0)}>
-                                            <Text style={[styles.equipmentTriggerText, editState.weightEquipTags[0] ? styles.textSelected : styles.textPlaceholder]}>
-                                                {editState.weightEquipTags[0] || "Select Equipment..."}
-                                            </Text>
-                                            <ChevronDown size={16} color={COLORS.slate[400]} />
-                                        </TouchableOpacity>
-                                        {showSecondEquip && (
-                                            <TouchableOpacity style={styles.equipmentTrigger} onPress={() => setEquipmentPickerSlot(1)}>
-                                                <Text style={[styles.equipmentTriggerText, editState.weightEquipTags[1] ? styles.textSelected : styles.textPlaceholder]}>
-                                                    {editState.weightEquipTags[1] || "Select 2nd Equipment..."}
+                                    <View style={styles.equipAndSingleDoubleRow}>
+                                        <View style={[styles.dropdownStack, styles.dropdownStackShrink]}>
+                                            <TouchableOpacity style={styles.equipmentTrigger} onPress={() => setEquipmentPickerSlot(0)}>
+                                                <EquipmentIcon equipment={editState.weightEquipTags[0] || ''} size={24} />
+                                                <Text style={[styles.equipmentTriggerText, editState.weightEquipTags[0] ? styles.textSelected : styles.textPlaceholder]}>
+                                                    {editState.weightEquipTags[0] || "Select Equipment..."}
                                                 </Text>
                                                 <ChevronDown size={16} color={COLORS.slate[400]} />
                                             </TouchableOpacity>
+                                            {showSecondEquip && (
+                                                <TouchableOpacity style={styles.equipmentTrigger} onPress={() => setEquipmentPickerSlot(1)}>
+                                                    <EquipmentIcon equipment={editState.weightEquipTags[1] || ''} size={24} />
+                                                    <Text style={[styles.equipmentTriggerText, editState.weightEquipTags[1] ? styles.textSelected : styles.textPlaceholder]}>
+                                                        {editState.weightEquipTags[1] || "Select 2nd Equipment..."}
+                                                    </Text>
+                                                    <ChevronDown size={16} color={COLORS.slate[400]} />
+                                                </TouchableOpacity>
+                                            )}
+                                        </View>
+                                        {shouldShowSingleDouble() && (
+                                            <View style={styles.singleDoubleInEquipRow}>
+                                                <View style={styles.categoryContainer}>
+                                                    {SINGLE_DOUBLE_OPTIONS.map(option => (
+                                                        <TouchableOpacity
+                                                            key={option}
+                                                            onPress={() => handleSingleDoubleChange(option)}
+                                                            style={[styles.categoryButton, editState.singleDouble === option ? styles.categoryButtonSelected : styles.categoryButtonUnselected]}
+                                                        >
+                                                            <Text style={[styles.categoryText, editState.singleDouble === option ? styles.categoryTextSelected : styles.categoryTextUnselected]}>{option}</Text>
+                                                        </TouchableOpacity>
+                                                    ))}
+                                                </View>
+                                            </View>
                                         )}
                                     </View>
                                 </View>
                             )}
 
-                            {/* Single/Double, Cable Attachments, Grip/Stance when Training has weight equipment */}
+                            {/* Cable Attachments, Grip/Stance when Training has weight equipment */}
                             {showWeightEquip && editState.weightEquipTags.filter(Boolean).length > 0 && (
                                 <>
-                                    {shouldShowSingleDouble() && (
-                                        <View style={styles.fieldGroup}>
-                                            <Text style={styles.label}>SINGLE / DOUBLE</Text>
-                                            <View style={styles.categoryContainer}>
-                                                {SINGLE_DOUBLE_OPTIONS.map(option => (
-                                                    <TouchableOpacity
-                                                        key={option}
-                                                        onPress={() => handleSingleDoubleChange(option)}
-                                                        style={[styles.categoryButton, editState.singleDouble === option ? styles.categoryButtonSelected : styles.categoryButtonUnselected]}
-                                                    >
-                                                        <Text style={[styles.categoryText, editState.singleDouble === option ? styles.categoryTextSelected : styles.categoryTextUnselected]}>{option}</Text>
-                                                    </TouchableOpacity>
-                                                ))}
-                                            </View>
-                                        </View>
-                                    )}
                                     {shouldShowCableAttachments() && (
                                         <View style={styles.fieldGroup}>
                                             <Text style={styles.label}>CABLE ATTACHMENTS</Text>
@@ -991,13 +1005,13 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                                                         {opts.gripTypeOptions && (
                                                             <View style={styles.gripStanceField}>
                                                                 <Text style={styles.label}>GRIP TYPE</Text>
-                                                                <CustomDropdown value={editState.gripType} onChange={(val) => setEditState({ ...editState, gripType: val })} options={opts.gripTypeOptions} placeholder="Select Grip Type..." />
+                                                                <CustomDropdown value={editState.gripType} onChange={(val) => setEditState({ ...editState, gripType: val })} options={opts.gripTypeOptions} placeholder="Select Grip Type..." allowClear optionIcons={GripImages} />
                                                             </View>
                                                         )}
                                                         {opts.gripWidthOptions && (
                                                             <View style={styles.gripStanceField}>
                                                                 <Text style={styles.label}>GRIP WIDTH</Text>
-                                                                <CustomDropdown value={editState.gripWidth} onChange={(val) => setEditState({ ...editState, gripWidth: val })} options={opts.gripWidthOptions} placeholder="Select Grip Width..." />
+                                                                <CustomDropdown value={editState.gripWidth} onChange={(val) => setEditState({ ...editState, gripWidth: val })} options={opts.gripWidthOptions} placeholder="Select Grip Width..." allowClear />
                                                             </View>
                                                         )}
                                                     </View>
@@ -1007,13 +1021,13 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                                                         {opts.stanceTypeOptions && (
                                                             <View style={styles.gripStanceField}>
                                                                 <Text style={styles.label}>STANCE TYPE</Text>
-                                                                <CustomDropdown value={editState.stanceType} onChange={(val) => setEditState({ ...editState, stanceType: val })} options={opts.stanceTypeOptions} placeholder="Select Stance Type..." />
+                                                                <CustomDropdown value={editState.stanceType} onChange={(val) => setEditState({ ...editState, stanceType: val })} options={opts.stanceTypeOptions} placeholder="Select Stance Type..." allowClear />
                                                             </View>
                                                         )}
                                                         {opts.stanceWidthOptions && (
                                                             <View style={styles.gripStanceField}>
                                                                 <Text style={styles.label}>STANCE WIDTH</Text>
-                                                                <CustomDropdown value={editState.stanceWidth} onChange={(val) => setEditState({ ...editState, stanceWidth: val })} options={opts.stanceWidthOptions} placeholder="Select Stance Width..." />
+                                                                <CustomDropdown value={editState.stanceWidth} onChange={(val) => setEditState({ ...editState, stanceWidth: val })} options={opts.stanceWidthOptions} placeholder="Select Stance Width..." allowClear />
                                                             </View>
                                                         )}
                                                     </View>
@@ -1087,6 +1101,7 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                     }}
                     selectedValue={equipmentPickerSlot !== null ? editState.weightEquipTags[equipmentPickerSlot] || "" : ""}
                     placeholder={equipmentPickerSlot === 1 ? "Select 2nd Equipment..." : "Select Equipment..."}
+                    allowClear
                 />
 
                 <Modal visible={!!activePrimaryForPopup} transparent animationType="fade" onRequestClose={() => setActivePrimaryForPopup(null)}>
@@ -1256,6 +1271,19 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 16,
+    },
+    equipAndSingleDoubleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    singleDoubleInEquipRow: {
+        flexShrink: 0,
+        width: 140,
+    },
+    dropdownStackShrink: {
+        flex: 1,
+        minWidth: 0,
     },
     dropdownStack: {
         gap: 12,

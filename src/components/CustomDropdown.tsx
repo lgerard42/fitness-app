@@ -1,22 +1,32 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, FlatList, StyleSheet, LayoutChangeEvent } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, FlatList, StyleSheet, LayoutChangeEvent, Image, ImageSourcePropType } from 'react-native';
 import { ChevronDown, Check } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
+import { GripImages } from '@/constants/gripImages';
 
 interface CustomDropdownProps {
   value: string;
   onChange: (value: string) => void;
   options: string[];
   placeholder: string;
+  allowClear?: boolean;
+  /** When set, the closed trigger shows this icon for the selected value (e.g. grip type) */
+  optionIcons?: Record<string, ImageSourcePropType>;
 }
 
-const CustomDropdown: React.FC<CustomDropdownProps> = ({ value, onChange, options, placeholder }) => {
+const CustomDropdown: React.FC<CustomDropdownProps> = ({ value, onChange, options, placeholder, allowClear = false, optionIcons }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [layout, setLayout] = useState<{ width: number; height: number; x: number; y: number } | null>(null);
 
   const handleSelect = (option: string) => {
     onChange(option);
     setIsOpen(false);
+  };
+
+  const renderGripIcon = (item: string) => {
+    const src = GripImages[item];
+    if (!src) return <View style={styles.iconPlaceholder} />;
+    return <Image source={src} style={styles.gripIcon} resizeMode="contain" />;
   };
 
   return (
@@ -28,6 +38,11 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({ value, onChange, option
         onPress={() => setIsOpen(true)}
         style={styles.trigger}
       >
+        {value && optionIcons?.[value] ? (
+          <Image source={optionIcons[value]} style={styles.triggerIcon} resizeMode="contain" />
+        ) : optionIcons ? (
+          <View style={styles.triggerIconPlaceholder} />
+        ) : null}
         <Text style={[styles.text, value ? styles.textSelected : styles.textPlaceholder]}>
           {value || placeholder}
         </Text>
@@ -53,11 +68,25 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({ value, onChange, option
              <FlatList
                data={options}
                keyExtractor={(item) => item}
+               ListFooterComponent={
+                 allowClear ? (
+                   <TouchableOpacity
+                     style={[styles.option, styles.clearOption, !value && styles.optionSelected]}
+                     onPress={() => handleSelect('')}
+                   >
+                     <Text style={[styles.optionText, !value && styles.optionTextSelected]}>
+                       Clear
+                     </Text>
+                     {!value && <Check size={16} color={COLORS.blue[600]} />}
+                   </TouchableOpacity>
+                 ) : null
+               }
                renderItem={({ item }) => (
                  <TouchableOpacity
                    style={[styles.option, value === item && styles.optionSelected]}
                    onPress={() => handleSelect(item)}
                  >
+                   {renderGripIcon(item)}
                    <Text style={[styles.optionText, value === item && styles.optionTextSelected]}>
                      {item}
                    </Text>
@@ -91,8 +120,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
+  triggerIcon: {
+    width: 24,
+    height: 24,
+    marginRight: 10,
+  },
+  triggerIconPlaceholder: {
+    width: 24,
+    height: 24,
+    marginRight: 10,
+  },
   text: {
     fontSize: 14,
+    flex: 1,
+    marginRight: 8,
   },
   textSelected: {
     color: COLORS.slate[900],
@@ -128,12 +169,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
+  clearOption: {
+    borderTopWidth: 1,
+    borderTopColor: COLORS.slate[100],
+    marginTop: 4,
+  },
+  iconPlaceholder: {
+    width: 24,
+    height: 24,
+    marginRight: 12,
+  },
+  gripIcon: {
+    width: 24,
+    height: 24,
+    marginRight: 12,
+  },
   optionSelected: {
     backgroundColor: COLORS.blue[50],
   },
   optionText: {
-    fontSize: 14,
+    fontSize: 15,
     color: COLORS.slate[700],
+    fontWeight: '500',
+    flex: 1,
   },
   optionTextSelected: {
     color: COLORS.blue[600],
