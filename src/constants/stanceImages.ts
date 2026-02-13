@@ -1,10 +1,12 @@
 /**
- * Stance type image imports - currently no images exist, but structure is ready for future additions
+ * Stance type image imports - maps stance type options to assets/Equipment icons
  */
 import type { ImageSourcePropType } from 'react-native';
 
 export const StanceTypeImages: Record<string, ImageSourcePropType> = {
-  'Other': require('../../assets/Equipment/UnselectedOrOtherGrip.png'),
-  // Note: Other stance type images can be added here in the future
-  // Options: "Neutral (Feet Forward)", "Toes Out (External Rotation)", "Toes In (Internal Rotation)", "Split Stance", "Other"
+  'Neutral (Feet Forward)': require('../../assets/Equipment/NeutralStance.png'),
+  'Toes Out (External Rotation)': require('../../assets/Equipment/ExternalRotationStance.png'),
+  'Toes In (Internal Rotation)': require('../../assets/Equipment/InternalRotationStance.png'),
+  'Split Stance': require('../../assets/Equipment/SplitStance.png'),
+  // 'Other' uses an inline circle-outline icon in StanceTypeWidthPicker
 };

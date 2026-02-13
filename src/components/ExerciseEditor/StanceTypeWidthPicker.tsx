@@ -24,6 +24,36 @@ const WIDTH_SPACING: Record<string, number> = {
   'Extra Wide': 0.65,
 };
 
+// Gap between the two vertical lines in the width icon (px) — same container size for all
+const WIDTH_ICON_GAP: Record<string, number> = {
+  'Extra Narrow': 2,
+  'Narrow': 5,
+  'Shoulder Width': 10,
+  'Wide': 14,
+  'Extra Wide': 18,
+};
+
+const LINE_WIDTH = 2;
+const LINE_HEIGHT = 14;
+const WIDTH_ICON_CONTAINER_SIZE = 24;
+
+const WidthIcon: React.FC<{ widthOption: string }> = ({ widthOption }) => {
+  const gap = WIDTH_ICON_GAP[widthOption] ?? WIDTH_ICON_GAP['Shoulder Width'];
+  const totalInnerWidth = LINE_WIDTH * 2 + gap;
+  return (
+    <View style={[styles.widthIconContainer, { width: WIDTH_ICON_CONTAINER_SIZE, height: WIDTH_ICON_CONTAINER_SIZE }]}>
+      <View style={[styles.widthIconInner, { width: totalInnerWidth, height: LINE_HEIGHT }]}>
+        <View style={[styles.widthIconLine, { width: LINE_WIDTH, height: LINE_HEIGHT }]} />
+        <View style={[styles.widthIconLine, { width: LINE_WIDTH, height: LINE_HEIGHT, marginLeft: gap }]} />
+      </View>
+    </View>
+  );
+};
+
+const CircleOutlineIcon: React.FC<{ size: number }> = ({ size }) => (
+  <View style={[styles.circleOutlineIcon, { width: size, height: size, borderRadius: size / 2 }]} />
+);
+
 const StanceTypeWidthPicker: React.FC<StanceTypeWidthPickerProps> = ({
   stanceType,
   stanceWidth,
@@ -75,6 +105,16 @@ const StanceTypeWidthPicker: React.FC<StanceTypeWidthPickerProps> = ({
       oneSelected && styles.circleButtonPartiallySelected,
       { width: buttonWidth, height: buttonHeight }
     ];
+
+    if (stanceType === 'Other') {
+      return (
+        <View style={buttonStyle}>
+          <View style={[styles.splitImageContainer, { height: imageSize }]}>
+            <CircleOutlineIcon size={imageSize} />
+          </View>
+        </View>
+      );
+    }
 
     if (isPlaceholder) {
       return (
@@ -139,7 +179,7 @@ const StanceTypeWidthPicker: React.FC<StanceTypeWidthPickerProps> = ({
                           style={[styles.option, isSelected && styles.optionSelected, isLastItem && styles.optionLast]}
                           onPress={() => handleSelectType(item)}
                         >
-                          {icon ? <Image source={icon} style={styles.optionIcon} resizeMode="contain" /> : <View style={styles.iconPlaceholder} />}
+                          {item === 'Other' ? <View style={[styles.optionIcon, styles.optionIconCenter]}><CircleOutlineIcon size={14} /></View> : icon ? <Image source={icon} style={styles.optionIcon} resizeMode="contain" /> : <View style={styles.iconPlaceholder} />}
                           <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>{item}</Text>
                           {isSelected && <Check size={16} color={COLORS.blue[600]} />}
                         </TouchableOpacity>
@@ -163,7 +203,7 @@ const StanceTypeWidthPicker: React.FC<StanceTypeWidthPickerProps> = ({
                           style={[styles.option, isSelected && styles.optionSelected, isLastItem && styles.optionLast]}
                           onPress={() => handleSelectWidth(item)}
                         >
-                          <View style={styles.iconPlaceholder} />
+                          <WidthIcon widthOption={item} />
                           <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>{item}</Text>
                           {isSelected && <Check size={16} color={COLORS.blue[600]} />}
                         </TouchableOpacity>
@@ -256,6 +296,11 @@ const styles = StyleSheet.create({
   optionLast: { borderBottomWidth: 1 },
   iconPlaceholder: { width: 24, height: 24, marginRight: 12 },
   optionIcon: { width: 24, height: 24, marginRight: 12 },
+  optionIconCenter: { alignItems: 'center', justifyContent: 'center' },
+  widthIconContainer: { alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  widthIconInner: { flexDirection: 'row', alignItems: 'center' },
+  widthIconLine: { backgroundColor: COLORS.slate[600], borderRadius: 1 },
+  circleOutlineIcon: { borderWidth: 1, borderColor: COLORS.slate[500], backgroundColor: 'transparent' },
   optionSelected: { backgroundColor: COLORS.blue[50] },
   optionText: { fontSize: 15, color: COLORS.slate[700], fontWeight: '500', flex: 1 },
   optionTextSelected: { color: COLORS.blue[600], fontWeight: '500' },

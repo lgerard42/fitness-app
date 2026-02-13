@@ -25,6 +25,32 @@ const WIDTH_SPACING: Record<string, number> = {
   'Extra Wide': 0.65,
 };
 
+// Gap between the two vertical lines in the width icon (px) — same container size for all
+const WIDTH_ICON_GAP: Record<string, number> = {
+  'Extra Narrow': 2,
+  'Narrow': 5,
+  'Shoulder Width': 10,
+  'Wide': 14,
+  'Extra Wide': 18,
+};
+
+const LINE_WIDTH = 2;
+const LINE_HEIGHT = 14;
+const WIDTH_ICON_CONTAINER_SIZE = 24;
+
+const WidthIcon: React.FC<{ widthOption: string }> = ({ widthOption }) => {
+  const gap = WIDTH_ICON_GAP[widthOption] ?? WIDTH_ICON_GAP['Shoulder Width'];
+  const totalInnerWidth = LINE_WIDTH * 2 + gap;
+  return (
+    <View style={[styles.widthIconContainer, { width: WIDTH_ICON_CONTAINER_SIZE, height: WIDTH_ICON_CONTAINER_SIZE }]}>
+      <View style={[styles.widthIconInner, { width: totalInnerWidth, height: LINE_HEIGHT }]}>
+        <View style={[styles.widthIconLine, { width: LINE_WIDTH, height: LINE_HEIGHT }]} />
+        <View style={[styles.widthIconLine, { width: LINE_WIDTH, height: LINE_HEIGHT, marginLeft: gap }]} />
+      </View>
+    </View>
+  );
+};
+
 const GripTypeWidthPicker: React.FC<GripTypeWidthPickerProps> = ({
   gripType,
   gripWidth,
@@ -221,7 +247,7 @@ const GripTypeWidthPicker: React.FC<GripTypeWidthPickerProps> = ({
                           ]}
                           onPress={() => handleSelectWidth(item)}
                         >
-                          <View style={styles.iconPlaceholder} />
+                          <WidthIcon widthOption={item} />
                           <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>
                             {item}
                           </Text>
@@ -316,6 +342,9 @@ const styles = StyleSheet.create({
   optionLast: { borderBottomWidth: 1 },
   iconPlaceholder: { width: 24, height: 24, marginRight: 12 },
   optionIcon: { width: 24, height: 24, marginRight: 12 },
+  widthIconContainer: { alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  widthIconInner: { flexDirection: 'row', alignItems: 'center' },
+  widthIconLine: { backgroundColor: COLORS.slate[600], borderRadius: 1 },
   optionSelected: { backgroundColor: COLORS.blue[50] },
   optionText: { fontSize: 15, color: COLORS.slate[700], fontWeight: '500', flex: 1 },
   optionTextSelected: { color: COLORS.blue[600], fontWeight: '500' },
