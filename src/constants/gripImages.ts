@@ -1,16 +1,16 @@
 /**
- * Grip type image imports - filenames end with "Grip" for easy identification
+ * Grip type image imports - keyed by option id (see GRIP_TYPES in data.js)
  */
 import type { ImageSourcePropType } from 'react-native';
 
 export const GripImages: Record<string, ImageSourcePropType> = {
-  'Neutral': require('../../assets/Equipment/NeutralGrip.png'),
-  'Pronated': require('../../assets/Equipment/PronatedGrip.png'),
-  'Supinated': require('../../assets/Equipment/SupinatedGrip.png'),
-  'Semi-Pronated': require('../../assets/Equipment/SemiPronatedGrip.png'),
-  'Semi-Supinated': require('../../assets/Equipment/SemiSupinatedGrip.png'),
-  '1up/1down': require('../../assets/Equipment/1u1downGrip.png'),
-  'Rotating': require('../../assets/Equipment/Rotating.png'),
-  'Flat Palms Up': require('../../assets/Equipment/FlatPalmsUpGrip.png'),
-  'Other': require('../../assets/Equipment/UnselectedOrOtherGrip.png'),
+  neutral: require('../../assets/Equipment/NeutralGrip.png'),
+  pronated: require('../../assets/Equipment/PronatedGrip.png'),
+  supinated: require('../../assets/Equipment/SupinatedGrip.png'),
+  semi_pronated: require('../../assets/Equipment/SemiPronatedGrip.png'),
+  semi_supinated: require('../../assets/Equipment/SemiSupinatedGrip.png'),
+  '1up_1down': require('../../assets/Equipment/1u1downGrip.png'),
+  rotating: require('../../assets/Equipment/Rotating.png'),
+  flat_palms_up: require('../../assets/Equipment/FlatPalmsUpGrip.png'),
+  other: require('../../assets/Equipment/UnselectedOrOtherGrip.png'),
 };

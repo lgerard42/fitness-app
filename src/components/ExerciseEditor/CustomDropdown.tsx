@@ -4,13 +4,25 @@ import { ChevronDown, Check } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { GripImages } from '@/constants/gripImages';
 
+export type DropdownOption = { id: string; label: string; sublabel?: string };
+
+/** Options can be id/label objects (ExerciseEditor grip/stance/cable) or plain strings (e.g. CARDIO_TYPES). */
+type OptionsInput = DropdownOption[] | string[];
+
+function normalizeOptions(options: OptionsInput): DropdownOption[] {
+  if (options.length === 0) return [];
+  const first = options[0];
+  if (typeof first === 'object' && first !== null && 'id' in first) return options as DropdownOption[];
+  return (options as string[]).map(s => ({ id: s, label: s }));
+}
+
 interface CustomDropdownProps {
   value: string;
   onChange: (value: string) => void;
-  options: string[];
+  options: OptionsInput;
   placeholder: string;
   allowClear?: boolean;
-  /** When set, the closed trigger shows this icon for the selected value (e.g. grip type) */
+  /** When set, the closed trigger shows this icon for the selected value (keyed by option id) */
   optionIcons?: Record<string, ImageSourcePropType>;
 }
 
@@ -18,13 +30,16 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({ value, onChange, option
   const [isOpen, setIsOpen] = useState(false);
   const [layout, setLayout] = useState<{ width: number; height: number; x: number; y: number } | null>(null);
 
-  const handleSelect = (option: string) => {
-    onChange(option);
+  const opts = normalizeOptions(options);
+  const selectedLabel = opts.find(o => o.id === value)?.label ?? value ?? placeholder;
+
+  const handleSelect = (id: string) => {
+    onChange(id);
     setIsOpen(false);
   };
 
-  const renderGripIcon = (item: string) => {
-    const src = GripImages[item];
+  const renderGripIcon = (id: string) => {
+    const src = optionIcons?.[id] ?? GripImages[id];
     if (!src) return <View style={styles.iconPlaceholder} />;
     return <Image source={src} style={styles.gripIcon} resizeMode="contain" />;
   };
@@ -44,25 +59,25 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({ value, onChange, option
         {isCircleTrigger ? (
           <>
             <View style={[styles.circleButton, value && styles.circleButtonSelected]}>
-              {value && optionIcons[value] ? (
-                <Image source={optionIcons[value]} style={styles.circleButtonIcon} resizeMode="contain" />
+              {value && (optionIcons?.[value] ?? GripImages[value]) ? (
+                <Image source={(optionIcons?.[value] ?? GripImages[value])!} style={styles.circleButtonIcon} resizeMode="contain" />
               ) : (
                 <View style={styles.circleButtonPlaceholder} />
               )}
             </View>
             <Text style={[styles.circleLabel, value ? styles.textSelected : styles.textPlaceholder]} numberOfLines={1}>
-              {value || placeholder}
+              {selectedLabel}
             </Text>
           </>
         ) : (
           <>
-            {value && optionIcons?.[value] ? (
-              <Image source={optionIcons[value]} style={styles.triggerIcon} resizeMode="contain" />
+            {value && (optionIcons?.[value] ?? GripImages[value]) ? (
+              <Image source={(optionIcons?.[value] ?? GripImages[value])!} style={styles.triggerIcon} resizeMode="contain" />
             ) : optionIcons ? (
               <View style={styles.triggerIconPlaceholder} />
             ) : null}
             <Text style={[styles.text, value ? styles.textSelected : styles.textPlaceholder]}>
-              {value || placeholder}
+              {selectedLabel}
             </Text>
             <ChevronDown 
               size={16} 
@@ -86,8 +101,8 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({ value, onChange, option
         >
           <View style={styles.dropdownMenu}>
              <FlatList
-               data={options}
-               keyExtractor={(item) => item}
+               data={opts}
+               keyExtractor={(item) => item.id}
                ListFooterComponent={
                  allowClear ? (
                    <TouchableOpacity
@@ -103,14 +118,14 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({ value, onChange, option
                }
                renderItem={({ item }) => (
                  <TouchableOpacity
-                   style={[styles.option, value === item && styles.optionSelected]}
-                   onPress={() => handleSelect(item)}
+                   style={[styles.option, value === item.id && styles.optionSelected]}
+                   onPress={() => handleSelect(item.id)}
                  >
-                   {renderGripIcon(item)}
-                   <Text style={[styles.optionText, value === item && styles.optionTextSelected]}>
-                     {item}
+                   {optionIcons ? renderGripIcon(item.id) : null}
+                   <Text style={[styles.optionText, value === item.id && styles.optionTextSelected]}>
+                     {item.label}
                    </Text>
-                   {value === item && <Check size={16} color={COLORS.blue[600]} />}
+                   {value === item.id && <Check size={16} color={COLORS.blue[600]} />}
                  </TouchableOpacity>
                )}
              />

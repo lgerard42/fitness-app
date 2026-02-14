@@ -1,30 +1,48 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Modal, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronDown, ToggleLeft, ToggleRight } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
-import { 
-  PRIMARY_MUSCLES, 
-  CARDIO_TYPES, 
-  TRAINING_FOCUS, 
+import {
+  PRIMARY_MUSCLES,
   PRIMARY_TO_SECONDARY_MAP,
-  SINGLE_DOUBLE_OPTIONS,
   SINGLE_DOUBLE_EQUIPMENT,
+  SINGLE_DOUBLE_OPTIONS,
   CABLE_ATTACHMENTS,
   EQUIPMENT_GRIP_STANCE_OPTIONS,
   CABLE_ATTACHMENT_GRIP_STANCE_OPTIONS,
+  optionIdFromLegacy,
+  GRIP_TYPES,
+  GRIP_TYPES_BY_ID,
+  GRIP_WIDTHS,
+  GRIP_WIDTHS_BY_ID,
+  STANCE_TYPES,
+  STANCE_TYPES_BY_ID,
+  STANCE_WIDTHS,
+  STANCE_WIDTHS_BY_ID,
+  CABLE_ATTACHMENTS_BY_ID,
+  SINGLE_DOUBLE_OPTIONS_BY_ID,
 } from '@/constants/data';
-import { GripImages } from '@/constants/gripImages';
-import { GripWidthImages } from '@/constants/gripWidthImages';
-import { StanceTypeImages } from '@/constants/stanceImages';
-import { StanceWidthImages } from '@/constants/stanceWidthImages';
-import { EquipmentImages } from '@/constants/equipmentImages';
 import Chip from './Chip';
 import CustomDropdown from './CustomDropdown';
-import EquipmentPickerModal, { EquipmentIcon } from './EquipmentPickerModal';
-import GripTypeWidthPicker from './GripTypeWidthPicker';
-import StanceTypeWidthPicker from './StanceTypeWidthPicker';
+import EquipmentPickerModal from './EquipmentPickerModal';
 import type { ExerciseLibraryItem, ExerciseCategory } from '@/types/workout';
+import { FIELD_LABELS } from './editExerciseFieldConfig';
+import styles from './EditExercise.styles';
+import {
+  FieldGroup,
+  Label,
+  ToggleRow,
+  CollapsibleSection,
+  ExerciseNameInput,
+  DescriptionInput,
+  MetabolicIntensityDropdown,
+  TrainingFocusDropdown,
+  CableAttachmentsField,
+  AssistedNegativeRow,
+  EquipmentBlock,
+  PrimaryMuscleChips,
+} from './EditExerciseFields';
 
 interface EditExerciseProps {
     isOpen: boolean;
@@ -63,26 +81,100 @@ const getInitialState = (): EditExerciseState => ({
     stanceType: "", stanceWidth: "", assistedNegative: false
 });
 
-const getStateFromExercise = (exercise: ExerciseLibraryItem): EditExerciseState => ({
-    name: exercise.name || "",
-    category: exercise.category || "",
-    primaryMuscles: (exercise.primaryMuscles as string[]) || [],
-    secondaryMuscles: (exercise.secondaryMuscles as string[]) || [],
-    cardioType: (exercise.cardioType as string) || "",
-    trainingFocus: (exercise.trainingFocus as string) || "",
-    weightEquipTags: (exercise.weightEquipTags as string[]) || [],
-    description: (exercise.description as string) || "",
-    trackDuration: (exercise.trackDuration as boolean) || false,
-    trackReps: (exercise.trackReps as boolean) || false,
-    trackDistance: (exercise.trackDistance as boolean) || false,
-    singleDouble: (exercise.singleDouble as string) || "",
-    cableAttachment: (exercise.cableAttachment as string) || "",
-    gripType: (exercise.gripType as string) || "",
-    gripWidth: (exercise.gripWidth as string) || "",
-    stanceType: (exercise.stanceType as string) || "",
-    stanceWidth: (exercise.stanceWidth as string) || "",
-    assistedNegative: (exercise.assistedNegative as boolean) || false,
-});
+const getStateFromExercise = (exercise: ExerciseLibraryItem): EditExerciseState => {
+    const raw = {
+        name: exercise.name || "",
+        category: exercise.category || "",
+        primaryMuscles: (exercise.primaryMuscles as string[]) || [],
+        secondaryMuscles: (exercise.secondaryMuscles as string[]) || [],
+        cardioType: (exercise.cardioType as string) || "",
+        trainingFocus: (exercise.trainingFocus as string) || "",
+        weightEquipTags: (exercise.weightEquipTags as string[]) || [],
+        description: (exercise.description as string) || "",
+        trackDuration: (exercise.trackDuration as boolean) || false,
+        trackReps: (exercise.trackReps as boolean) || false,
+        trackDistance: (exercise.trackDistance as boolean) || false,
+        singleDouble: (exercise.singleDouble as string) || "",
+        cableAttachment: (exercise.cableAttachment as string) || "",
+        gripType: (exercise.gripType as string) || "",
+        gripWidth: (exercise.gripWidth as string) || "",
+        stanceType: (exercise.stanceType as string) || "",
+        stanceWidth: (exercise.stanceWidth as string) || "",
+        assistedNegative: (exercise.assistedNegative as boolean) || false,
+    };
+    return {
+        ...raw,
+        singleDouble: optionIdFromLegacy(raw.singleDouble, SINGLE_DOUBLE_OPTIONS, SINGLE_DOUBLE_OPTIONS_BY_ID),
+        cableAttachment: optionIdFromLegacy(raw.cableAttachment, CABLE_ATTACHMENTS, CABLE_ATTACHMENTS_BY_ID),
+        gripType: optionIdFromLegacy(raw.gripType, GRIP_TYPES, GRIP_TYPES_BY_ID),
+        gripWidth: optionIdFromLegacy(raw.gripWidth, GRIP_WIDTHS, GRIP_WIDTHS_BY_ID),
+        stanceType: optionIdFromLegacy(raw.stanceType, STANCE_TYPES, STANCE_TYPES_BY_ID),
+        stanceWidth: optionIdFromLegacy(raw.stanceWidth, STANCE_WIDTHS, STANCE_WIDTHS_BY_ID),
+    };
+};
+
+/** Training-only: collapsible "Primary Muscle Groups" with Secondary toggle in the header. */
+const TrainingMuscleGroupsCollapsible: React.FC<{
+    expanded: boolean;
+    onToggle: () => void;
+    secondaryMusclesEnabled: boolean;
+    onSecondaryToggle: () => void;
+    primaryMuscles: string[];
+    onMuscleToggle: (muscle: string) => void;
+    onMakePrimary: (muscle: string) => void;
+}> = ({ expanded, onToggle, secondaryMusclesEnabled, onSecondaryToggle, primaryMuscles, onMuscleToggle, onMakePrimary }) => {
+    const isActive = expanded || primaryMuscles.length > 0 || secondaryMusclesEnabled;
+    const disabledColor = COLORS.slate[400];
+    return (
+        <>
+            <TouchableOpacity onPress={onToggle} style={styles.collapsibleLabelToggleRow}>
+                <View style={styles.rowGap}>
+                    <Text style={[styles.label, { marginBottom: 0, color: isActive ? COLORS.slate[500] : disabledColor }]}>
+                        {FIELD_LABELS.primaryMuscleGroups}
+                    </Text>
+                    <ChevronDown
+                        size={16}
+                        color={isActive ? COLORS.blue[600] : disabledColor}
+                        style={{ transform: [{ rotate: expanded ? '180deg' : '0deg' }] }}
+                    />
+                </View>
+                <TouchableOpacity
+                    style={styles.toggleContainer}
+                    onPress={(e) => {
+                        e.stopPropagation();
+                        onSecondaryToggle();
+                    }}
+                >
+                    <Text style={[styles.toggleLabel, { color: isActive ? (secondaryMusclesEnabled ? COLORS.blue[600] : COLORS.slate[400]) : disabledColor }]}>
+                        {FIELD_LABELS.secondary}
+                    </Text>
+                    {secondaryMusclesEnabled ? (
+                        <ToggleRight size={24} color={isActive ? COLORS.blue[600] : disabledColor} />
+                    ) : (
+                        <ToggleLeft size={24} color={disabledColor} />
+                    )}
+                </TouchableOpacity>
+            </TouchableOpacity>
+            {expanded && (
+                <View style={{ marginBottom: 24 }}>
+                    <View style={styles.chipsContainer}>
+                        {PRIMARY_MUSCLES.map((m) => (
+                            <Chip
+                                key={m}
+                                label={m}
+                                selected={primaryMuscles.includes(m)}
+                                isPrimary={primaryMuscles[0] === m}
+                                isSpecial={['Full Body', 'Olympic'].includes(m)}
+                                onClick={() => onMuscleToggle(m)}
+                                onMakePrimary={() => onMakePrimary(m)}
+                            />
+                        ))}
+                    </View>
+                </View>
+            )}
+        </>
+    );
+};
 
 const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, categories, exercise }) => {
     const isEditMode = !!exercise;
@@ -151,7 +243,7 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
         setEditState(prev => ({
             ...prev,
             singleDouble: newVal,
-            ...(newVal === "Single" && {
+            ...(newVal === "single" && {
                 gripType: "", gripWidth: "", stanceType: "", stanceWidth: "",
             }),
         }));
@@ -205,7 +297,7 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
             return {
                 ...prev,
                 weightEquipTags: newTags,
-                ...(primaryEquip === "Dumbbell" && { singleDouble: "Double" }),
+                ...(primaryEquip === "Dumbbell" && { singleDouble: "double" }),
                 ...(!shouldKeepSingleDouble && primaryEquip !== "Dumbbell" && { singleDouble: "" }),
                 ...(!shouldKeepCableAttachment && { cableAttachment: "" }),
                 ...(!isMachineSelectorized && { assistedNegative: false }),
@@ -313,7 +405,7 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
         return [];
     };
 
-    // Helper function to check if Single/Double toggle should be shown (Load Type: Dumbbell/Kettlebell/Plate/Chains, Cable, Other)
+    // Helper function to check if Single/Double toggle should be shown (Free-Weights: Dumbbell/Kettlebell/Plate/Chains, Cable, Other)
     const shouldShowSingleDouble = (): boolean => {
         const tags = editState.weightEquipTags.filter(Boolean);
         return tags.some(tag => SINGLE_DOUBLE_EQUIPMENT.includes(tag));
@@ -338,7 +430,7 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
             return { gripTypeOptions: null, gripWidthOptions: null, stanceTypeOptions: null, stanceWidthOptions: null };
         }
         // Single = true: empty grip/stance (configurable later)
-        if (SINGLE_DOUBLE_EQUIPMENT.includes(primaryEquip) && editState.singleDouble === "Single") {
+        if (SINGLE_DOUBLE_EQUIPMENT.includes(primaryEquip) && editState.singleDouble === "single") {
             return { gripTypeOptions: null, gripWidthOptions: null, stanceTypeOptions: null, stanceWidthOptions: null };
         }
         // Cable with attachment selected: use attachment options
@@ -368,40 +460,26 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                 </View>
 
                 <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
-                    <View style={styles.fieldGroup}>
+                    <FieldGroup>
                         <View style={styles.rowBetween}>
-                            <Text style={[styles.label, { marginBottom: 0 }]}>EXERCISE NAME <Text style={styles.required}>*</Text></Text>
+                            <Label required style={{ marginBottom: 0 }}>{FIELD_LABELS.exerciseName}</Label>
                             <TouchableOpacity onPress={() => setShowDescription(!showDescription)} style={styles.rowGap}>
-                                <Text style={[styles.label, { marginBottom: 0, color: editState.description ? COLORS.blue[600] : COLORS.slate[400] }]}>Description</Text>
+                                <Text style={[styles.label, { marginBottom: 0, color: editState.description ? COLORS.blue[600] : COLORS.slate[400] }]}>{FIELD_LABELS.description}</Text>
                                 <ChevronDown size={16} color={showDescription ? COLORS.blue[600] : COLORS.slate[400]} style={{ transform: [{ rotate: showDescription ? '180deg' : '0deg' }] }} />
                             </TouchableOpacity>
                         </View>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="e.g. Bulgarian Split Squat"
-                            placeholderTextColor={COLORS.slate[400]}
-                            value={editState.name}
-                            onChangeText={text => setEditState({ ...editState, name: text })}
-                        />
+                        <ExerciseNameInput value={editState.name} onChange={(text) => setEditState((prev) => ({ ...prev, name: text }))} />
                         {showDescription && (
                             <View style={{ marginTop: 8, marginBottom: 10 }}>
-                                <TextInput
-                                    style={styles.textArea}
-                                    placeholder="Add notes about form, cues, or setup..."
-                                    placeholderTextColor={COLORS.slate[400]}
-                                    multiline
-                                    numberOfLines={3}
-                                    value={editState.description}
-                                    onChangeText={text => setEditState({ ...editState, description: text })}
-                                />
+                                <DescriptionInput value={editState.description} onChange={(text) => setEditState((prev) => ({ ...prev, description: text }))} />
                             </View>
                         )}
-                    </View>
+                    </FieldGroup>
 
-                    <View style={styles.fieldGroup}>
-                        <Text style={styles.label}>CATEGORY <Text style={styles.required}>*</Text></Text>
+                    <FieldGroup>
+                        <Label required>{FIELD_LABELS.category}</Label>
                         <View style={styles.categoryContainer}>
-                            {categories.map(cat => (
+                            {categories.map((cat) => (
                                 <TouchableOpacity
                                     key={cat}
                                     onPress={() => handleCategoryChange(cat)}
@@ -413,363 +491,131 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                                 </TouchableOpacity>
                             ))}
                         </View>
-                    </View>
+                    </FieldGroup>
 
                     {editState.category === 'Lifts' && (
                         <View style={styles.section}>
-                            <View style={styles.fieldGroup}>
-                                <View style={styles.labelToggleRow}>
-                                    <Text style={[styles.label, { marginBottom: 0 }]}>PRIMARY MUSCLE GROUPS <Text style={styles.required}>*</Text></Text>
-                                    <TouchableOpacity
-                                        style={styles.toggleContainer}
-                                        onPress={() => {
-                                            const newVal = !secondaryMusclesEnabled;
-                                            setSecondaryMusclesEnabled(newVal);
-                                            if (!newVal) setEditState(prev => ({ ...prev, secondaryMuscles: [] }));
-                                        }}
-                                    >
-                                        <Text style={[styles.toggleLabel, secondaryMusclesEnabled ? styles.textBlue : styles.textSlate]}>SECONDARY</Text>
-                                        {secondaryMusclesEnabled ? <ToggleRight size={24} color={COLORS.blue[600]} /> : <ToggleLeft size={24} color={COLORS.slate[300]} />}
-                                    </TouchableOpacity>
-                                </View>
-                                <View style={styles.chipsContainer}>
-                                    {PRIMARY_MUSCLES.map(m => (
-                                        <Chip
-                                            key={m}
-                                            label={m}
-                                            selected={editState.primaryMuscles.includes(m)}
-                                            isPrimary={editState.primaryMuscles[0] === m}
-                                            isSpecial={["Full Body", "Olympic"].includes(m)}
-                                            onClick={() => handlePrimaryMuscleToggle(m)}
-                                            onMakePrimary={() => handleMakePrimary(m)}
-                                        />
-                                    ))}
-                                </View>
-                            </View>
+                            <PrimaryMuscleChips
+                                primaryMuscles={editState.primaryMuscles}
+                                secondaryMusclesEnabled={secondaryMusclesEnabled}
+                                onSecondaryToggle={() => {
+                                    const newVal = !secondaryMusclesEnabled;
+                                    setSecondaryMusclesEnabled(newVal);
+                                    if (!newVal) setEditState((prev) => ({ ...prev, secondaryMuscles: [] }));
+                                }}
+                                onMuscleToggle={handlePrimaryMuscleToggle}
+                                onMakePrimary={handleMakePrimary}
+                                required
+                            />
 
-                            <View style={styles.fieldGroup}>
-                                <View style={styles.labelToggleRow}>
-                                    <Text style={[styles.label, { marginBottom: 0 }]}>WEIGHT EQUIP.</Text>
-                                    <TouchableOpacity
-                                        style={styles.toggleContainer}
-                                        onPress={() => {
-                                            const newVal = !showSecondEquip;
-                                            setShowSecondEquip(newVal);
-                                            if (!newVal) setEditState(prev => ({ ...prev, weightEquipTags: [prev.weightEquipTags[0]].filter(Boolean) }));
-                                        }}
-                                    >
-                                        <Text style={[styles.toggleLabel, showSecondEquip ? styles.textBlue : styles.textSlate]}>ADD 2ND</Text>
-                                        {showSecondEquip ? <ToggleRight size={24} color={COLORS.blue[600]} /> : <ToggleLeft size={24} color={COLORS.slate[300]} />}
-                                    </TouchableOpacity>
-                                </View>
-                                {showSecondEquip && (
-                                    <View style={{ marginBottom: 12 }}>
-                                        <TouchableOpacity
-                                            style={styles.equipmentTrigger}
-                                            onPress={() => setEquipmentPickerSlot(1)}
-                                        >
-                                            <EquipmentIcon equipment={editState.weightEquipTags[1] || ''} size={24} />
-                                            <Text style={[styles.equipmentTriggerText, editState.weightEquipTags[1] ? styles.textSelected : styles.textPlaceholder]}>
-                                                {editState.weightEquipTags[1] || "Select 2nd Equipment..."}
-                                            </Text>
-                                            <ChevronDown size={16} color={COLORS.slate[400]} />
-                                        </TouchableOpacity>
-                                    </View>
-                                )}
-                                <View style={styles.equipmentGripRow}>
-                                    {/* Equipment Circle Button */}
-                                    <View style={styles.circleButtonWrapper}>
-                                        <TouchableOpacity
-                                            style={styles.equipmentCircleButton}
-                                            onPress={() => setEquipmentPickerSlot(0)}
-                                            activeOpacity={0.7}
-                                        >
-                                            <View style={[styles.circleButton, editState.weightEquipTags[0] && styles.circleButtonSelected]}>
-                                                <EquipmentIcon equipment={editState.weightEquipTags[0] || ''} size={44} noMargin />
-                                            </View>
-                                            <Text style={[styles.circleLabel, editState.weightEquipTags[0] ? styles.textSelected : styles.textPlaceholder]} numberOfLines={1}>
-                                                {editState.weightEquipTags[0] || "Equipment"}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                    {/* Combined Grip Type/Width Circle Button */}
-                                    {(() => {
-                                        const opts = getPrimaryEquipmentGripStanceOptions();
-                                        return (opts.gripTypeOptions || opts.gripWidthOptions) ? (
-                                            <View style={styles.circleButtonWrapper}>
-                                                <GripTypeWidthPicker
-                                                    gripType={editState.gripType}
-                                                    gripWidth={editState.gripWidth}
-                                                    onGripTypeChange={(val) => setEditState({ ...editState, gripType: val })}
-                                                    onGripWidthChange={(val) => setEditState({ ...editState, gripWidth: val })}
-                                                    gripTypeOptions={opts.gripTypeOptions || []}
-                                                    gripWidthOptions={opts.gripWidthOptions || []}
-                                                    allowClear
-                                                />
-                                            </View>
-                                        ) : null;
-                                    })()}
-                                    {/* Stance Type/Width Picker */}
-                                    {(() => {
-                                        const opts = getPrimaryEquipmentGripStanceOptions();
-                                        return (opts.stanceTypeOptions || opts.stanceWidthOptions) ? (
-                                            <View style={styles.circleButtonWrapper}>
-                                                <StanceTypeWidthPicker
-                                                    stanceType={editState.stanceType}
-                                                    stanceWidth={editState.stanceWidth}
-                                                    onStanceTypeChange={(val) => setEditState({ ...editState, stanceType: val })}
-                                                    onStanceWidthChange={(val) => setEditState({ ...editState, stanceWidth: val })}
-                                                    stanceTypeOptions={opts.stanceTypeOptions || []}
-                                                    stanceWidthOptions={opts.stanceWidthOptions || []}
-                                                />
-                                            </View>
-                                        ) : null;
-                                    })()}
-                                </View>
-                            </View>
+                            <FieldGroup>
+                                <EquipmentBlock
+                                    variant="lifts"
+                                    weightEquipTags={editState.weightEquipTags}
+                                    showSecondEquip={showSecondEquip}
+                                    onToggleSecondEquip={() => {
+                                        const newVal = !showSecondEquip;
+                                        setShowSecondEquip(newVal);
+                                        if (!newVal) setEditState((prev) => ({ ...prev, weightEquipTags: [prev.weightEquipTags[0]].filter(Boolean) }));
+                                    }}
+                                    onEquipPress={(slot) => setEquipmentPickerSlot(slot)}
+                                    gripType={editState.gripType}
+                                    gripWidth={editState.gripWidth}
+                                    stanceType={editState.stanceType}
+                                    stanceWidth={editState.stanceWidth}
+                                    singleDouble={editState.singleDouble}
+                                    onGripTypeChange={(val) => setEditState((prev) => ({ ...prev, gripType: val }))}
+                                    onGripWidthChange={(val) => setEditState((prev) => ({ ...prev, gripWidth: val }))}
+                                    onStanceTypeChange={(val) => setEditState((prev) => ({ ...prev, stanceType: val }))}
+                                    onStanceWidthChange={(val) => setEditState((prev) => ({ ...prev, stanceWidth: val }))}
+                                    onSingleDoubleChange={handleSingleDoubleChange}
+                                    getGripStanceOptions={getPrimaryEquipmentGripStanceOptions}
+                                    showSingleDouble={false}
+                                />
+                            </FieldGroup>
 
-                            {/* Cable Attachments */}
                             {shouldShowCableAttachments() && (
-                                <View style={styles.fieldGroup}>
-                                    <Text style={styles.label}>CABLE ATTACHMENTS</Text>
-                                    <CustomDropdown
-                                        value={editState.cableAttachment}
-                                        onChange={handleCableAttachmentChange}
-                                        options={CABLE_ATTACHMENTS}
-                                        placeholder="Select Cable Attachment..."
-                                    />
-                                </View>
+                                <CableAttachmentsField value={editState.cableAttachment} onChange={handleCableAttachmentChange} />
                             )}
-
-                            {/* Assisted / Negative (Machine (Selectorized) only) */}
-                            {editState.weightEquipTags.filter(Boolean)[0] === "Machine (Selectorized)" && (
-                                <View style={styles.fieldGroup}>
-                                    <View style={styles.labelToggleRow}>
-                                        <Text style={[styles.label, { marginBottom: 0, color: editState.assistedNegative ? COLORS.slate[500] : COLORS.slate[400] }]}>ASSISTED / NEGATIVE</Text>
-                                        <TouchableOpacity
-                                            style={styles.toggleContainer}
-                                            onPress={() => setEditState(prev => ({ ...prev, assistedNegative: !prev.assistedNegative }))}
-                                        >
-                                            <Text style={[styles.toggleLabel, editState.assistedNegative ? styles.textBlue : styles.textSlate]}>ON</Text>
-                                            {editState.assistedNegative ? <ToggleRight size={24} color={COLORS.blue[600]} /> : <ToggleLeft size={24} color={COLORS.slate[400]} />}
-                                        </TouchableOpacity>
-                                    </View>
-                                </View>
+                            {editState.weightEquipTags.filter(Boolean)[0] === 'Machine (Selectorized)' && (
+                                <AssistedNegativeRow value={editState.assistedNegative} onChange={(v) => setEditState((prev) => ({ ...prev, assistedNegative: v }))} />
                             )}
-
 
                             <View style={styles.additionalSettings}>
-                                <Text style={styles.label}>ADDITIONAL SETTINGS:</Text>
+                                <Text style={styles.label}>{FIELD_LABELS.additionalSettings}</Text>
                             </View>
 
-                            {/* METABOLIC INTENSITY Toggle for Lifts */}
-                            <TouchableOpacity onPress={() => {
-                                setShowLiftsCardioType(!showLiftsCardioType);
-                            }} style={styles.collapsibleLabelToggleRow}>
-                                {(() => {
-                                    const isActive = showLiftsCardioType || editState.cardioType;
-                                    const disabledColor = COLORS.slate[400];
-                                    const hasSelection = !showLiftsCardioType && editState.cardioType;
-                                    return (
-                                        <>
-                                            <View style={styles.rowGap}>
-                                                <Text style={[styles.label, { marginBottom: 0, color: isActive ? COLORS.slate[500] : disabledColor }]}>METABOLIC INTENSITY</Text>
-                                                <ChevronDown size={16} color={isActive ? COLORS.blue[600] : disabledColor} style={{ transform: [{ rotate: showLiftsCardioType ? '180deg' : '0deg' }] }} />
-                                                {hasSelection && (
-                                                    <Text style={[styles.toggleLabel, { color: isActive ? COLORS.slate[500] : disabledColor }]} numberOfLines={1} ellipsizeMode="tail">
-                                                        {editState.cardioType}
-                                                    </Text>
-                                                )}
-                                            </View>
-                                            <View style={{ width: 100 }} />
-                                        </>
-                                    );
-                                })()}
-                            </TouchableOpacity>
-                            {showLiftsCardioType && (
-                                <View style={{ marginBottom: 24 }}>
-                                    <CustomDropdown
-                                        value={editState.cardioType}
-                                        onChange={(val) => setEditState({ ...editState, cardioType: val })}
-                                        options={CARDIO_TYPES}
-                                        placeholder="Select METABOLIC INTENSITY..."
-                                    />
-                                </View>
-                            )}
+                            <CollapsibleSection
+                                label={FIELD_LABELS.metabolicIntensity}
+                                expanded={showLiftsCardioType}
+                                onToggle={() => setShowLiftsCardioType(!showLiftsCardioType)}
+                                badgeText={!showLiftsCardioType && editState.cardioType ? editState.cardioType : undefined}
+                            >
+                                <MetabolicIntensityDropdown value={editState.cardioType} onChange={(val) => setEditState((prev) => ({ ...prev, cardioType: val }))} />
+                            </CollapsibleSection>
 
-                            {editState.category === 'Lifts' && (
-                                <View style={styles.labelToggleRow}>
-                                    <Text style={[styles.label, { marginBottom: 0, color: editState.trackDuration ? COLORS.slate[500] : COLORS.slate[400] }]}>ALLOW DURATION TRACKING</Text>
-                                    <TouchableOpacity
-                                        style={styles.toggleContainer}
-                                        onPress={() => setEditState(prev => ({ ...prev, trackDuration: !prev.trackDuration }))}
-                                    >
-                                        <Text style={[styles.toggleLabel, editState.trackDuration ? styles.textBlue : styles.textSlate]}>TRACK DURATION</Text>
-                                        {editState.trackDuration ? <ToggleRight size={24} color={COLORS.blue[600]} /> : <ToggleLeft size={24} color={COLORS.slate[400]} />}
-                                    </TouchableOpacity>
-                                </View>
-                            )}
+                            <ToggleRow
+                                label={FIELD_LABELS.allowDurationTracking}
+                                toggleLabel={FIELD_LABELS.trackDuration}
+                                value={editState.trackDuration}
+                                onToggle={() => setEditState((prev) => ({ ...prev, trackDuration: !prev.trackDuration }))}
+                            />
                         </View>
                     )}
 
                     {editState.category === 'Cardio' && (
                         <View style={styles.section}>
-                            <View style={styles.fieldGroup}>
-                                <Text style={styles.label}>METABOLIC INTENSITY</Text>
-                                <CustomDropdown
-                                    value={editState.cardioType}
-                                    onChange={(val) => setEditState({ ...editState, cardioType: val })}
-                                    options={CARDIO_TYPES}
-                                    placeholder="Select METABOLIC INTENSITY..."
-                                />
-                            </View>
+                            <FieldGroup>
+                                <Label>{FIELD_LABELS.metabolicIntensity}</Label>
+                                <MetabolicIntensityDropdown value={editState.cardioType} onChange={(val) => setEditState((prev) => ({ ...prev, cardioType: val }))} />
+                            </FieldGroup>
                             <View style={styles.additionalSettings}>
-                                <Text style={styles.label}>ADDITIONAL SETTINGS:</Text>
+                                <Text style={styles.label}>{FIELD_LABELS.additionalSettings}</Text>
                             </View>
-                            <View style={styles.labelToggleRow}>
-                                <Text style={[styles.label, { marginBottom: 0, color: editState.trackDistance ? COLORS.slate[500] : COLORS.slate[400] }]}>ALLOW DISTANCE TRACKING</Text>
-                                <TouchableOpacity
-                                    style={styles.toggleContainer}
-                                    onPress={() => setEditState(prev => ({ ...prev, trackDistance: !prev.trackDistance }))}
-                                >
-                                    <Text style={[styles.toggleLabel, editState.trackDistance ? styles.textBlue : styles.textSlate]}>TRACK DISTANCE</Text>
-                                    {editState.trackDistance ? <ToggleRight size={24} color={COLORS.blue[600]} /> : <ToggleLeft size={24} color={COLORS.slate[400]} />}
-                                </TouchableOpacity>
-                            </View>
-                            <TouchableOpacity onPress={() => setShowWeightEquip(!showWeightEquip)} style={styles.collapsibleLabelToggleRow}>
-                                {(() => {
-                                    const isActive = showWeightEquip || editState.weightEquipTags.some(tag => tag);
-                                    const disabledColor = COLORS.slate[400];
-                                    return (
-                                        <>
-                                            <View style={styles.rowGap}>
-                                                <Text style={[styles.label, { marginBottom: 0, color: isActive ? COLORS.slate[500] : disabledColor }]}>WEIGHT EQUIP.</Text>
-                                                <ChevronDown size={16} color={isActive ? COLORS.blue[600] : disabledColor} style={{ transform: [{ rotate: showWeightEquip ? '180deg' : '0deg' }] }} />
-                                            </View>
-                                            <TouchableOpacity
-                                                style={styles.toggleContainer}
-                                                onPress={(e) => {
-                                                    e.stopPropagation();
-                                                    const newVal = !showSecondEquip;
-                                                    setShowSecondEquip(newVal);
-                                                    if (!newVal) setEditState(prev => ({ ...prev, weightEquipTags: [prev.weightEquipTags[0]].filter(Boolean) }));
-                                                }}
-                                            >
-                                                <Text style={[styles.toggleLabel, { color: isActive ? (showSecondEquip ? COLORS.blue[600] : COLORS.slate[400]) : disabledColor }]}>ADD 2ND</Text>
-                                                {showSecondEquip ? <ToggleRight size={24} color={isActive ? COLORS.blue[600] : disabledColor} /> : <ToggleLeft size={24} color={disabledColor} />}
-                                            </TouchableOpacity>
-                                        </>
-                                    );
-                                })()}
-                            </TouchableOpacity>
-                            {showWeightEquip && (
-                                <View style={{ marginBottom: 24 }}>
-                                    {showSecondEquip && (
-                                        <View style={{ marginBottom: 12 }}>
-                                            <TouchableOpacity style={styles.equipmentTrigger} onPress={() => setEquipmentPickerSlot(1)}>
-                                                <EquipmentIcon equipment={editState.weightEquipTags[1] || ''} size={24} />
-                                                <Text style={[styles.equipmentTriggerText, editState.weightEquipTags[1] ? styles.textSelected : styles.textPlaceholder]}>
-                                                    {editState.weightEquipTags[1] || "Select 2nd Equipment..."}
-                                                </Text>
-                                                <ChevronDown size={16} color={COLORS.slate[400]} />
-                                            </TouchableOpacity>
-                                        </View>
-                                    )}
-                                    <View style={styles.equipmentGripRow}>
-                                        {/* Equipment Circle Button */}
-                                        <View style={styles.circleButtonWrapper}>
-                                            <TouchableOpacity
-                                                style={styles.equipmentCircleButton}
-                                                onPress={() => setEquipmentPickerSlot(0)}
-                                                activeOpacity={0.7}
-                                            >
-                                                <View style={[styles.circleButton, editState.weightEquipTags[0] && styles.circleButtonSelected]}>
-                                                    <EquipmentIcon equipment={editState.weightEquipTags[0] || ''} size={44} noMargin />
-                                                </View>
-                                                <Text style={[styles.circleLabel, editState.weightEquipTags[0] ? styles.textSelected : styles.textPlaceholder]} numberOfLines={1}>
-                                                    {editState.weightEquipTags[0] || "Equipment"}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        </View>
-                                        {/* Single/Double Toggle */}
-                                        {shouldShowSingleDouble() && (
-                                            <View style={styles.singleDoubleToggleWrapper}>
-                                                <View style={styles.categoryContainer}>
-                                                    {SINGLE_DOUBLE_OPTIONS.map(option => (
-                                                        <TouchableOpacity
-                                                            key={option}
-                                                            onPress={() => handleSingleDoubleChange(option)}
-                                                            style={[
-                                                                styles.categoryButton,
-                                                                editState.singleDouble === option ? styles.categoryButtonSelected : styles.categoryButtonUnselected
-                                                            ]}
-                                                        >
-                                                            <Text style={[
-                                                                styles.categoryText,
-                                                                editState.singleDouble === option ? styles.categoryTextSelected : styles.categoryTextUnselected
-                                                            ]}>
-                                                                {option}
-                                                            </Text>
-                                                        </TouchableOpacity>
-                                                    ))}
-                                                </View>
-                                            </View>
-                                        )}
-                                        {/* Grip Type Circle Button */}
-                                        {(() => {
-                                            const opts = getPrimaryEquipmentGripStanceOptions();
-                                            return opts.gripTypeOptions ? (
-                                                <View style={styles.circleButtonWrapper}>
-                                                    <CustomDropdown
-                                                        value={editState.gripType}
-                                                        onChange={(val) => setEditState({ ...editState, gripType: val })}
-                                                        options={opts.gripTypeOptions}
-                                                        placeholder="Grip Type"
-                                                        allowClear
-                                                        optionIcons={GripImages}
-                                                    />
-                                                </View>
-                                            ) : null;
-                                        })()}
-                                        {/* Grip Width Circle Button */}
-                                        {(() => {
-                                            const opts = getPrimaryEquipmentGripStanceOptions();
-                                            return opts.gripWidthOptions ? (
-                                                <View style={styles.circleButtonWrapper}>
-                                                    <CustomDropdown
-                                                        value={editState.gripWidth}
-                                                        onChange={(val) => setEditState({ ...editState, gripWidth: val })}
-                                                        options={opts.gripWidthOptions}
-                                                        placeholder="Grip Width"
-                                                        allowClear
-                                                        optionIcons={GripWidthImages}
-                                                    />
-                                                </View>
-                                            ) : null;
-                                        })()}
-                                    </View>
-                                </View>
-                            )}
-
-                            {/* Cable Attachments, Grip/Stance when Cardio has weight equipment */}
+                            <ToggleRow
+                                label={FIELD_LABELS.allowDistanceTracking}
+                                toggleLabel={FIELD_LABELS.trackDistance}
+                                value={editState.trackDistance}
+                                onToggle={() => setEditState((prev) => ({ ...prev, trackDistance: !prev.trackDistance }))}
+                            />
+                            <CollapsibleSection
+                                label={FIELD_LABELS.weightEquip}
+                                expanded={showWeightEquip}
+                                onToggle={() => setShowWeightEquip(!showWeightEquip)}
+                            >
+                                <FieldGroup>
+                                    <EquipmentBlock
+                                        variant="cardioTraining"
+                                        weightEquipTags={editState.weightEquipTags}
+                                        showSecondEquip={showSecondEquip}
+                                        onToggleSecondEquip={() => {
+                                            const newVal = !showSecondEquip;
+                                            setShowSecondEquip(newVal);
+                                            if (!newVal) setEditState((prev) => ({ ...prev, weightEquipTags: [prev.weightEquipTags[0]].filter(Boolean) }));
+                                        }}
+                                        onEquipPress={(slot) => setEquipmentPickerSlot(slot)}
+                                        gripType={editState.gripType}
+                                        gripWidth={editState.gripWidth}
+                                        stanceType={editState.stanceType}
+                                        stanceWidth={editState.stanceWidth}
+                                        singleDouble={editState.singleDouble}
+                                        onGripTypeChange={(val) => setEditState((prev) => ({ ...prev, gripType: val }))}
+                                        onGripWidthChange={(val) => setEditState((prev) => ({ ...prev, gripWidth: val }))}
+                                        onStanceTypeChange={(val) => setEditState((prev) => ({ ...prev, stanceType: val }))}
+                                        onStanceWidthChange={(val) => setEditState((prev) => ({ ...prev, stanceWidth: val }))}
+                                        onSingleDoubleChange={handleSingleDoubleChange}
+                                        getGripStanceOptions={getPrimaryEquipmentGripStanceOptions}
+                                        showSingleDouble={shouldShowSingleDouble()}
+                                    />
+                                </FieldGroup>
+                            </CollapsibleSection>
                             {showWeightEquip && editState.weightEquipTags.filter(Boolean).length > 0 && (
                                 <>
                                     {shouldShowCableAttachments() && (
-                                        <View style={styles.fieldGroup}>
-                                            <Text style={styles.label}>CABLE ATTACHMENTS</Text>
-                                            <CustomDropdown value={editState.cableAttachment} onChange={handleCableAttachmentChange} options={CABLE_ATTACHMENTS} placeholder="Select Cable Attachment..." />
-                                        </View>
+                                        <CableAttachmentsField value={editState.cableAttachment} onChange={handleCableAttachmentChange} />
                                     )}
-                                    {editState.weightEquipTags.filter(Boolean)[0] === "Machine (Selectorized)" && (
-                                        <View style={styles.fieldGroup}>
-                                            <View style={styles.labelToggleRow}>
-                                                <Text style={[styles.label, { marginBottom: 0, color: editState.assistedNegative ? COLORS.slate[500] : COLORS.slate[400] }]}>ASSISTED / NEGATIVE</Text>
-                                                <TouchableOpacity style={styles.toggleContainer} onPress={() => setEditState(prev => ({ ...prev, assistedNegative: !prev.assistedNegative }))}>
-                                                    <Text style={[styles.toggleLabel, editState.assistedNegative ? styles.textBlue : styles.textSlate]}>ON</Text>
-                                                    {editState.assistedNegative ? <ToggleRight size={24} color={COLORS.blue[600]} /> : <ToggleLeft size={24} color={COLORS.slate[400]} />}
-                                                </TouchableOpacity>
-                                            </View>
-                                        </View>
+                                    {editState.weightEquipTags.filter(Boolean)[0] === 'Machine (Selectorized)' && (
+                                        <AssistedNegativeRow value={editState.assistedNegative} onChange={(v) => setEditState((prev) => ({ ...prev, assistedNegative: v }))} />
                                     )}
                                 </>
                             )}
@@ -778,270 +624,97 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
 
                     {editState.category === 'Training' && (
                         <View style={styles.section}>
-                            <View style={styles.fieldGroup}>
-                                <Text style={styles.label}>TRAINING FOCUS</Text>
-                                <CustomDropdown value={editState.trainingFocus} onChange={(val) => setEditState({ ...editState, trainingFocus: val })} options={TRAINING_FOCUS} placeholder="Select Training Focus..." />
-                            </View>
-
+                            <FieldGroup>
+                                <Label>{FIELD_LABELS.trainingFocus}</Label>
+                                <TrainingFocusDropdown value={editState.trainingFocus} onChange={(val) => setEditState((prev) => ({ ...prev, trainingFocus: val }))} />
+                            </FieldGroup>
                             <View style={styles.additionalSettings}>
-                                <Text style={styles.label}>ADDITIONAL SETTINGS:</Text>
+                                <Text style={styles.label}>{FIELD_LABELS.additionalSettings}</Text>
                             </View>
 
-                            {/* METABOLIC INTENSITY Toggle for Training */}
-                            <TouchableOpacity onPress={() => {
-                                setShowTrainingCardioType(!showTrainingCardioType);
-                            }} style={styles.collapsibleLabelToggleRow}>
-                                {(() => {
-                                    const isActive = showTrainingCardioType || editState.cardioType;
-                                    const disabledColor = COLORS.slate[400];
-                                    const hasSelection = !showTrainingCardioType && editState.cardioType;
-                                    return (
-                                        <>
-                                            <View style={styles.rowGap}>
-                                                <Text style={[styles.label, { marginBottom: 0, color: isActive ? COLORS.slate[500] : disabledColor }]}>METABOLIC INTENSITY</Text>
-                                                <ChevronDown size={16} color={isActive ? COLORS.blue[600] : disabledColor} style={{ transform: [{ rotate: showTrainingCardioType ? '180deg' : '0deg' }] }} />
-                                                {hasSelection && (
-                                                    <Text style={[styles.toggleLabel, { color: isActive ? COLORS.slate[500] : disabledColor }]} numberOfLines={1} ellipsizeMode="tail">
-                                                        {editState.cardioType}
-                                                    </Text>
-                                                )}
-                                            </View>
-                                            <View style={{ width: 100 }} />
-                                        </>
-                                    );
-                                })()}
-                            </TouchableOpacity>
-                            {showTrainingCardioType && (
-                                <View style={{ marginBottom: 24 }}>
-                                    <CustomDropdown
-                                        value={editState.cardioType}
-                                        onChange={(val) => setEditState({ ...editState, cardioType: val })}
-                                        options={CARDIO_TYPES}
-                                        placeholder="Select METABOLIC INTENSITY..."
+                            <CollapsibleSection
+                                label={FIELD_LABELS.metabolicIntensity}
+                                expanded={showTrainingCardioType}
+                                onToggle={() => setShowTrainingCardioType(!showTrainingCardioType)}
+                                badgeText={!showTrainingCardioType && editState.cardioType ? editState.cardioType : undefined}
+                            >
+                                <MetabolicIntensityDropdown value={editState.cardioType} onChange={(val) => setEditState((prev) => ({ ...prev, cardioType: val }))} />
+                            </CollapsibleSection>
+
+                            <TrainingMuscleGroupsCollapsible
+                                expanded={showTrainingMuscleGroups}
+                                onToggle={() => setShowTrainingMuscleGroups(!showTrainingMuscleGroups)}
+                                secondaryMusclesEnabled={secondaryMusclesEnabled}
+                                onSecondaryToggle={() => {
+                                    const newVal = !secondaryMusclesEnabled;
+                                    setSecondaryMusclesEnabled(newVal);
+                                    if (!newVal) setEditState((prev) => ({ ...prev, secondaryMuscles: [] }));
+                                }}
+                                primaryMuscles={editState.primaryMuscles}
+                                onMuscleToggle={handlePrimaryMuscleToggle}
+                                onMakePrimary={handleMakePrimary}
+                            />
+
+                            <CollapsibleSection
+                                label={FIELD_LABELS.weightEquip}
+                                expanded={showWeightEquip}
+                                onToggle={() => setShowWeightEquip(!showWeightEquip)}
+                            >
+                                <FieldGroup>
+                                    <EquipmentBlock
+                                        variant="cardioTraining"
+                                        weightEquipTags={editState.weightEquipTags}
+                                        showSecondEquip={showSecondEquip}
+                                        onToggleSecondEquip={() => {
+                                            const newVal = !showSecondEquip;
+                                            setShowSecondEquip(newVal);
+                                            if (!newVal) setEditState((prev) => ({ ...prev, weightEquipTags: [prev.weightEquipTags[0]].filter(Boolean) }));
+                                        }}
+                                        onEquipPress={(slot) => setEquipmentPickerSlot(slot)}
+                                        gripType={editState.gripType}
+                                        gripWidth={editState.gripWidth}
+                                        stanceType={editState.stanceType}
+                                        stanceWidth={editState.stanceWidth}
+                                        singleDouble={editState.singleDouble}
+                                        onGripTypeChange={(val) => setEditState((prev) => ({ ...prev, gripType: val }))}
+                                        onGripWidthChange={(val) => setEditState((prev) => ({ ...prev, gripWidth: val }))}
+                                        onStanceTypeChange={(val) => setEditState((prev) => ({ ...prev, stanceType: val }))}
+                                        onStanceWidthChange={(val) => setEditState((prev) => ({ ...prev, stanceWidth: val }))}
+                                        onSingleDoubleChange={handleSingleDoubleChange}
+                                        getGripStanceOptions={getPrimaryEquipmentGripStanceOptions}
+                                        showSingleDouble={shouldShowSingleDouble()}
                                     />
-                                </View>
-                            )}
-
-
-                            {/* Muscle Groups Toggle for Training */}
-                            <TouchableOpacity onPress={() => {
-                                setShowTrainingMuscleGroups(!showTrainingMuscleGroups);
-                            }} style={styles.collapsibleLabelToggleRow}>
-                                {(() => {
-                                    const isActive = showTrainingMuscleGroups || editState.primaryMuscles.length > 0 || editState.secondaryMuscles.length > 0 || secondaryMusclesEnabled;
-                                    const disabledColor = COLORS.slate[400];
-                                    return (
-                                        <>
-                                            <View style={styles.rowGap}>
-                                                <Text style={[styles.label, { marginBottom: 0, color: isActive ? COLORS.slate[500] : disabledColor }]}>PRIMARY MUSCLE GROUPS</Text>
-                                                <ChevronDown size={16} color={isActive ? COLORS.blue[600] : disabledColor} style={{ transform: [{ rotate: showTrainingMuscleGroups ? '180deg' : '0deg' }] }} />
-                                            </View>
-                                            <TouchableOpacity
-                                                style={styles.toggleContainer}
-                                                onPress={(e) => {
-                                                    e.stopPropagation();
-                                                    const newVal = !secondaryMusclesEnabled;
-                                                    setSecondaryMusclesEnabled(newVal);
-                                                    if (!newVal) setEditState(prev => ({ ...prev, secondaryMuscles: [] }));
-                                                }}
-                                            >
-                                                <Text style={[styles.toggleLabel, { color: isActive ? (secondaryMusclesEnabled ? COLORS.blue[600] : COLORS.slate[400]) : disabledColor }]}>SECONDARY</Text>
-                                                {secondaryMusclesEnabled ? <ToggleRight size={24} color={isActive ? COLORS.blue[600] : disabledColor} /> : <ToggleLeft size={24} color={disabledColor} />}
-                                            </TouchableOpacity>
-                                        </>
-                                    );
-                                })()}
-                            </TouchableOpacity>
-                            {showTrainingMuscleGroups && (
-                                <View style={{ marginBottom: 24 }}>
-                                    <View style={styles.chipsContainer}>
-                                        {PRIMARY_MUSCLES.map(m => (
-                                            <Chip
-                                                key={m}
-                                                label={m}
-                                                selected={editState.primaryMuscles.includes(m)}
-                                                isPrimary={editState.primaryMuscles[0] === m}
-                                                isSpecial={["Full Body", "Olympic"].includes(m)}
-                                                onClick={() => handlePrimaryMuscleToggle(m)}
-                                                onMakePrimary={() => handleMakePrimary(m)}
-                                            />
-                                        ))}
-                                    </View>
-                                </View>
-                            )}
-
-                            <TouchableOpacity onPress={() => setShowWeightEquip(!showWeightEquip)} style={styles.collapsibleLabelToggleRow}>
-                                {(() => {
-                                    const isActive = showWeightEquip || editState.weightEquipTags.some(tag => tag) || showSecondEquip;
-                                    const disabledColor = COLORS.slate[400];
-                                    return (
-                                        <>
-                                            <View style={styles.rowGap}>
-                                                <Text style={[styles.label, { marginBottom: 0, color: isActive ? COLORS.slate[500] : disabledColor }]}>WEIGHT EQUIP.</Text>
-                                                <ChevronDown size={16} color={isActive ? COLORS.blue[600] : disabledColor} style={{ transform: [{ rotate: showWeightEquip ? '180deg' : '0deg' }] }} />
-                                            </View>
-                                            <TouchableOpacity
-                                                style={styles.toggleContainer}
-                                                onPress={(e) => {
-                                                    e.stopPropagation();
-                                                    const newVal = !showSecondEquip;
-                                                    setShowSecondEquip(newVal);
-                                                    if (!newVal) setEditState(prev => ({ ...prev, weightEquipTags: [prev.weightEquipTags[0]].filter(Boolean) }));
-                                                }}
-                                            >
-                                                <Text style={[styles.toggleLabel, { color: isActive ? (showSecondEquip ? COLORS.blue[600] : COLORS.slate[400]) : disabledColor }]}>ADD 2ND</Text>
-                                                {showSecondEquip ? <ToggleRight size={24} color={isActive ? COLORS.blue[600] : disabledColor} /> : <ToggleLeft size={24} color={disabledColor} />}
-                                            </TouchableOpacity>
-                                        </>
-                                    );
-                                })()}
-                            </TouchableOpacity>
-                            {showWeightEquip && (
-                                <View style={{ marginBottom: 24 }}>
-                                    {showSecondEquip && (
-                                        <View style={{ marginBottom: 12 }}>
-                                            <TouchableOpacity style={styles.equipmentTrigger} onPress={() => setEquipmentPickerSlot(1)}>
-                                                <EquipmentIcon equipment={editState.weightEquipTags[1] || ''} size={24} />
-                                                <Text style={[styles.equipmentTriggerText, editState.weightEquipTags[1] ? styles.textSelected : styles.textPlaceholder]}>
-                                                    {editState.weightEquipTags[1] || "Select 2nd Equipment..."}
-                                                </Text>
-                                                <ChevronDown size={16} color={COLORS.slate[400]} />
-                                            </TouchableOpacity>
-                                        </View>
-                                    )}
-                                    <View style={styles.equipmentGripRow}>
-                                        {/* Equipment Circle Button */}
-                                        <View style={styles.circleButtonWrapper}>
-                                            <TouchableOpacity
-                                                style={styles.equipmentCircleButton}
-                                                onPress={() => setEquipmentPickerSlot(0)}
-                                                activeOpacity={0.7}
-                                            >
-                                                <View style={[styles.circleButton, editState.weightEquipTags[0] && styles.circleButtonSelected]}>
-                                                    <EquipmentIcon equipment={editState.weightEquipTags[0] || ''} size={44} noMargin />
-                                                </View>
-                                                <Text style={[styles.circleLabel, editState.weightEquipTags[0] ? styles.textSelected : styles.textPlaceholder]} numberOfLines={1}>
-                                                    {editState.weightEquipTags[0] || "Equipment"}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        </View>
-                                        {/* Single/Double Toggle */}
-                                        {shouldShowSingleDouble() && (
-                                            <View style={styles.singleDoubleToggleWrapper}>
-                                                <View style={styles.categoryContainer}>
-                                                    {SINGLE_DOUBLE_OPTIONS.map(option => (
-                                                        <TouchableOpacity
-                                                            key={option}
-                                                            onPress={() => handleSingleDoubleChange(option)}
-                                                            style={[
-                                                                styles.categoryButton,
-                                                                editState.singleDouble === option ? styles.categoryButtonSelected : styles.categoryButtonUnselected
-                                                            ]}
-                                                        >
-                                                            <Text style={[
-                                                                styles.categoryText,
-                                                                editState.singleDouble === option ? styles.categoryTextSelected : styles.categoryTextUnselected
-                                                            ]}>
-                                                                {option}
-                                                            </Text>
-                                                        </TouchableOpacity>
-                                                    ))}
-                                                </View>
-                                            </View>
-                                        )}
-                                        {/* Grip Type Circle Button */}
-                                        {(() => {
-                                            const opts = getPrimaryEquipmentGripStanceOptions();
-                                            return opts.gripTypeOptions ? (
-                                                <View style={styles.circleButtonWrapper}>
-                                                    <CustomDropdown
-                                                        value={editState.gripType}
-                                                        onChange={(val) => setEditState({ ...editState, gripType: val })}
-                                                        options={opts.gripTypeOptions}
-                                                        placeholder="Grip Type"
-                                                        allowClear
-                                                        optionIcons={GripImages}
-                                                    />
-                                                </View>
-                                            ) : null;
-                                        })()}
-                                        {/* Grip Width Circle Button */}
-                                        {(() => {
-                                            const opts = getPrimaryEquipmentGripStanceOptions();
-                                            return opts.gripWidthOptions ? (
-                                                <View style={styles.circleButtonWrapper}>
-                                                    <CustomDropdown
-                                                        value={editState.gripWidth}
-                                                        onChange={(val) => setEditState({ ...editState, gripWidth: val })}
-                                                        options={opts.gripWidthOptions}
-                                                        placeholder="Grip Width"
-                                                        allowClear
-                                                        optionIcons={GripWidthImages}
-                                                    />
-                                                </View>
-                                            ) : null;
-                                        })()}
-                                    </View>
-                                </View>
-                            )}
-
-                            {/* Cable Attachments, Grip/Stance when Training has weight equipment */}
+                                </FieldGroup>
+                            </CollapsibleSection>
                             {showWeightEquip && editState.weightEquipTags.filter(Boolean).length > 0 && (
                                 <>
                                     {shouldShowCableAttachments() && (
-                                        <View style={styles.fieldGroup}>
-                                            <Text style={styles.label}>CABLE ATTACHMENTS</Text>
-                                            <CustomDropdown value={editState.cableAttachment} onChange={handleCableAttachmentChange} options={CABLE_ATTACHMENTS} placeholder="Select Cable Attachment..." />
-                                        </View>
+                                        <CableAttachmentsField value={editState.cableAttachment} onChange={handleCableAttachmentChange} />
                                     )}
-                                    {editState.weightEquipTags.filter(Boolean)[0] === "Machine (Selectorized)" && (
-                                        <View style={styles.fieldGroup}>
-                                            <View style={styles.labelToggleRow}>
-                                                <Text style={[styles.label, { marginBottom: 0, color: editState.assistedNegative ? COLORS.slate[500] : COLORS.slate[400] }]}>ASSISTED / NEGATIVE</Text>
-                                                <TouchableOpacity style={styles.toggleContainer} onPress={() => setEditState(prev => ({ ...prev, assistedNegative: !prev.assistedNegative }))}>
-                                                    <Text style={[styles.toggleLabel, editState.assistedNegative ? styles.textBlue : styles.textSlate]}>ON</Text>
-                                                    {editState.assistedNegative ? <ToggleRight size={24} color={COLORS.blue[600]} /> : <ToggleLeft size={24} color={COLORS.slate[400]} />}
-                                                </TouchableOpacity>
-                                            </View>
-                                        </View>
+                                    {editState.weightEquipTags.filter(Boolean)[0] === 'Machine (Selectorized)' && (
+                                        <AssistedNegativeRow value={editState.assistedNegative} onChange={(v) => setEditState((prev) => ({ ...prev, assistedNegative: v }))} />
                                     )}
                                 </>
                             )}
 
-                            {editState.category === 'Training' && (
-                                <>
-                                    <View style={styles.labelToggleRow}>
-                                        <Text style={[styles.label, { marginBottom: 0, color: editState.trackReps ? COLORS.slate[500] : COLORS.slate[400] }]}>ALLOW REPS TRACKING</Text>
-                                        <TouchableOpacity
-                                            style={styles.toggleContainer}
-                                            onPress={() => setEditState(prev => ({ ...prev, trackReps: !prev.trackReps }))}
-                                        >
-                                            <Text style={[styles.toggleLabel, editState.trackReps ? styles.textBlue : styles.textSlate]}>TRACK REPS</Text>
-                                            {editState.trackReps ? <ToggleRight size={24} color={COLORS.blue[600]} /> : <ToggleLeft size={24} color={COLORS.slate[400]} />}
-                                        </TouchableOpacity>
-                                    </View>
-                                    <View style={styles.labelToggleRow}>
-                                        <Text style={[styles.label, { marginBottom: 0, color: editState.trackDuration ? COLORS.slate[500] : COLORS.slate[400] }]}>ALLOW DURATION TRACKING</Text>
-                                        <TouchableOpacity
-                                            style={styles.toggleContainer}
-                                            onPress={() => setEditState(prev => ({ ...prev, trackDuration: !prev.trackDuration }))}
-                                        >
-                                            <Text style={[styles.toggleLabel, editState.trackDuration ? styles.textBlue : styles.textSlate]}>TRACK DURATION</Text>
-                                            {editState.trackDuration ? <ToggleRight size={24} color={COLORS.blue[600]} /> : <ToggleLeft size={24} color={COLORS.slate[400]} />}
-                                        </TouchableOpacity>
-                                    </View>
-                                    <View style={styles.labelToggleRow}>
-                                        <Text style={[styles.label, { marginBottom: 0, color: editState.trackDistance ? COLORS.slate[500] : COLORS.slate[400] }]}>ALLOW DISTANCE TRACKING</Text>
-                                        <TouchableOpacity
-                                            style={styles.toggleContainer}
-                                            onPress={() => setEditState(prev => ({ ...prev, trackDistance: !prev.trackDistance }))}
-                                        >
-                                            <Text style={[styles.toggleLabel, editState.trackDistance ? styles.textBlue : styles.textSlate]}>TRACK DISTANCE</Text>
-                                            {editState.trackDistance ? <ToggleRight size={24} color={COLORS.blue[600]} /> : <ToggleLeft size={24} color={COLORS.slate[400]} />}
-                                        </TouchableOpacity>
-                                    </View>
-                                </>
-                            )}
+                            <ToggleRow
+                                label={FIELD_LABELS.allowRepsTracking}
+                                toggleLabel={FIELD_LABELS.trackReps}
+                                value={editState.trackReps}
+                                onToggle={() => setEditState((prev) => ({ ...prev, trackReps: !prev.trackReps }))}
+                            />
+                            <ToggleRow
+                                label={FIELD_LABELS.allowDurationTracking}
+                                toggleLabel={FIELD_LABELS.trackDuration}
+                                value={editState.trackDuration}
+                                onToggle={() => setEditState((prev) => ({ ...prev, trackDuration: !prev.trackDuration }))}
+                            />
+                            <ToggleRow
+                                label={FIELD_LABELS.allowDistanceTracking}
+                                toggleLabel={FIELD_LABELS.trackDistance}
+                                value={editState.trackDistance}
+                                onToggle={() => setEditState((prev) => ({ ...prev, trackDistance: !prev.trackDistance }))}
+                            />
                         </View>
                     )}
 
@@ -1096,358 +769,5 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
         </Modal>
     );
 };
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: COLORS.white,
-    },
-    dragHandleContainer: {
-        alignItems: 'center',
-        paddingTop: 20,
-        marginBottom: 0,
-    },
-    dragHandle: {
-        width: 40,
-        height: 4,
-        backgroundColor: COLORS.slate[300],
-        borderRadius: 2,
-    },
-    header: {
-        padding: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: COLORS.slate[100],
-    },
-    title: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: COLORS.slate[900],
-    },
-    content: {
-        flex: 1,
-    },
-    contentContainer: {
-        padding: 16,
-        paddingBottom: 40,
-    },
-    fieldGroup: {
-        marginBottom: 24,
-    },
-    additionalSettings: {
-        marginBottom: 6,
-        marginTop: 10,
-    },
-    label: {
-        fontSize: 12,
-        fontWeight: 'bold',
-        color: COLORS.slate[500],
-        marginBottom: 8,
-        marginLeft: 4,
-    },
-    required: {
-        color: COLORS.red[500],
-    },
-    input: {
-        backgroundColor: COLORS.slate[50],
-        borderWidth: 1,
-        borderColor: COLORS.slate[200],
-        borderRadius: 12,
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        fontSize: 16,
-        color: COLORS.slate[900],
-    },
-    categoryContainer: {
-        flexDirection: 'row',
-        backgroundColor: COLORS.slate[100],
-        padding: 4,
-        borderRadius: 12,
-    },
-    categoryButton: {
-        flex: 1,
-        paddingVertical: 8,
-        alignItems: 'center',
-        borderRadius: 8,
-    },
-    categoryButtonSelected: {
-        backgroundColor: COLORS.white,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 2,
-    },
-    categoryButtonUnselected: {
-        backgroundColor: 'transparent',
-    },
-    categoryText: {
-        fontSize: 12,
-        fontWeight: 'bold',
-    },
-    categoryTextSelected: {
-        color: COLORS.slate[900],
-    },
-    categoryTextUnselected: {
-        color: COLORS.slate[500],
-    },
-    section: {
-        marginTop: 8,
-    },
-    rowBetween: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    labelToggleRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    collapsibleLabelToggleRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 8,
-        minHeight: 26,
-    },
-    subLabel: {
-        fontSize: 12,
-        fontWeight: 'bold',
-        color: COLORS.slate[400],
-    },
-    toggleContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    toggleLabel: {
-        fontSize: 10,
-        fontWeight: 'bold',
-    },
-    textBlue: {
-        color: COLORS.blue[600],
-    },
-    textSlate: {
-        color: COLORS.slate[400],
-    },
-    chipsContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        marginTop: 0,
-    },
-    rowGap: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 16,
-    },
-    equipAndSingleDoubleRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-    },
-    singleDoubleInEquipRow: {
-        flexShrink: 0,
-        width: 140,
-    },
-    dropdownStackShrink: {
-        flex: 1,
-        minWidth: 0,
-    },
-    dropdownStack: {
-        gap: 12,
-    },
-    equipmentTrigger: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        backgroundColor: COLORS.slate[50],
-        borderWidth: 1,
-        borderColor: COLORS.slate[200],
-        borderRadius: 12,
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-    },
-    equipmentTriggerText: {
-        fontSize: 14,
-        flex: 1,
-    },
-    textSelected: {
-        color: COLORS.slate[900],
-        fontWeight: '500',
-    },
-    textPlaceholder: {
-        color: COLORS.slate[400],
-    },
-    equipmentGripRow: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        gap: 12,
-        marginTop: 12,
-        flexWrap: 'wrap',
-    },
-    circleButtonWrapper: {
-        alignItems: 'center',
-        flex: 1,
-        minWidth: 70,
-    },
-    equipmentCircleButton: {
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    circleButton: {
-        width: 72,
-        height: 72,
-        borderRadius: 36,
-        backgroundColor: COLORS.slate[100],
-        borderWidth: 2,
-        borderColor: COLORS.slate[200],
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 8,
-    },
-    circleButtonSelected: {
-        backgroundColor: COLORS.blue[50],
-        borderColor: COLORS.blue[200],
-    },
-    circleButtonPlaceholder: {
-        width: 44,
-        height: 44,
-    },
-    circleLabel: {
-        fontSize: 13,
-        textAlign: 'center',
-        maxWidth: 120,
-    },
-    singleDoubleToggleWrapper: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: 72,
-        flexShrink: 1,
-        minWidth: 100,
-    },
-    singleDoubleContainer: {
-        flexDirection: 'column',
-        backgroundColor: COLORS.slate[100],
-        padding: 4,
-        borderRadius: 8,
-        gap: 4,
-        minWidth: 100,
-    },
-    singleDoubleButton: {
-        paddingVertical: 8,
-        alignItems: 'center',
-        borderRadius: 6,
-    },
-    gripStanceRow: {
-        flexDirection: 'row',
-        gap: 12,
-        marginBottom: 24,
-    },
-    gripStanceField: {
-        flex: 1,
-    },
-    marginTop: {
-        marginTop: 12,
-    },
-    textArea: {
-        backgroundColor: COLORS.slate[50],
-        borderWidth: 1,
-        borderColor: COLORS.slate[200],
-        borderRadius: 12,
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        fontSize: 14,
-        color: COLORS.slate[900],
-        textAlignVertical: 'top',
-        height: 100,
-    },
-    footer: {
-        flexDirection: 'row',
-        padding: 16,
-        gap: 12,
-        borderTopWidth: 1,
-        borderTopColor: COLORS.slate[100],
-    },
-    cancelButton: {
-        flex: 1,
-        paddingVertical: 12,
-        alignItems: 'center',
-        borderRadius: 12,
-        backgroundColor: COLORS.transparent,
-        borderWidth: 1,
-        borderColor: COLORS.slate[300],
-    },
-    cancelButtonText: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: COLORS.slate[500],
-    },
-    saveButton: {
-        flex: 1,
-        paddingVertical: 12,
-        alignItems: 'center',
-        borderRadius: 12,
-        backgroundColor: COLORS.blue[600],
-    },
-    saveButtonDisabled: {
-        opacity: 0.5,
-    },
-    saveButtonText: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: COLORS.white,
-    },
-    popupOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        justifyContent: 'center',
-        padding: 16,
-    },
-    popupContent: {
-        backgroundColor: COLORS.white,
-        borderRadius: 16,
-        padding: 24,
-        maxHeight: '80%',
-    },
-    popupHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 16,
-    },
-    popupTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: COLORS.slate[900],
-    },
-    popupSubtitle: {
-        fontSize: 14,
-        fontWeight: 'normal',
-        color: COLORS.slate[400],
-    },
-    popupSkip: {
-        fontSize: 14,
-        fontWeight: 'bold',
-        color: COLORS.blue[600],
-    },
-    popupChips: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        marginBottom: 24,
-    },
-    popupDoneButton: {
-        backgroundColor: COLORS.blue[600],
-        paddingVertical: 12,
-        borderRadius: 12,
-        alignItems: 'center',
-    },
-    popupDoneText: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: COLORS.white,
-    },
-});
 
 export default EditExercise;

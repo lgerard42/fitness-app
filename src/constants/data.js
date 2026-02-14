@@ -11,10 +11,21 @@ export const TRAINING_FOCUS = [
   "Jump Training", "Mobility", "Plyometrics", "Power", "Reaction Time", "Speed", "Throwing/Rotation", "Other"
 ];
 
+/** Generate option id: remove special chars, replace spaces with _, lowercase */
+export function toId(str) {
+  if (!str || typeof str !== 'string') return '';
+  return str
+    .replace(/[^a-zA-Z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\s/g, '_')
+    .toLowerCase();
+}
+
 // Weight Equipment Categories and Tags
 export const WEIGHT_EQUIP_CATEGORIES = {
   "Bars": ["Barbell", "EZ Bar", "Trap Bar (Hex Bar)", "Safety Squat Bar", "Swiss / Football Bar", "Cambered Bar"],
-  "Load Type": ["Dumbbell", "Kettlebell", "Plate", "Medicine Ball", "Sandbag", "Weighted Vest", "Bodyweight", "Band", "Chains", "Reps Only",],
+  "Free-Weights": ["Dumbbell", "Kettlebell", "Plate", "Medicine Ball", "Sandbag", "Weighted Vest", "Bodyweight", "Band", "Chains", "Reps Only",],
   "Machines": ["Machine (Selectorized)", "Plate Loaded (Machine)", "Smith Machine"],
   "Cable": ["Cable"],
   "Suspension": ["TRX / Suspension Trainer", "Rings"],
@@ -26,180 +37,234 @@ export const WEIGHT_EQUIP_CATEGORIES = {
 // Flattened list of all equipment tags for backward compatibility
 export const WEIGHT_EQUIP_TAGS = Object.values(WEIGHT_EQUIP_CATEGORIES).flat();
 
-// Single/Double toggle options
-export const SINGLE_DOUBLE_OPTIONS = ["Single", "Double"];
+// Single/Double toggle options: { id, label }
+export const SINGLE_DOUBLE_OPTIONS = [
+  { id: 'single', label: 'Single' },
+  { id: 'double', label: 'Double' },
+];
 
 // Equipment that supports Single/Double toggle (when Double = true use normal grip/stance; when Single = true use empty)
 export const SINGLE_DOUBLE_EQUIPMENT = ["Dumbbell", "Kettlebell", "Plate", "Chains", "Cable", "Other"];
 
-// Cable attachment options (Cable equipment only, optional)
+// Cable attachment options (Cable equipment only): { id, label }
 export const CABLE_ATTACHMENTS = [
-  "Lat Pulldown Bar", "Straight Bar", "Single Handle", "V-Grip",
-  "MAG Grip Bar", "PRO-Style Bar", "Multi/T-Bar Style", "Multi-Row",
-  "EZ Bar", "V-Bar", "Ankle Strap", "Ab Harness", "Rope", "Other"
+  { id: 'lat_pulldown_bar', label: 'Lat Pulldown Bar' },
+  { id: 'straight_bar', label: 'Straight Bar' },
+  { id: 'single_handle', label: 'Single Handle' },
+  { id: 'v_grip', label: 'V-Grip' },
+  { id: 'mag_grip_bar', label: 'MAG Grip Bar' },
+  { id: 'pro_style_bar', label: 'PRO-Style Bar' },
+  { id: 'multi_t_bar_style', label: 'Multi/T-Bar Style' },
+  { id: 'multi_row', label: 'Multi-Row' },
+  { id: 'ez_bar', label: 'EZ Bar' },
+  { id: 'v_bar', label: 'V-Bar' },
+  { id: 'ankle_strap', label: 'Ankle Strap' },
+  { id: 'ab_harness', label: 'Ab Harness' },
+  { id: 'rope', label: 'Rope' },
+  { id: 'other', label: 'Other' },
 ];
 
-// Grip Type options for upper body exercises
+// Grip Type options: { id, label }
 export const GRIP_TYPES = [
-  "Neutral", "Pronated", "Supinated", "Semi-Pronated", "Semi-Supinated", 
-  "Rotating", "1up/1down", "Flat Palms Up", "Other"
+  { id: 'neutral', label: 'Neutral' },
+  { id: 'pronated', label: 'Pronated' },
+  { id: 'supinated', label: 'Supinated' },
+  { id: 'semi_pronated', label: 'Semi-Pronated' },
+  { id: 'semi_supinated', label: 'Semi-Supinated' },
+  { id: 'rotating', label: 'Rotating' },
+  { id: '1up_1down', label: '1up/1down' },
+  { id: 'flat_palms_up', label: 'Flat Palms Up' },
+  { id: 'other', label: 'Other' },
 ];
 
-// Grip Width options for upper body exercises
+// Grip Width options: { id, label }
 export const GRIP_WIDTHS = [
-  "Narrow", "Shoulder Width", "Wide", "Extra Narrow", "Extra Wide"
+  { id: 'extra_narrow', label: 'Extra Narrow' },
+  { id: 'narrow', label: 'Narrow' },
+  { id: 'shoulder_width', label: 'Shoulder Width' },
+  { id: 'wide', label: 'Wide' },
+  { id: 'extra_wide', label: 'Extra Wide' },
 ];
 
-// Stance Type options for leg exercises
+// Stance Type options: { id, label, sublabel? } — label = primary, sublabel = secondary line in UI
 export const STANCE_TYPES = [
-  "Neutral (Feet Forward)", "Toes Out (External Rotation)", 
-  "Toes In (Internal Rotation)", "Split Stance", "Other"
+  { id: 'neutral_feet_forward', label: 'Neutral', sublabel: 'Feet Forward' },
+  { id: 'toes_out_external_rotation', label: 'External Rotation', sublabel: 'Toes Out' },
+  { id: 'toes_in_internal_rotation', label: 'Internal Rotation', sublabel: 'Toes In' },
+  { id: 'split_stance', label: 'Split Stance' },
+  { id: 'other', label: 'Other' },
 ];
 
-// Stance Width options for leg exercises
+// Stance Width options: { id, label }
 export const STANCE_WIDTHS = [
-  "Narrow", "Shoulder Width", "Wide", "Extra Narrow", "Extra Wide"
+  { id: 'extra_narrow', label: 'Extra Narrow' },
+  { id: 'narrow', label: 'Narrow' },
+  { id: 'shoulder_width', label: 'Shoulder Width' },
+  { id: 'wide', label: 'Wide' },
+  { id: 'extra_wide', label: 'Extra Wide' },
 ];
 
-// Full option lists used in equipment mapping (for reference / reuse)
-const GRIP_WIDTH_FULL = ["Extra Narrow", "Narrow", "Shoulder Width", "Wide", "Extra Wide"];
-const STANCE_TYPE_FULL = ["Neutral (Feet Forward)", "Toes Out (External Rotation)", "Toes In (Internal Rotation)", "Split Stance", "Other"];
-const STANCE_WIDTH_FULL = ["Extra Narrow", "Narrow", "Shoulder Width", "Wide", "Extra Wide"];
+// Lookup by id for display
+export const GRIP_TYPES_BY_ID = Object.fromEntries(GRIP_TYPES.map(o => [o.id, o]));
+export const GRIP_WIDTHS_BY_ID = Object.fromEntries(GRIP_WIDTHS.map(o => [o.id, o]));
+export const STANCE_TYPES_BY_ID = Object.fromEntries(STANCE_TYPES.map(o => [o.id, o]));
+export const STANCE_WIDTHS_BY_ID = Object.fromEntries(STANCE_WIDTHS.map(o => [o.id, o]));
+export const CABLE_ATTACHMENTS_BY_ID = Object.fromEntries(CABLE_ATTACHMENTS.map(o => [o.id, o]));
+export const SINGLE_DOUBLE_OPTIONS_BY_ID = Object.fromEntries(SINGLE_DOUBLE_OPTIONS.map(o => [o.id, o]));
+
+/** Normalize saved value to option id (pass through if already id, else resolve legacy label). */
+export function optionIdFromLegacy(value, optionList, byId) {
+  if (!value) return '';
+  if (byId && byId[value]) return value;
+  const option = optionList.find(
+    o => o.label === value ||
+      (o.sublabel && `${o.label} (${o.sublabel})` === value) ||
+      (o.sublabel && `${o.sublabel} (${o.label})` === value)
+  );
+  return option ? option.id : value;
+}
+
+// Id arrays for equipment mapping (values in EQUIPMENT_GRIP_STANCE_OPTIONS)
+const GRIP_WIDTH_FULL_IDS = GRIP_WIDTHS.map(o => o.id);
+const STANCE_TYPE_FULL_IDS = STANCE_TYPES.map(o => o.id);
+const STANCE_WIDTH_FULL_IDS = STANCE_WIDTHS.map(o => o.id);
+const STANCE_TYPE_LEG_MACHINE_IDS = ['neutral_feet_forward', 'toes_out_external_rotation', 'other'];
+const STANCE_TYPE_TRAP_IDS = ['neutral_feet_forward', 'toes_out_external_rotation'];
 
 /**
  * Per-equipment options for Grip Type, Grip Width, Stance Type, Stance Width.
- * null/undefined or empty array = field not applicable (do not show).
+ * Values are arrays of option ids. null/undefined or empty array = field not applicable (do not show).
  */
 export const EQUIPMENT_GRIP_STANCE_OPTIONS = {
   // Bars
   "Barbell": {
-    gripType: ["Pronated", "Supinated", "1up/1down"],
-    gripWidth: GRIP_WIDTH_FULL,
-    stanceType: STANCE_TYPE_FULL,
-    stanceWidth: STANCE_WIDTH_FULL,
+    gripType: ["pronated", "supinated", "1up_1down"],
+    gripWidth: GRIP_WIDTH_FULL_IDS,
+    stanceType: STANCE_TYPE_FULL_IDS,
+    stanceWidth: STANCE_WIDTH_FULL_IDS,
   },
   "EZ Bar": {
-    gripType: ["Semi-Pronated", "Semi-Supinated"],
-    gripWidth: ["Narrow", "Shoulder Width", "Wide"],
-    stanceType: STANCE_TYPE_FULL,
-    stanceWidth: STANCE_WIDTH_FULL,
+    gripType: ["semi_pronated", "semi_supinated"],
+    gripWidth: ["narrow", "shoulder_width", "wide"],
+    stanceType: STANCE_TYPE_FULL_IDS,
+    stanceWidth: STANCE_WIDTH_FULL_IDS,
   },
   "Trap Bar (Hex Bar)": {
-    gripType: ["Neutral", "Semi-Pronated", "Semi-Supinated"],
+    gripType: ["neutral", "semi_pronated", "semi_supinated"],
     gripWidth: null,
-    stanceType: ["Neutral (Feet Forward)", "Toes Out (External Rotation)"],
-    stanceWidth: STANCE_WIDTH_FULL,
+    stanceType: STANCE_TYPE_TRAP_IDS,
+    stanceWidth: STANCE_WIDTH_FULL_IDS,
   },
   "Safety Squat Bar": {
     gripType: null,
     gripWidth: null,
-    stanceType: STANCE_TYPE_FULL,
-    stanceWidth: STANCE_WIDTH_FULL,
+    stanceType: STANCE_TYPE_FULL_IDS,
+    stanceWidth: STANCE_WIDTH_FULL_IDS,
   },
   "Swiss / Football Bar": {
-    gripType: ["Neutral", "Semi-Pronated"],
-    gripWidth: GRIP_WIDTH_FULL,
-    stanceType: STANCE_TYPE_FULL,
-    stanceWidth: STANCE_WIDTH_FULL,
+    gripType: ["neutral", "semi_pronated"],
+    gripWidth: GRIP_WIDTH_FULL_IDS,
+    stanceType: STANCE_TYPE_FULL_IDS,
+    stanceWidth: STANCE_WIDTH_FULL_IDS,
   },
   "Cambered Bar": {
-    gripType: ["Pronated", "1up/1down", "Supinated", "Neutral", "Semi-Pronated", "Semi-Supinated"],
-    gripWidth: GRIP_WIDTH_FULL,
-    stanceType: STANCE_TYPE_FULL,
-    stanceWidth: STANCE_WIDTH_FULL,
+    gripType: ["pronated", "1up_1down", "supinated", "neutral", "semi_pronated", "semi_supinated"],
+    gripWidth: GRIP_WIDTH_FULL_IDS,
+    stanceType: STANCE_TYPE_FULL_IDS,
+    stanceWidth: STANCE_WIDTH_FULL_IDS,
   },
-  // Load Type
+  // Free-Weights
   "Dumbbell": {
-    gripType: ["Pronated", "Supinated", "Neutral", "1up/1down", "Semi-Pronated", "Semi-Supinated", "Rotating", "Other"],
-    gripWidth: GRIP_WIDTH_FULL,
-    stanceType: STANCE_TYPE_FULL,
-    stanceWidth: STANCE_WIDTH_FULL,
+    gripType: ["pronated", "supinated", "neutral", "1up_1down", "semi_pronated", "semi_supinated", "rotating", "other"],
+    gripWidth: GRIP_WIDTH_FULL_IDS,
+    stanceType: STANCE_TYPE_FULL_IDS,
+    stanceWidth: STANCE_WIDTH_FULL_IDS,
   },
   "Kettlebell": {
-    gripType: ["Pronated", "Supinated", "Neutral", "Semi-Pronated", "Semi-Supinated"],
-    gripWidth: GRIP_WIDTH_FULL,
-    stanceType: STANCE_TYPE_FULL,
-    stanceWidth: STANCE_WIDTH_FULL,
+    gripType: ["pronated", "supinated", "neutral", "semi_pronated", "semi_supinated"],
+    gripWidth: GRIP_WIDTH_FULL_IDS,
+    stanceType: STANCE_TYPE_FULL_IDS,
+    stanceWidth: STANCE_WIDTH_FULL_IDS,
   },
   "Plate": {
-    gripType: ["Pronated", "Neutral", "Other", "Semi-Pronated", "Semi-Supinated", "Flat Palms Up", "Supinated"],
+    gripType: ["pronated", "neutral", "other", "semi_pronated", "semi_supinated", "flat_palms_up", "supinated"],
     gripWidth: null,
-    stanceType: STANCE_TYPE_FULL,
-    stanceWidth: STANCE_WIDTH_FULL,
+    stanceType: STANCE_TYPE_FULL_IDS,
+    stanceWidth: STANCE_WIDTH_FULL_IDS,
   },
   "Medicine Ball": {
     gripType: null,
-    gripWidth: GRIP_WIDTH_FULL,
-    stanceType: STANCE_TYPE_FULL,
-    stanceWidth: STANCE_WIDTH_FULL,
+    gripWidth: GRIP_WIDTH_FULL_IDS,
+    stanceType: STANCE_TYPE_FULL_IDS,
+    stanceWidth: STANCE_WIDTH_FULL_IDS,
   },
   "Sandbag": {
-    gripType: ["Neutral", "Pronated", "Other"],
-    gripWidth: GRIP_WIDTH_FULL,
-    stanceType: STANCE_TYPE_FULL,
-    stanceWidth: STANCE_WIDTH_FULL,
+    gripType: ["neutral", "pronated", "other"],
+    gripWidth: GRIP_WIDTH_FULL_IDS,
+    stanceType: STANCE_TYPE_FULL_IDS,
+    stanceWidth: STANCE_WIDTH_FULL_IDS,
   },
   "Weighted Vest": {
     gripType: null,
     gripWidth: null,
-    stanceType: STANCE_TYPE_FULL,
-    stanceWidth: STANCE_WIDTH_FULL,
+    stanceType: STANCE_TYPE_FULL_IDS,
+    stanceWidth: STANCE_WIDTH_FULL_IDS,
   },
   "Bodyweight": {
-    gripType: ["Pronated", "Supinated", "Neutral", "Rotating", "1up/1down", "Semi-Pronated", "Semi-Supinated", "Other"],
-    gripWidth: GRIP_WIDTH_FULL,
-    stanceType: STANCE_TYPE_FULL,
-    stanceWidth: STANCE_WIDTH_FULL,
+    gripType: ["pronated", "supinated", "neutral", "rotating", "1up_1down", "semi_pronated", "semi_supinated", "other"],
+    gripWidth: GRIP_WIDTH_FULL_IDS,
+    stanceType: STANCE_TYPE_FULL_IDS,
+    stanceWidth: STANCE_WIDTH_FULL_IDS,
   },
   "Band": {
-    gripType: ["Pronated", "Supinated", "Neutral", "1up/1down", "Semi-Pronated", "Semi-Supinated", "Rotating", "Other"],
+    gripType: ["pronated", "supinated", "neutral", "1up_1down", "semi_pronated", "semi_supinated", "rotating", "other"],
     gripWidth: null,
-    stanceType: STANCE_TYPE_FULL,
-    stanceWidth: STANCE_WIDTH_FULL,
+    stanceType: STANCE_TYPE_FULL_IDS,
+    stanceWidth: STANCE_WIDTH_FULL_IDS,
   },
   "Chains": {
     gripType: null,
     gripWidth: null,
-    stanceType: STANCE_TYPE_FULL,
-    stanceWidth: STANCE_WIDTH_FULL,
+    stanceType: STANCE_TYPE_FULL_IDS,
+    stanceWidth: STANCE_WIDTH_FULL_IDS,
   },
   // Machines
   "Machine (Selectorized)": {
-    gripType: ["Neutral", "Pronated", "Semi-Pronated", "Supinated", "1up/1down", "Semi-Supinated", "Rotating"],
-    gripWidth: GRIP_WIDTH_FULL,
-    stanceType: ["Neutral (Feet Forward)", "Toes Out (External Rotation)", "Other"],
-    stanceWidth: STANCE_WIDTH_FULL,
+    gripType: ["neutral", "pronated", "semi_pronated", "supinated", "1up_1down", "semi_supinated", "rotating"],
+    gripWidth: GRIP_WIDTH_FULL_IDS,
+    stanceType: STANCE_TYPE_LEG_MACHINE_IDS,
+    stanceWidth: STANCE_WIDTH_FULL_IDS,
   },
   "Plate Loaded (Machine)": {
-    gripType: ["Neutral", "Pronated", "Semi-Pronated", "Supinated", "1up/1down", "Semi-Supinated", "Rotating"],
-    gripWidth: GRIP_WIDTH_FULL,
-    stanceType: ["Neutral (Feet Forward)", "Toes Out (External Rotation)", "Other"],
-    stanceWidth: STANCE_WIDTH_FULL,
+    gripType: ["neutral", "pronated", "semi_pronated", "supinated", "1up_1down", "semi_supinated", "rotating"],
+    gripWidth: GRIP_WIDTH_FULL_IDS,
+    stanceType: STANCE_TYPE_LEG_MACHINE_IDS,
+    stanceWidth: STANCE_WIDTH_FULL_IDS,
   },
   "Smith Machine": {
-    gripType: ["Pronated", "1up/1down", "Supinated"],
-    gripWidth: GRIP_WIDTH_FULL,
-    stanceType: ["Neutral (Feet Forward)", "Toes Out (External Rotation)", "Other"],
-    stanceWidth: STANCE_WIDTH_FULL,
+    gripType: ["pronated", "1up_1down", "supinated"],
+    gripWidth: GRIP_WIDTH_FULL_IDS,
+    stanceType: STANCE_TYPE_LEG_MACHINE_IDS,
+    stanceWidth: STANCE_WIDTH_FULL_IDS,
   },
   // Cable
   "Cable": {
-    gripType: ["Pronated", "Supinated", "Neutral", "1up/1down", "Semi-Pronated", "Semi-Supinated", "Rotating", "Other"],
-    gripWidth: GRIP_WIDTH_FULL,
-    stanceType: STANCE_TYPE_FULL,
-    stanceWidth: STANCE_WIDTH_FULL,
+    gripType: ["pronated", "supinated", "neutral", "1up_1down", "semi_pronated", "semi_supinated", "rotating", "other"],
+    gripWidth: GRIP_WIDTH_FULL_IDS,
+    stanceType: STANCE_TYPE_FULL_IDS,
+    stanceWidth: STANCE_WIDTH_FULL_IDS,
   },
   // Suspension
   "TRX / Suspension Trainer": {
-    gripType: ["Neutral", "Rotating", "Semi-Supinated", "1up/1down", "Semi-Pronated", "Supinated", "Pronated"],
+    gripType: ["neutral", "rotating", "semi_supinated", "1up_1down", "semi_pronated", "supinated", "pronated"],
     gripWidth: null,
-    stanceType: STANCE_TYPE_FULL,
-    stanceWidth: STANCE_WIDTH_FULL,
+    stanceType: STANCE_TYPE_FULL_IDS,
+    stanceWidth: STANCE_WIDTH_FULL_IDS,
   },
   "Rings": {
-    gripType: ["Neutral", "Rotating", "Semi-Supinated", "1up/1down", "Semi-Pronated", "Supinated", "Pronated"],
-    gripWidth: ["Extra Narrow", "Narrow", "Shoulder Width", "Extra Wide", "Wide"],
-    stanceType: STANCE_TYPE_FULL,
+    gripType: ["neutral", "rotating", "semi_supinated", "1up_1down", "semi_pronated", "supinated", "pronated"],
+    gripWidth: ["extra_narrow", "narrow", "shoulder_width", "extra_wide", "wide"],
+    stanceType: STANCE_TYPE_FULL_IDS,
     stanceWidth: null,
   },
   // Stability
@@ -207,14 +272,14 @@ export const EQUIPMENT_GRIP_STANCE_OPTIONS = {
   "BOSU": {
     gripType: null,
     gripWidth: null,
-    stanceType: STANCE_TYPE_FULL,
+    stanceType: STANCE_TYPE_FULL_IDS,
     stanceWidth: null,
   },
   "Balance Pad": { gripType: null, gripWidth: null, stanceType: null, stanceWidth: null },
   "Sliders": {
     gripType: null,
     gripWidth: null,
-    stanceType: STANCE_TYPE_FULL,
+    stanceType: STANCE_TYPE_FULL_IDS,
     stanceWidth: null,
   },
   // Functional
@@ -225,108 +290,108 @@ export const EQUIPMENT_GRIP_STANCE_OPTIONS = {
   "Mace": { gripType: null, gripWidth: null, stanceType: null, stanceWidth: null },
   "Steel / Indian Club": { gripType: null, gripWidth: null, stanceType: null, stanceWidth: null },
   "Ropes": {
-    gripType: ["Neutral", "Other", "Semi-Pronated", "Semi-Supinated", "Supinated", "Pronated"],
+    gripType: ["neutral", "other", "semi_pronated", "semi_supinated", "supinated", "pronated"],
     gripWidth: null,
     stanceType: null,
-    stanceWidth: STANCE_WIDTH_FULL,
+    stanceWidth: STANCE_WIDTH_FULL_IDS,
   },
   // Other
   "Other": {
-    gripType: ["Pronated", "Supinated", "Neutral", "1up/1down", "Semi-Pronated", "Semi-Supinated", "Rotating", "Other"],
+    gripType: ["pronated", "supinated", "neutral", "1up_1down", "semi_pronated", "semi_supinated", "rotating", "other"],
     gripWidth: null,
-    stanceType: STANCE_TYPE_FULL,
-    stanceWidth: STANCE_WIDTH_FULL,
+    stanceType: STANCE_TYPE_FULL_IDS,
+    stanceWidth: STANCE_WIDTH_FULL_IDS,
   },
 };
 
 /**
  * When Cable equipment has a Cable Attachment selected, use these options instead of base Cable.
- * Key = attachment name; value = same shape as EQUIPMENT_GRIP_STANCE_OPTIONS.
+ * Key = attachment id; value = same shape as EQUIPMENT_GRIP_STANCE_OPTIONS (arrays of ids).
  */
 export const CABLE_ATTACHMENT_GRIP_STANCE_OPTIONS = {
-  "Rope": {
-    gripType: ["Neutral", "Semi-Supinated", "Semi-Pronated", "Rotating"],
+  "rope": {
+    gripType: ["neutral", "semi_supinated", "semi_pronated", "rotating"],
     gripWidth: null,
     stanceType: null,
     stanceWidth: null,
   },
-  "Lat Pulldown Bar": {
-    gripType: ["Supinated", "Pronated"],
-    gripWidth: GRIP_WIDTH_FULL,
+  "lat_pulldown_bar": {
+    gripType: ["supinated", "pronated"],
+    gripWidth: GRIP_WIDTH_FULL_IDS,
     stanceType: null,
     stanceWidth: null,
   },
-  "Straight Bar": {
-    gripType: ["Supinated", "Pronated"],
-    gripWidth: ["Extra Wide", "Extra Narrow", "Wide", "Shoulder Width", "Narrow"],
+  "straight_bar": {
+    gripType: ["supinated", "pronated"],
+    gripWidth: ["extra_wide", "extra_narrow", "wide", "shoulder_width", "narrow"],
     stanceType: null,
     stanceWidth: null,
   },
-  "Single Handle": {
-    gripType: ["Neutral", "Pronated", "Supinated", "Semi-Pronated", "Semi-Supinated", "Rotating", "Other"],
+  "single_handle": {
+    gripType: ["neutral", "pronated", "supinated", "semi_pronated", "semi_supinated", "rotating", "other"],
     gripWidth: null,
     stanceType: null,
     stanceWidth: null,
   },
-  "V-Grip": {
-    gripType: ["Neutral", "Semi-Pronated", "Semi-Supinated"],
-    gripWidth: ["Narrow", "Extra Narrow"],
+  "v_grip": {
+    gripType: ["neutral", "semi_pronated", "semi_supinated"],
+    gripWidth: ["narrow", "extra_narrow"],
     stanceType: null,
     stanceWidth: null,
   },
-  "MAG Grip Bar": {
-    gripType: ["Neutral", "Semi-Pronated", "Semi-Supinated"],
-    gripWidth: GRIP_WIDTH_FULL,
+  "mag_grip_bar": {
+    gripType: ["neutral", "semi_pronated", "semi_supinated"],
+    gripWidth: GRIP_WIDTH_FULL_IDS,
     stanceType: null,
     stanceWidth: null,
   },
-  "PRO-Style Bar": {
-    gripType: ["Neutral", "Pronated", "Supinated", "Semi-Pronated", "Semi-Supinated"],
-    gripWidth: GRIP_WIDTH_FULL,
+  "pro_style_bar": {
+    gripType: ["neutral", "pronated", "supinated", "semi_pronated", "semi_supinated"],
+    gripWidth: GRIP_WIDTH_FULL_IDS,
     stanceType: null,
     stanceWidth: null,
   },
-  "Multi/T-Bar Style": {
-    gripType: ["Neutral"],
-    gripWidth: ["Shoulder Width"],
+  "multi_t_bar_style": {
+    gripType: ["neutral"],
+    gripWidth: ["shoulder_width"],
     stanceType: null,
     stanceWidth: null,
   },
-  "Multi-Row": {
-    gripType: ["Neutral", "Pronated", "Supinated", "Semi-Pronated", "Semi-Supinated"],
-    gripWidth: GRIP_WIDTH_FULL,
+  "multi_row": {
+    gripType: ["neutral", "pronated", "supinated", "semi_pronated", "semi_supinated"],
+    gripWidth: GRIP_WIDTH_FULL_IDS,
     stanceType: null,
     stanceWidth: null,
   },
-  "EZ Bar": {
-    gripType: ["Semi-Pronated", "Semi-Supinated"],
-    gripWidth: ["Narrow", "Shoulder Width", "Wide"],
+  "ez_bar": {
+    gripType: ["semi_pronated", "semi_supinated"],
+    gripWidth: ["narrow", "shoulder_width", "wide"],
     stanceType: null,
     stanceWidth: null,
   },
-  "V-Bar": {
-    gripType: ["Semi-Pronated", "Semi-Supinated"],
-    gripWidth: ["Narrow", "Extra Narrow"],
+  "v_bar": {
+    gripType: ["semi_pronated", "semi_supinated"],
+    gripWidth: ["narrow", "extra_narrow"],
     stanceType: null,
     stanceWidth: null,
   },
-  "Ankle Strap": {
-    gripType: ["Neutral"],
+  "ankle_strap": {
+    gripType: ["neutral"],
     gripWidth: null,
     stanceType: null,
     stanceWidth: null,
   },
-  "Ab Harness": {
+  "ab_harness": {
     gripType: null,
     gripWidth: null,
     stanceType: null,
     stanceWidth: null,
   },
-  "Other": {
-    gripType: ["Neutral", "Pronated", "Supinated", "Semi-Pronated", "Semi-Supinated", "Rotating", "1up/1down", "Flat Palms Up", "Other"],
-    gripWidth: GRIP_WIDTH_FULL,
-    stanceType: ["Narrow", "Shoulder Width", "Wide", "Extra Narrow", "Extra Wide"],
-    stanceWidth: ["Extra Wide", "Extra Narrow", "Wide", "Shoulder Width", "Narrow"],
+  "other": {
+    gripType: ["neutral", "pronated", "supinated", "semi_pronated", "semi_supinated", "rotating", "1up_1down", "flat_palms_up", "other"],
+    gripWidth: GRIP_WIDTH_FULL_IDS,
+    stanceType: STANCE_TYPE_FULL_IDS,
+    stanceWidth: STANCE_WIDTH_FULL_IDS,
   },
 };
 

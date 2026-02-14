@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Modal, FlatList, StyleSheet, Image } from 'react-native';
-import { Check } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
+import { STANCE_WIDTHS_BY_ID } from '@/constants/data';
+import { getStanceLabel } from '@/constants/stanceLabels';
 import { StanceTypeImages } from '@/constants/stanceImages';
 
 const PLACEHOLDER_STANCE_IMAGE = require('../../../assets/Equipment/UnselectedOrOtherGrip.png');
@@ -16,21 +17,22 @@ interface StanceTypeWidthPickerProps {
   allowClear?: boolean;
 }
 
+// Width option id -> spacing multiplier for circle button
 const WIDTH_SPACING: Record<string, number> = {
-  'Extra Narrow': 0.1,
-  'Narrow': 0.2,
-  'Shoulder Width': 0.35,
-  'Wide': 0.5,
-  'Extra Wide': 0.65,
+  extra_narrow: 0.1,
+  narrow: 0.2,
+  shoulder_width: 0.35,
+  wide: 0.5,
+  extra_wide: 0.65,
 };
 
-// Gap between the two vertical lines in the width icon (px) — same container size for all
+// Width option id -> gap between the two vertical lines (px)
 const WIDTH_ICON_GAP: Record<string, number> = {
-  'Extra Narrow': 2,
-  'Narrow': 5,
-  'Shoulder Width': 10,
-  'Wide': 14,
-  'Extra Wide': 18,
+  extra_narrow: 2,
+  narrow: 5,
+  shoulder_width: 10,
+  wide: 14,
+  extra_wide: 18,
 };
 
 const LINE_WIDTH = 2;
@@ -38,7 +40,7 @@ const LINE_HEIGHT = 14;
 const WIDTH_ICON_CONTAINER_SIZE = 24;
 
 const WidthIcon: React.FC<{ widthOption: string }> = ({ widthOption }) => {
-  const gap = WIDTH_ICON_GAP[widthOption] ?? WIDTH_ICON_GAP['Shoulder Width'];
+  const gap = WIDTH_ICON_GAP[widthOption] ?? WIDTH_ICON_GAP.shoulder_width;
   const totalInnerWidth = LINE_WIDTH * 2 + gap;
   return (
     <View style={[styles.widthIconContainer, { width: WIDTH_ICON_CONTAINER_SIZE, height: WIDTH_ICON_CONTAINER_SIZE }]}>
@@ -83,8 +85,8 @@ const StanceTypeWidthPicker: React.FC<StanceTypeWidthPickerProps> = ({
   };
 
   const renderCircleButton = (isPreview: boolean = false) => {
-    const effectiveWidth = stanceWidth || 'Shoulder Width';
-    const spacingMultiplier = WIDTH_SPACING[effectiveWidth] || WIDTH_SPACING['Shoulder Width'];
+    const effectiveWidth = stanceWidth || 'shoulder_width';
+    const spacingMultiplier = WIDTH_SPACING[effectiveWidth] ?? WIDTH_SPACING.shoulder_width;
     const spacing = spacingMultiplier * 40;
     const buttonWidth = 72 + spacing;
     const buttonHeight = 72;
@@ -106,7 +108,7 @@ const StanceTypeWidthPicker: React.FC<StanceTypeWidthPickerProps> = ({
       { width: buttonWidth, height: buttonHeight }
     ];
 
-    if (stanceType === 'Other') {
+    if (stanceType === 'other') {
       return (
         <View style={buttonStyle}>
           <View style={[styles.splitImageContainer, { height: imageSize }]}>
@@ -150,8 +152,8 @@ const StanceTypeWidthPicker: React.FC<StanceTypeWidthPickerProps> = ({
       <TouchableOpacity onPress={() => setIsOpen(true)} style={styles.triggerCircleWrapper} activeOpacity={0.7}>
         {renderCircleButton(false)}
         <View style={styles.labelContainer}>
-          {stanceType ? <Text style={[styles.circleLabel, styles.textSelected]} numberOfLines={1}>Option {stanceType}</Text> : null}
-          {stanceWidth ? <Text style={[styles.circleLabel, styles.textSelected]} numberOfLines={1}>{stanceWidth}</Text> : null}
+          {stanceType ? <Text style={[styles.circleLabel, styles.textSelected]} numberOfLines={1}>{getStanceLabel(stanceType).main}</Text> : null}
+          {stanceWidth ? <Text style={[styles.circleLabel, styles.textSelected]} numberOfLines={1}>{STANCE_WIDTHS_BY_ID[stanceWidth]?.label ?? stanceWidth}</Text> : null}
           {!stanceType && !stanceWidth && <Text style={[styles.circleLabel, styles.textPlaceholder]} numberOfLines={1}>Stance</Text>}
         </View>
       </TouchableOpacity>
@@ -179,9 +181,13 @@ const StanceTypeWidthPicker: React.FC<StanceTypeWidthPickerProps> = ({
                           style={[styles.option, isSelected && styles.optionSelected, isLastItem && styles.optionLast]}
                           onPress={() => handleSelectType(item)}
                         >
-                          {item === 'Other' ? <View style={[styles.optionIcon, styles.optionIconCenter]}><CircleOutlineIcon size={14} /></View> : icon ? <Image source={icon} style={styles.optionIcon} resizeMode="contain" /> : <View style={styles.iconPlaceholder} />}
-                          <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>{item}</Text>
-                          {isSelected && <Check size={16} color={COLORS.blue[600]} />}
+                          {item === 'other' ? <View style={[styles.optionIcon, styles.optionIconCenter]}><CircleOutlineIcon size={14} /></View> : icon ? <Image source={icon} style={styles.optionIcon} resizeMode="contain" /> : <View style={styles.iconPlaceholder} />}
+                          <View style={styles.optionLabelWrap}>
+                            <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>{getStanceLabel(item).main}</Text>
+                            {getStanceLabel(item).sub != null ? (
+                              <Text style={[styles.optionSubLabel, isSelected && styles.optionSubLabelSelected]}>{getStanceLabel(item).sub}</Text>
+                            ) : null}
+                          </View>
                         </TouchableOpacity>
                       );
                     }}
@@ -204,8 +210,7 @@ const StanceTypeWidthPicker: React.FC<StanceTypeWidthPickerProps> = ({
                           onPress={() => handleSelectWidth(item)}
                         >
                           <WidthIcon widthOption={item} />
-                          <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>{item}</Text>
-                          {isSelected && <Check size={16} color={COLORS.blue[600]} />}
+                          <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>{STANCE_WIDTHS_BY_ID[item]?.label ?? item}</Text>
                         </TouchableOpacity>
                       );
                     }}
@@ -302,8 +307,11 @@ const styles = StyleSheet.create({
   widthIconLine: { backgroundColor: COLORS.slate[600], borderRadius: 1 },
   circleOutlineIcon: { borderWidth: 1, borderColor: COLORS.slate[500], backgroundColor: 'transparent' },
   optionSelected: { backgroundColor: COLORS.blue[50] },
-  optionText: { fontSize: 15, color: COLORS.slate[700], fontWeight: '500', flex: 1 },
+  optionLabelWrap: { flex: 1, justifyContent: 'center' },
+  optionText: { fontSize: 15, color: COLORS.slate[700], fontWeight: '500' },
   optionTextSelected: { color: COLORS.blue[600], fontWeight: '500' },
+  optionSubLabel: { fontSize: 12, color: COLORS.slate[500], marginTop: 2 },
+  optionSubLabelSelected: { color: COLORS.blue[500] },
   footerRow: {
     flexDirection: 'row',
     alignItems: 'center',

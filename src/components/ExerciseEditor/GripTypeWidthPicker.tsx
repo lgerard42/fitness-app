@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, FlatList, StyleSheet, Image, ImageSourcePropType } from 'react-native';
-import { Check } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, Modal, FlatList, StyleSheet, Image } from 'react-native';
 import { COLORS } from '@/constants/colors';
+import { GRIP_TYPES_BY_ID, GRIP_WIDTHS_BY_ID } from '@/constants/data';
 import { GripImages } from '@/constants/gripImages';
 
 const PLACEHOLDER_GRIP_IMAGE = require('../../../assets/Equipment/UnselectedOrOtherGrip.png');
@@ -16,22 +16,22 @@ interface GripTypeWidthPickerProps {
   allowClear?: boolean;
 }
 
-// Width spacing multipliers (relative to base circle button width)
+// Width option id -> spacing multiplier for circle button
 const WIDTH_SPACING: Record<string, number> = {
-  'Extra Narrow': 0.1,
-  'Narrow': 0.2,
-  'Shoulder Width': 0.35,
-  'Wide': 0.5,
-  'Extra Wide': 0.65,
+  extra_narrow: 0.1,
+  narrow: 0.2,
+  shoulder_width: 0.35,
+  wide: 0.5,
+  extra_wide: 0.65,
 };
 
-// Gap between the two vertical lines in the width icon (px) — same container size for all
+// Width option id -> gap between the two vertical lines (px)
 const WIDTH_ICON_GAP: Record<string, number> = {
-  'Extra Narrow': 2,
-  'Narrow': 5,
-  'Shoulder Width': 10,
-  'Wide': 14,
-  'Extra Wide': 18,
+  extra_narrow: 2,
+  narrow: 5,
+  shoulder_width: 10,
+  wide: 14,
+  extra_wide: 18,
 };
 
 const LINE_WIDTH = 2;
@@ -39,7 +39,7 @@ const LINE_HEIGHT = 14;
 const WIDTH_ICON_CONTAINER_SIZE = 24;
 
 const WidthIcon: React.FC<{ widthOption: string }> = ({ widthOption }) => {
-  const gap = WIDTH_ICON_GAP[widthOption] ?? WIDTH_ICON_GAP['Shoulder Width'];
+  const gap = WIDTH_ICON_GAP[widthOption] ?? WIDTH_ICON_GAP.shoulder_width;
   const totalInnerWidth = LINE_WIDTH * 2 + gap;
   return (
     <View style={[styles.widthIconContainer, { width: WIDTH_ICON_CONTAINER_SIZE, height: WIDTH_ICON_CONTAINER_SIZE }]}>
@@ -80,8 +80,8 @@ const GripTypeWidthPicker: React.FC<GripTypeWidthPickerProps> = ({
   };
 
   const renderCircleButton = (isPreview: boolean = false) => {
-    const effectiveWidth = gripWidth || 'Shoulder Width';
-    const spacingMultiplier = WIDTH_SPACING[effectiveWidth] || WIDTH_SPACING['Shoulder Width'];
+    const effectiveWidth = gripWidth || 'shoulder_width';
+    const spacingMultiplier = WIDTH_SPACING[effectiveWidth] ?? WIDTH_SPACING.shoulder_width;
     const spacing = spacingMultiplier * 40;
     const buttonWidth = 72 + spacing;
     const buttonHeight = 72;
@@ -159,12 +159,12 @@ const GripTypeWidthPicker: React.FC<GripTypeWidthPickerProps> = ({
         <View style={styles.labelContainer}>
           {gripType ? (
             <Text style={[styles.circleLabel, styles.textSelected]} numberOfLines={1}>
-              {gripType} Grip
+              {GRIP_TYPES_BY_ID[gripType]?.label ?? gripType} Grip
             </Text>
           ) : null}
           {gripWidth ? (
             <Text style={[styles.circleLabel, styles.textSelected]} numberOfLines={1}>
-              {gripWidth}
+              {GRIP_WIDTHS_BY_ID[gripWidth]?.label ?? gripWidth}
             </Text>
           ) : null}
           {!gripType && !gripWidth && (
@@ -219,9 +219,8 @@ const GripTypeWidthPicker: React.FC<GripTypeWidthPickerProps> = ({
                             <View style={styles.iconPlaceholder} />
                           )}
                           <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>
-                            {item}
+                            {GRIP_TYPES_BY_ID[item]?.label ?? item}
                           </Text>
-                          {isSelected && <Check size={16} color={COLORS.blue[600]} />}
                         </TouchableOpacity>
                       );
                     }}
@@ -249,9 +248,8 @@ const GripTypeWidthPicker: React.FC<GripTypeWidthPickerProps> = ({
                         >
                           <WidthIcon widthOption={item} />
                           <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>
-                            {item}
+                            {GRIP_WIDTHS_BY_ID[item]?.label ?? item}
                           </Text>
-                          {isSelected && <Check size={16} color={COLORS.blue[600]} />}
                         </TouchableOpacity>
                       );
                     }}
