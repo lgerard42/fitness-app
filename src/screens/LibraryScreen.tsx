@@ -7,7 +7,7 @@ import { useCategoriesAsStrings } from '@/database/useExerciseConfig';
 import { useWorkout } from '@/context/WorkoutContext';
 import EditExercise from '@/components/ExerciseEditor';
 import ExerciseHistoryModal from '@/components/ExerciseHistoryModal';
-import type { ExerciseLibraryItem } from '@/types/workout';
+import type { ExerciseLibraryItem, ExerciseCategory } from '@/types/workout';
 
 const LibraryScreen: React.FC = () => {
   const [search, setSearch] = useState("");
@@ -90,7 +90,7 @@ const LibraryScreen: React.FC = () => {
         isOpen={isCreateModalOpen} 
         onClose={() => setIsCreateModalOpen(false)} 
         onSave={handleSaveNewExercise} 
-        categories={CATEGORIES} 
+        categories={CATEGORIES as ExerciseCategory[]} 
       />
 
       {/* Edit existing exercise modal */}
@@ -109,7 +109,7 @@ const LibraryScreen: React.FC = () => {
           }
         }}
         onSave={handleUpdateExercise}
-        categories={CATEGORIES}
+        categories={CATEGORIES as ExerciseCategory[]}
         exercise={editingExercise}
       />
 

@@ -3,12 +3,11 @@ import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import { ChevronDown, ToggleLeft, ToggleRight } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import {
-  CABLE_ATTACHMENTS,
   SINGLE_DOUBLE_OPTIONS,
   GRIP_TYPES_BY_ID,
   GRIP_WIDTHS_BY_ID,
 } from '@/constants/data';
-import { useCardioTypesAsStrings, useTrainingFocusAsStrings, usePrimaryMusclesAsStrings } from '@/database/useExerciseConfig';
+import { useCardioTypesAsStrings, useTrainingFocusAsStrings, usePrimaryMusclesAsStrings, useCableAttachments } from '@/database/useExerciseConfig';
 import { GripImages } from '@/constants/gripImages';
 import { GripWidthImages } from '@/constants/gripWidthImages';
 import Chip from './Chip';
@@ -158,17 +157,20 @@ export const TrainingFocusDropdown: React.FC<{
 export const CableAttachmentsField: React.FC<{
   value: string;
   onChange: (v: string) => void;
-}> = ({ value, onChange }) => (
-  <FieldGroup>
-    <Label>{FIELD_LABELS.cableAttachments}</Label>
-    <CustomDropdown
-      value={value}
-      onChange={onChange}
-      options={CABLE_ATTACHMENTS}
-      placeholder={PLACEHOLDERS.cableAttachment}
-    />
-  </FieldGroup>
-);
+}> = ({ value, onChange }) => {
+  const CABLE_ATTACHMENTS = useCableAttachments();
+  return (
+    <FieldGroup>
+      <Label>{FIELD_LABELS.cableAttachments}</Label>
+      <CustomDropdown
+        value={value}
+        onChange={onChange}
+        options={CABLE_ATTACHMENTS}
+        placeholder={PLACEHOLDERS.cableAttachment}
+      />
+    </FieldGroup>
+  );
+};
 
 export const AssistedNegativeRow: React.FC<{
   value: boolean;

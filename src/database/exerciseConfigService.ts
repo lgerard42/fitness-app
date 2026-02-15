@@ -63,6 +63,37 @@ export interface TrainingFocus {
   short_description?: string;
 }
 
+export interface EquipmentCategory {
+  id: string;
+  label: string;
+  sub_label?: string;
+  common_names?: string;
+  icon?: string;
+  short_description?: string;
+  sub_categories_table?: string;
+}
+
+export interface GymEquipment {
+  id: string;
+  label: string;
+  sub_label?: string;
+  common_names?: string;
+  icon?: string;
+  short_description?: string;
+  equipment_categories?: string; // JSON string
+  max_instances: number;
+  cable_attachments: number;
+}
+
+export interface CableAttachment {
+  id: string;
+  label: string;
+  sub_label?: string;
+  common_names?: string;
+  icon?: string;
+  short_description?: string;
+}
+
 let dbInstance: SQLite.SQLiteDatabase | null = null;
 
 export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
@@ -337,6 +368,92 @@ export async function getCardioTypesAsStrings(): Promise<string[]> {
 export async function getTrainingFocusAsStrings(): Promise<string[]> {
   const focus = await getTrainingFocus();
   return focus.map(f => f.label);
+}
+
+export type EquipmentPickerItem = { label: string; icon?: string };
+
+/**
+ * Get equipment picker sections: { title: string; data: EquipmentPickerItem[] }[]
+ * Each item includes label and optional icon (base64) from database.
+ */
+export async function getEquipmentPickerSections(): Promise<{ title: string; data: EquipmentPickerItem[] }[]> {
+  const db = await getDatabase();
+  const eqCategories = await db.getAllAsync<{ id: string; label: string; sub_categories_table: string }>(
+    'SELECT id, label, sub_categories_table FROM equipment_categories ORDER BY id'
+  );
+  const sections: { title: string; data: EquipmentPickerItem[] }[] = [];
+
+  const subTableMap: Record<string, string> = {
+    SUPPORT_EQUIPMENT_CATEGORIES: 'support_equipment_categories',
+    WEIGHTS_EQUIPMENT_CATEGORIES: 'weights_equipment_categories',
+  };
+  for (const cat of eqCategories) {
+    const subTable = cat.sub_categories_table;
+    if (!subTable) continue;
+    const subTableSnake = subTableMap[subTable] || subTable.toLowerCase();
+    const subCats = await db.getAllAsync<{ id: string; label: string }>(
+      `SELECT id, label FROM ${subTableSnake} ORDER BY id`
+    );
+    for (const sub of subCats) {
+      const equip = await db.getAllAsync<{ label: string; icon: string }>(
+        `SELECT label, icon FROM gym_equipment WHERE equipment_categories LIKE '%"${cat.id}":"${sub.id}"%' ORDER BY label`
+      );
+      if (equip.length > 0) {
+        sections.push({
+          title: sub.label,
+          data: equip.map((e) => ({ label: e.label, icon: e.icon || undefined })),
+        });
+      }
+    }
+  }
+  return sections;
+}
+
+/**
+ * Get label -> icon (base64) map for all gym equipment. Used by EquipmentIcon component.
+ */
+export async function getEquipmentIconsByLabel(): Promise<Record<string, string>> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<{ label: string; icon: string }>(
+    'SELECT label, icon FROM gym_equipment WHERE icon != "" AND icon IS NOT NULL'
+  );
+  const map: Record<string, string> = {};
+  for (const r of rows) {
+    if (r.icon) map[r.label] = r.icon;
+  }
+  return map;
+}
+
+/**
+ * Get all gym equipment labels (flat list) for filters and backward compatibility
+ */
+export async function getGymEquipmentLabels(): Promise<string[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<{ label: string }>('SELECT label FROM gym_equipment ORDER BY label');
+  return rows.map((r) => r.label);
+}
+
+/**
+ * Get cable attachments as { id, label }[]
+ */
+export async function getCableAttachments(): Promise<{ id: string; label: string }[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<CableAttachment>('SELECT id, label FROM cable_attachments ORDER BY label');
+  return rows.map((r) => ({ id: r.id, label: r.label }));
+}
+
+/**
+ * Get equipment IDs that support single/double toggle
+ */
+export async function getSingleDoubleEquipmentLabels(): Promise<string[]> {
+  const db = await getDatabase();
+  const ids = ['DUMBBELL', 'KETTLEBELL', 'PLATE', 'CHAINS', 'CABLE', 'WEIGHTS_OTHER'];
+  const labels: string[] = [];
+  for (const id of ids) {
+    const row = await db.getFirstAsync<{ label: string }>('SELECT label FROM gym_equipment WHERE id = ?', [id]);
+    if (row) labels.push(row.label);
+  }
+  return labels;
 }
 
 /**

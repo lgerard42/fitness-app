@@ -10,42 +10,37 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
-  ImageSourcePropType,
 } from 'react-native';
 import { Check, Search, Hash } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
-import { WEIGHT_EQUIP_CATEGORIES } from '@/constants/data';
-import { EquipmentImages } from '@/constants/equipmentImages';
+import { useEquipmentPickerSections, useEquipmentIconsByLabel } from '@/database/useExerciseConfig';
+import { getEquipmentIconSource } from '@/utils/equipmentIcons';
 
-export type EquipmentSection = { title: string; data: string[] };
+export type EquipmentPickerItem = { label: string; icon?: string };
+export type EquipmentSection = { title: string; data: EquipmentPickerItem[] };
 
-/**
- * Equipment name -> image (left icon). "Reps Only" shows # icon; "Other" has no icon.
- * Images are imported from equipmentImages.ts to help Metro bundler resolve files with spaces.
- */
-const EQUIPMENT_ICON_SOURCES: Record<string, ImageSourcePropType | 'repsOnly' | 'other' | undefined> = {
-  ...EquipmentImages,
-  'Reps Only': 'repsOnly',
-  'Other': 'other',
-};
-
-/** Renders equipment icon for use in triggers (e.g. EditExercise). Size defaults to 24. */
-export const EquipmentIcon: React.FC<{ equipment: string; size?: number; noMargin?: boolean }> = ({ equipment, size = 24, noMargin = false }) => {
-  const src = EQUIPMENT_ICON_SOURCES[equipment];
+/** Renders equipment icon. Uses icon from DB (base64) when available; "Reps" shows #; "Other" shows empty. */
+export const EquipmentIcon: React.FC<{ equipment: string; size?: number; noMargin?: boolean; iconBase64?: string }> = ({
+  equipment,
+  size = 24,
+  noMargin = false,
+  iconBase64,
+}) => {
+  const iconsByLabel = useEquipmentIconsByLabel();
+  const base64 = iconBase64 ?? (equipment ? iconsByLabel[equipment] : undefined);
   const boxStyle = { width: size, height: size, ...(noMargin ? {} : { marginRight: 10 }) };
-  if (!equipment || src === 'other' || src === undefined) {
-    return <View style={boxStyle} />;
-  }
-  if (src === 'repsOnly') {
+
+  if (!equipment) return <View style={boxStyle} />;
+  if (equipment === 'Other') return <View style={boxStyle} />;
+  if (equipment === 'Reps' || equipment === 'Reps Only') {
     return (
       <View style={[boxStyle, { alignItems: 'center', justifyContent: 'center' }]}>
         <Hash size={size * 0.75} color={COLORS.slate[600]} />
       </View>
     );
   }
-  if (typeof src !== 'number' && typeof src !== 'object') {
-    return <View style={boxStyle} />;
-  }
+  const src = base64 ? getEquipmentIconSource(base64) : null;
+  if (!src) return <View style={boxStyle} />;
   return <Image source={src} style={[boxStyle]} resizeMode="contain" />;
 };
 
@@ -58,10 +53,6 @@ interface EquipmentPickerModalProps {
   allowClear?: boolean;
 }
 
-const ALL_SECTIONS: EquipmentSection[] = Object.entries(WEIGHT_EQUIP_CATEGORIES).map(
-  ([category, tags]) => ({ title: category, data: tags })
-);
-
 const EquipmentPickerModal: React.FC<EquipmentPickerModalProps> = ({
   visible,
   onClose,
@@ -72,23 +63,25 @@ const EquipmentPickerModal: React.FC<EquipmentPickerModalProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+  const allSections = useEquipmentPickerSections();
+  const iconsByLabel = useEquipmentIconsByLabel();
 
   const filteredSections = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return ALL_SECTIONS;
-    return ALL_SECTIONS.map((section) => {
+    if (!q) return allSections;
+    return allSections.map((section) => {
       const categoryMatches = section.title.toLowerCase().includes(q);
       const matchingData = section.data.filter((item) =>
-        item.toLowerCase().includes(q)
+        item.label.toLowerCase().includes(q)
       );
       if (categoryMatches) return { title: section.title, data: section.data };
       if (matchingData.length > 0) return { title: section.title, data: matchingData };
       return null;
     }).filter((s): s is EquipmentSection => s !== null);
-  }, [searchQuery]);
+  }, [searchQuery, allSections]);
 
-  const handleSelect = (item: string) => {
-    onSelect(item);
+  const handleSelect = (item: EquipmentPickerItem) => {
+    onSelect(item.label);
     setSearchQuery('');
     onClose();
   };
@@ -99,32 +92,26 @@ const EquipmentPickerModal: React.FC<EquipmentPickerModalProps> = ({
     onClose();
   };
 
-  const renderEquipmentIcon = (item: string) => {
-    const src = EQUIPMENT_ICON_SOURCES[item];
-    if (src === 'other' || src === undefined) return <View style={styles.iconPlaceholder} />;
-    if (src === 'repsOnly') {
+  const renderEquipmentIcon = (itemOrLabel: EquipmentPickerItem | string) => {
+    const label = typeof itemOrLabel === 'string' ? itemOrLabel : itemOrLabel.label;
+    const iconBase64 = typeof itemOrLabel === 'string' ? iconsByLabel[label] : itemOrLabel.icon ?? iconsByLabel[label];
+    if (label === 'Other') return <View style={styles.iconPlaceholder} />;
+    if (label === 'Reps') {
       return (
         <View style={styles.iconPlaceholder}>
           <Hash size={20} color={COLORS.slate[600]} />
         </View>
       );
     }
-    if (failedImages.has(item)) {
-      return <View style={styles.iconPlaceholder} />;
-    }
-    // Check if src is a valid ImageSourcePropType (number from require)
-    if (typeof src !== 'number' && typeof src !== 'object') {
-      return <View style={styles.iconPlaceholder} />;
-    }
+    if (failedImages.has(label)) return <View style={styles.iconPlaceholder} />;
+    const src = iconBase64 ? getEquipmentIconSource(iconBase64) : null;
+    if (!src) return <View style={styles.iconPlaceholder} />;
     return (
       <Image
         source={src}
         style={styles.equipmentIcon}
         resizeMode="contain"
-        onError={(error) => {
-          console.warn(`Failed to load image for "${item}":`, error);
-          setFailedImages((prev) => new Set(prev).add(item));
-        }}
+        onError={() => setFailedImages((prev) => new Set(prev).add(label))}
       />
     );
   };
@@ -169,7 +156,7 @@ const EquipmentPickerModal: React.FC<EquipmentPickerModalProps> = ({
             </View>
             <SectionList
               sections={filteredSections}
-              keyExtractor={(item) => item}
+              keyExtractor={(item) => item.label}
               stickySectionHeadersEnabled
               renderSectionHeader={({ section: { title } }) => (
                 <View style={styles.sectionHeader}>
@@ -178,7 +165,7 @@ const EquipmentPickerModal: React.FC<EquipmentPickerModalProps> = ({
               )}
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  style={[styles.option, selectedValue === item && styles.optionSelected]}
+                  style={[styles.option, selectedValue === item.label && styles.optionSelected]}
                   onPress={() => handleSelect(item)}
                   activeOpacity={0.7}
                 >
@@ -186,13 +173,13 @@ const EquipmentPickerModal: React.FC<EquipmentPickerModalProps> = ({
                   <Text
                     style={[
                       styles.optionText,
-                      selectedValue === item && styles.optionTextSelected,
+                      selectedValue === item.label && styles.optionTextSelected,
                     ]}
                     numberOfLines={1}
                   >
-                    {item}
+                    {item.label}
                   </Text>
-                  {selectedValue === item && (
+                  {selectedValue === item.label && (
                     <Check size={18} color={COLORS.blue[600]} />
                   )}
                 </TouchableOpacity>

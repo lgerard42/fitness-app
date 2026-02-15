@@ -16,6 +16,12 @@ import {
   getCardioTypesAsStrings,
   getTrainingFocusAsStrings,
   buildPrimaryToSecondaryMap,
+  getEquipmentPickerSections,
+  getGymEquipmentLabels,
+  getCableAttachments,
+  getSingleDoubleEquipmentLabels,
+  getEquipmentIconsByLabel,
+  type EquipmentPickerItem,
   type ExerciseCategory,
   type CardioType,
   type PrimaryMuscle,
@@ -26,6 +32,11 @@ import {
 
 let dbInstance: SQLite.SQLiteDatabase | null = null;
 let categoriesCache: ExerciseCategory[] | null = null;
+let equipmentSectionsCache: { title: string; data: EquipmentPickerItem[] }[] | null = null;
+let gymEquipmentLabelsCache: string[] | null = null;
+let cableAttachmentsCache: { id: string; label: string }[] | null = null;
+let singleDoubleEquipmentCache: string[] | null = null;
+let equipmentIconsByLabelCache: Record<string, string> | null = null;
 let cardioTypesCache: CardioType[] | null = null;
 let primaryMusclesCache: PrimaryMuscle[] | null = null;
 let secondaryMusclesCache: SecondaryMuscle[] | null = null;
@@ -276,4 +287,109 @@ export function usePrimaryToSecondaryMap(): Record<string, string[]> {
   }, []);
 
   return map;
+}
+
+/**
+ * Hook to get equipment picker sections (category -> equipment list)
+ */
+export function useEquipmentPickerSections(): { title: string; data: EquipmentPickerItem[] }[] {
+  const [sections, setSections] = useState<{ title: string; data: EquipmentPickerItem[] }[]>(equipmentSectionsCache || []);
+
+  useEffect(() => {
+    if (equipmentSectionsCache) {
+      setSections(equipmentSectionsCache);
+      return;
+    }
+
+    getEquipmentPickerSections().then(data => {
+      equipmentSectionsCache = data;
+      setSections(data);
+    });
+  }, []);
+
+  return sections;
+}
+
+/**
+ * Hook to get gym equipment labels (flat list)
+ */
+export function useGymEquipmentLabels(): string[] {
+  const [labels, setLabels] = useState<string[]>(gymEquipmentLabelsCache || []);
+
+  useEffect(() => {
+    if (gymEquipmentLabelsCache) {
+      setLabels(gymEquipmentLabelsCache);
+      return;
+    }
+
+    getGymEquipmentLabels().then(data => {
+      gymEquipmentLabelsCache = data;
+      setLabels(data);
+    });
+  }, []);
+
+  return labels;
+}
+
+/**
+ * Hook to get cable attachments
+ */
+export function useCableAttachments(): { id: string; label: string }[] {
+  const [attachments, setAttachments] = useState<{ id: string; label: string }[]>(cableAttachmentsCache || []);
+
+  useEffect(() => {
+    if (cableAttachmentsCache) {
+      setAttachments(cableAttachmentsCache);
+      return;
+    }
+
+    getCableAttachments().then(data => {
+      cableAttachmentsCache = data;
+      setAttachments(data);
+    });
+  }, []);
+
+  return attachments;
+}
+
+/**
+ * Hook to get label -> icon (base64) map for gym equipment
+ */
+export function useEquipmentIconsByLabel(): Record<string, string> {
+  const [map, setMap] = useState<Record<string, string>>(equipmentIconsByLabelCache || {});
+
+  useEffect(() => {
+    if (equipmentIconsByLabelCache) {
+      setMap(equipmentIconsByLabelCache);
+      return;
+    }
+
+    getEquipmentIconsByLabel().then(data => {
+      equipmentIconsByLabelCache = data;
+      setMap(data);
+    });
+  }, []);
+
+  return map;
+}
+
+/**
+ * Hook to get single/double equipment labels
+ */
+export function useSingleDoubleEquipmentLabels(): string[] {
+  const [labels, setLabels] = useState<string[]>(singleDoubleEquipmentCache || []);
+
+  useEffect(() => {
+    if (singleDoubleEquipmentCache) {
+      setLabels(singleDoubleEquipmentCache);
+      return;
+    }
+
+    getSingleDoubleEquipmentLabels().then(data => {
+      singleDoubleEquipmentCache = data;
+      setLabels(data);
+    });
+  }, []);
+
+  return labels;
 }

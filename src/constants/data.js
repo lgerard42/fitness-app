@@ -1,15 +1,6 @@
-export const CATEGORIES = ["Cardio", "Lifts", "Training"];
-
-export const PRIMARY_MUSCLES = ["Arms", "Back", "Chest", "Core", "Legs", "Shoulders", "Full Body", "Olympic", "Other"];
-
-export const CARDIO_TYPES = [
-  "Heart Rate (Zone 2 / Max HR)", "Intervals", "Low-Impact", "Sprint", "Steady-State", "Tempo/Threshold", "Other"
-];
-
-export const TRAINING_FOCUS = [
-  "Acceleration", "Agility", "Balance", "Change of Direction", "Conditioning", "Coordination", "Deceleration", 
-  "Jump Training", "Mobility", "Plyometrics", "Power", "Reaction Time", "Speed", "Throwing/Rotation", "Other"
-];
+// Legacy migration: equipment labels from gym equipment table (for migrateExercise when DB not yet loaded)
+const _gymEquipment = require('../database/tables/gymEquipment.json');
+export const LEGACY_EQUIPMENT_LABELS = _gymEquipment.map((r) => r.label);
 
 /** Generate option id: remove special chars, replace spaces with _, lowercase */
 export function toId(str) {
@@ -22,46 +13,10 @@ export function toId(str) {
     .toLowerCase();
 }
 
-// Weight Equipment Categories and Tags
-export const WEIGHT_EQUIP_CATEGORIES = {
-  "Bars": ["Barbell", "EZ Bar", "Trap Bar (Hex Bar)", "Safety Squat Bar", "Swiss / Football Bar", "Cambered Bar"],
-  "Free-Weights": ["Dumbbell", "Kettlebell", "Plate", "Medicine Ball", "Sandbag", "Weighted Vest", "Bodyweight", "Band", "Chains", "Reps Only",],
-  "Machines": ["Machine (Selectorized)", "Plate Loaded (Machine)", "Smith Machine"],
-  "Cable": ["Cable"],
-  "Suspension": ["TRX / Suspension Trainer", "Rings"],
-  "Stability": ["Stability Ball", "BOSU", "Balance Pad", "Sliders"],
-  "Functional": ["Sled / Prowler", "Log", "Yoke", "Tire", "Mace", "Steel / Indian Club", "Ropes"],
-  "Other": ["Other"]
-};
-
-// Flattened list of all equipment tags for backward compatibility
-export const WEIGHT_EQUIP_TAGS = Object.values(WEIGHT_EQUIP_CATEGORIES).flat();
-
 // Single/Double toggle options: { id, label }
 export const SINGLE_DOUBLE_OPTIONS = [
   { id: 'single', label: 'Single' },
   { id: 'double', label: 'Double' },
-];
-
-// Equipment that supports Single/Double toggle (when Double = true use normal grip/stance; when Single = true use empty)
-export const SINGLE_DOUBLE_EQUIPMENT = ["Dumbbell", "Kettlebell", "Plate", "Chains", "Cable", "Other"];
-
-// Cable attachment options (Cable equipment only): { id, label }
-export const CABLE_ATTACHMENTS = [
-  { id: 'lat_pulldown_bar', label: 'Lat Pulldown Bar' },
-  { id: 'straight_bar', label: 'Straight Bar' },
-  { id: 'single_handle', label: 'Single Handle' },
-  { id: 'v_grip', label: 'V-Grip' },
-  { id: 'mag_grip_bar', label: 'MAG Grip Bar' },
-  { id: 'pro_style_bar', label: 'PRO-Style Bar' },
-  { id: 'multi_t_bar_style', label: 'Multi/T-Bar Style' },
-  { id: 'multi_row', label: 'Multi-Row' },
-  { id: 'ez_bar', label: 'EZ Bar' },
-  { id: 'v_bar', label: 'V-Bar' },
-  { id: 'ankle_strap', label: 'Ankle Strap' },
-  { id: 'ab_harness', label: 'Ab Harness' },
-  { id: 'rope', label: 'Rope' },
-  { id: 'other', label: 'Other' },
 ];
 
 // Grip Type options: { id, label }
@@ -109,17 +64,23 @@ export const GRIP_TYPES_BY_ID = Object.fromEntries(GRIP_TYPES.map(o => [o.id, o]
 export const GRIP_WIDTHS_BY_ID = Object.fromEntries(GRIP_WIDTHS.map(o => [o.id, o]));
 export const STANCE_TYPES_BY_ID = Object.fromEntries(STANCE_TYPES.map(o => [o.id, o]));
 export const STANCE_WIDTHS_BY_ID = Object.fromEntries(STANCE_WIDTHS.map(o => [o.id, o]));
-export const CABLE_ATTACHMENTS_BY_ID = Object.fromEntries(CABLE_ATTACHMENTS.map(o => [o.id, o]));
 export const SINGLE_DOUBLE_OPTIONS_BY_ID = Object.fromEntries(SINGLE_DOUBLE_OPTIONS.map(o => [o.id, o]));
+
+/** Build CABLE_ATTACHMENTS_BY_ID from cable attachments array (from useCableAttachments) */
+export function buildCableAttachmentsById(cableAttachments) {
+  return Object.fromEntries((cableAttachments || []).map(o => [o.id, o]));
+}
 
 /** Normalize saved value to option id (pass through if already id, else resolve legacy label). */
 export function optionIdFromLegacy(value, optionList, byId) {
   if (!value) return '';
   if (byId && byId[value]) return value;
+  const v = String(value);
   const option = optionList.find(
-    o => o.label === value ||
-      (o.sublabel && `${o.label} (${o.sublabel})` === value) ||
-      (o.sublabel && `${o.sublabel} (${o.label})` === value)
+    o => o.label === v ||
+      (o.id && o.id.toLowerCase() === v.toLowerCase()) ||
+      (o.sublabel && `${o.label} (${o.sublabel})` === v) ||
+      (o.sublabel && `${o.sublabel} (${o.label})` === v)
   );
   return option ? option.id : value;
 }
@@ -229,6 +190,12 @@ export const EQUIPMENT_GRIP_STANCE_OPTIONS = {
     stanceWidth: STANCE_WIDTH_FULL_IDS,
   },
   // Machines
+  "Assisted Machine": {
+    gripType: ["neutral", "pronated", "semi_pronated", "supinated", "1up_1down", "semi_supinated", "rotating"],
+    gripWidth: GRIP_WIDTH_FULL_IDS,
+    stanceType: STANCE_TYPE_LEG_MACHINE_IDS,
+    stanceWidth: STANCE_WIDTH_FULL_IDS,
+  },
   "Machine (Selectorized)": {
     gripType: ["neutral", "pronated", "semi_pronated", "supinated", "1up_1down", "semi_supinated", "rotating"],
     gripWidth: GRIP_WIDTH_FULL_IDS,
@@ -289,7 +256,7 @@ export const EQUIPMENT_GRIP_STANCE_OPTIONS = {
   "Tire": { gripType: null, gripWidth: null, stanceType: null, stanceWidth: null },
   "Mace": { gripType: null, gripWidth: null, stanceType: null, stanceWidth: null },
   "Steel / Indian Club": { gripType: null, gripWidth: null, stanceType: null, stanceWidth: null },
-  "Ropes": {
+  "Battle Ropes": {
     gripType: ["neutral", "other", "semi_pronated", "semi_supinated", "supinated", "pronated"],
     gripWidth: null,
     stanceType: null,
@@ -306,103 +273,99 @@ export const EQUIPMENT_GRIP_STANCE_OPTIONS = {
 
 /**
  * When Cable equipment has a Cable Attachment selected, use these options instead of base Cable.
- * Key = attachment id; value = same shape as EQUIPMENT_GRIP_STANCE_OPTIONS (arrays of ids).
+ * Key = attachment id (uppercase from DB); value = same shape as EQUIPMENT_GRIP_STANCE_OPTIONS (arrays of ids).
  */
 export const CABLE_ATTACHMENT_GRIP_STANCE_OPTIONS = {
-  "rope": {
+  "ROPE": {
     gripType: ["neutral", "semi_supinated", "semi_pronated", "rotating"],
     gripWidth: null,
     stanceType: null,
     stanceWidth: null,
   },
-  "lat_pulldown_bar": {
+  "LAT_PULLDOWN_BAR": {
     gripType: ["supinated", "pronated"],
     gripWidth: GRIP_WIDTH_FULL_IDS,
     stanceType: null,
     stanceWidth: null,
   },
-  "straight_bar": {
+  "STRAIGHT_BAR": {
     gripType: ["supinated", "pronated"],
     gripWidth: ["extra_wide", "extra_narrow", "wide", "shoulder_width", "narrow"],
     stanceType: null,
     stanceWidth: null,
   },
-  "single_handle": {
+  "SINGLE_HANDLE": {
     gripType: ["neutral", "pronated", "supinated", "semi_pronated", "semi_supinated", "rotating", "other"],
     gripWidth: null,
     stanceType: null,
     stanceWidth: null,
   },
-  "v_grip": {
+  "V_GRIP": {
     gripType: ["neutral", "semi_pronated", "semi_supinated"],
     gripWidth: ["narrow", "extra_narrow"],
     stanceType: null,
     stanceWidth: null,
   },
-  "mag_grip_bar": {
+  "MAG_GRIP_BAR": {
     gripType: ["neutral", "semi_pronated", "semi_supinated"],
     gripWidth: GRIP_WIDTH_FULL_IDS,
     stanceType: null,
     stanceWidth: null,
   },
-  "pro_style_bar": {
+  "PRO_STYLE_BAR": {
     gripType: ["neutral", "pronated", "supinated", "semi_pronated", "semi_supinated"],
     gripWidth: GRIP_WIDTH_FULL_IDS,
     stanceType: null,
     stanceWidth: null,
   },
-  "multi_t_bar_style": {
+  "MULTI_T_BAR_STYLE": {
     gripType: ["neutral"],
     gripWidth: ["shoulder_width"],
     stanceType: null,
     stanceWidth: null,
   },
-  "multi_row": {
+  "MULTI_ROW": {
     gripType: ["neutral", "pronated", "supinated", "semi_pronated", "semi_supinated"],
     gripWidth: GRIP_WIDTH_FULL_IDS,
     stanceType: null,
     stanceWidth: null,
   },
-  "ez_bar": {
+  "EZ_BAR": {
     gripType: ["semi_pronated", "semi_supinated"],
     gripWidth: ["narrow", "shoulder_width", "wide"],
     stanceType: null,
     stanceWidth: null,
   },
-  "v_bar": {
+  "V_BAR": {
     gripType: ["semi_pronated", "semi_supinated"],
     gripWidth: ["narrow", "extra_narrow"],
     stanceType: null,
     stanceWidth: null,
   },
-  "ankle_strap": {
+  "ANKLE_STRAP": {
     gripType: ["neutral"],
     gripWidth: null,
     stanceType: null,
     stanceWidth: null,
   },
-  "ab_harness": {
+  "AB_HARNESS": {
     gripType: null,
     gripWidth: null,
     stanceType: null,
     stanceWidth: null,
   },
-  "other": {
+  "LANDMINE": {
+    gripType: ["neutral", "pronated", "semi_pronated", "semi_supinated"],
+    gripWidth: ["narrow", "shoulder_width", "wide"],
+    stanceType: STANCE_TYPE_FULL_IDS,
+    stanceWidth: STANCE_WIDTH_FULL_IDS,
+  },
+  "OTHER": {
     gripType: ["neutral", "pronated", "supinated", "semi_pronated", "semi_supinated", "rotating", "1up_1down", "flat_palms_up", "other"],
     gripWidth: GRIP_WIDTH_FULL_IDS,
     stanceType: STANCE_TYPE_FULL_IDS,
     stanceWidth: STANCE_WIDTH_FULL_IDS,
   },
-};
-
-export const PRIMARY_TO_SECONDARY_MAP = {
-  "Arms": ["Biceps","Forearms","Grip","Triceps"],
-  "Back": ["Lats","Lower back","Mid back","Rhomboids","Rear delts","Traps","Upper back"],
-  "Chest": ["Lower chest","Mid chest","Upper chest"],
-  "Core": ["Abs","Hip flexors","Lower back","Obliques"],
-  "Legs": ["Calves","Glutes","Hamstrings","Inner thighs","Outer hips/thighs","Quads"],
-  "Shoulders": ["Front delts","Rear delts","Rotator cuff","Side delts","Traps"],
-  "Other": ["Neck"],
 };
 
 export const HISTORY_DATA = [
@@ -486,7 +449,7 @@ export const migrateExercise = (ex) => {
   }
   let mappedEquipTags = ex.modalityTags || []; 
   if (ex.equipment && mappedEquipTags.length === 0) {
-    const found = WEIGHT_EQUIP_TAGS.find(t => t.includes(ex.equipment));
+    const found = LEGACY_EQUIPMENT_LABELS.find(t => t.includes(ex.equipment) || ex.equipment?.includes?.(t));
     if (found) mappedEquipTags = [found];
     else mappedEquipTags = ["Other"];
   }
@@ -501,19 +464,12 @@ export const migrateExercise = (ex) => {
   };
 };
 
-/** Map legacy "Assisted Machine" to "Machine (Selectorized)" + assistedNegative */
+/** Map legacy "Assisted Machine" to "Machine (Selectorized)" + assistedNegative (for old persisted data) */
 export const migrateAssistedMachine = (ex) => {
   const tags = ex.weightEquipTags || [];
   if (!tags.includes("Assisted Machine")) return ex;
-  const weightEquipTags = tags.map(t => t === "Assisted Machine" ? "Machine (Selectorized)" : t);
-  return { ...ex, weightEquipTags, assistedNegative: true };
-};
-
-export const getAvailableSecondaryMuscles = (primary) => {
-  if (PRIMARY_TO_SECONDARY_MAP[primary]) {
-    return PRIMARY_TO_SECONDARY_MAP[primary].sort();
-  }
-  return [];
+  // Assisted Machine is now its own equipment; keep as-is
+  return ex;
 };
 
 export const formatDuration = (seconds) => {

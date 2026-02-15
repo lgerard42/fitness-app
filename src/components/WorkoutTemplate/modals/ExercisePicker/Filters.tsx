@@ -3,7 +3,7 @@ import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { Check } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { Z_INDEX, PADDING, BORDER_RADIUS, SHADOW, SPACING } from '@/constants/layout';
-import { WEIGHT_EQUIP_TAGS } from '@/constants/data';
+import { useGymEquipmentLabels } from '@/database/useExerciseConfig';
 import { useCategoriesAsStrings, usePrimaryMusclesAsStrings } from '@/database/useExerciseConfig';
 import FilterDropdown from './FilterDropdown';
 import SecondaryMuscleFilter from './SecondaryMuscleFilter';
@@ -37,6 +37,7 @@ const Filters: React.FC<FiltersProps> = ({
 }) => {
   const CATEGORIES = useCategoriesAsStrings();
   const PRIMARY_MUSCLES = usePrimaryMusclesAsStrings();
+  const WEIGHT_EQUIP_TAGS = useGymEquipmentLabels();
   const handleToggleOption = (type: string, item: string, currentValue: string | string[]) => {
     if (Array.isArray(currentValue)) {
       const newValue = currentValue.includes(item) 

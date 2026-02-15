@@ -5,7 +5,7 @@
 import * as SQLite from 'expo-sqlite';
 
 const DATABASE_NAME = 'workout.db';
-const DATABASE_VERSION = 1;
+const DATABASE_VERSION = 3;
 
 export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
   const db = await SQLite.openDatabaseAsync(DATABASE_NAME);
@@ -22,7 +22,12 @@ export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
   
   if (currentVersion < DATABASE_VERSION) {
     await createTables(db);
-    await seedData(db);
+    if (currentVersion === 0) {
+      await seedData(db);
+    }
+    if (currentVersion < 3) {
+      await seedEquipmentData(db);
+    }
     await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
   }
   
@@ -116,6 +121,70 @@ async function createTables(db: SQLite.SQLiteDatabase) {
       common_names TEXT,
       icon TEXT,
       short_description TEXT
+    );
+  `);
+
+  // EQUIPMENT_CATEGORIES table
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS equipment_categories (
+      id TEXT PRIMARY KEY,
+      label TEXT NOT NULL,
+      sub_label TEXT,
+      common_names TEXT,
+      icon TEXT,
+      short_description TEXT,
+      sub_categories_table TEXT
+    );
+  `);
+
+  // SUPPORT_EQUIPMENT_CATEGORIES table
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS support_equipment_categories (
+      id TEXT PRIMARY KEY,
+      label TEXT NOT NULL,
+      sub_label TEXT,
+      common_names TEXT,
+      icon TEXT,
+      short_description TEXT
+    );
+  `);
+
+  // WEIGHTS_EQUIPMENT_CATEGORIES table
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS weights_equipment_categories (
+      id TEXT PRIMARY KEY,
+      label TEXT NOT NULL,
+      sub_label TEXT,
+      common_names TEXT,
+      icon TEXT,
+      short_description TEXT
+    );
+  `);
+
+  // CABLE_ATTACHMENTS table (exercise equipment)
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS cable_attachments (
+      id TEXT PRIMARY KEY,
+      label TEXT NOT NULL,
+      sub_label TEXT,
+      common_names TEXT,
+      icon TEXT,
+      short_description TEXT
+    );
+  `);
+
+  // GYM_EQUIPMENT table
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS gym_equipment (
+      id TEXT PRIMARY KEY,
+      label TEXT NOT NULL,
+      sub_label TEXT,
+      common_names TEXT,
+      icon TEXT,
+      short_description TEXT,
+      equipment_categories TEXT,
+      max_instances INTEGER DEFAULT 1,
+      cable_attachments INTEGER DEFAULT 0
     );
   `);
 }
@@ -223,6 +292,88 @@ async function seedData(db: SQLite.SQLiteDatabase) {
       Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
       str(row.icon),
       str(row.short_description)
+    );
+  }
+}
+
+async function seedEquipmentData(db: SQLite.SQLiteDatabase) {
+  const str = (v: unknown) => (v == null ? '' : String(v));
+  const equipmentCategories = require('./tables/equipmentCategories.json') as Record<string, unknown>[];
+  const supportCategories = require('./tables/supportEquipmentCategories.json') as Record<string, unknown>[];
+  const weightsCategories = require('./tables/weightsEquipmentCategories.json') as Record<string, unknown>[];
+  const cableAttachments = require('./tables/cableAttachments.json') as Record<string, unknown>[];
+  const gymEquipment = require('./tables/gymEquipment.json') as Record<string, unknown>[];
+  const equipmentIcons = require('./tables/equipmentIcons.json') as Record<string, string>;
+
+  for (const row of equipmentCategories) {
+    await db.runAsync(
+      `INSERT OR REPLACE INTO equipment_categories (id, label, sub_label, common_names, icon, short_description, sub_categories_table)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      str(row.id),
+      str(row.label),
+      str(row.sub_label),
+      Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
+      str(row.icon),
+      str(row.short_description),
+      str(row.sub_categories_table)
+    );
+  }
+
+  for (const row of supportCategories) {
+    await db.runAsync(
+      `INSERT OR REPLACE INTO support_equipment_categories (id, label, sub_label, common_names, icon, short_description)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      str(row.id),
+      str(row.label),
+      str(row.sub_label),
+      Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
+      str(row.icon),
+      str(row.short_description)
+    );
+  }
+
+  for (const row of weightsCategories) {
+    await db.runAsync(
+      `INSERT OR REPLACE INTO weights_equipment_categories (id, label, sub_label, common_names, icon, short_description)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      str(row.id),
+      str(row.label),
+      str(row.sub_label),
+      Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
+      str(row.icon),
+      str(row.short_description)
+    );
+  }
+
+  for (const row of cableAttachments) {
+    await db.runAsync(
+      `INSERT OR REPLACE INTO cable_attachments (id, label, sub_label, common_names, icon, short_description)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      str(row.id),
+      str(row.label),
+      str(row.sub_label),
+      Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
+      str(row.icon),
+      str(row.short_description)
+    );
+  }
+
+  for (const row of gymEquipment) {
+    const eqCats = row.equipment_categories;
+    const cableAtt = row.cable_attachments === true || row.cable_attachments === 1;
+    const iconBase64 = equipmentIcons[str(row.id)] || str(row.icon) || '';
+    await db.runAsync(
+      `INSERT OR REPLACE INTO gym_equipment (id, label, sub_label, common_names, icon, short_description, equipment_categories, max_instances, cable_attachments)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      str(row.id),
+      str(row.label),
+      str(row.sub_label),
+      Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
+      iconBase64,
+      str(row.short_description),
+      Array.isArray(eqCats) ? JSON.stringify(eqCats) : (typeof eqCats === 'object' && eqCats !== null ? JSON.stringify(eqCats) : '[]'),
+      Number(row.max_instances) || 1,
+      cableAtt ? 1 : 0
     );
   }
 }

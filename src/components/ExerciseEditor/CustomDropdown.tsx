@@ -6,7 +6,7 @@ import { GripImages } from '@/constants/gripImages';
 
 export type DropdownOption = { id: string; label: string; sublabel?: string };
 
-/** Options can be id/label objects (ExerciseEditor grip/stance/cable) or plain strings (e.g. CARDIO_TYPES). */
+/** Options can be id/label objects (ExerciseEditor grip/stance/cable) or plain strings (e.g. from useCardioTypesAsStrings). */
 type OptionsInput = DropdownOption[] | string[];
 
 function normalizeOptions(options: OptionsInput): DropdownOption[] {

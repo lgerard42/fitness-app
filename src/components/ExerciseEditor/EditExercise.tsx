@@ -4,12 +4,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronDown, ToggleLeft, ToggleRight } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import {
-  SINGLE_DOUBLE_EQUIPMENT,
   SINGLE_DOUBLE_OPTIONS,
-  CABLE_ATTACHMENTS,
   EQUIPMENT_GRIP_STANCE_OPTIONS,
   CABLE_ATTACHMENT_GRIP_STANCE_OPTIONS,
   optionIdFromLegacy,
+  buildCableAttachmentsById,
   GRIP_TYPES,
   GRIP_TYPES_BY_ID,
   GRIP_WIDTHS,
@@ -18,10 +17,9 @@ import {
   STANCE_TYPES_BY_ID,
   STANCE_WIDTHS,
   STANCE_WIDTHS_BY_ID,
-  CABLE_ATTACHMENTS_BY_ID,
   SINGLE_DOUBLE_OPTIONS_BY_ID,
 } from '@/constants/data';
-import { usePrimaryMusclesAsStrings, usePrimaryToSecondaryMap } from '@/database/useExerciseConfig';
+import { usePrimaryMusclesAsStrings, usePrimaryToSecondaryMap, useCableAttachments, useSingleDoubleEquipmentLabels } from '@/database/useExerciseConfig';
 import Chip from './Chip';
 import CustomDropdown from './CustomDropdown';
 import EquipmentPickerModal from './EquipmentPickerModal';
@@ -80,7 +78,11 @@ const getInitialState = (): EditExerciseState => ({
     stanceType: "", stanceWidth: "", assistedNegative: false
 });
 
-const getStateFromExercise = (exercise: ExerciseLibraryItem): EditExerciseState => {
+const getStateFromExercise = (
+    exercise: ExerciseLibraryItem,
+    cableAttachments: { id: string; label: string }[],
+    cableAttachmentsById: Record<string, { id: string; label: string }>
+): EditExerciseState => {
     const raw = {
         name: exercise.name || "",
         category: exercise.category || "",
@@ -104,7 +106,7 @@ const getStateFromExercise = (exercise: ExerciseLibraryItem): EditExerciseState 
     return {
         ...raw,
         singleDouble: optionIdFromLegacy(raw.singleDouble, SINGLE_DOUBLE_OPTIONS, SINGLE_DOUBLE_OPTIONS_BY_ID),
-        cableAttachment: optionIdFromLegacy(raw.cableAttachment, CABLE_ATTACHMENTS, CABLE_ATTACHMENTS_BY_ID),
+        cableAttachment: optionIdFromLegacy(raw.cableAttachment, cableAttachments, cableAttachmentsById),
         gripType: optionIdFromLegacy(raw.gripType, GRIP_TYPES, GRIP_TYPES_BY_ID),
         gripWidth: optionIdFromLegacy(raw.gripWidth, GRIP_WIDTHS, GRIP_WIDTHS_BY_ID),
         stanceType: optionIdFromLegacy(raw.stanceType, STANCE_TYPES, STANCE_TYPES_BY_ID),
@@ -180,6 +182,9 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
     const isEditMode = !!exercise;
     const PRIMARY_MUSCLES = usePrimaryMusclesAsStrings();
     const PRIMARY_TO_SECONDARY_MAP = usePrimaryToSecondaryMap();
+    const CABLE_ATTACHMENTS = useCableAttachments();
+    const CABLE_ATTACHMENTS_BY_ID = buildCableAttachmentsById(CABLE_ATTACHMENTS);
+    const SINGLE_DOUBLE_EQUIPMENT = useSingleDoubleEquipmentLabels();
 
     const [editState, setEditState] = useState<EditExerciseState>(getInitialState());
     const [secondaryMusclesEnabled, setSecondaryMusclesEnabled] = useState(false);
@@ -195,7 +200,7 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
     // Populate form when opening in edit mode
     useEffect(() => {
         if (isOpen && exercise) {
-            const state = getStateFromExercise(exercise);
+            const state = getStateFromExercise(exercise, CABLE_ATTACHMENTS, CABLE_ATTACHMENTS_BY_ID);
             setEditState(state);
             // Determine UI toggle states from existing data
             setSecondaryMusclesEnabled(
@@ -251,9 +256,10 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
         }));
     };
 
+    const cableAttachmentOptsKey = (v: string) => (v || '').toUpperCase().replace(/-/g, '_');
     const handleCableAttachmentChange = (val: string) => {
         setEditState(prev => {
-            const options = val ? (CABLE_ATTACHMENT_GRIP_STANCE_OPTIONS as Record<string, { gripType?: string[] | null; gripWidth?: string[] | null; stanceType?: string[] | null; stanceWidth?: string[] | null }>)[val] : null;
+            const options = val ? (CABLE_ATTACHMENT_GRIP_STANCE_OPTIONS as Record<string, { gripType?: string[] | null; gripWidth?: string[] | null; stanceType?: string[] | null; stanceWidth?: string[] | null }>)[cableAttachmentOptsKey(val)] : null;
             const gripTypeOk = !prev.gripType || (options?.gripType && options.gripType.includes(prev.gripType));
             const gripWidthOk = !prev.gripWidth || (options?.gripWidth && options.gripWidth.includes(prev.gripWidth));
             const stanceTypeOk = !prev.stanceType || (options?.stanceType && options.stanceType.includes(prev.stanceType));
@@ -277,7 +283,7 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
             const primaryEquip = updatedTags[0] || "";
             const baseOptions = primaryEquip ? (EQUIPMENT_GRIP_STANCE_OPTIONS as Record<string, { gripType?: string[] | null; gripWidth?: string[] | null; stanceType?: string[] | null; stanceWidth?: string[] | null }>)[primaryEquip] : null;
             const attachmentOptions = primaryEquip === "Cable" && prev.cableAttachment
-                ? (CABLE_ATTACHMENT_GRIP_STANCE_OPTIONS as Record<string, { gripType?: string[] | null; gripWidth?: string[] | null; stanceType?: string[] | null; stanceWidth?: string[] | null }>)[prev.cableAttachment]
+                ? (CABLE_ATTACHMENT_GRIP_STANCE_OPTIONS as Record<string, { gripType?: string[] | null; gripWidth?: string[] | null; stanceType?: string[] | null; stanceWidth?: string[] | null }>)[cableAttachmentOptsKey(prev.cableAttachment)]
                 : null;
             const options = attachmentOptions ?? baseOptions;
 
@@ -435,7 +441,7 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
         }
         // Cable with attachment selected: use attachment options
         const attachmentOpts = primaryEquip === "Cable" && editState.cableAttachment
-            ? (CABLE_ATTACHMENT_GRIP_STANCE_OPTIONS as Record<string, { gripType?: string[] | null; gripWidth?: string[] | null; stanceType?: string[] | null; stanceWidth?: string[] | null }>)[editState.cableAttachment]
+            ? (CABLE_ATTACHMENT_GRIP_STANCE_OPTIONS as Record<string, { gripType?: string[] | null; gripWidth?: string[] | null; stanceType?: string[] | null; stanceWidth?: string[] | null }>)[cableAttachmentOptsKey(editState.cableAttachment)]
             : null;
         const options = attachmentOpts ?? (EQUIPMENT_GRIP_STANCE_OPTIONS as Record<string, { gripType?: string[] | null; gripWidth?: string[] | null; stanceType?: string[] | null; stanceWidth?: string[] | null }>)[primaryEquip];
         if (!options) {
