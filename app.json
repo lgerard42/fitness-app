@@ -40,7 +40,8 @@
       "expo-font",
       "@react-native-community/datetimepicker",
       "expo-dev-client",
-      "expo-image-picker"
+      "expo-image-picker",
+      "expo-sqlite"
     ],
     "extra": {
       "eas": {
