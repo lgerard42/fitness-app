@@ -5,7 +5,7 @@
 import * as SQLite from 'expo-sqlite';
 
 const DATABASE_NAME = 'workout.db';
-const DATABASE_VERSION = 4;
+const DATABASE_VERSION = 5;
 
 export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
   const db = await SQLite.openDatabaseAsync(DATABASE_NAME);
@@ -30,6 +30,9 @@ export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
     }
     if (currentVersion < 4) {
       await migrateToV4(db);
+    }
+    if (currentVersion < 5) {
+      await seedMotionData(db);
     }
     await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
   }
@@ -193,6 +196,49 @@ async function createTables(db: SQLite.SQLiteDatabase) {
       common_names TEXT,
       icon TEXT,
       short_description TEXT,
+      sort_order INTEGER DEFAULT 0,
+      is_active INTEGER DEFAULT 1
+    );
+  `);
+
+  // MOTION_PLANES table
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS motion_planes (
+      id TEXT PRIMARY KEY,
+      label TEXT NOT NULL,
+      sub_label TEXT,
+      common_names TEXT,
+      short_description TEXT,
+      sort_order INTEGER DEFAULT 0,
+      is_active INTEGER DEFAULT 1
+    );
+  `);
+
+  // PRIMARY_MOTIONS table
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS primary_motions (
+      id TEXT PRIMARY KEY,
+      upper_lower_body TEXT NOT NULL,
+      label TEXT NOT NULL,
+      sub_label TEXT,
+      common_names TEXT,
+      short_description TEXT,
+      muscle_targets TEXT,
+      sort_order INTEGER DEFAULT 0,
+      is_active INTEGER DEFAULT 1
+    );
+  `);
+
+  // PRIMARY_MOTION_VARIATIONS table
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS primary_motion_variations (
+      id TEXT PRIMARY KEY,
+      primary_motion_key TEXT NOT NULL,
+      label TEXT NOT NULL,
+      common_names TEXT,
+      short_description TEXT,
+      muscle_targets TEXT,
+      motion_planes TEXT,
       sort_order INTEGER DEFAULT 0,
       is_active INTEGER DEFAULT 1
     );
@@ -442,6 +488,63 @@ async function seedEquipmentData(db: SQLite.SQLiteDatabase) {
       Array.isArray(eqCats) ? JSON.stringify(eqCats) : (typeof eqCats === 'object' && eqCats !== null ? JSON.stringify(eqCats) : '[]'),
       Number(row.max_instances) || 1,
       cableAtt ? 1 : 0,
+      num(row.sort_order, 0),
+      row.is_active !== false ? 1 : 0
+    );
+  }
+}
+
+async function seedMotionData(db: SQLite.SQLiteDatabase) {
+  const str = (v: unknown) => (v == null ? '' : String(v));
+  const num = (v: unknown, def: number) => (v == null ? def : Number(v));
+  const motionPlanes = require('./tables/motionPlanes.json') as Record<string, unknown>[];
+  const primaryMotions = require('./tables/primaryMotions.json') as Record<string, unknown>[];
+  const primaryMotionVariations = require('./tables/primaryMotionVariations.json') as Record<string, unknown>[];
+
+  for (const row of motionPlanes) {
+    await db.runAsync(
+      `INSERT OR REPLACE INTO motion_planes (id, label, sub_label, common_names, short_description, sort_order, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      str(row.id),
+      str(row.label),
+      str(row.sub_label),
+      Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
+      str(row.short_description),
+      num(row.sort_order, 0),
+      row.is_active !== false ? 1 : 0
+    );
+  }
+
+  for (const row of primaryMotions) {
+    const upperLowerBody = str(row.upperLowerBody ?? row.upper_lower_body);
+    await db.runAsync(
+      `INSERT OR REPLACE INTO primary_motions (id, upper_lower_body, label, sub_label, common_names, short_description, muscle_targets, sort_order, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      str(row.id),
+      upperLowerBody,
+      str(row.label),
+      str(row.sub_label),
+      Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
+      str(row.short_description),
+      row.muscle_targets ? JSON.stringify(row.muscle_targets) : '{}',
+      num(row.sort_order, 0),
+      row.is_active !== false ? 1 : 0
+    );
+  }
+
+  for (const row of primaryMotionVariations) {
+    const motionPlanesVal = row.motion_planes;
+    const motionPlanesStr = Array.isArray(motionPlanesVal) ? JSON.stringify(motionPlanesVal) : '[]';
+    await db.runAsync(
+      `INSERT OR REPLACE INTO primary_motion_variations (id, primary_motion_key, label, common_names, short_description, muscle_targets, motion_planes, sort_order, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      str(row.id),
+      str(row.primary_motion_key),
+      str(row.label),
+      Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
+      str(row.short_description),
+      row.muscle_targets ? JSON.stringify(row.muscle_targets) : '{}',
+      motionPlanesStr,
       num(row.sort_order, 0),
       row.is_active !== false ? 1 : 0
     );

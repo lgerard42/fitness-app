@@ -1,0 +1,83 @@
+[
+  {
+    "id": "HIGH_LOW",
+    "label": "High to Low",
+    "sub_label": "Altum ad Humile",
+    "common_names": ["High-to-Low", "Downward Cross"],
+    "short_description": "Resistance moves from above the head diagonally down toward the waist.",
+    "sort_order": 0,
+    "is_active": true
+  },
+  {
+    "id": "HIGH_MID",
+    "label": "High to Mid",
+    "sub_label": "Altum ad Medium",
+    "common_names": ["Decline Path"],
+    "short_description": "Resistance moves from above the head diagonally down toward the chest.",
+    "sort_order": 1,
+    "is_active": true
+  },
+  {
+    "id": "HIGH_HIGH",
+    "label": "High to High",
+    "sub_label": "Altum ad Altum",
+    "common_names": ["High Level", "Face Path"],
+    "short_description": "Resistance moves horizontally at head height.",
+    "sort_order": 2,
+    "is_active": true
+  },
+  {
+    "id": "MID_HIGH",
+    "label": "Mid to High",
+    "sub_label": "Medium ad Altum",
+    "common_names": ["Incline Path"],
+    "short_description": "Resistance moves from chest height diagonally up toward the face.",
+    "sort_order": 3,
+    "is_active": true
+  },
+  {
+    "id": "MID_MID",
+    "label": "Mid to Mid",
+    "sub_label": "Medium ad Medium",
+    "common_names": ["Standard", "Flat Path"],
+    "short_description": "Resistance moves horizontally at chest height.",
+    "sort_order": 4,
+    "is_active": true
+  },
+  {
+    "id": "MID_LOW",
+    "label": "Mid to Low",
+    "sub_label": "Medium ad Humile",
+    "common_names": ["Decline Pressdown"],
+    "short_description": "Resistance moves from chest height diagonally down toward the waist.",
+    "sort_order": 5,
+    "is_active": true
+  },
+  {
+    "id": "LOW_HIGH",
+    "label": "Low to High",
+    "sub_label": "Humile ad Altum",
+    "common_names": ["Low-to-High", "Scoop Path"],
+    "short_description": "Resistance moves from the floor diagonally up toward the face.",
+    "sort_order": 6,
+    "is_active": true
+  },
+  {
+    "id": "LOW_MID",
+    "label": "Low to Mid",
+    "sub_label": "Humile ad Medium",
+    "common_names": ["Upward Path"],
+    "short_description": "Resistance moves from the floor diagonally up toward the chest.",
+    "sort_order": 7,
+    "is_active": true
+  },
+  {
+    "id": "LOW_LOW",
+    "label": "Low to Low",
+    "sub_label": "Humile ad Humile",
+    "common_names": ["Low Level", "Hip Path"],
+    "short_description": "Resistance moves horizontally at hip/waist height.",
+    "sort_order": 8,
+    "is_active": true
+  }
+]

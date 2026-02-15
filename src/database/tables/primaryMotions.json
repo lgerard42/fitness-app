@@ -1,0 +1,499 @@
+[
+  {
+    "id": "PRESS",
+    "upperLowerBody": "Upper",
+    "label": "Press",
+    "sub_label": "Adductio/Pressio",
+    "common_names": ["Push", "Bench", "Overhead"],
+    "short_description": "Moving resistance away from the body in a straight line.",
+    "muscle_targets": {
+      "CHEST": { "_score": 1.0, "MID_CHEST": { "_score": 1.0 } },
+      "SHOULDERS": { "_score": 0.5, "FRONT_DELTS": { "_score": 0.5 } },
+      "ARMS": {
+        "_score": 0.6,
+        "TRICEPS": {
+          "_score": 0.6,
+          "INNER_TRICEP": { "_score": 0.2 },
+          "OUTER_TRICEP": { "_score": 0.2 },
+          "DEEP_TRICEP": { "_score": 0.2 }
+        }
+      }
+    },
+    "sort_order": 0,
+    "is_active": true
+  },
+  {
+    "id": "FLY",
+    "upperLowerBody": "Upper",
+    "label": "Fly",
+    "sub_label": "Adductio Arcum",
+    "common_names": ["Fly", "Reverse Fly"],
+    "short_description": "Moving the arms in a wide arc toward or away from the midline.",
+    "muscle_targets": {
+      "CHEST": { "_score": 1.0, "MID_CHEST": { "_score": 1.0 } },
+      "SHOULDERS": { "_score": 0.3, "FRONT_DELTS": { "_score": 0.3 } }
+    },
+    "sort_order": 1,
+    "is_active": true
+  },
+  {
+    "id": "RAISE",
+    "upperLowerBody": "Upper",
+    "label": "Raise",
+    "sub_label": "Elevatio Brachii",
+    "common_names": ["Lateral", "Front", "Y-Raise"],
+    "short_description": "Raising the arms in an arc without bending the elbows.",
+    "muscle_targets": {
+      "SHOULDERS": { "_score": 1.0, "SIDE_DELTS": { "_score": 1.0 } }
+    },
+    "sort_order": 2,
+    "is_active": true
+  },
+  {
+    "id": "DIP",
+    "upperLowerBody": "Upper",
+    "label": "Dip",
+    "sub_label": "Depressio Corporis",
+    "common_names": ["Chest Dips", "Tricep Dips"],
+    "short_description": "Pushing the body or weight downward and away from the torso.",
+    "muscle_targets": {
+      "ARMS": {
+        "_score": 0.9,
+        "TRICEPS": {
+          "_score": 0.9,
+          "OUTER_TRICEP": { "_score": 0.3 },
+          "INNER_TRICEP": { "_score": 0.3 },
+          "DEEP_TRICEP": { "_score": 0.3 }
+        }
+      },
+      "CHEST": { "_score": 0.7, "LOWER_CHEST": { "_score": 0.7 } },
+      "SHOULDERS": { "_score": 0.5, "FRONT_DELTS": { "_score": 0.5 } }
+    },
+    "sort_order": 3,
+    "is_active": true
+  },
+  {
+    "id": "PULLOVER",
+    "upperLowerBody": "Upper",
+    "label": "Pullover",
+    "sub_label": "Extensio Sagittalis",
+    "common_names": ["Arcs", "Straight-Arm Pull"],
+    "short_description": "Moving arms in a long arc from overhead toward the hips.",
+    "muscle_targets": {
+      "BACK": { "_score": 0.8, "LATS": { "_score": 0.8 } },
+      "CHEST": { "_score": 0.6, "LOWER_CHEST": { "_score": 0.6 } },
+      "ARMS": {
+        "_score": 0.3,
+        "TRICEPS": { "_score": 0.3, "INNER_TRICEP": { "_score": 0.3 } }
+      }
+    },
+    "sort_order": 4,
+    "is_active": true
+  },
+  {
+    "id": "CRUSH",
+    "upperLowerBody": "Upper",
+    "label": "Crush",
+    "sub_label": "Adductio Isometrica",
+    "common_names": ["Squeeze", "Svend Press"],
+    "short_description": "Creating inward tension by pressing hands/weights together.",
+    "muscle_targets": {
+      "CHEST": { "_score": 1.0, "MID_CHEST": { "_score": 1.0 } },
+      "SHOULDERS": { "_score": 0.2, "FRONT_DELTS": { "_score": 0.2 } }
+    },
+    "sort_order": 5,
+    "is_active": true
+  },
+  {
+    "id": "VERTICAL_PULL",
+    "upperLowerBody": "Upper",
+    "label": "Vertical Pull",
+    "sub_label": "Tractio Verticalis",
+    "common_names": ["Pulldowns", "Pull-ups"],
+    "short_description": "Pulling resistance from overhead down toward the body.",
+    "muscle_targets": {
+      "BACK": { "_score": 1.0, "LATS": { "_score": 1.0 } },
+      "ARMS": {
+        "_score": 0.6,
+        "BICEPS": {
+          "_score": 0.6,
+          "INNER_BICEP": { "_score": 0.3 },
+          "OUTER_BICEP": { "_score": 0.3 }
+        }
+      },
+      "SHOULDERS": { "_score": 0.5, "REAR_DELTS": { "_score": 0.5 } }
+    },
+    "sort_order": 6,
+    "is_active": true
+  },
+  {
+    "id": "HORIZONTAL_ROW",
+    "upperLowerBody": "Upper",
+    "label": "Horizontal Row",
+    "sub_label": "Tractio Horizontalis",
+    "common_names": ["Rows", "Seated Rows"],
+    "short_description": "Pulling resistance from in front of the body toward the torso.",
+    "muscle_targets": {
+      "BACK": {
+        "_score": 1.8,
+        "MID_BACK": { "_score": 1.0 },
+        "LATS": { "_score": 0.8 }
+      },
+      "ARMS": {
+        "_score": 0.5,
+        "BICEPS": {
+          "_score": 0.5,
+          "INNER_BICEP": { "_score": 0.25 },
+          "OUTER_BICEP": { "_score": 0.25 }
+        }
+      }
+    },
+    "sort_order": 7,
+    "is_active": true
+  },
+  {
+    "id": "SHRUG",
+    "upperLowerBody": "Upper",
+    "label": "Shrug",
+    "sub_label": "Elevatio Scapulae",
+    "common_names": ["Trap Raises"],
+    "short_description": "Vertical elevation of the shoulder girdle.",
+    "muscle_targets": {
+      "BACK": {
+        "_score": 0.8,
+        "TRAPS": {
+          "_score": 0.8,
+          "UPPER_TRAPS": { "_score": 0.8 },
+          "LOWER_TRAPS": { "_score": 0.0 }
+        }
+      },
+      "NECK": { "_score": 0.5 }
+    },
+    "sort_order": 8,
+    "is_active": true
+  },
+  {
+    "id": "FACE_PULL",
+    "upperLowerBody": "Upper",
+    "label": "Face Pull",
+    "sub_label": "Tractio Retractio",
+    "common_names": ["Rear Delt Pull"],
+    "short_description": "Pulling resistance toward the face to engage the mid-back.",
+    "muscle_targets": {
+      "SHOULDERS": {
+        "_score": 1.8,
+        "REAR_DELTS": { "_score": 1.0 },
+        "ROTATOR_CUFF": { "_score": 0.8 }
+      },
+      "BACK": { "_score": 0.6, "UPPER_BACK": { "_score": 0.6 } }
+    },
+    "sort_order": 9,
+    "is_active": true
+  },
+  {
+    "id": "CURL",
+    "upperLowerBody": "Upper",
+    "label": "Curl",
+    "sub_label": "Flexio Brachii",
+    "common_names": ["Bicep Curls"],
+    "short_description": "Bending the arm at the elbow.",
+    "muscle_targets": {
+      "ARMS": {
+        "_score": 1.0,
+        "BICEPS": {
+          "_score": 1.0,
+          "INNER_BICEP": { "_score": 0.5 },
+          "OUTER_BICEP": { "_score": 0.5 }
+        }
+      }
+    },
+    "sort_order": 10,
+    "is_active": true
+  },
+  {
+    "id": "EXTENSION_ARM",
+    "upperLowerBody": "Upper",
+    "label": "Arm Extension",
+    "sub_label": "Extensio Brachii",
+    "common_names": ["Tricep Extension"],
+    "short_description": "Straightening the arm at the elbow.",
+    "muscle_targets": {
+      "ARMS": {
+        "_score": 1.0,
+        "TRICEPS": {
+          "_score": 1.0,
+          "INNER_TRICEP": { "_score": 0.33 },
+          "OUTER_TRICEP": { "_score": 0.33 },
+          "DEEP_TRICEP": { "_score": 0.34 }
+        }
+      }
+    },
+    "sort_order": 11,
+    "is_active": true
+  },
+  {
+    "id": "FLEXION_NECK",
+    "upperLowerBody": "Upper",
+    "label": "Neck Flexion",
+    "sub_label": "Flexio Cervicis",
+    "common_names": ["Neck Curls"],
+    "short_description": "Tilting head forward.",
+    "muscle_targets": { "NECK": { "_score": 1.0 } },
+    "sort_order": 12,
+    "is_active": true
+  },
+  {
+    "id": "EXTENSION_NECK",
+    "upperLowerBody": "Upper",
+    "label": "Neck Extension",
+    "sub_label": "Extensio Cervicis",
+    "common_names": ["Head Lifts"],
+    "short_description": "Tilting head backward.",
+    "muscle_targets": { "NECK": { "_score": 1.0 } },
+    "sort_order": 13,
+    "is_active": true
+  },
+  {
+    "id": "SQUAT",
+    "upperLowerBody": "Lower",
+    "label": "Squat",
+    "sub_label": "Flexio Genus",
+    "common_names": ["Knee Dominant"],
+    "short_description": "Bending at the hips and knees simultaneously; \"sitting\" down.",
+    "muscle_targets": {
+      "LEGS": {
+        "_score": 1.8,
+        "QUADS": {
+          "_score": 1.0,
+          "OUTER_QUAD": { "_score": 0.35 },
+          "INNER_QUAD": { "_score": 0.35 },
+          "MID_QUAD": { "_score": 0.3 }
+        },
+        "GLUTES": { "_score": 0.8 }
+      },
+      "CORE": {
+        "_score": 0.4,
+        "ABS": {
+          "_score": 0.4,
+          "LOWER_ABS": { "_score": 0.2 },
+          "UPPER_ABS": { "_score": 0.2 }
+        }
+      }
+    },
+    "sort_order": 14,
+    "is_active": true
+  },
+  {
+    "id": "HINGE",
+    "upperLowerBody": "Lower",
+    "label": "Hinge",
+    "sub_label": "Flexio Coxae",
+    "common_names": ["Hip Dominant"],
+    "short_description": "Bending primarily at the hips with minimal knee bend.",
+    "muscle_targets": {
+      "LEGS": {
+        "_score": 1.8,
+        "HAMSTRINGS": {
+          "_score": 0.9,
+          "OUTER_HAMSTRING": { "_score": 0.45 },
+          "INNER_HAMSTRING": { "_score": 0.45 }
+        },
+        "GLUTES": { "_score": 0.9 }
+      },
+      "BACK": { "_score": 0.7, "LOWER_BACK": { "_score": 0.7 } }
+    },
+    "sort_order": 15,
+    "is_active": true
+  },
+  {
+    "id": "LUNGE",
+    "upperLowerBody": "Lower",
+    "label": "Lunge",
+    "sub_label": "Gradus",
+    "common_names": ["Split Squat"],
+    "short_description": "Single-leg dominant movements.",
+    "muscle_targets": {
+      "LEGS": {
+        "_score": 1.8,
+        "QUADS": {
+          "_score": 1.0,
+          "OUTER_QUAD": { "_score": 0.5 },
+          "INNER_QUAD": { "_score": 0.5 }
+        },
+        "GLUTES": { "_score": 0.8 }
+      }
+    },
+    "sort_order": 16,
+    "is_active": true
+  },
+  {
+    "id": "LEG_EXTENSION",
+    "upperLowerBody": "Lower",
+    "label": "Leg Extension",
+    "sub_label": "Extensio Genus",
+    "common_names": ["Quad Extension"],
+    "short_description": "Straightening the knee.",
+    "muscle_targets": {
+      "LEGS": {
+        "_score": 1.0,
+        "QUADS": {
+          "_score": 1.0,
+          "MID_QUAD": { "_score": 0.4 },
+          "OUTER_QUAD": { "_score": 0.3 },
+          "INNER_QUAD": { "_score": 0.3 }
+        }
+      }
+    },
+    "sort_order": 17,
+    "is_active": true
+  },
+  {
+    "id": "LEG_CURL",
+    "upperLowerBody": "Lower",
+    "label": "Leg Curl",
+    "sub_label": "Flexio Genus Lower",
+    "common_names": ["Hamstring Curl"],
+    "short_description": "Bending the knee.",
+    "muscle_targets": {
+      "LEGS": {
+        "_score": 1.0,
+        "HAMSTRINGS": {
+          "_score": 1.0,
+          "INNER_HAMSTRING": { "_score": 0.5 },
+          "OUTER_HAMSTRING": { "_score": 0.5 }
+        }
+      }
+    },
+    "sort_order": 18,
+    "is_active": true
+  },
+  {
+    "id": "CALF_RAISE",
+    "upperLowerBody": "Lower",
+    "label": "Calf Raise",
+    "sub_label": "Plantar Flexio",
+    "common_names": ["Toe Raise"],
+    "short_description": "Lifting the heels.",
+    "muscle_targets": {
+      "LEGS": {
+        "_score": 1.0,
+        "CALVES": {
+          "_score": 1.0,
+          "INNER_CALF": { "_score": 0.5 },
+          "OUTER_CALF": { "_score": 0.5 }
+        }
+      }
+    },
+    "sort_order": 19,
+    "is_active": true
+  },
+  {
+    "id": "AB_CRUNCH",
+    "upperLowerBody": "Core",
+    "label": "Crunch",
+    "sub_label": "Flexio Trunci",
+    "common_names": ["Sit-ups"],
+    "short_description": "Rolling the spine forward.",
+    "muscle_targets": {
+      "CORE": {
+        "_score": 1.0,
+        "ABS": {
+          "_score": 1.0,
+          "UPPER_ABS": { "_score": 0.5 },
+          "MIDDLE_ABS": { "_score": 0.5 }
+        }
+      }
+    },
+    "sort_order": 20,
+    "is_active": true
+  },
+  {
+    "id": "LEG_RAISE",
+    "upperLowerBody": "Core",
+    "label": "Leg Raise",
+    "sub_label": "Flexio Coxae Core",
+    "common_names": ["Hanging Leg Raise"],
+    "short_description": "Lifting the legs toward the torso.",
+    "muscle_targets": {
+      "CORE": {
+        "_score": 1.8,
+        "ABS": { "_score": 1.0, "LOWER_ABS": { "_score": 1.0 } },
+        "HIP_FLEXORS": { "_score": 0.8 }
+      }
+    },
+    "sort_order": 21,
+    "is_active": true
+  },
+  {
+    "id": "ROTATION",
+    "upperLowerBody": "Core",
+    "label": "Rotation",
+    "sub_label": "Rotatio Trunci",
+    "common_names": ["Woodchops"],
+    "short_description": "Twisting at the waist.",
+    "muscle_targets": {
+      "CORE": {
+        "_score": 1.0,
+        "OBLIQUES": {
+          "_score": 1.0,
+          "UPPER_OBLIQUES": { "_score": 0.5 },
+          "INTERNAL_OBLIQUES": { "_score": 0.5 }
+        }
+      }
+    },
+    "sort_order": 22,
+    "is_active": true
+  },
+  {
+    "id": "SIDE_BEND",
+    "upperLowerBody": "Core",
+    "label": "Side Bend",
+    "sub_label": "Lateroflexio",
+    "common_names": ["Oblique Crunch"],
+    "short_description": "Bending sideways.",
+    "muscle_targets": {
+      "CORE": {
+        "_score": 1.0,
+        "OBLIQUES": { "_score": 1.0, "LOWER_OBLIQUES": { "_score": 1.0 } }
+      }
+    },
+    "sort_order": 23,
+    "is_active": true
+  },
+  {
+    "id": "PLANK",
+    "upperLowerBody": "Core",
+    "label": "Plank",
+    "sub_label": "Isometria Core",
+    "common_names": ["Holds"],
+    "short_description": "Static core stability holds.",
+    "muscle_targets": {
+      "CORE": { "_score": 1.0, "ABS": { "_score": 1.0, "MIDDLE_ABS": { "_score": 1.0 } } },
+      "SHOULDERS": { "_score": 0.3, "FRONT_DELTS": { "_score": 0.3 } }
+    },
+    "sort_order": 24,
+    "is_active": true
+  },
+  {
+    "id": "EXTENSION_BACK",
+    "upperLowerBody": "Lower",
+    "label": "Back Extension",
+    "sub_label": "Extensio Lumbalis",
+    "common_names": ["Hyperextensions"],
+    "short_description": "Extending the lower back.",
+    "muscle_targets": {
+      "BACK": { "_score": 1.0, "LOWER_BACK": { "_score": 1.0 } },
+      "LEGS": {
+        "_score": 1.2,
+        "GLUTES": { "_score": 0.7 },
+        "HAMSTRINGS": {
+          "_score": 0.5,
+          "INNER_HAMSTRING": { "_score": 0.25 },
+          "OUTER_HAMSTRING": { "_score": 0.25 }
+        }
+      }
+    },
+    "sort_order": 25,
+    "is_active": true
+  }
+]
