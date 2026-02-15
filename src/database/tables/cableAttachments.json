@@ -1,1 +1,204 @@
-[{"id":"ROPE","label":"Rope","sub_label":"","common_names":["Rope","Tricep Rope","Dual Rope"],"icon":"","short_description":"Two-ended rope for flexible grip and range of motion."},{"id":"LAT_PULLDOWN_BAR","label":"Lat Pulldown Bar","sub_label":"","common_names":["Lat Pulldown Bar","Wide Bar","Pull-down Bar"],"icon":"","short_description":"Long bar for wide-grip back exercises."},{"id":"STRAIGHT_BAR","label":"Straight Bar","sub_label":"","common_names":["Straight Bar","Short Bar","Cable Bar"],"icon":"","short_description":"Fixed straight bar for curls or pushdowns."},{"id":"SINGLE_HANDLE","label":"Single Handle","sub_label":"","common_names":["Single Handle","D-Handle","Single Grip"],"icon":"","short_description":"D-shaped stirrup for unilateral (one-arm) work."},{"id":"V_GRIP","label":"V-Grip","sub_label":"","common_names":["V-Grip","Close-Grip Handle","Row Handle"],"icon":"","short_description":"Narrow V-shaped handle for rows and pulldowns."},{"id":"MAG_GRIP_BAR","label":"MAG Grip Bar","sub_label":"","common_names":["MAG Grip Bar","Maximum Advantage Grip"],"icon":"","short_description":"Ergonomic handles designed to reduce grip fatigue."},{"id":"PRO_STYLE_BAR","label":"PRO-Style Bar","sub_label":"","common_names":["PRO-Style Bar","Lat Bar with Ends"],"icon":"","short_description":"Wide bar with neutral-grip handles at the ends."},{"id":"MULTI_T_BAR_STYLE","label":"Multi/T-Bar Style","sub_label":"","common_names":["Multi/T-Bar Style","T-Bar Row Attachment"],"icon":"","short_description":"Heavy-duty handle for landmine or cable rows."},{"id":"MULTI_ROW","label":"Multi-Row","sub_label":"","common_names":["Multi-Row","Neutral Row Handle"],"icon":"","short_description":"Handle offering multiple grip widths for rowing."},{"id":"EZ_BAR","label":"EZ Bar (Cable)","sub_label":"","common_names":["EZ Bar (Cable)","W-Bar","Curl Cable Attachment"],"icon":"","short_description":"Angled bar for cable curls or tricep work."},{"id":"V_BAR","label":"V-Bar","sub_label":"","common_names":["V-Bar","Tricep V-Bar"],"icon":"","short_description":"Fixed V-shaped bar primarily for tricep pushdowns."},{"id":"ANKLE_STRAP","label":"Ankle Strap","sub_label":"","common_names":["Ankle Strap","Leg Strap","Cable Cuff"],"icon":"","short_description":"Padded strap for lower body cable movements."},{"id":"AB_HARNESS","label":"Ab Harness","sub_label":"","common_names":["Ab Harness","Crunch Strap"],"icon":"","short_description":"Padded harness worn over shoulders for cable crunches."},{"id":"LANDMINE","label":"Landmine","sub_label":"","common_names":["Landmine","Barbell Pivot"],"icon":"","short_description":"Floor-based pivot for rotational barbell work."},{"id":"OTHER","label":"Other","sub_label":"","common_names":["Other","Misc Attachment"],"icon":"","short_description":"Specialized or custom cable accessories."}]
+[
+  {
+    "id": "ROPE",
+    "label": "Rope",
+    "sub_label": "",
+    "common_names": [
+      "Rope",
+      "Tricep Rope",
+      "Dual Rope"
+    ],
+    "icon": "",
+    "short_description": "Two-ended rope for flexible grip and range of motion.",
+    "sort_order": 0,
+    "is_active": true
+  },
+  {
+    "id": "LAT_PULLDOWN_BAR",
+    "label": "Lat Pulldown Bar",
+    "sub_label": "",
+    "common_names": [
+      "Lat Pulldown Bar",
+      "Wide Bar",
+      "Pull-down Bar"
+    ],
+    "icon": "",
+    "short_description": "Long bar for wide-grip back exercises.",
+    "sort_order": 1,
+    "is_active": true
+  },
+  {
+    "id": "STRAIGHT_BAR",
+    "label": "Straight Bar",
+    "sub_label": "",
+    "common_names": [
+      "Straight Bar",
+      "Short Bar",
+      "Cable Bar"
+    ],
+    "icon": "",
+    "short_description": "Fixed straight bar for curls or pushdowns.",
+    "sort_order": 2,
+    "is_active": true
+  },
+  {
+    "id": "SINGLE_HANDLE",
+    "label": "Single Handle",
+    "sub_label": "",
+    "common_names": [
+      "Single Handle",
+      "D-Handle",
+      "Single Grip"
+    ],
+    "icon": "",
+    "short_description": "D-shaped stirrup for unilateral (one-arm) work.",
+    "sort_order": 3,
+    "is_active": true
+  },
+  {
+    "id": "V_GRIP",
+    "label": "V-Grip",
+    "sub_label": "",
+    "common_names": [
+      "V-Grip",
+      "Close-Grip Handle",
+      "Row Handle"
+    ],
+    "icon": "",
+    "short_description": "Narrow V-shaped handle for rows and pulldowns.",
+    "sort_order": 4,
+    "is_active": true
+  },
+  {
+    "id": "MAG_GRIP_BAR",
+    "label": "MAG Grip Bar",
+    "sub_label": "",
+    "common_names": [
+      "MAG Grip Bar",
+      "Maximum Advantage Grip"
+    ],
+    "icon": "",
+    "short_description": "Ergonomic handles designed to reduce grip fatigue.",
+    "sort_order": 5,
+    "is_active": true
+  },
+  {
+    "id": "PRO_STYLE_BAR",
+    "label": "PRO-Style Bar",
+    "sub_label": "",
+    "common_names": [
+      "PRO-Style Bar",
+      "Lat Bar with Ends"
+    ],
+    "icon": "",
+    "short_description": "Wide bar with neutral-grip handles at the ends.",
+    "sort_order": 6,
+    "is_active": true
+  },
+  {
+    "id": "MULTI_T_BAR_STYLE",
+    "label": "Multi/T-Bar Style",
+    "sub_label": "",
+    "common_names": [
+      "Multi/T-Bar Style",
+      "T-Bar Row Attachment"
+    ],
+    "icon": "",
+    "short_description": "Heavy-duty handle for landmine or cable rows.",
+    "sort_order": 7,
+    "is_active": true
+  },
+  {
+    "id": "MULTI_ROW",
+    "label": "Multi-Row",
+    "sub_label": "",
+    "common_names": [
+      "Multi-Row",
+      "Neutral Row Handle"
+    ],
+    "icon": "",
+    "short_description": "Handle offering multiple grip widths for rowing.",
+    "sort_order": 8,
+    "is_active": true
+  },
+  {
+    "id": "EZ_BAR",
+    "label": "EZ Bar (Cable)",
+    "sub_label": "",
+    "common_names": [
+      "EZ Bar (Cable)",
+      "W-Bar",
+      "Curl Cable Attachment"
+    ],
+    "icon": "",
+    "short_description": "Angled bar for cable curls or tricep work.",
+    "sort_order": 9,
+    "is_active": true
+  },
+  {
+    "id": "V_BAR",
+    "label": "V-Bar",
+    "sub_label": "",
+    "common_names": [
+      "V-Bar",
+      "Tricep V-Bar"
+    ],
+    "icon": "",
+    "short_description": "Fixed V-shaped bar primarily for tricep pushdowns.",
+    "sort_order": 10,
+    "is_active": true
+  },
+  {
+    "id": "ANKLE_STRAP",
+    "label": "Ankle Strap",
+    "sub_label": "",
+    "common_names": [
+      "Ankle Strap",
+      "Leg Strap",
+      "Cable Cuff"
+    ],
+    "icon": "",
+    "short_description": "Padded strap for lower body cable movements.",
+    "sort_order": 11,
+    "is_active": true
+  },
+  {
+    "id": "AB_HARNESS",
+    "label": "Ab Harness",
+    "sub_label": "",
+    "common_names": [
+      "Ab Harness",
+      "Crunch Strap"
+    ],
+    "icon": "",
+    "short_description": "Padded harness worn over shoulders for cable crunches.",
+    "sort_order": 12,
+    "is_active": true
+  },
+  {
+    "id": "LANDMINE",
+    "label": "Landmine",
+    "sub_label": "",
+    "common_names": [
+      "Landmine",
+      "Barbell Pivot"
+    ],
+    "icon": "",
+    "short_description": "Floor-based pivot for rotational barbell work.",
+    "sort_order": 13,
+    "is_active": true
+  },
+  {
+    "id": "OTHER",
+    "label": "Other",
+    "sub_label": "",
+    "common_names": [
+      "Other",
+      "Misc Attachment"
+    ],
+    "icon": "",
+    "short_description": "Specialized or custom cable accessories.",
+    "sort_order": 14,
+    "is_active": true
+  }
+]

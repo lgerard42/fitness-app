@@ -1,64 +1,135 @@
-[{
-  "id": "ARMS",
-  "label": "Arms",
-  "technical_name": "Membrum Superius",
-  "common_names": ["Arms", "Upper Arm", "Elbow Flexors", "Elbow Extensors"],
-  "icon": "",
-  "short_description": "Muscles of the upper limb including flexors and extensors."
-}, {
-  "id": "BACK",
-  "label": "Back",
-  "technical_name": "Dorsum",
-  "common_names": ["Back", "Posterior Chain", "Pulling Muscles", "Lats"],
-  "icon": "",
-  "short_description": "The posterior torso, primary for pulling movements."
-}, {
-  "id": "CHEST",
-  "label": "Chest",
-  "technical_name": "Thorax",
-  "common_names": ["Chest", "Pecs", "Push Muscles", "Anterior Torso"],
-  "icon": "",
-  "short_description": "The anterior upper torso, primary for pushing movements."
-}, {
-  "id": "CORE",
-  "label": "Core",
-  "technical_name": "Abdomen & Pelvis",
-  "common_names": ["Core", "Midsection", "Abs", "Stabilizers", "Trunk"],
-  "icon": "",
-  "short_description": "Central stability muscles connecting the upper and lower body."
-}, {
-  "id": "LEGS",
-  "label": "Legs",
-  "technical_name": "Membrum Inferius",
-  "common_names": ["Legs", "Lower Body", "Quads and Hamstrings"],
-  "icon": "",
-  "short_description": "The lower limbs, responsible for locomotion and power."
-}, {
-  "id": "SHOULDERS",
-  "label": "Shoulders",
-  "technical_name": "Deltoideus",
-  "common_names": ["Shoulders", "Delts", "Shoulder Girdle"],
-  "icon": "",
-  "short_description": "The shoulder girdle providing a wide range of arm mobility."
-}, {
-  "id": "NECK",
-  "label": "Neck",
-  "technical_name": "Cervix",
-  "common_names": ["Neck", "Cervical Spine", "Upper Traps"],
-  "icon": "",
-  "short_description": "Muscles supporting the head and cervical spine."
-}, {
-  "id": "FULL_BODY",
-  "label": "Full Body",
-  "technical_name": "Totum Corpus",
-  "common_names": ["Full Body", "Compound", "Total Body", "Metabolic"],
-  "icon": "",
-  "short_description": "Exercises that engage multiple major muscle groups simultaneously."
-}, {
-  "id": "OLYMPIC",
-  "label": "Olympic",
-  "technical_name": "Motus Explosive",
-  "common_names": ["Olympic", "Oly Lifts", "Explosive Movements", "Weightlifting"],
-  "icon": "",
-  "short_description": "Compound, explosive lifts based on traditional weightlifting."
-}]
+[
+  {
+    "id": "ARMS",
+    "label": "Arms",
+    "technical_name": "Membrum Superius",
+    "common_names": [
+      "Arms",
+      "Upper Arm",
+      "Elbow Flexors",
+      "Elbow Extensors"
+    ],
+    "icon": "",
+    "short_description": "Muscles of the upper limb including flexors and extensors.",
+    "sort_order": 0,
+    "is_active": true
+  },
+  {
+    "id": "BACK",
+    "label": "Back",
+    "technical_name": "Dorsum",
+    "common_names": [
+      "Back",
+      "Posterior Chain",
+      "Pulling Muscles",
+      "Lats"
+    ],
+    "icon": "",
+    "short_description": "The posterior torso, primary for pulling movements.",
+    "sort_order": 1,
+    "is_active": true
+  },
+  {
+    "id": "CHEST",
+    "label": "Chest",
+    "technical_name": "Thorax",
+    "common_names": [
+      "Chest",
+      "Pecs",
+      "Push Muscles",
+      "Anterior Torso"
+    ],
+    "icon": "",
+    "short_description": "The anterior upper torso, primary for pushing movements.",
+    "sort_order": 2,
+    "is_active": true
+  },
+  {
+    "id": "CORE",
+    "label": "Core",
+    "technical_name": "Abdomen & Pelvis",
+    "common_names": [
+      "Core",
+      "Midsection",
+      "Abs",
+      "Stabilizers",
+      "Trunk"
+    ],
+    "icon": "",
+    "short_description": "Central stability muscles connecting the upper and lower body.",
+    "sort_order": 3,
+    "is_active": true
+  },
+  {
+    "id": "LEGS",
+    "label": "Legs",
+    "technical_name": "Membrum Inferius",
+    "common_names": [
+      "Legs",
+      "Lower Body",
+      "Quads and Hamstrings"
+    ],
+    "icon": "",
+    "short_description": "The lower limbs, responsible for locomotion and power.",
+    "sort_order": 4,
+    "is_active": true
+  },
+  {
+    "id": "SHOULDERS",
+    "label": "Shoulders",
+    "technical_name": "Deltoideus",
+    "common_names": [
+      "Shoulders",
+      "Delts",
+      "Shoulder Girdle"
+    ],
+    "icon": "",
+    "short_description": "The shoulder girdle providing a wide range of arm mobility.",
+    "sort_order": 5,
+    "is_active": true
+  },
+  {
+    "id": "NECK",
+    "label": "Neck",
+    "technical_name": "Cervix",
+    "common_names": [
+      "Neck",
+      "Cervical Spine",
+      "Upper Traps"
+    ],
+    "icon": "",
+    "short_description": "Muscles supporting the head and cervical spine.",
+    "sort_order": 6,
+    "is_active": true
+  },
+  {
+    "id": "FULL_BODY",
+    "label": "Full Body",
+    "technical_name": "Totum Corpus",
+    "common_names": [
+      "Full Body",
+      "Compound",
+      "Total Body",
+      "Metabolic"
+    ],
+    "icon": "",
+    "short_description": "Exercises that engage multiple major muscle groups simultaneously.",
+    "sort_order": 7,
+    "is_active": true
+  },
+  {
+    "id": "OLYMPIC",
+    "label": "Olympic",
+    "technical_name": "Motus Explosive",
+    "common_names": [
+      "Olympic",
+      "Oly Lifts",
+      "Explosive Movements",
+      "Weightlifting"
+    ],
+    "icon": "",
+    "short_description": "Compound, explosive lifts based on traditional weightlifting.",
+    "sort_order": 8,
+    "is_active": true
+  }
+]

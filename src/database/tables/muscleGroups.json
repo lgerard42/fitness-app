@@ -5,7 +5,9 @@
     "values_table": "PRIMARY_MUSCLES",
     "common_names": [],
     "icon": "",
-    "short_description": "High-level anatomical sections used for broad workout categorization (e.g., Chest, Legs)."
+    "short_description": "High-level anatomical sections used for broad workout categorization (e.g., Chest, Legs).",
+    "sort_order": 0,
+    "is_active": true
   },
   {
     "id": "SECONDARY_MUSCLES",
@@ -13,7 +15,9 @@
     "values_table": "SECONDARY_MUSCLES",
     "common_names": [],
     "icon": "",
-    "short_description": "Intermediate level focused on individual muscle groups for targeted training (e.g., Quads, Biceps)."
+    "short_description": "Intermediate level focused on individual muscle groups for targeted training (e.g., Quads, Biceps).",
+    "sort_order": 1,
+    "is_active": true
   },
   {
     "id": "TERTIARY_MUSCLES",
@@ -21,6 +25,8 @@
     "values_table": "TERTIARY_MUSCLES",
     "common_names": [],
     "icon": "",
-    "short_description": "The most granular level, identifying specific muscle heads and distinct fibers (e.g., Long Head, VMO)."
+    "short_description": "The most granular level, identifying specific muscle heads and distinct fibers (e.g., Long Head, VMO).",
+    "sort_order": 2,
+    "is_active": true
   }
 ]

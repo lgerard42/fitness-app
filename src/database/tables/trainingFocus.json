@@ -1,17 +1,214 @@
 [
-  { "id": "ACCELERATION", "label": "Acceleration", "technical_name": "Velocitas Initialis", "common_names": ["Acceleration", "First Step Quickness", "Starting Speed"], "icon": "", "short_description": "The ability to increase velocity as quickly as possible from a stationary start or slow move." },
-  { "id": "AGILITY", "label": "Agility", "technical_name": "Agilitas", "common_names": ["Agility", "Nimbleness", "Reactive Speed"], "icon": "", "short_description": "The ability to change body position or direction efficiently in response to a stimulus." },
-  { "id": "BALANCE", "label": "Balance", "technical_name": "Aequilibrium", "common_names": ["Balance", "Stability", "Center of Gravity"], "icon": "", "short_description": "The ability to maintain the line of gravity within the base of support with minimal postural sway." },
-  { "id": "CHANGE_OF_DIRECTION", "label": "Change of Direction", "technical_name": "Mutatio Directionis", "common_names": ["Change of Direction", "Cutting", "Shifting"], "icon": "", "short_description": "The physical ability to change movement direction (pre-planned)." },
-  { "id": "CONDITIONING", "label": "Conditioning", "technical_name": "Habitus Corporis", "common_names": ["Conditioning", "Work Capacity", "Cardio", "Endurance"], "icon": "", "short_description": "Training to improve the energy systems' ability to perform work and recover." },
-  { "id": "COORDINATION", "label": "Coordination", "technical_name": "Coordinatio", "common_names": ["Coordination", "Motor Control", "Sync"], "icon": "", "short_description": "The ability to execute smooth, accurate, and controlled motor responses." },
-  { "id": "DECELERATION", "label": "Deceleration", "technical_name": "Demissio Velocitatis", "common_names": ["Deceleration", "Braking", "Eccentric Loading"], "icon": "", "short_description": "The ability to safely and efficiently reduce speed or come to a controlled stop." },
-  { "id": "JUMP_TRAINING", "label": "Jump Training", "technical_name": "Saltus", "common_names": ["Jump Training", "Vertical", "Leaping", "Bounce"], "icon": "", "short_description": "Training focused on increasing vertical or horizontal displacement." },
-  { "id": "MOBILITY", "label": "Mobility", "technical_name": "Mobilitas", "common_names": ["Mobility", "Active Range of Motion", "Joint Health"], "icon": "", "short_description": "The ability of a joint to move actively through a full, intended range of motion." },
-  { "id": "PLYOMETRICS", "label": "Plyometrics", "technical_name": "Exercitatio Plyometrica", "common_names": ["Plyometrics", "Jump Training", "Reactive Training"], "icon": "", "short_description": "Exercises that use the stretch-shortening cycle to increase muscle power." },
-  { "id": "POWER", "label": "Power", "technical_name": "Potentia", "common_names": ["Power", "Explosiveness", "Force x Velocity"], "icon": "", "short_description": "The ability to exert maximum muscular force in as short a time as possible." },
-  { "id": "REACTION_TIME", "label": "Reaction Time", "technical_name": "Tempus Reagendi", "common_names": ["Reaction Time", "Response Time", "Reflexes"], "icon": "", "short_description": "The interval between stimulus presentation and initiation of muscular response." },
-  { "id": "SPEED", "label": "Speed", "technical_name": "Celeritas", "common_names": ["Speed", "Top End Speed", "Max Velocity"], "icon": "", "short_description": "The ability to move the whole body at a high rate of motion over a set distance." },
-  { "id": "THROWING_ROTATION", "label": "Throwing/Rotation", "technical_name": "Rotatio Axialis", "common_names": ["Throwing/Rotation", "Transverse Power", "Torque"], "icon": "", "short_description": "Training the body to generate and transfer force through the transverse plane." },
-  { "id": "OTHER", "label": "Other", "technical_name": "Variis", "common_names": ["Other", "Miscellaneous", "General"], "icon": "", "short_description": "Any training focus that does not fit into the primary performance categories." }
+  {
+    "id": "ACCELERATION",
+    "label": "Acceleration",
+    "technical_name": "Velocitas Initialis",
+    "common_names": [
+      "Acceleration",
+      "First Step Quickness",
+      "Starting Speed"
+    ],
+    "icon": "",
+    "short_description": "The ability to increase velocity as quickly as possible from a stationary start or slow move.",
+    "sort_order": 0,
+    "is_active": true
+  },
+  {
+    "id": "AGILITY",
+    "label": "Agility",
+    "technical_name": "Agilitas",
+    "common_names": [
+      "Agility",
+      "Nimbleness",
+      "Reactive Speed"
+    ],
+    "icon": "",
+    "short_description": "The ability to change body position or direction efficiently in response to a stimulus.",
+    "sort_order": 1,
+    "is_active": true
+  },
+  {
+    "id": "BALANCE",
+    "label": "Balance",
+    "technical_name": "Aequilibrium",
+    "common_names": [
+      "Balance",
+      "Stability",
+      "Center of Gravity"
+    ],
+    "icon": "",
+    "short_description": "The ability to maintain the line of gravity within the base of support with minimal postural sway.",
+    "sort_order": 2,
+    "is_active": true
+  },
+  {
+    "id": "CHANGE_OF_DIRECTION",
+    "label": "Change of Direction",
+    "technical_name": "Mutatio Directionis",
+    "common_names": [
+      "Change of Direction",
+      "Cutting",
+      "Shifting"
+    ],
+    "icon": "",
+    "short_description": "The physical ability to change movement direction (pre-planned).",
+    "sort_order": 3,
+    "is_active": true
+  },
+  {
+    "id": "CONDITIONING",
+    "label": "Conditioning",
+    "technical_name": "Habitus Corporis",
+    "common_names": [
+      "Conditioning",
+      "Work Capacity",
+      "Cardio",
+      "Endurance"
+    ],
+    "icon": "",
+    "short_description": "Training to improve the energy systems' ability to perform work and recover.",
+    "sort_order": 4,
+    "is_active": true
+  },
+  {
+    "id": "COORDINATION",
+    "label": "Coordination",
+    "technical_name": "Coordinatio",
+    "common_names": [
+      "Coordination",
+      "Motor Control",
+      "Sync"
+    ],
+    "icon": "",
+    "short_description": "The ability to execute smooth, accurate, and controlled motor responses.",
+    "sort_order": 5,
+    "is_active": true
+  },
+  {
+    "id": "DECELERATION",
+    "label": "Deceleration",
+    "technical_name": "Demissio Velocitatis",
+    "common_names": [
+      "Deceleration",
+      "Braking",
+      "Eccentric Loading"
+    ],
+    "icon": "",
+    "short_description": "The ability to safely and efficiently reduce speed or come to a controlled stop.",
+    "sort_order": 6,
+    "is_active": true
+  },
+  {
+    "id": "JUMP_TRAINING",
+    "label": "Jump Training",
+    "technical_name": "Saltus",
+    "common_names": [
+      "Jump Training",
+      "Vertical",
+      "Leaping",
+      "Bounce"
+    ],
+    "icon": "",
+    "short_description": "Training focused on increasing vertical or horizontal displacement.",
+    "sort_order": 7,
+    "is_active": true
+  },
+  {
+    "id": "MOBILITY",
+    "label": "Mobility",
+    "technical_name": "Mobilitas",
+    "common_names": [
+      "Mobility",
+      "Active Range of Motion",
+      "Joint Health"
+    ],
+    "icon": "",
+    "short_description": "The ability of a joint to move actively through a full, intended range of motion.",
+    "sort_order": 8,
+    "is_active": true
+  },
+  {
+    "id": "PLYOMETRICS",
+    "label": "Plyometrics",
+    "technical_name": "Exercitatio Plyometrica",
+    "common_names": [
+      "Plyometrics",
+      "Jump Training",
+      "Reactive Training"
+    ],
+    "icon": "",
+    "short_description": "Exercises that use the stretch-shortening cycle to increase muscle power.",
+    "sort_order": 9,
+    "is_active": true
+  },
+  {
+    "id": "POWER",
+    "label": "Power",
+    "technical_name": "Potentia",
+    "common_names": [
+      "Power",
+      "Explosiveness",
+      "Force x Velocity"
+    ],
+    "icon": "",
+    "short_description": "The ability to exert maximum muscular force in as short a time as possible.",
+    "sort_order": 10,
+    "is_active": true
+  },
+  {
+    "id": "REACTION_TIME",
+    "label": "Reaction Time",
+    "technical_name": "Tempus Reagendi",
+    "common_names": [
+      "Reaction Time",
+      "Response Time",
+      "Reflexes"
+    ],
+    "icon": "",
+    "short_description": "The interval between stimulus presentation and initiation of muscular response.",
+    "sort_order": 11,
+    "is_active": true
+  },
+  {
+    "id": "SPEED",
+    "label": "Speed",
+    "technical_name": "Celeritas",
+    "common_names": [
+      "Speed",
+      "Top End Speed",
+      "Max Velocity"
+    ],
+    "icon": "",
+    "short_description": "The ability to move the whole body at a high rate of motion over a set distance.",
+    "sort_order": 12,
+    "is_active": true
+  },
+  {
+    "id": "THROWING_ROTATION",
+    "label": "Throwing/Rotation",
+    "technical_name": "Rotatio Axialis",
+    "common_names": [
+      "Throwing/Rotation",
+      "Transverse Power",
+      "Torque"
+    ],
+    "icon": "",
+    "short_description": "Training the body to generate and transfer force through the transverse plane.",
+    "sort_order": 13,
+    "is_active": true
+  },
+  {
+    "id": "OTHER",
+    "label": "Other",
+    "technical_name": "Variis",
+    "common_names": [
+      "Other",
+      "Miscellaneous",
+      "General"
+    ],
+    "icon": "",
+    "short_description": "Any training focus that does not fit into the primary performance categories.",
+    "sort_order": 14,
+    "is_active": true
+  }
 ]

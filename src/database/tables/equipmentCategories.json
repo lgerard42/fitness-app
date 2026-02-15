@@ -1,1 +1,34 @@
-[{"id":"SUPPORT","label":"Support","sub_label":"Subsidium","common_names":["Support","Gear","Safety Equipment","Assisted"],"icon":"","short_description":"Non-weighted items used to provide stability, safety, or assistance during a movement (e.g., belts, benches, bands).","sub_categories_table":"SUPPORT_EQUIPMENT_CATEGORIES"},{"id":"WEIGHTS","label":"Weights","sub_label":"Pondera","common_names":["Weights","Resistance","Free Weights","Load"],"icon":"","short_description":"The primary source of resistance used to challenge the muscles, encompassing both free weights and machines.","sub_categories_table":"WEIGHTS_EQUIPMENT_CATEGORIES"}]
+[
+  {
+    "id": "SUPPORT",
+    "label": "Support",
+    "sub_label": "Subsidium",
+    "common_names": [
+      "Support",
+      "Gear",
+      "Safety Equipment",
+      "Assisted"
+    ],
+    "icon": "",
+    "short_description": "Non-weighted items used to provide stability, safety, or assistance during a movement (e.g., belts, benches, bands).",
+    "sub_categories_table": "SUPPORT_EQUIPMENT_CATEGORIES",
+    "sort_order": 0,
+    "is_active": true
+  },
+  {
+    "id": "WEIGHTS",
+    "label": "Weights",
+    "sub_label": "Pondera",
+    "common_names": [
+      "Weights",
+      "Resistance",
+      "Free Weights",
+      "Load"
+    ],
+    "icon": "",
+    "short_description": "The primary source of resistance used to challenge the muscles, encompassing both free weights and machines.",
+    "sub_categories_table": "WEIGHTS_EQUIPMENT_CATEGORIES",
+    "sort_order": 1,
+    "is_active": true
+  }
+]

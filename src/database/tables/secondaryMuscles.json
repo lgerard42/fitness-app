@@ -1,28 +1,429 @@
 [
-  { "id": "BICEPS", "label": "Biceps", "technical_name": "Biceps Brachii", "common_names": ["Biceps", "Front Arm", "Bicep Peak"], "icon": "", "short_description": "Front of the upper arm; primary elbow flexor.", "primary_muscle_ids": ["ARMS"] },
-  { "id": "FOREARMS", "label": "Forearms", "technical_name": "Antebrachium", "common_names": ["Forearms", "Lower Arm", "Wrist Flexors"], "icon": "", "short_description": "Muscles of the lower arm; controls wrist and finger movement.", "primary_muscle_ids": ["ARMS"] },
-  { "id": "GRIP", "label": "Grip", "technical_name": "Musculi Manus", "common_names": ["Grip", "Hand Strength", "Forearm Grip"], "icon": "", "short_description": "Intrinsic and extrinsic muscles responsible for hand strength.", "primary_muscle_ids": ["ARMS"] },
-  { "id": "TRICEPS", "label": "Triceps", "technical_name": "Triceps Brachii", "common_names": ["Triceps", "Back Arm", "Horseshoe"], "icon": "", "short_description": "Back of the upper arm; primary elbow extensor.", "primary_muscle_ids": ["ARMS"] },
-  { "id": "LATS", "label": "Lats", "technical_name": "Latissimus Dorsi", "common_names": ["Lats", "Wings", "V-Taper"], "icon": "", "short_description": "Large wing-like muscles on the sides of the mid-back.", "primary_muscle_ids": ["BACK"] },
-  { "id": "LOWER_BACK", "label": "Lower Back", "technical_name": "Erector Spinae", "common_names": ["Lower Back", "Lumbar", "Spinal Erectors"], "icon": "", "short_description": "Muscles supporting the lumbar spine and trunk extension.", "primary_muscle_ids": ["CORE", "BACK"] },
-  { "id": "MID_BACK", "label": "Mid Back", "technical_name": "Rhomboideus", "common_names": ["Mid Back", "Middle Back", "Back Thickness"], "icon": "", "short_description": "Muscles located between the shoulder blades.", "primary_muscle_ids": ["BACK"] },
-  { "id": "RHOMBOIDS", "label": "Rhomboids", "technical_name": "Rhomboideus Major", "common_names": ["Rhomboids", "Inner Back", "Scapular Retractors"], "icon": "", "short_description": "Specific muscles for scapular retraction and stability.", "primary_muscle_ids": ["BACK"] },
-  { "id": "TRAPS", "label": "Traps", "technical_name": "Trapezius", "common_names": ["Traps", "Shrug Muscles", "Yoke"], "icon": "", "short_description": "Large muscle extending from the neck to the mid-back.", "primary_muscle_ids": ["BACK", "SHOULDERS"] },
-  { "id": "UPPER_BACK", "label": "Upper Back", "technical_name": "Thoracica Superior", "common_names": ["Upper Back", "Top Back", "Rear Delts Area"], "icon": "", "short_description": "The cluster of muscles covering the top of the rib cage.", "primary_muscle_ids": ["BACK"] },
-  { "id": "LOWER_CHEST", "label": "Lower Chest", "technical_name": "Pars Abdominalis", "common_names": ["Lower Chest", "Decline", "Lower Pecs"], "icon": "", "short_description": "The bottom portion of the pectoralis major.", "primary_muscle_ids": ["CHEST"] },
-  { "id": "MID_CHEST", "label": "Mid Chest", "technical_name": "Pars Sternocostalis", "common_names": ["Mid Chest", "Flat Bench", "Inner Chest"], "icon": "", "short_description": "The largest, central portion of the chest muscle.", "primary_muscle_ids": ["CHEST"] },
-  { "id": "UPPER_CHEST", "label": "Upper Chest", "technical_name": "Pars Clavicularis", "common_names": ["Upper Chest", "Incline", "Upper Pecs"], "icon": "", "short_description": "The top section of the chest near the collarbone.", "primary_muscle_ids": ["CHEST"] },
-  { "id": "ABS", "label": "Abs", "technical_name": "Rectus Abdominis", "common_names": ["Abs", "Six Pack", "Abdominals"], "icon": "", "short_description": "The front abdominal wall (\"six-pack\").", "primary_muscle_ids": ["CORE"] },
-  { "id": "HIP_FLEXORS", "label": "Hip Flexors", "technical_name": "Iliopsoas", "common_names": ["Hip Flexors", "Psoas", "Hip Fold"], "icon": "", "short_description": "Muscles that pull the knee toward the chest.", "primary_muscle_ids": ["CORE"] },
-  { "id": "OBLIQUES", "label": "Obliques", "technical_name": "Obliquus Externus", "common_names": ["Obliques", "Side Abs", "Waist"], "icon": "", "short_description": "The side muscles of the abdomen used for rotation.", "primary_muscle_ids": ["CORE"] },
-  { "id": "CALVES", "label": "Calves", "technical_name": "Triceps Surae", "common_names": ["Calves", "Lower Leg", "Gastrocs"], "icon": "", "short_description": "The muscles on the back of the lower leg.", "primary_muscle_ids": ["LEGS"] },
-  { "id": "GLUTES", "label": "Glutes", "technical_name": "Gluteus Maximus", "common_names": ["Glutes", "Butt", "Hips", "Posterior"], "icon": "", "short_description": "The muscles of the buttocks; primary hip extensors.", "primary_muscle_ids": ["LEGS"] },
-  { "id": "HAMSTRINGS", "label": "Hamstrings", "technical_name": "Biceps Femoris", "common_names": ["Hamstrings", "Hams", "Back of Thigh"], "icon": "", "short_description": "The back of the thigh; responsible for knee flexion.", "primary_muscle_ids": ["LEGS"] },
-  { "id": "INNER_THIGHS", "label": "Inner Thighs", "technical_name": "Adductor Magnus", "common_names": ["Inner Thighs", "Adductors", "Groin"], "icon": "", "short_description": "Muscles responsible for pulling the legs together.", "primary_muscle_ids": ["LEGS"] },
-  { "id": "OUTER_HIPS_THIGHS", "label": "Outer Hips/Thighs", "technical_name": "Abductors", "common_names": ["Outer Hips/Thighs", "Outer Thigh", "Hip Abductors"], "icon": "", "short_description": "Muscles that move the legs away from the midline.", "primary_muscle_ids": ["LEGS"] },
-  { "id": "QUADS", "label": "Quads", "technical_name": "Quadriceps Femoris", "common_names": ["Quads", "Thighs", "Front of Leg"], "icon": "", "short_description": "The four large muscles on the front of the thigh.", "primary_muscle_ids": ["LEGS"] },
-  { "id": "FRONT_DELTS", "label": "Front Delts", "technical_name": "Anterior Deltoid", "common_names": ["Front Delts", "Front Shoulders", "Anterior Delts"], "icon": "", "short_description": "The front part of the shoulder muscle.", "primary_muscle_ids": ["SHOULDERS"] },
-  { "id": "REAR_DELTS", "label": "Rear Delts", "technical_name": "Posterior Deltoid", "common_names": ["Rear Delts", "Rear Shoulders", "Posterior Delts"], "icon": "", "short_description": "The back part of the shoulder muscle.", "primary_muscle_ids": ["SHOULDERS"] },
-  { "id": "ROTATOR_CUFF", "label": "Rotator Cuff", "technical_name": "SITS Muscles", "common_names": ["Rotator Cuff", "Shoulder Stabilizers"], "icon": "", "short_description": "Group of muscles/tendons that stabilize the shoulder.", "primary_muscle_ids": ["SHOULDERS"] },
-  { "id": "SIDE_DELTS", "label": "Side Delts", "technical_name": "Lateral Deltoid", "common_names": ["Side Delts", "Medial Delts", "Lateral Delts"], "icon": "", "short_description": "The middle part of the shoulder providing width.", "primary_muscle_ids": ["SHOULDERS"] }
+  {
+    "id": "BICEPS",
+    "label": "Biceps",
+    "technical_name": "Biceps Brachii",
+    "common_names": [
+      "Biceps",
+      "Front Arm",
+      "Bicep Peak"
+    ],
+    "icon": "",
+    "short_description": "Front of the upper arm; primary elbow flexor.",
+    "primary_muscle_ids": [
+      "ARMS"
+    ],
+    "sort_order": 0,
+    "is_active": true
+  },
+  {
+    "id": "FOREARMS",
+    "label": "Forearms",
+    "technical_name": "Antebrachium",
+    "common_names": [
+      "Forearms",
+      "Lower Arm",
+      "Wrist Flexors"
+    ],
+    "icon": "",
+    "short_description": "Muscles of the lower arm; controls wrist and finger movement.",
+    "primary_muscle_ids": [
+      "ARMS"
+    ],
+    "sort_order": 1,
+    "is_active": true
+  },
+  {
+    "id": "TRICEPS",
+    "label": "Triceps",
+    "technical_name": "Triceps Brachii",
+    "common_names": [
+      "Triceps",
+      "Back Arm",
+      "Horseshoe"
+    ],
+    "icon": "",
+    "short_description": "Back of the upper arm; primary elbow extensor.",
+    "primary_muscle_ids": [
+      "ARMS"
+    ],
+    "sort_order": 2,
+    "is_active": true
+  },
+  {
+    "id": "LATS",
+    "label": "Lats",
+    "technical_name": "Latissimus Dorsi",
+    "common_names": [
+      "Lats",
+      "Wings",
+      "V-Taper"
+    ],
+    "icon": "",
+    "short_description": "Large wing-like muscles on the sides of the mid-back.",
+    "primary_muscle_ids": [
+      "BACK"
+    ],
+    "sort_order": 3,
+    "is_active": true
+  },
+  {
+    "id": "LOWER_BACK",
+    "label": "Lower Back",
+    "technical_name": "Erector Spinae",
+    "common_names": [
+      "Lower Back",
+      "Lumbar",
+      "Spinal Erectors"
+    ],
+    "icon": "",
+    "short_description": "Muscles supporting the lumbar spine and trunk extension.",
+    "primary_muscle_ids": [
+      "CORE",
+      "BACK"
+    ],
+    "sort_order": 4,
+    "is_active": true
+  },
+  {
+    "id": "MID_BACK",
+    "label": "Mid Back",
+    "technical_name": "Rhomboideus",
+    "common_names": [
+      "Mid Back",
+      "Middle Back",
+      "Back Thickness"
+    ],
+    "icon": "",
+    "short_description": "Muscles located between the shoulder blades.",
+    "primary_muscle_ids": [
+      "BACK"
+    ],
+    "sort_order": 5,
+    "is_active": true
+  },
+  {
+    "id": "RHOMBOIDS",
+    "label": "Rhomboids",
+    "technical_name": "Rhomboideus Major",
+    "common_names": [
+      "Rhomboids",
+      "Inner Back",
+      "Scapular Retractors"
+    ],
+    "icon": "",
+    "short_description": "Specific muscles for scapular retraction and stability.",
+    "primary_muscle_ids": [
+      "BACK"
+    ],
+    "sort_order": 6,
+    "is_active": true
+  },
+  {
+    "id": "TRAPS",
+    "label": "Traps",
+    "technical_name": "Trapezius",
+    "common_names": [
+      "Traps",
+      "Shrug Muscles",
+      "Yoke"
+    ],
+    "icon": "",
+    "short_description": "Large muscle extending from the neck to the mid-back.",
+    "primary_muscle_ids": [
+      "BACK",
+      "SHOULDERS"
+    ],
+    "sort_order": 7,
+    "is_active": true
+  },
+  {
+    "id": "UPPER_BACK",
+    "label": "Upper Back",
+    "technical_name": "Thoracica Superior",
+    "common_names": [
+      "Upper Back",
+      "Top Back",
+      "Rear Delts Area"
+    ],
+    "icon": "",
+    "short_description": "The cluster of muscles covering the top of the rib cage.",
+    "primary_muscle_ids": [
+      "BACK"
+    ],
+    "sort_order": 8,
+    "is_active": true
+  },
+  {
+    "id": "LOWER_CHEST",
+    "label": "Lower Chest",
+    "technical_name": "Pars Abdominalis",
+    "common_names": [
+      "Lower Chest",
+      "Decline",
+      "Lower Pecs"
+    ],
+    "icon": "",
+    "short_description": "The bottom portion of the pectoralis major.",
+    "primary_muscle_ids": [
+      "CHEST"
+    ],
+    "sort_order": 9,
+    "is_active": true
+  },
+  {
+    "id": "MID_CHEST",
+    "label": "Mid Chest",
+    "technical_name": "Pars Sternocostalis",
+    "common_names": [
+      "Mid Chest",
+      "Flat Bench",
+      "Inner Chest"
+    ],
+    "icon": "",
+    "short_description": "The largest, central portion of the chest muscle.",
+    "primary_muscle_ids": [
+      "CHEST"
+    ],
+    "sort_order": 10,
+    "is_active": true
+  },
+  {
+    "id": "UPPER_CHEST",
+    "label": "Upper Chest",
+    "technical_name": "Pars Clavicularis",
+    "common_names": [
+      "Upper Chest",
+      "Incline",
+      "Upper Pecs"
+    ],
+    "icon": "",
+    "short_description": "The top section of the chest near the collarbone.",
+    "primary_muscle_ids": [
+      "CHEST"
+    ],
+    "sort_order": 11,
+    "is_active": true
+  },
+  {
+    "id": "ABS",
+    "label": "Abs",
+    "technical_name": "Rectus Abdominis",
+    "common_names": [
+      "Abs",
+      "Six Pack",
+      "Abdominals"
+    ],
+    "icon": "",
+    "short_description": "The front abdominal wall (\"six-pack\").",
+    "primary_muscle_ids": [
+      "CORE"
+    ],
+    "sort_order": 12,
+    "is_active": true
+  },
+  {
+    "id": "HIP_FLEXORS",
+    "label": "Hip Flexors",
+    "technical_name": "Iliopsoas",
+    "common_names": [
+      "Hip Flexors",
+      "Psoas",
+      "Hip Fold"
+    ],
+    "icon": "",
+    "short_description": "Muscles that pull the knee toward the chest.",
+    "primary_muscle_ids": [
+      "CORE"
+    ],
+    "sort_order": 13,
+    "is_active": true
+  },
+  {
+    "id": "OBLIQUES",
+    "label": "Obliques",
+    "technical_name": "Obliquus Externus",
+    "common_names": [
+      "Obliques",
+      "Side Abs",
+      "Waist"
+    ],
+    "icon": "",
+    "short_description": "The side muscles of the abdomen used for rotation.",
+    "primary_muscle_ids": [
+      "CORE"
+    ],
+    "sort_order": 14,
+    "is_active": true
+  },
+  {
+    "id": "CALVES",
+    "label": "Calves",
+    "technical_name": "Triceps Surae",
+    "common_names": [
+      "Calves",
+      "Lower Leg",
+      "Gastrocs"
+    ],
+    "icon": "",
+    "short_description": "The muscles on the back of the lower leg.",
+    "primary_muscle_ids": [
+      "LEGS"
+    ],
+    "sort_order": 15,
+    "is_active": true
+  },
+  {
+    "id": "GLUTES",
+    "label": "Glutes",
+    "technical_name": "Gluteus Maximus",
+    "common_names": [
+      "Glutes",
+      "Butt",
+      "Hips",
+      "Posterior"
+    ],
+    "icon": "",
+    "short_description": "The muscles of the buttocks; primary hip extensors.",
+    "primary_muscle_ids": [
+      "LEGS"
+    ],
+    "sort_order": 16,
+    "is_active": true
+  },
+  {
+    "id": "HAMSTRINGS",
+    "label": "Hamstrings",
+    "technical_name": "Biceps Femoris",
+    "common_names": [
+      "Hamstrings",
+      "Hams",
+      "Back of Thigh"
+    ],
+    "icon": "",
+    "short_description": "The back of the thigh; responsible for knee flexion.",
+    "primary_muscle_ids": [
+      "LEGS"
+    ],
+    "sort_order": 17,
+    "is_active": true
+  },
+  {
+    "id": "INNER_THIGHS",
+    "label": "Inner Thighs",
+    "technical_name": "Adductor Magnus",
+    "common_names": [
+      "Inner Thighs",
+      "Adductors",
+      "Groin"
+    ],
+    "icon": "",
+    "short_description": "Muscles responsible for pulling the legs together.",
+    "primary_muscle_ids": [
+      "LEGS"
+    ],
+    "sort_order": 18,
+    "is_active": true
+  },
+  {
+    "id": "OUTER_HIPS_THIGHS",
+    "label": "Outer Hips/Thighs",
+    "technical_name": "Abductors",
+    "common_names": [
+      "Outer Hips/Thighs",
+      "Outer Thigh",
+      "Hip Abductors"
+    ],
+    "icon": "",
+    "short_description": "Muscles that move the legs away from the midline.",
+    "primary_muscle_ids": [
+      "LEGS"
+    ],
+    "sort_order": 19,
+    "is_active": true
+  },
+  {
+    "id": "QUADS",
+    "label": "Quads",
+    "technical_name": "Quadriceps Femoris",
+    "common_names": [
+      "Quads",
+      "Thighs",
+      "Front of Leg"
+    ],
+    "icon": "",
+    "short_description": "The four large muscles on the front of the thigh.",
+    "primary_muscle_ids": [
+      "LEGS"
+    ],
+    "sort_order": 20,
+    "is_active": true
+  },
+  {
+    "id": "FRONT_DELTS",
+    "label": "Front Delts",
+    "technical_name": "Anterior Deltoid",
+    "common_names": [
+      "Front Delts",
+      "Front Shoulders",
+      "Anterior Delts"
+    ],
+    "icon": "",
+    "short_description": "The front part of the shoulder muscle.",
+    "primary_muscle_ids": [
+      "SHOULDERS"
+    ],
+    "sort_order": 21,
+    "is_active": true
+  },
+  {
+    "id": "REAR_DELTS",
+    "label": "Rear Delts",
+    "technical_name": "Posterior Deltoid",
+    "common_names": [
+      "Rear Delts",
+      "Rear Shoulders",
+      "Posterior Delts"
+    ],
+    "icon": "",
+    "short_description": "The back part of the shoulder muscle.",
+    "primary_muscle_ids": [
+      "SHOULDERS"
+    ],
+    "sort_order": 22,
+    "is_active": true
+  },
+  {
+    "id": "ROTATOR_CUFF",
+    "label": "Rotator Cuff",
+    "technical_name": "SITS Muscles",
+    "common_names": [
+      "Rotator Cuff",
+      "Shoulder Stabilizers"
+    ],
+    "icon": "",
+    "short_description": "Group of muscles/tendons that stabilize the shoulder.",
+    "primary_muscle_ids": [
+      "SHOULDERS"
+    ],
+    "sort_order": 23,
+    "is_active": true
+  },
+  {
+    "id": "SIDE_DELTS",
+    "label": "Side Delts",
+    "technical_name": "Lateral Deltoid",
+    "common_names": [
+      "Side Delts",
+      "Medial Delts",
+      "Lateral Delts"
+    ],
+    "icon": "",
+    "short_description": "The middle part of the shoulder providing width.",
+    "primary_muscle_ids": [
+      "SHOULDERS"
+    ],
+    "sort_order": 24,
+    "is_active": true
+  }
 ]
