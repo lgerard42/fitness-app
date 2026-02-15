@@ -1,0 +1,35 @@
+[
+  {
+    "id": "CARDIO",
+    "label": "Cardio",
+    "technical_name": "Systema Cardiovasculare",
+    "common_names": ["Cardio", "Aerobic", "Heart Work", "Conditioning"],
+    "icon": "",
+    "short_description": "Activities focused on elevating heart rate and improving respiratory efficiency through repetitive motion.",
+    "cardio_types_allowed": { "allowed": "CARDIO_TYPES" },
+    "muscle_groups_allowed": { "allowed": ["PRIMARY_MUSCLES"] },
+    "training_focus_allowed": { "allowed": "TRAINING_FOCUS" }
+  },
+  {
+    "id": "LIFTS",
+    "label": "Lifts",
+    "technical_name": "Exercitium Resistendi",
+    "common_names": ["Lifts", "Weightlifting", "Resistance", "Strength"],
+    "icon": "",
+    "short_description": "Movements involving external or bodyweight resistance aimed at increasing muscular force and hypertrophy.",
+    "cardio_types_allowed": { "allowed": "CARDIO_TYPES" },
+    "muscle_groups_allowed": { "required": ["PRIMARY_MUSCLES"], "allowed": ["SECONDARY_MUSCLES", "TERTIARY_MUSCLES"] },
+    "training_focus_allowed": { "allowed": "TRAINING_FOCUS" }
+  },
+  {
+    "id": "TRAINING",
+    "label": "Training",
+    "technical_name": "Educatio Corporis",
+    "common_names": ["Training", "Performance", "Skill Work", "Drills"],
+    "icon": "",
+    "short_description": "Exercises focusing on specific athletic attributes like speed, agility, or motor control rather than just load or heart rate.",
+    "cardio_types_allowed": { "allowed": "CARDIO_TYPES" },
+    "muscle_groups_allowed": { "allowed": ["PRIMARY_MUSCLES", "SECONDARY_MUSCLES", "TERTIARY_MUSCLES"] },
+    "training_focus_allowed": { "required": "TRAINING_FOCUS" }
+  }
+]

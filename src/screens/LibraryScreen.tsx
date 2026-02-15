@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet } from 'r
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Plus } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
-import { CATEGORIES } from '@/constants/data';
+import { useCategoriesAsStrings } from '@/database/useExerciseConfig';
 import { useWorkout } from '@/context/WorkoutContext';
 import EditExercise from '@/components/ExerciseEditor';
 import ExerciseHistoryModal from '@/components/ExerciseHistoryModal';
@@ -15,6 +15,7 @@ const LibraryScreen: React.FC = () => {
   const [editingExercise, setEditingExercise] = useState<ExerciseLibraryItem | null>(null);
   const [selectedExercise, setSelectedExercise] = useState<ExerciseLibraryItem | null>(null);
   const { exercisesLibrary, addExerciseToLibrary, updateExerciseInLibrary, exerciseStats, activeWorkout } = useWorkout();
+  const CATEGORIES = useCategoriesAsStrings();
 
   const filteredExercises = exercisesLibrary.filter(ex => ex.name.toLowerCase().includes(search.toLowerCase()));
 

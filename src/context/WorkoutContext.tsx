@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useEffect, ReactNode } from
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { EXERCISE_LIBRARY, migrateExercise, migrateAssistedMachine, formatDuration } from '@/constants/data';
 import { getEffectiveWeight } from '@/utils/workoutHelpers';
+import { initExerciseConfigDatabase } from '@/database/useExerciseConfig';
 import type { Workout, Exercise, ExerciseLibraryItem, ExerciseStatsMap, ExerciseStats } from '@/types/workout';
 
 interface WorkoutContextValue {
@@ -42,6 +43,9 @@ export const WorkoutProvider = ({ children }: WorkoutProviderProps) => {
   useEffect(() => {
     const loadData = async () => {
       try {
+        // Initialize exercise configuration database
+        await initExerciseConfigDatabase();
+        
         const [history, library, active, stats] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEYS.HISTORY),
           AsyncStorage.getItem(STORAGE_KEYS.LIBRARY),

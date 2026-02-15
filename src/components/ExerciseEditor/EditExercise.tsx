@@ -4,8 +4,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronDown, ToggleLeft, ToggleRight } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import {
-  PRIMARY_MUSCLES,
-  PRIMARY_TO_SECONDARY_MAP,
   SINGLE_DOUBLE_EQUIPMENT,
   SINGLE_DOUBLE_OPTIONS,
   CABLE_ATTACHMENTS,
@@ -23,6 +21,7 @@ import {
   CABLE_ATTACHMENTS_BY_ID,
   SINGLE_DOUBLE_OPTIONS_BY_ID,
 } from '@/constants/data';
+import { usePrimaryMusclesAsStrings, usePrimaryToSecondaryMap } from '@/database/useExerciseConfig';
 import Chip from './Chip';
 import CustomDropdown from './CustomDropdown';
 import EquipmentPickerModal from './EquipmentPickerModal';
@@ -122,7 +121,8 @@ const TrainingMuscleGroupsCollapsible: React.FC<{
     primaryMuscles: string[];
     onMuscleToggle: (muscle: string) => void;
     onMakePrimary: (muscle: string) => void;
-}> = ({ expanded, onToggle, secondaryMusclesEnabled, onSecondaryToggle, primaryMuscles, onMuscleToggle, onMakePrimary }) => {
+    primaryMusclesList: string[];
+}> = ({ expanded, onToggle, secondaryMusclesEnabled, onSecondaryToggle, primaryMuscles, onMuscleToggle, onMakePrimary, primaryMusclesList }) => {
     const isActive = expanded || primaryMuscles.length > 0 || secondaryMusclesEnabled;
     const disabledColor = COLORS.slate[400];
     return (
@@ -158,7 +158,7 @@ const TrainingMuscleGroupsCollapsible: React.FC<{
             {expanded && (
                 <View style={{ marginBottom: 24 }}>
                     <View style={styles.chipsContainer}>
-                        {PRIMARY_MUSCLES.map((m) => (
+                        {primaryMusclesList.map((m) => (
                             <Chip
                                 key={m}
                                 label={m}
@@ -178,6 +178,8 @@ const TrainingMuscleGroupsCollapsible: React.FC<{
 
 const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, categories, exercise }) => {
     const isEditMode = !!exercise;
+    const PRIMARY_MUSCLES = usePrimaryMusclesAsStrings();
+    const PRIMARY_TO_SECONDARY_MAP = usePrimaryToSecondaryMap();
 
     const [editState, setEditState] = useState<EditExerciseState>(getInitialState());
     const [secondaryMusclesEnabled, setSecondaryMusclesEnabled] = useState(false);
@@ -319,7 +321,7 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
 
             if (isSelected) {
                 newPrimaries = prev.primaryMuscles.filter(m => m !== muscle);
-                const secondariesToRemove = (PRIMARY_TO_SECONDARY_MAP as Record<string, string[]>)[muscle] || [];
+                const secondariesToRemove = PRIMARY_TO_SECONDARY_MAP[muscle] || [];
                 newSecondaries = prev.secondaryMuscles.filter(s => !secondariesToRemove.includes(s));
             } else {
                 if (isSpecial) { newPrimaries = [muscle]; newSecondaries = []; }
@@ -327,8 +329,7 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                     if (hasSpecialSelected) { newPrimaries = [muscle]; newSecondaries = []; }
                     else { newPrimaries = [...prev.primaryMuscles, muscle]; }
                 }
-                const muscleMap = PRIMARY_TO_SECONDARY_MAP as Record<string, string[]>;
-                const hasSecondaries = muscleMap[muscle] && muscleMap[muscle].length > 0;
+                const hasSecondaries = PRIMARY_TO_SECONDARY_MAP[muscle] && PRIMARY_TO_SECONDARY_MAP[muscle].length > 0;
                 if (secondaryMusclesEnabled && hasSecondaries) setActivePrimaryForPopup(muscle);
             }
             return { ...prev, primaryMuscles: newPrimaries, secondaryMuscles: newSecondaries };
@@ -398,9 +399,8 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
     };
 
     const getAvailableSecondaryMuscles = (primary: string): string[] => {
-        const muscleMap = PRIMARY_TO_SECONDARY_MAP as Record<string, string[]>;
-        if (muscleMap[primary]) {
-            return muscleMap[primary].sort();
+        if (PRIMARY_TO_SECONDARY_MAP[primary]) {
+            return PRIMARY_TO_SECONDARY_MAP[primary].sort();
         }
         return [];
     };
@@ -653,6 +653,7 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                                 primaryMuscles={editState.primaryMuscles}
                                 onMuscleToggle={handlePrimaryMuscleToggle}
                                 onMakePrimary={handleMakePrimary}
+                                primaryMusclesList={PRIMARY_MUSCLES}
                             />
 
                             <CollapsibleSection

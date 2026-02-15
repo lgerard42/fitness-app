@@ -3,14 +3,12 @@ import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import { ChevronDown, ToggleLeft, ToggleRight } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import {
-  CARDIO_TYPES,
   CABLE_ATTACHMENTS,
   SINGLE_DOUBLE_OPTIONS,
   GRIP_TYPES_BY_ID,
   GRIP_WIDTHS_BY_ID,
-  TRAINING_FOCUS,
-  PRIMARY_MUSCLES,
 } from '@/constants/data';
+import { useCardioTypesAsStrings, useTrainingFocusAsStrings, usePrimaryMusclesAsStrings } from '@/database/useExerciseConfig';
 import { GripImages } from '@/constants/gripImages';
 import { GripWidthImages } from '@/constants/gripWidthImages';
 import Chip from './Chip';
@@ -130,26 +128,32 @@ export const DescriptionInput: React.FC<{
 export const MetabolicIntensityDropdown: React.FC<{
   value: string;
   onChange: (v: string) => void;
-}> = ({ value, onChange }) => (
-  <CustomDropdown
-    value={value}
-    onChange={onChange}
-    options={CARDIO_TYPES}
-    placeholder={PLACEHOLDERS.metabolicIntensity}
-  />
-);
+}> = ({ value, onChange }) => {
+  const CARDIO_TYPES = useCardioTypesAsStrings();
+  return (
+    <CustomDropdown
+      value={value}
+      onChange={onChange}
+      options={CARDIO_TYPES}
+      placeholder={PLACEHOLDERS.metabolicIntensity}
+    />
+  );
+};
 
 export const TrainingFocusDropdown: React.FC<{
   value: string;
   onChange: (v: string) => void;
-}> = ({ value, onChange }) => (
-  <CustomDropdown
-    value={value}
-    onChange={onChange}
-    options={TRAINING_FOCUS}
-    placeholder={PLACEHOLDERS.trainingFocus}
-  />
-);
+}> = ({ value, onChange }) => {
+  const TRAINING_FOCUS = useTrainingFocusAsStrings();
+  return (
+    <CustomDropdown
+      value={value}
+      onChange={onChange}
+      options={TRAINING_FOCUS}
+      placeholder={PLACEHOLDERS.trainingFocus}
+    />
+  );
+};
 
 export const CableAttachmentsField: React.FC<{
   value: string;
@@ -416,7 +420,9 @@ export const PrimaryMuscleChips: React.FC<{
   onMuscleToggle,
   onMakePrimary,
   required,
-}) => (
+}) => {
+  const PRIMARY_MUSCLES = usePrimaryMusclesAsStrings();
+  return (
   <FieldGroup>
     <View style={styles.labelToggleRow}>
       <Label required={required} style={{ marginBottom: 0 }}>
@@ -447,5 +453,6 @@ export const PrimaryMuscleChips: React.FC<{
       ))}
     </View>
   </FieldGroup>
-);
+  );
+};
 

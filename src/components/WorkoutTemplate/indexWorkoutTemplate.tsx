@@ -10,7 +10,7 @@ import SetRow from './SetRow';
 import SavedNoteItem from '@/components/SavedNoteItem';
 import ExercisePicker from './modals/ExercisePicker/ExercisePickerIndex';
 import EditExercise from '@/components/ExerciseEditor';
-import { CATEGORIES } from '@/constants/data';
+import { useCategoriesAsStrings } from '@/database/useExerciseConfig';
 import {
   updateExercisesDeep,
   deleteExerciseDeep,
@@ -75,6 +75,8 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
   customFinishButton = null,
   hideTimer = false,
 }) => {
+  const CATEGORIES = useCategoriesAsStrings();
+  
   // Determine mode flags
   const isEditMode = mode === 'edit';
   const isLiveMode = mode === 'live';

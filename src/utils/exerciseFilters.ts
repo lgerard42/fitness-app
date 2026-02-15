@@ -1,4 +1,3 @@
-import { PRIMARY_TO_SECONDARY_MAP } from '@/constants/data';
 import type { ExerciseLibraryItem } from '@/types/workout';
 
 export interface ExerciseFilters {
@@ -50,14 +49,18 @@ export const filterExercises = (
 /**
  * Gets available secondary muscles for a list of primary muscles
  * @param primaries - Array of primary muscle names
+ * @param primaryToSecondaryMap - Map of primary muscles to their secondary muscles
  * @returns Sorted array of unique secondary muscle names
  */
-export const getAvailableSecondaryMusclesForPrimaries = (primaries: string[]): string[] => {
+export const getAvailableSecondaryMusclesForPrimaries = (
+  primaries: string[],
+  primaryToSecondaryMap: Record<string, string[]>
+): string[] => {
   if (primaries.length === 0) return [];
   
   const secondarySet = new Set<string>();
   primaries.forEach(primary => {
-    const secondaries = (PRIMARY_TO_SECONDARY_MAP as Record<string, string[]>)[primary] || [];
+    const secondaries = primaryToSecondaryMap[primary] || [];
     secondaries.forEach((sec: string) => secondarySet.add(sec));
   });
   

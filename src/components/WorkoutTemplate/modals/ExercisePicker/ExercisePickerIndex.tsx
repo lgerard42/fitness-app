@@ -5,6 +5,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { COLORS } from '@/constants/colors';
 import { Z_INDEX, PADDING, BORDER_RADIUS } from '@/constants/layout';
 import { filterExercises, getAvailableSecondaryMusclesForPrimaries } from '@/utils/exerciseFilters';
+import { usePrimaryToSecondaryMap } from '@/database/useExerciseConfig';
 import HeaderTopRow from './HeaderTopRow';
 import SearchBar from './SearchBar';
 import Filters from './Filters';
@@ -884,9 +885,11 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
     }
   }, [isOpen]);
 
+  const PRIMARY_TO_SECONDARY_MAP = usePrimaryToSecondaryMap();
+  
   const availableSecondaryMuscles = useMemo((): string[] => {
-    return getAvailableSecondaryMusclesForPrimaries(filterMuscle);
-  }, [filterMuscle]);
+    return getAvailableSecondaryMusclesForPrimaries(filterMuscle, PRIMARY_TO_SECONDARY_MAP);
+  }, [filterMuscle, PRIMARY_TO_SECONDARY_MAP]);
 
   const getAvailableSecondaryMuscles = useCallback((): string[] => {
     return availableSecondaryMuscles;
