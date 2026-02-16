@@ -68,7 +68,7 @@ export const CollapsibleSection: React.FC<{
   return (
     <>
       <TouchableOpacity onPress={onToggle} style={styles.collapsibleLabelToggleRow}>
-        <View style={styles.rowGap}>
+        <View style={styles.toggleContainer}>
           <Text
             style={[styles.label, { marginBottom: 0, color: isActive ? COLORS.slate[500] : disabledColor }]}
           >
@@ -414,6 +414,10 @@ export const PrimaryMuscleChips: React.FC<{
   onSecondaryToggle: () => void;
   onMuscleToggle: (muscle: string) => void;
   onMakePrimary: (muscle: string) => void;
+  secondaryMuscles?: string[];
+  getAvailableSecondaryMuscles?: (primary: string) => string[];
+  getHasTertiarySelectedForPrimary?: (primary: string) => boolean;
+  onOpenSecondaryPopup?: (primary: string) => void;
   required?: boolean;
 }> = ({
   primaryMuscles,
@@ -421,40 +425,55 @@ export const PrimaryMuscleChips: React.FC<{
   onSecondaryToggle,
   onMuscleToggle,
   onMakePrimary,
+  secondaryMuscles = [],
+  getAvailableSecondaryMuscles,
+  getHasTertiarySelectedForPrimary,
+  onOpenSecondaryPopup,
   required,
 }) => {
-  const PRIMARY_MUSCLES = usePrimaryMusclesAsStrings();
-  return (
-  <FieldGroup>
-    <View style={styles.labelToggleRow}>
-      <Label required={required} style={{ marginBottom: 0 }}>
-        {FIELD_LABELS.primaryMuscleGroups}
-      </Label>
-      <TouchableOpacity style={styles.toggleContainer} onPress={onSecondaryToggle}>
-        <Text style={[styles.toggleLabel, secondaryMusclesEnabled ? styles.textBlue : styles.textSlate]}>
-          {FIELD_LABELS.secondary}
-        </Text>
-        {secondaryMusclesEnabled ? (
-          <ToggleRight size={24} color={COLORS.blue[600]} />
-        ) : (
-          <ToggleLeft size={24} color={COLORS.slate[300]} />
-        )}
-      </TouchableOpacity>
-    </View>
-    <View style={styles.chipsContainer}>
-      {PRIMARY_MUSCLES.map((m) => (
-        <Chip
-          key={m}
-          label={m}
-          selected={primaryMuscles.includes(m)}
-          isPrimary={primaryMuscles[0] === m}
-          isSpecial={['Full Body', 'Olympic'].includes(m)}
-          onClick={() => onMuscleToggle(m)}
-          onMakePrimary={() => onMakePrimary(m)}
-        />
-      ))}
-    </View>
-  </FieldGroup>
-  );
-};
+    const PRIMARY_MUSCLES = usePrimaryMusclesAsStrings();
+    return (
+      <FieldGroup>
+        <View style={styles.labelToggleRow}>
+          <Label required={required} style={{ marginBottom: 0 }}>
+            {FIELD_LABELS.primaryMuscleGroups}
+          </Label>
+          <TouchableOpacity style={styles.toggleContainer} onPress={onSecondaryToggle}>
+            <Text style={[styles.toggleLabel, secondaryMusclesEnabled ? styles.textBlue : styles.textSlate]}>
+              {FIELD_LABELS.secondary}
+            </Text>
+            {secondaryMusclesEnabled ? (
+              <ToggleRight size={24} color={COLORS.blue[600]} />
+            ) : (
+              <ToggleLeft size={24} color={COLORS.slate[300]} />
+            )}
+          </TouchableOpacity>
+        </View>
+        <View style={styles.chipsContainer}>
+          {PRIMARY_MUSCLES.map((m) => {
+            const selected = primaryMuscles.includes(m);
+            const isPrimary = primaryMuscles[0] === m;
+            const showSecondaryButton = selected && secondaryMusclesEnabled && onOpenSecondaryPopup != null && getAvailableSecondaryMuscles != null;
+            const available = getAvailableSecondaryMuscles ? getAvailableSecondaryMuscles(m) : [];
+            const hasSecondarySelected = available.some((sec) => secondaryMuscles.includes(sec));
+            const hasTertiarySelected = showSecondaryButton && getHasTertiarySelectedForPrimary ? getHasTertiarySelectedForPrimary(m) : undefined;
+            return (
+              <Chip
+                key={m}
+                label={m}
+                selected={selected}
+                isPrimary={isPrimary}
+                isSpecial={['Full Body', 'Olympic'].includes(m)}
+                onClick={() => onMuscleToggle(m)}
+                onMakePrimary={() => onMakePrimary(m)}
+                onSecondaryPress={showSecondaryButton ? () => onOpenSecondaryPopup(m) : undefined}
+                hasSecondarySelected={showSecondaryButton ? hasSecondarySelected : undefined}
+                hasTertiarySelected={hasTertiarySelected}
+              />
+            );
+          })}
+        </View>
+      </FieldGroup>
+    );
+  };
 

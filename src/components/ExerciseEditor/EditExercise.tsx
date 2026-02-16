@@ -1,44 +1,46 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Modal, ScrollView } from 'react-native';
+import React, { useState, useEffect, useMemo } from 'react';
+import { View, Text, TouchableOpacity, Modal, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronDown, ToggleLeft, ToggleRight } from 'lucide-react-native';
+import { ChevronDown, ToggleLeft, ToggleRight, Check } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import {
-  SINGLE_DOUBLE_OPTIONS,
-  EQUIPMENT_GRIP_STANCE_OPTIONS,
-  CABLE_ATTACHMENT_GRIP_STANCE_OPTIONS,
-  optionIdFromLegacy,
-  buildCableAttachmentsById,
-  GRIP_TYPES,
-  GRIP_TYPES_BY_ID,
-  GRIP_WIDTHS,
-  GRIP_WIDTHS_BY_ID,
-  STANCE_TYPES,
-  STANCE_TYPES_BY_ID,
-  STANCE_WIDTHS,
-  STANCE_WIDTHS_BY_ID,
-  SINGLE_DOUBLE_OPTIONS_BY_ID,
+    SINGLE_DOUBLE_OPTIONS,
+    EQUIPMENT_GRIP_STANCE_OPTIONS,
+    CABLE_ATTACHMENT_GRIP_STANCE_OPTIONS,
+    optionIdFromLegacy,
+    buildCableAttachmentsById,
+    GRIP_TYPES,
+    GRIP_TYPES_BY_ID,
+    GRIP_WIDTHS,
+    GRIP_WIDTHS_BY_ID,
+    STANCE_TYPES,
+    STANCE_TYPES_BY_ID,
+    STANCE_WIDTHS,
+    STANCE_WIDTHS_BY_ID,
+    SINGLE_DOUBLE_OPTIONS_BY_ID,
 } from '@/constants/data';
-import { usePrimaryMusclesAsStrings, usePrimaryToSecondaryMap, useCableAttachments, useSingleDoubleEquipmentLabels } from '@/database/useExerciseConfig';
+import { usePrimaryMusclesAsStrings, usePrimaryToSecondaryMap, useCableAttachments, useSingleDoubleEquipmentLabels, useTertiaryMuscles, useSecondaryMuscles } from '@/database/useExerciseConfig';
+import { getTertiaryMusclesBySecondary } from '@/database/exerciseConfigService';
 import Chip from './Chip';
 import CustomDropdown from './CustomDropdown';
 import EquipmentPickerModal from './EquipmentPickerModal';
+import MotionPickerModal from './MotionPickerModal';
 import type { ExerciseLibraryItem, ExerciseCategory } from '@/types/workout';
 import { FIELD_LABELS } from './editExerciseFieldConfig';
-import styles from './EditExercise.styles';
+import styles, { musclePickerStyles } from './EditExercise.styles';
 import {
-  FieldGroup,
-  Label,
-  ToggleRow,
-  CollapsibleSection,
-  ExerciseNameInput,
-  DescriptionInput,
-  MetabolicIntensityDropdown,
-  TrainingFocusDropdown,
-  CableAttachmentsField,
-  AssistedNegativeRow,
-  EquipmentBlock,
-  PrimaryMuscleChips,
+    FieldGroup,
+    Label,
+    ToggleRow,
+    CollapsibleSection,
+    ExerciseNameInput,
+    DescriptionInput,
+    MetabolicIntensityDropdown,
+    TrainingFocusDropdown,
+    CableAttachmentsField,
+    AssistedNegativeRow,
+    EquipmentBlock,
+    PrimaryMuscleChips,
 } from './EditExerciseFields';
 
 interface EditExerciseProps {
@@ -54,6 +56,10 @@ interface EditExerciseState {
     category: ExerciseCategory | '';
     primaryMuscles: string[];
     secondaryMuscles: string[];
+    tertiaryMuscles?: string[];
+    primaryMotion?: string;
+    primaryMotionVariation?: string;
+    motionPlane?: string;
     cardioType: string;
     trainingFocus: string;
     weightEquipTags: string[];
@@ -71,10 +77,11 @@ interface EditExerciseState {
 }
 
 const getInitialState = (): EditExerciseState => ({
-    name: "", category: "", primaryMuscles: [], secondaryMuscles: [],
-    cardioType: "", trainingFocus: "", weightEquipTags: [], description: "", 
+    name: "", category: "", primaryMuscles: [], secondaryMuscles: [], tertiaryMuscles: [],
+    primaryMotion: "", primaryMotionVariation: "", motionPlane: "",
+    cardioType: "", trainingFocus: "", weightEquipTags: [], description: "",
     trackDuration: false, trackReps: false, trackDistance: false,
-    singleDouble: "", cableAttachment: "", gripType: "", gripWidth: "", 
+    singleDouble: "", cableAttachment: "", gripType: "", gripWidth: "",
     stanceType: "", stanceWidth: "", assistedNegative: false
 });
 
@@ -88,6 +95,10 @@ const getStateFromExercise = (
         category: exercise.category || "",
         primaryMuscles: (exercise.primaryMuscles as string[]) || [],
         secondaryMuscles: (exercise.secondaryMuscles as string[]) || [],
+        tertiaryMuscles: (exercise.tertiaryMuscles as string[]) || [],
+        primaryMotion: (exercise.primaryMotion as string) || "",
+        primaryMotionVariation: (exercise.primaryMotionVariation as string) || "",
+        motionPlane: (exercise.motionPlane as string) || "",
         cardioType: (exercise.cardioType as string) || "",
         trainingFocus: (exercise.trainingFocus as string) || "",
         weightEquipTags: (exercise.weightEquipTags as string[]) || [],
@@ -114,6 +125,179 @@ const getStateFromExercise = (
     };
 };
 
+/** Secondary Muscle Picker Modal styled like EquipmentPickerModal */
+const SecondaryMusclePickerModal: React.FC<{
+    visible: boolean;
+    onClose: () => void;
+    primaryMuscle: string;
+    availableSecondaryMuscles: string[];
+    selectedSecondaryMuscles: string[];
+    selectedTertiaryMuscles: string[];
+    onSelectSecondary: (muscle: string) => void;
+    onSelectTertiary: (tertiary: string) => void;
+    onCancel: () => void;
+}> = ({
+    visible,
+    onClose,
+    primaryMuscle,
+    availableSecondaryMuscles,
+    selectedSecondaryMuscles,
+    selectedTertiaryMuscles,
+    onSelectSecondary,
+    onSelectTertiary,
+    onCancel,
+}) => {
+        const allTertiaryMuscles = useTertiaryMuscles();
+        const allSecondaryMuscles = useSecondaryMuscles();
+        const [tertiaryMusclesBySecondary, setTertiaryMusclesBySecondary] = useState<Record<string, typeof allTertiaryMuscles>>({});
+
+        // Create a map of secondary muscle ID to label
+        const secondaryMuscleLabelMap = useMemo(() => {
+            const map: Record<string, string> = {};
+            allSecondaryMuscles.forEach(muscle => {
+                map[muscle.id] = muscle.label;
+            });
+            return map;
+        }, [allSecondaryMuscles]);
+
+        useEffect(() => {
+            if (!visible) {
+                // Reset when modal closes
+                setTertiaryMusclesBySecondary({});
+                return;
+            }
+            if (selectedSecondaryMuscles.length > 0) {
+                // Load tertiary muscles for all selected secondary muscles
+                Promise.all(
+                    selectedSecondaryMuscles.map(secondaryId =>
+                        getTertiaryMusclesBySecondary([secondaryId]).then(tertiaries => ({
+                            secondaryId,
+                            tertiaries
+                        }))
+                    )
+                ).then(results => {
+                    const grouped: Record<string, typeof allTertiaryMuscles> = {};
+                    results.forEach(({ secondaryId, tertiaries }) => {
+                        if (tertiaries.length > 0) {
+                            grouped[secondaryId] = tertiaries;
+                        }
+                    });
+                    setTertiaryMusclesBySecondary(grouped);
+                });
+            } else {
+                setTertiaryMusclesBySecondary({});
+            }
+        }, [selectedSecondaryMuscles, visible]);
+
+        return (
+            <Modal
+                visible={visible}
+                transparent
+                animationType="fade"
+                onRequestClose={onClose}
+            >
+                <TouchableOpacity
+                    style={musclePickerStyles.overlay}
+                    activeOpacity={1}
+                    onPress={onClose}
+                >
+                    <KeyboardAvoidingView
+                        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                        style={musclePickerStyles.centered}
+                    >
+                        <View style={musclePickerStyles.modal} onStartShouldSetResponder={() => true}>
+                            <View style={musclePickerStyles.twoColumnContainer}>
+                                <ScrollView style={musclePickerStyles.column} contentContainerStyle={musclePickerStyles.columnContent}>
+                                    <Text style={musclePickerStyles.columnTitle}>
+                                        {(primaryMuscle.endsWith('s') ? primaryMuscle.slice(0, -1) : primaryMuscle).toUpperCase()} MUSCLE
+                                    </Text>
+                                    {availableSecondaryMuscles.map(m => (
+                                        <TouchableOpacity
+                                            key={m}
+                                            style={[
+                                                musclePickerStyles.option,
+                                                selectedSecondaryMuscles.includes(m) && musclePickerStyles.optionSelected,
+                                            ]}
+                                            onPress={() => {
+                                                onSelectSecondary(m);
+                                            }}
+                                            activeOpacity={0.7}
+                                        >
+                                            <Text
+                                                style={[
+                                                    musclePickerStyles.optionText,
+                                                    selectedSecondaryMuscles.includes(m) && musclePickerStyles.optionTextSelected,
+                                                ]}
+                                                numberOfLines={1}
+                                            >
+                                                {m}
+                                            </Text>
+                                            {selectedSecondaryMuscles.includes(m) && (
+                                                <Check size={18} color={COLORS.blue[600]} />
+                                            )}
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
+                                {selectedSecondaryMuscles.length > 0 && Object.keys(tertiaryMusclesBySecondary).length > 0 && (
+                                    <>
+                                        <View style={musclePickerStyles.columnDivider} />
+                                        <ScrollView style={musclePickerStyles.column} contentContainerStyle={musclePickerStyles.columnContent}>
+                                            <Text style={musclePickerStyles.columnTitle}>GRANULAR MUSCLES</Text>
+                                            {selectedSecondaryMuscles.map(secondaryId => {
+                                                const tertiaries = tertiaryMusclesBySecondary[secondaryId] || [];
+                                                if (tertiaries.length === 0) return null;
+                                                const secondaryLabel = secondaryMuscleLabelMap[secondaryId] || secondaryId;
+                                                return (
+                                                    <View key={secondaryId}>
+                                                        <Text style={musclePickerStyles.sectionHeader}>
+                                                            {secondaryLabel.toUpperCase()}
+                                                        </Text>
+                                                        {tertiaries.map(tertiary => (
+                                                            <TouchableOpacity
+                                                                key={tertiary.id}
+                                                                style={[
+                                                                    musclePickerStyles.option,
+                                                                    selectedTertiaryMuscles.includes(tertiary.id) && musclePickerStyles.optionSelected,
+                                                                ]}
+                                                                onPress={() => onSelectTertiary(tertiary.id)}
+                                                                activeOpacity={0.7}
+                                                            >
+                                                                <Text
+                                                                    style={[
+                                                                        musclePickerStyles.optionText,
+                                                                        selectedTertiaryMuscles.includes(tertiary.id) && musclePickerStyles.optionTextSelected,
+                                                                    ]}
+                                                                    numberOfLines={1}
+                                                                >
+                                                                    {tertiary.label}
+                                                                </Text>
+                                                                {selectedTertiaryMuscles.includes(tertiary.id) && (
+                                                                    <Check size={18} color={COLORS.blue[600]} />
+                                                                )}
+                                                            </TouchableOpacity>
+                                                        ))}
+                                                    </View>
+                                                );
+                                            })}
+                                        </ScrollView>
+                                    </>
+                                )}
+                            </View>
+                            <View style={musclePickerStyles.footerRow}>
+                                <TouchableOpacity onPress={onCancel} style={musclePickerStyles.cancelButtonInRow}>
+                                    <Text style={musclePickerStyles.cancelButtonText}>Cancel</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={onClose} style={musclePickerStyles.doneButton}>
+                                    <Text style={musclePickerStyles.doneButtonText}>Done</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </KeyboardAvoidingView>
+                </TouchableOpacity>
+            </Modal>
+        );
+    };
+
 /** Training-only: collapsible "Primary Muscle Groups" with Secondary toggle in the header. */
 const TrainingMuscleGroupsCollapsible: React.FC<{
     expanded: boolean;
@@ -124,13 +308,17 @@ const TrainingMuscleGroupsCollapsible: React.FC<{
     onMuscleToggle: (muscle: string) => void;
     onMakePrimary: (muscle: string) => void;
     primaryMusclesList: string[];
-}> = ({ expanded, onToggle, secondaryMusclesEnabled, onSecondaryToggle, primaryMuscles, onMuscleToggle, onMakePrimary, primaryMusclesList }) => {
+    secondaryMuscles?: string[];
+    getAvailableSecondaryMuscles?: (primary: string) => string[];
+    getHasTertiarySelectedForPrimary?: (primary: string) => boolean;
+    onOpenSecondaryPopup?: (primary: string) => void;
+}> = ({ expanded, onToggle, secondaryMusclesEnabled, onSecondaryToggle, primaryMuscles, onMuscleToggle, onMakePrimary, primaryMusclesList, secondaryMuscles = [], getAvailableSecondaryMuscles, getHasTertiarySelectedForPrimary, onOpenSecondaryPopup }) => {
     const isActive = expanded || primaryMuscles.length > 0 || secondaryMusclesEnabled;
     const disabledColor = COLORS.slate[400];
     return (
         <>
             <TouchableOpacity onPress={onToggle} style={styles.collapsibleLabelToggleRow}>
-                <View style={styles.rowGap}>
+                <View style={styles.toggleContainer}>
                     <Text style={[styles.label, { marginBottom: 0, color: isActive ? COLORS.slate[500] : disabledColor }]}>
                         {FIELD_LABELS.primaryMuscleGroups}
                     </Text>
@@ -160,17 +348,28 @@ const TrainingMuscleGroupsCollapsible: React.FC<{
             {expanded && (
                 <View style={{ marginBottom: 24 }}>
                     <View style={styles.chipsContainer}>
-                        {primaryMusclesList.map((m) => (
-                            <Chip
-                                key={m}
-                                label={m}
-                                selected={primaryMuscles.includes(m)}
-                                isPrimary={primaryMuscles[0] === m}
-                                isSpecial={['Full Body', 'Olympic'].includes(m)}
-                                onClick={() => onMuscleToggle(m)}
-                                onMakePrimary={() => onMakePrimary(m)}
-                            />
-                        ))}
+                        {primaryMusclesList.map((m) => {
+                            const selected = primaryMuscles.includes(m);
+                            const isPrimary = primaryMuscles[0] === m;
+                            const showSecondaryButton = selected && secondaryMusclesEnabled && onOpenSecondaryPopup != null && getAvailableSecondaryMuscles != null;
+                            const available = getAvailableSecondaryMuscles ? getAvailableSecondaryMuscles(m) : [];
+                            const hasSecondarySelected = available.some((sec) => secondaryMuscles.includes(sec));
+                            const hasTertiarySelected = showSecondaryButton && getHasTertiarySelectedForPrimary ? getHasTertiarySelectedForPrimary(m) : undefined;
+                            return (
+                                <Chip
+                                    key={m}
+                                    label={m}
+                                    selected={selected}
+                                    isPrimary={isPrimary}
+                                    isSpecial={['Full Body', 'Olympic'].includes(m)}
+                                    onClick={() => onMuscleToggle(m)}
+                                    onMakePrimary={() => onMakePrimary(m)}
+                                    onSecondaryPress={showSecondaryButton ? () => onOpenSecondaryPopup(m) : undefined}
+                                    hasSecondarySelected={showSecondaryButton ? hasSecondarySelected : undefined}
+                                    hasTertiarySelected={hasTertiarySelected}
+                                />
+                            );
+                        })}
                     </View>
                 </View>
             )}
@@ -182,9 +381,28 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
     const isEditMode = !!exercise;
     const PRIMARY_MUSCLES = usePrimaryMusclesAsStrings();
     const PRIMARY_TO_SECONDARY_MAP = usePrimaryToSecondaryMap();
+    const allSecondaryMuscles = useSecondaryMuscles();
+    const allTertiaryMuscles = useTertiaryMuscles();
     const CABLE_ATTACHMENTS = useCableAttachments();
     const CABLE_ATTACHMENTS_BY_ID = buildCableAttachmentsById(CABLE_ATTACHMENTS);
     const SINGLE_DOUBLE_EQUIPMENT = useSingleDoubleEquipmentLabels();
+
+    // Load motion data
+    const [primaryMotions, setPrimaryMotions] = useState<any[]>([]);
+    const [primaryMotionVariations, setPrimaryMotionVariations] = useState<any[]>([]);
+    const [motionPlanes, setMotionPlanes] = useState<any[]>([]);
+
+    useEffect(() => {
+        Promise.all([
+            import('@/database/tables/primaryMotions.json').then(m => m.default),
+            import('@/database/tables/primaryMotionVariations.json').then(m => m.default),
+            import('@/database/tables/motionPlanes.json').then(m => m.default),
+        ]).then(([motions, variations, planes]) => {
+            setPrimaryMotions(motions.filter((m: any) => m.is_active));
+            setPrimaryMotionVariations(variations.filter((v: any) => v.is_active));
+            setMotionPlanes(planes.filter((p: any) => p.is_active));
+        });
+    }, []);
 
     const [editState, setEditState] = useState<EditExerciseState>(getInitialState());
     const [secondaryMusclesEnabled, setSecondaryMusclesEnabled] = useState(false);
@@ -196,6 +414,9 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
     const [showTrainingMuscleGroups, setShowTrainingMuscleGroups] = useState(false);
     const [showLiftsCardioType, setShowLiftsCardioType] = useState(false);
     const [equipmentPickerSlot, setEquipmentPickerSlot] = useState<0 | 1 | null>(null);
+    const [showMotionPicker, setShowMotionPicker] = useState(false);
+    const [initialSecondaryMuscles, setInitialSecondaryMuscles] = useState<string[]>([]);
+    const [initialTertiaryMuscles, setInitialTertiaryMuscles] = useState<string[]>([]);
 
     // Populate form when opening in edit mode
     useEffect(() => {
@@ -324,34 +545,54 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
             const currentSpecials = prev.primaryMuscles.filter(m => ["Full Body", "Olympic"].includes(m));
             const hasSpecialSelected = currentSpecials.length > 0;
             let newPrimaries: string[] = [], newSecondaries = prev.secondaryMuscles;
+            let newTertiaries = prev.tertiaryMuscles || [];
 
             if (isSelected) {
                 newPrimaries = prev.primaryMuscles.filter(m => m !== muscle);
                 const secondariesToRemove = PRIMARY_TO_SECONDARY_MAP[muscle] || [];
                 newSecondaries = prev.secondaryMuscles.filter(s => !secondariesToRemove.includes(s));
+                // Clear tertiary muscles that belong to removed secondary muscles
+                if (newTertiaries.length > 0) {
+                    getTertiaryMusclesBySecondary(secondariesToRemove).then(tertiariesToRemove => {
+                        const tertiaryIdsToRemove = tertiariesToRemove.map(t => t.id);
+                        setEditState(prevState => ({
+                            ...prevState,
+                            tertiaryMuscles: (prevState.tertiaryMuscles || []).filter(t => !tertiaryIdsToRemove.includes(t))
+                        }));
+                    });
+                }
             } else {
-                if (isSpecial) { newPrimaries = [muscle]; newSecondaries = []; }
+                if (isSpecial) { newPrimaries = [muscle]; newSecondaries = []; newTertiaries = []; }
                 else {
-                    if (hasSpecialSelected) { newPrimaries = [muscle]; newSecondaries = []; }
+                    if (hasSpecialSelected) { newPrimaries = [muscle]; newSecondaries = []; newTertiaries = []; }
                     else { newPrimaries = [...prev.primaryMuscles, muscle]; }
                 }
                 const hasSecondaries = PRIMARY_TO_SECONDARY_MAP[muscle] && PRIMARY_TO_SECONDARY_MAP[muscle].length > 0;
-                if (secondaryMusclesEnabled && hasSecondaries) setActivePrimaryForPopup(muscle);
+                if (secondaryMusclesEnabled && hasSecondaries) {
+                    // Store initial state before opening popup
+                    setInitialSecondaryMuscles([...prev.secondaryMuscles]);
+                    setInitialTertiaryMuscles([...(prev.tertiaryMuscles || [])]);
+                    setActivePrimaryForPopup(muscle);
+                }
             }
-            return { ...prev, primaryMuscles: newPrimaries, secondaryMuscles: newSecondaries };
+            return { ...prev, primaryMuscles: newPrimaries, secondaryMuscles: newSecondaries, tertiaryMuscles: newTertiaries };
         });
     };
 
     const handleCategoryChange = (cat: ExerciseCategory) => {
-        setEditState(prev => ({ 
-            ...prev, 
-            category: cat, 
-            primaryMuscles: [], 
-            secondaryMuscles: [], 
-            cardioType: "", 
-            trainingFocus: "", 
-            weightEquipTags: [], 
-            trackReps: false, 
+        setEditState(prev => ({
+            ...prev,
+            category: cat,
+            primaryMuscles: [],
+            secondaryMuscles: [],
+            tertiaryMuscles: [],
+            primaryMotion: "",
+            primaryMotionVariation: "",
+            motionPlane: "",
+            cardioType: "",
+            trainingFocus: "",
+            weightEquipTags: [],
+            trackReps: false,
             trackDistance: false,
             singleDouble: "",
             cableAttachment: "",
@@ -366,6 +607,7 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
         setShowTrainingCardioType(false);
         setShowTrainingMuscleGroups(false);
         setShowLiftsCardioType(false);
+        setActivePrimaryForPopup(null);
     };
 
     const handleSave = () => {
@@ -378,6 +620,10 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
             category: editState.category as ExerciseCategory,
             ...(editState.primaryMuscles.length > 0 && { primaryMuscles: editState.primaryMuscles }),
             ...(editState.secondaryMuscles.length > 0 && { secondaryMuscles: editState.secondaryMuscles }),
+            ...(editState.tertiaryMuscles && editState.tertiaryMuscles.length > 0 && { tertiaryMuscles: editState.tertiaryMuscles }),
+            ...(editState.primaryMotion && { primaryMotion: editState.primaryMotion }),
+            ...(editState.primaryMotionVariation && { primaryMotionVariation: editState.primaryMotionVariation }),
+            ...(editState.motionPlane && { motionPlane: editState.motionPlane }),
             ...(editState.cardioType && { cardioType: editState.cardioType }),
             ...(editState.trainingFocus && { trainingFocus: editState.trainingFocus }),
             ...(editState.weightEquipTags.length > 0 && { weightEquipTags: editState.weightEquipTags.filter(Boolean) }),
@@ -409,6 +655,22 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
             return PRIMARY_TO_SECONDARY_MAP[primary].sort();
         }
         return [];
+    };
+
+    const getHasTertiarySelectedForPrimary = (primary: string): boolean => {
+        const secondaryLabels = getAvailableSecondaryMuscles(primary);
+        const secondaryIds = secondaryLabels.map(l => allSecondaryMuscles.find(s => s.label === l)?.id).filter(Boolean) as string[];
+        const selectedTertiaryIds = editState.tertiaryMuscles || [];
+        return selectedTertiaryIds.some(tid => {
+            const t = allTertiaryMuscles.find(x => x.id === tid);
+            if (!t) return false;
+            try {
+                const secIds: string[] = JSON.parse(t.secondary_muscle_ids || '[]');
+                return secIds.some(id => secondaryIds.includes(id));
+            } catch {
+                return false;
+            }
+        });
     };
 
     // Helper function to check if Single/Double toggle should be shown (Free-Weights: Dumbbell/Kettlebell/Plate/Chains, Cable, Other)
@@ -467,9 +729,9 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
 
                 <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
                     <FieldGroup>
-                        <View style={styles.rowBetween}>
+                        <View style={styles.labelToggleRow}>
                             <Label required style={{ marginBottom: 0 }}>{FIELD_LABELS.exerciseName}</Label>
-                            <TouchableOpacity onPress={() => setShowDescription(!showDescription)} style={styles.rowGap}>
+                            <TouchableOpacity onPress={() => setShowDescription(!showDescription)} style={styles.toggleContainer}>
                                 <Text style={[styles.label, { marginBottom: 0, color: editState.description ? COLORS.blue[600] : COLORS.slate[400] }]}>{FIELD_LABELS.description}</Text>
                                 <ChevronDown size={16} color={showDescription ? COLORS.blue[600] : COLORS.slate[400]} style={{ transform: [{ rotate: showDescription ? '180deg' : '0deg' }] }} />
                             </TouchableOpacity>
@@ -511,6 +773,10 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                                 }}
                                 onMuscleToggle={handlePrimaryMuscleToggle}
                                 onMakePrimary={handleMakePrimary}
+                                secondaryMuscles={editState.secondaryMuscles}
+                                getAvailableSecondaryMuscles={getAvailableSecondaryMuscles}
+                                getHasTertiarySelectedForPrimary={getHasTertiarySelectedForPrimary}
+                                onOpenSecondaryPopup={(primary) => setActivePrimaryForPopup(primary)}
                                 required
                             />
 
@@ -546,6 +812,20 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                             {editState.weightEquipTags.filter(Boolean)[0] === 'Machine (Selectorized)' && (
                                 <AssistedNegativeRow value={editState.assistedNegative} onChange={(v) => setEditState((prev) => ({ ...prev, assistedNegative: v }))} />
                             )}
+
+                            <FieldGroup>
+                                <Label>Motion</Label>
+                                <TouchableOpacity
+                                    style={styles.input}
+                                    onPress={() => setShowMotionPicker(true)}
+                                >
+                                    <Text style={editState.primaryMotion ? styles.textSelected : styles.textPlaceholder}>
+                                        {editState.primaryMotion
+                                            ? `${primaryMotions.find(m => m.id === editState.primaryMotion)?.label || editState.primaryMotion}${editState.primaryMotionVariation ? ` - ${primaryMotionVariations.find(v => v.id === editState.primaryMotionVariation)?.label || editState.primaryMotionVariation}` : ''}`
+                                            : 'Select Motion...'}
+                                    </Text>
+                                </TouchableOpacity>
+                            </FieldGroup>
 
                             <View style={styles.additionalSettings}>
                                 <Text style={styles.label}>{FIELD_LABELS.additionalSettings}</Text>
@@ -654,13 +934,31 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                                 onSecondaryToggle={() => {
                                     const newVal = !secondaryMusclesEnabled;
                                     setSecondaryMusclesEnabled(newVal);
-                                    if (!newVal) setEditState((prev) => ({ ...prev, secondaryMuscles: [] }));
+                                    if (!newVal) setEditState((prev) => ({ ...prev, secondaryMuscles: [], tertiaryMuscles: [] }));
                                 }}
                                 primaryMuscles={editState.primaryMuscles}
                                 onMuscleToggle={handlePrimaryMuscleToggle}
                                 onMakePrimary={handleMakePrimary}
                                 primaryMusclesList={PRIMARY_MUSCLES}
+                                secondaryMuscles={editState.secondaryMuscles}
+                                getAvailableSecondaryMuscles={getAvailableSecondaryMuscles}
+                                getHasTertiarySelectedForPrimary={getHasTertiarySelectedForPrimary}
+                                onOpenSecondaryPopup={(primary) => setActivePrimaryForPopup(primary)}
                             />
+
+                            <FieldGroup>
+                                <Label>Motion</Label>
+                                <TouchableOpacity
+                                    style={styles.input}
+                                    onPress={() => setShowMotionPicker(true)}
+                                >
+                                    <Text style={editState.primaryMotion ? styles.textSelected : styles.textPlaceholder}>
+                                        {editState.primaryMotion
+                                            ? `${primaryMotions.find(m => m.id === editState.primaryMotion)?.label || editState.primaryMotion}${editState.primaryMotionVariation ? ` - ${primaryMotionVariations.find(v => v.id === editState.primaryMotionVariation)?.label || editState.primaryMotionVariation}` : ''}`
+                                            : 'Select Motion...'}
+                                    </Text>
+                                </TouchableOpacity>
+                            </FieldGroup>
 
                             <CollapsibleSection
                                 label={FIELD_LABELS.weightEquip}
@@ -754,24 +1052,62 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                     allowClear
                 />
 
-                <Modal visible={!!activePrimaryForPopup} transparent animationType="fade" onRequestClose={() => setActivePrimaryForPopup(null)}>
-                    <TouchableOpacity style={styles.popupOverlay} activeOpacity={1} onPress={() => setActivePrimaryForPopup(null)}>
-                        <View style={styles.popupContent} onStartShouldSetResponder={() => true}>
-                            <View style={styles.popupHeader}>
-                                <Text style={styles.popupTitle}>{activePrimaryForPopup} <Text style={styles.popupSubtitle}>Secondary Muscles</Text></Text>
-                                <TouchableOpacity onPress={() => setActivePrimaryForPopup(null)}><Text style={styles.popupSkip}>Skip</Text></TouchableOpacity>
-                            </View>
-                            <View style={styles.popupChips}>
-                                {getAvailableSecondaryMuscles(activePrimaryForPopup || '').map(m => (
-                                    <Chip key={m} label={m} selected={editState.secondaryMuscles.includes(m)} onClick={() => toggleSelection('secondaryMuscles', m)} />
-                                ))}
-                            </View>
-                            <TouchableOpacity onPress={() => setActivePrimaryForPopup(null)} style={styles.popupDoneButton}>
-                                <Text style={styles.popupDoneText}>Done</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </TouchableOpacity>
-                </Modal>
+                <MotionPickerModal
+                    visible={showMotionPicker}
+                    onClose={() => setShowMotionPicker(false)}
+                    onSelect={(primaryMotion, variation, plane) => {
+                        setEditState(prev => ({
+                            ...prev,
+                            primaryMotion: primaryMotion || '',
+                            primaryMotionVariation: variation || '',
+                            motionPlane: plane || '',
+                        }));
+                        // Modal closes itself via onClose() when appropriate (Cancel, Clear, primary with no variations, variation with no motion_planes)
+                    }}
+                    selectedPrimaryMotion={editState.primaryMotion}
+                    selectedVariation={editState.primaryMotionVariation}
+                    selectedPlane={editState.motionPlane}
+                    primaryMuscles={editState.primaryMuscles}
+                    secondaryMuscles={editState.secondaryMuscles}
+                    tertiaryMuscles={editState.tertiaryMuscles || []}
+                    primaryMotions={primaryMotions}
+                    primaryMotionVariations={primaryMotionVariations}
+                    motionPlanes={motionPlanes}
+                />
+
+                <SecondaryMusclePickerModal
+                    visible={!!activePrimaryForPopup}
+                    onClose={() => {
+                        setActivePrimaryForPopup(null);
+                    }}
+                    onCancel={() => {
+                        // Revert to initial state when modal was opened
+                        setEditState(prev => ({
+                            ...prev,
+                            secondaryMuscles: initialSecondaryMuscles,
+                            tertiaryMuscles: initialTertiaryMuscles,
+                        }));
+                        setActivePrimaryForPopup(null);
+                    }}
+                    primaryMuscle={activePrimaryForPopup || ''}
+                    availableSecondaryMuscles={getAvailableSecondaryMuscles(activePrimaryForPopup || '')}
+                    selectedSecondaryMuscles={editState.secondaryMuscles}
+                    selectedTertiaryMuscles={editState.tertiaryMuscles || []}
+                    onSelectSecondary={(muscle) => {
+                        toggleSelection('secondaryMuscles', muscle);
+                    }}
+                    onSelectTertiary={(tertiary) => {
+                        setEditState(prev => {
+                            const current = (prev.tertiaryMuscles as string[]) || [];
+                            return {
+                                ...prev,
+                                tertiaryMuscles: current.includes(tertiary)
+                                    ? current.filter(t => t !== tertiary)
+                                    : [...current, tertiary]
+                            };
+                        });
+                    }}
+                />
             </SafeAreaView>
         </Modal>
     );

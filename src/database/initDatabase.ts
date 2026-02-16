@@ -5,7 +5,7 @@
 import * as SQLite from 'expo-sqlite';
 
 const DATABASE_NAME = 'workout.db';
-const DATABASE_VERSION = 5;
+const DATABASE_VERSION = 6;
 
 export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
   const db = await SQLite.openDatabaseAsync(DATABASE_NAME);
@@ -33,6 +33,9 @@ export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
     }
     if (currentVersion < 5) {
       await seedMotionData(db);
+    }
+    if (currentVersion < 6) {
+      await reseedSecondaryMuscles(db);
     }
     await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
   }
@@ -395,6 +398,29 @@ async function seedData(db: SQLite.SQLiteDatabase) {
       Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
       str(row.icon),
       str(row.short_description),
+      num(row.sort_order, 0),
+      row.is_active !== false ? 1 : 0
+    );
+  }
+}
+
+/** Re-seed secondary_muscles from JSON (e.g. to remove deprecated rows like "Grip") */
+async function reseedSecondaryMuscles(db: SQLite.SQLiteDatabase) {
+  await db.execAsync('DELETE FROM secondary_muscles');
+  const str = (v: unknown) => (v == null ? '' : String(v));
+  const num = (v: unknown, def: number) => (v == null ? def : Number(v));
+  const secondaryMuscles = require('./tables/secondaryMuscles.json') as Record<string, unknown>[];
+  for (const row of secondaryMuscles) {
+    await db.runAsync(
+      `INSERT INTO secondary_muscles (id, label, technical_name, common_names, icon, short_description, primary_muscle_ids, sort_order, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      str(row.id),
+      str(row.label),
+      str(row.technical_name),
+      Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
+      str(row.icon),
+      str(row.short_description),
+      Array.isArray(row.primary_muscle_ids) ? JSON.stringify(row.primary_muscle_ids) : '[]',
       num(row.sort_order, 0),
       row.is_active !== false ? 1 : 0
     );

@@ -63,12 +63,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 8,
     },
-    rowBetween: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
     // ----- Single place for input/field styling -----
     label: {
         fontSize: 12,
@@ -154,11 +148,6 @@ const styles = StyleSheet.create({
     },
     textSlate: {
         color: COLORS.slate[400],
-    },
-    rowGap: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
     },
     chipsContainer: {
         flexDirection: 'row',
@@ -348,6 +337,175 @@ const styles = StyleSheet.create({
     popupDoneText: {
         fontSize: 16,
         fontWeight: 'bold',
+        color: COLORS.white,
+    },
+    popupTwoColumnContainer: {
+        flexDirection: 'row',
+        maxHeight: 400,
+        marginBottom: 24,
+    },
+    popupColumn: {
+        flex: 1,
+        maxHeight: 400,
+    },
+    popupColumnContent: {
+        paddingBottom: 8,
+    },
+    popupColumnDivider: {
+        width: 1,
+        backgroundColor: COLORS.slate[200],
+        marginHorizontal: 8,
+    },
+    popupColumnTitle: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        color: COLORS.slate[500],
+        marginBottom: 8,
+        paddingHorizontal: 16,
+        paddingTop: 8,
+    },
+    popupListItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.slate[100],
+    },
+    popupListItemSelected: {
+        backgroundColor: COLORS.blue[50],
+    },
+    popupListItemText: {
+        fontSize: 15,
+        color: COLORS.slate[700],
+        fontWeight: '500',
+        flex: 1,
+    },
+    popupListItemTextSelected: {
+        color: COLORS.blue[600],
+        fontWeight: '600',
+    },
+});
+
+// Styles for Secondary Muscle Picker Modal (matching EquipmentPickerModal)
+export const musclePickerStyles = StyleSheet.create({
+    overlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.4)',
+        justifyContent: 'center',
+        padding: 20,
+    },
+    centered: {
+        width: '100%',
+        maxHeight: '85%',
+    },
+    modal: {
+        backgroundColor: COLORS.white,
+        borderRadius: 16,
+        overflow: 'hidden',
+        maxHeight: '100%',
+    },
+    twoColumnContainer: {
+        flexDirection: 'row',
+        maxHeight: 400,
+    },
+    column: {
+        flex: 1,
+        maxHeight: 400,
+    },
+    columnContent: {
+        paddingBottom: 0,
+        paddingHorizontal: 0,
+    },
+    columnDivider: {
+        width: 1,
+        backgroundColor: COLORS.slate[200],
+        marginHorizontal: 0,
+    },
+    columnTitle: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: COLORS.slate[700],
+        letterSpacing: 0.5,
+        marginBottom: 0,
+        paddingHorizontal: 20,
+        paddingTop: 12,
+        paddingBottom: 8,
+        backgroundColor: COLORS.slate[150],
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.slate[200],
+    },
+    sectionHeader: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: COLORS.blue[600],
+        letterSpacing: 0.5,
+        paddingHorizontal: 20,
+        paddingTop: 6,
+        paddingBottom: 6,
+        backgroundColor: COLORS.slate[50],
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.slate[100],
+    },
+    option: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.slate[100],
+    },
+    optionSelected: {
+        backgroundColor: COLORS.blue[50],
+        borderBottomColor: COLORS.white,
+    },
+    optionText: {
+        fontSize: 15,
+        color: COLORS.slate[700],
+        fontWeight: '500',
+        flex: 1,
+    },
+    optionTextSelected: {
+        color: COLORS.blue[600],
+        fontWeight: '500',
+    },
+    footerRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 4,
+        paddingHorizontal: 20,
+        borderTopWidth: 1,
+        borderTopColor: COLORS.slate[100],
+        gap: 8,
+    },
+    cancelButtonInRow: {
+        flex: 1,
+        paddingVertical: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: COLORS.slate[300],
+        borderRadius: 6,
+    },
+    cancelButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: COLORS.slate[600],
+    },
+    doneButton: {
+        flex: 1,
+        paddingVertical: 8,
+        alignItems: 'center',
+        backgroundColor: COLORS.blue[600],
+        borderWidth: 1,
+        borderColor: COLORS.blue[600],
+        borderRadius: 6,
+    },
+    doneButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
         color: COLORS.white,
     },
 });
