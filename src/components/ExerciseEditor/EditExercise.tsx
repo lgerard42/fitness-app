@@ -1055,12 +1055,18 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                 <MotionPickerModal
                     visible={showMotionPicker}
                     onClose={() => setShowMotionPicker(false)}
-                    onSelect={(primaryMotion, variation, plane) => {
+                    onSelect={(primaryMotion, variation, plane, muscles) => {
                         setEditState(prev => ({
                             ...prev,
                             primaryMotion: primaryMotion || '',
                             primaryMotionVariation: variation || '',
                             motionPlane: plane || '',
+                            // Update muscle selections based on motion's muscle_targets
+                            ...(muscles && {
+                                primaryMuscles: muscles.primaryMuscles,
+                                secondaryMuscles: muscles.secondaryMuscles,
+                                tertiaryMuscles: muscles.tertiaryMuscles,
+                            }),
                         }));
                         // Modal closes itself via onClose() when appropriate (Cancel, Clear, primary with no variations, variation with no motion_planes)
                     }}
