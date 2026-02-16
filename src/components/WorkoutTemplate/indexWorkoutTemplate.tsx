@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Pressable, ScrollView, StyleSheet, Modal, Animated, Keyboard, Dimensions } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Pressable, ScrollView, StyleSheet, Modal, Animated, Keyboard, Dimensions, InteractionManager } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
 import { ChevronDown, ChevronLeft, ChevronRight, Calendar, Clock, FileText, Plus, Dumbbell, TrendingDown, Layers, MoreVertical, Trash2, RefreshCw, X, Flame, Zap, Check, Timer, LogOut } from 'lucide-react-native';
@@ -462,11 +462,16 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
       itemsToAdd = newInstances;
     }
 
-    handleWorkoutUpdate({
+    // Close picker immediately so modal and picker state can unwind without blocking
+    setShowPicker(false);
+    // Defer workout update to after interactions (picker close, state resets) to avoid freezing the UI
+    const payload = {
       ...currentWorkout,
       exercises: [...currentWorkout.exercises, ...itemsToAdd]
+    };
+    InteractionManager.runAfterInteractions(() => {
+      handleWorkoutUpdate(payload);
     });
-    setShowPicker(false);
   };
 
   const handleCreateExerciseSave = (newExData: ExerciseLibraryItem) => {

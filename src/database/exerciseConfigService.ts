@@ -411,6 +411,7 @@ export async function getEquipmentPickerSections(): Promise<{ title: string; dat
 
 /**
  * Get label -> icon (base64) map for all gym equipment. Used by EquipmentIcon component.
+ * This is the single source for equipment icons in the UI; do not use hard-coded icon maps.
  */
 export async function getEquipmentIconsByLabel(): Promise<Record<string, string>> {
   const db = await getDatabase();

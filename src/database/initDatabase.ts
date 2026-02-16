@@ -39,7 +39,15 @@ export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
     }
     await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
   }
-  
+
+  // Re-seed equipment data from JSON on every app load (same idea as motion options
+  // being loaded fresh in ExerciseEditor) so gym equipment picker stays in sync.
+  await seedEquipmentData(db);
+
+  // Re-seed muscle data (muscle_groups, primary/secondary/tertiary muscles) on every
+  // app load so muscle pickers stay in sync with JSON tables.
+  await seedMuscleData(db);
+
   return db;
 }
 
@@ -404,6 +412,78 @@ async function seedData(db: SQLite.SQLiteDatabase) {
   }
 }
 
+/** Re-seed muscle data from JSON on every app load so muscle pickers stay in sync. */
+async function seedMuscleData(db: SQLite.SQLiteDatabase) {
+  const str = (v: unknown) => (v == null ? '' : String(v));
+  const num = (v: unknown, def: number) => (v == null ? def : Number(v));
+  const muscleGroups = require('./tables/muscleGroups.json') as Record<string, unknown>[];
+  const primaryMuscles = require('./tables/primaryMuscles.json') as Record<string, unknown>[];
+  const secondaryMuscles = require('./tables/secondaryMuscles.json') as Record<string, unknown>[];
+  const tertiaryMuscles = require('./tables/tertiaryMuscles.json') as Record<string, unknown>[];
+
+  for (const row of muscleGroups) {
+    await db.runAsync(
+      `INSERT OR REPLACE INTO muscle_groups (id, label, values_table, common_names, icon, short_description, sort_order, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      str(row.id),
+      str(row.label),
+      str(row.values_table),
+      Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
+      str(row.icon),
+      str(row.short_description),
+      num(row.sort_order, 0),
+      row.is_active !== false ? 1 : 0
+    );
+  }
+
+  for (const row of primaryMuscles) {
+    await db.runAsync(
+      `INSERT OR REPLACE INTO primary_muscles (id, label, technical_name, common_names, icon, short_description, sort_order, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      str(row.id),
+      str(row.label),
+      str(row.technical_name),
+      Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
+      str(row.icon),
+      str(row.short_description),
+      num(row.sort_order, 0),
+      row.is_active !== false ? 1 : 0
+    );
+  }
+
+  for (const row of secondaryMuscles) {
+    await db.runAsync(
+      `INSERT OR REPLACE INTO secondary_muscles (id, label, technical_name, common_names, icon, short_description, primary_muscle_ids, sort_order, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      str(row.id),
+      str(row.label),
+      str(row.technical_name),
+      Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
+      str(row.icon),
+      str(row.short_description),
+      Array.isArray(row.primary_muscle_ids) ? JSON.stringify(row.primary_muscle_ids) : '[]',
+      num(row.sort_order, 0),
+      row.is_active !== false ? 1 : 0
+    );
+  }
+
+  for (const row of tertiaryMuscles) {
+    await db.runAsync(
+      `INSERT OR REPLACE INTO tertiary_muscles (id, label, technical_name, common_names, icon, short_description, secondary_muscle_ids, sort_order, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      str(row.id),
+      str(row.label),
+      str(row.technical_name),
+      Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
+      str(row.icon),
+      str(row.short_description),
+      Array.isArray(row.secondary_muscle_ids) ? JSON.stringify(row.secondary_muscle_ids) : '[]',
+      num(row.sort_order, 0),
+      row.is_active !== false ? 1 : 0
+    );
+  }
+}
+
 /** Re-seed secondary_muscles from JSON (e.g. to remove deprecated rows like "Grip") */
 async function reseedSecondaryMuscles(db: SQLite.SQLiteDatabase) {
   await db.execAsync('DELETE FROM secondary_muscles');
@@ -501,7 +581,8 @@ async function seedEquipmentData(db: SQLite.SQLiteDatabase) {
   for (const row of gymEquipment) {
     const eqCats = row.equipment_categories;
     const cableAtt = row.cable_attachments === true || row.cable_attachments === 1;
-    const iconBase64 = equipmentIcons[str(row.id)] || str(row.icon) || '';
+    // Icon only from equipmentIcons.json (id -> base64). gymEquipment.json "icon" is legacy filename; display uses table only.
+    const iconBase64 = equipmentIcons[str(row.id)] ?? '';
     await db.runAsync(
       `INSERT OR REPLACE INTO gym_equipment (id, label, sub_label, common_names, icon, short_description, equipment_categories, max_instances, cable_attachments, sort_order, is_active)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,

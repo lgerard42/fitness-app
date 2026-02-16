@@ -254,8 +254,7 @@
     "sub_label": "",
     "common_names": [
       "Barbell",
-      "Straight Bar",
-      "Olympic Bar"
+      "Straight Bar"
     ],
     "icon": "Barbell.png",
     "short_description": "Standard long bar used with plates for heavy lifts.",
@@ -853,6 +852,27 @@
     "max_instances": 2,
     "cable_attachments": false,
     "sort_order": 41,
+    "is_active": true
+  },
+  {
+    "id": "OLYMPIC_BAR",
+    "label": "Olympic Bar",
+    "sub_label": "_",
+    "common_names": [
+      "Olympic",
+      "Barbell",
+      "Olympic Bar"
+    ],
+    "icon": "Barbell.png",
+    "short_description": "Olympic long bar used with plates for heavy lifts. Typically 44-45lbs.",
+    "equipment_categories": [
+      {
+        "WEIGHTS": "BARS"
+      }
+    ],
+    "max_instances": 1,
+    "cable_attachments": false,
+    "sort_order": 42,
     "is_active": true
   }
 ]

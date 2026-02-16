@@ -116,20 +116,5 @@
     "short_description": "Exercises that engage multiple major muscle groups simultaneously.",
     "sort_order": 7,
     "is_active": true
-  },
-  {
-    "id": "OLYMPIC",
-    "label": "Olympic",
-    "technical_name": "Motus Explosive",
-    "common_names": [
-      "Olympic",
-      "Oly Lifts",
-      "Explosive Movements",
-      "Weightlifting"
-    ],
-    "icon": "",
-    "short_description": "Compound, explosive lifts based on traditional weightlifting.",
-    "sort_order": 8,
-    "is_active": true
   }
 ]
