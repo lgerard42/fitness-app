@@ -9,17 +9,15 @@ import {
     CABLE_ATTACHMENT_GRIP_STANCE_OPTIONS,
     optionIdFromLegacy,
     buildCableAttachmentsById,
-    GRIP_TYPES,
-    GRIP_TYPES_BY_ID,
-    GRIP_WIDTHS,
-    GRIP_WIDTHS_BY_ID,
+    buildGripTypesById,
+    buildGripWidthsById,
     STANCE_TYPES,
     STANCE_TYPES_BY_ID,
     STANCE_WIDTHS,
     STANCE_WIDTHS_BY_ID,
     SINGLE_DOUBLE_OPTIONS_BY_ID,
 } from '@/constants/data';
-import { usePrimaryToSecondaryMap, useCableAttachments, useSingleDoubleEquipmentLabels, useTertiaryMuscles, useSecondaryMuscles } from '@/database/useExerciseConfig';
+import { usePrimaryToSecondaryMap, useCableAttachments, useSingleDoubleEquipmentLabels, useTertiaryMuscles, useSecondaryMuscles, useGripTypes, useGripWidths } from '@/database/useExerciseConfig';
 import { getTertiaryMusclesBySecondary } from '@/database/exerciseConfigService';
 import Chip from './Chip';
 import CustomDropdown from './CustomDropdown';
@@ -87,7 +85,11 @@ const getInitialState = (): EditExerciseState => ({
 const getStateFromExercise = (
     exercise: ExerciseLibraryItem,
     cableAttachments: { id: string; label: string }[],
-    cableAttachmentsById: Record<string, { id: string; label: string }>
+    cableAttachmentsById: Record<string, { id: string; label: string }>,
+    gripTypes: { id: string; label: string }[],
+    gripTypesById: Record<string, { id: string; label: string }>,
+    gripWidths: { id: string; label: string }[],
+    gripWidthsById: Record<string, { id: string; label: string }>
 ): EditExerciseState => {
     const raw = {
         name: exercise.name || "",
@@ -117,8 +119,8 @@ const getStateFromExercise = (
         ...raw,
         singleDouble: optionIdFromLegacy(raw.singleDouble, SINGLE_DOUBLE_OPTIONS, SINGLE_DOUBLE_OPTIONS_BY_ID),
         cableAttachment: optionIdFromLegacy(raw.cableAttachment, cableAttachments, cableAttachmentsById),
-        gripType: optionIdFromLegacy(raw.gripType, GRIP_TYPES, GRIP_TYPES_BY_ID),
-        gripWidth: optionIdFromLegacy(raw.gripWidth, GRIP_WIDTHS, GRIP_WIDTHS_BY_ID),
+        gripType: optionIdFromLegacy(raw.gripType, gripTypes, gripTypesById),
+        gripWidth: optionIdFromLegacy(raw.gripWidth, gripWidths, gripWidthsById),
         stanceType: optionIdFromLegacy(raw.stanceType, STANCE_TYPES, STANCE_TYPES_BY_ID),
         stanceWidth: optionIdFromLegacy(raw.stanceWidth, STANCE_WIDTHS, STANCE_WIDTHS_BY_ID),
     };
@@ -330,8 +332,12 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
     const allSecondaryMuscles = useSecondaryMuscles();
     const allTertiaryMuscles = useTertiaryMuscles();
     const CABLE_ATTACHMENTS = useCableAttachments();
-    const CABLE_ATTACHMENTS_BY_ID = buildCableAttachmentsById(CABLE_ATTACHMENTS);
+    const CABLE_ATTACHMENTS_BY_ID = useMemo(() => buildCableAttachmentsById(CABLE_ATTACHMENTS), [CABLE_ATTACHMENTS]);
     const SINGLE_DOUBLE_EQUIPMENT = useSingleDoubleEquipmentLabels();
+    const GRIP_TYPES = useGripTypes();
+    const GRIP_TYPES_BY_ID = useMemo(() => buildGripTypesById(GRIP_TYPES), [GRIP_TYPES]);
+    const GRIP_WIDTHS = useGripWidths();
+    const GRIP_WIDTHS_BY_ID = useMemo(() => buildGripWidthsById(GRIP_WIDTHS), [GRIP_WIDTHS]);
 
     // Load motion data
     const [primaryMotions, setPrimaryMotions] = useState<any[]>([]);
@@ -365,8 +371,8 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
 
     // Populate form when opening in edit mode
     useEffect(() => {
-        if (isOpen && exercise) {
-            const state = getStateFromExercise(exercise, CABLE_ATTACHMENTS, CABLE_ATTACHMENTS_BY_ID);
+        if (isOpen && exercise && GRIP_TYPES.length > 0 && GRIP_WIDTHS.length > 0) {
+            const state = getStateFromExercise(exercise, CABLE_ATTACHMENTS, CABLE_ATTACHMENTS_BY_ID, GRIP_TYPES, GRIP_TYPES_BY_ID, GRIP_WIDTHS, GRIP_WIDTHS_BY_ID);
             setEditState(state);
             // Determine UI toggle states from existing data
             setSecondaryMusclesEnabled(
@@ -393,7 +399,7 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
             setShowTrainingCardioType(false);
             setShowLiftsCardioType(false);
         }
-    }, [isOpen, exercise]);
+    }, [isOpen, exercise, CABLE_ATTACHMENTS, GRIP_TYPES, GRIP_WIDTHS]);
 
     const toggleSelection = (field: keyof EditExerciseState, value: string) => {
         setEditState(prev => {

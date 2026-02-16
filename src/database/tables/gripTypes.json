@@ -1,0 +1,101 @@
+[
+  {
+    "id": "GRIP_NEUTRAL",
+    "label": "Neutral",
+    "subLabel": "Palmae ad Invicem",
+    "common_names": ["Hammer", "Parallel", "Semisupinated"],
+    "icon": "",
+    "short_description": "Palms facing each other (0° rotation).",
+    "variations": "",
+    "sort_order": 0,
+    "is_active": true
+  },
+  {
+    "id": "GRIP_PRONATED",
+    "label": "Pronated",
+    "subLabel": "Palmae Deorsum",
+    "common_names": ["Overhand", "Palms Down"],
+    "icon": "",
+    "short_description": "Palms facing away from the body or downwards.",
+    "variations": "",
+    "sort_order": 1,
+    "is_active": true
+  },
+  {
+    "id": "GRIP_SUPINATED",
+    "label": "Supinated",
+    "subLabel": "Palmae Sursum",
+    "common_names": ["Underhand", "Reverse", "Palms Up"],
+    "icon": "",
+    "short_description": "Palms facing toward the body or upwards.",
+    "variations": "",
+    "sort_order": 2,
+    "is_active": true
+  },
+  {
+    "id": "GRIP_SEMI_PRONATED",
+    "label": "Semi-Pronated",
+    "subLabel": "Obliquus Pronatus",
+    "common_names": ["Angled Overhand", "EZ-Bar"],
+    "icon": "",
+    "short_description": "Hands angled 45° between neutral and pronated.",
+    "variations": "",
+    "sort_order": 3,
+    "is_active": true
+  },
+  {
+    "id": "GRIP_SEMI_SUPINATED",
+    "label": "Semi-Supinated",
+    "subLabel": "Obliquus Supinatus",
+    "common_names": ["Angled Underhand", "EZ-Bar"],
+    "icon": "",
+    "short_description": "Hands angled 45° between neutral and supinated.",
+    "variations": "",
+    "sort_order": 4,
+    "is_active": true
+  },
+  {
+    "id": "GRIP_ROTATING",
+    "label": "Rotating",
+    "subLabel": "Rotatio",
+    "common_names": ["Twist", "Supinating", "Arnold"],
+    "icon": "",
+    "short_description": "Grip orientation changes dynamically during the rep.",
+    "variations": "ROTATING_GRIP_VARIATIONS",
+    "sort_order": 5,
+    "is_active": true
+  },
+  {
+    "id": "GRIP_ALTERNATING",
+    "label": "Alternating",
+    "subLabel": "Alternus",
+    "common_names": ["Mixed Grip", "Switch Grip"],
+    "icon": "",
+    "short_description": "One hand pronated, one hand supinated.",
+    "variations": "",
+    "sort_order": 6,
+    "is_active": true
+  },
+  {
+    "id": "GRIP_FLAT",
+    "label": "Flat Palms Up",
+    "subLabel": "Palmae Planae",
+    "common_names": ["Floor Grip", "Palm Press"],
+    "icon": "",
+    "short_description": "Palms pressed flat against a surface (e.g., Push-ups).",
+    "variations": "",
+    "sort_order": 7,
+    "is_active": true
+  },
+  {
+    "id": "GRIP_OTHER",
+    "label": "Other",
+    "subLabel": "Alius",
+    "common_names": ["False Grip", "Hook Grip", "Fingertip"],
+    "icon": "",
+    "short_description": "Specialized functional or climbing grips.",
+    "variations": "",
+    "sort_order": 8,
+    "is_active": true
+  }
+]

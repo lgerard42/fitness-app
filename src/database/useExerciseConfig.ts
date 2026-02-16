@@ -21,6 +21,8 @@ import {
   getCableAttachments,
   getSingleDoubleEquipmentLabels,
   getEquipmentIconsByLabel,
+  getGripTypes,
+  getGripWidths,
   type EquipmentPickerItem,
   type ExerciseCategory,
   type CardioType,
@@ -28,6 +30,8 @@ import {
   type SecondaryMuscle,
   type TertiaryMuscle,
   type TrainingFocus,
+  type GripType,
+  type GripWidth,
 } from './exerciseConfigService';
 
 let dbInstance: SQLite.SQLiteDatabase | null = null;
@@ -47,6 +51,8 @@ let primaryMusclesStringsCache: string[] | null = null;
 let cardioTypesStringsCache: string[] | null = null;
 let trainingFocusStringsCache: string[] | null = null;
 let primaryToSecondaryMapCache: Record<string, string[]> | null = null;
+let gripTypesCache: GripType[] | null = null;
+let gripWidthsCache: GripWidth[] | null = null;
 
 /**
  * Initialize database (call once at app startup)
@@ -392,4 +398,46 @@ export function useSingleDoubleEquipmentLabels(): string[] {
   }, []);
 
   return labels;
+}
+
+/**
+ * Hook to get grip types
+ */
+export function useGripTypes(): GripType[] {
+  const [types, setTypes] = useState<GripType[]>(gripTypesCache || []);
+
+  useEffect(() => {
+    if (gripTypesCache) {
+      setTypes(gripTypesCache);
+      return;
+    }
+
+    getGripTypes().then(data => {
+      gripTypesCache = data;
+      setTypes(data);
+    });
+  }, []);
+
+  return types;
+}
+
+/**
+ * Hook to get grip widths
+ */
+export function useGripWidths(): GripWidth[] {
+  const [widths, setWidths] = useState<GripWidth[]>(gripWidthsCache || []);
+
+  useEffect(() => {
+    if (gripWidthsCache) {
+      setWidths(gripWidthsCache);
+      return;
+    }
+
+    getGripWidths().then(data => {
+      gripWidthsCache = data;
+      setWidths(data);
+    });
+  }, []);
+
+  return widths;
 }

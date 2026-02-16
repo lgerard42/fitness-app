@@ -448,7 +448,8 @@ const MotionPickerModal: React.FC<MotionPickerModalProps> = ({
   useEffect(() => {
     if (selectedPrimary && availableVariations.length === 1 && selectedVariation !== availableVariations[0].id) {
       const variation = availableVariations[0];
-      onSelect(selectedPrimary, variation.id, variation.motion_planes?.[0]);
+      const muscles = extractMuscleSelectionsFromTargets(variation.muscle_targets);
+      onSelect(selectedPrimary, variation.id, variation.motion_planes?.[0], muscles);
     }
   }, [selectedPrimary, availableVariations, selectedVariation, onSelect]);
 
@@ -461,25 +462,29 @@ const MotionPickerModal: React.FC<MotionPickerModalProps> = ({
     }
     setSelectedPrimary(motionId);
     
-    // Select primary motion, but never auto-close
-    // User must click "Done" to apply muscles and close
-    onSelect(motionId);
+    // Compute muscles from the motion's muscle_targets and apply immediately
+    const motion = primaryMotions.find(m => m.id === motionId);
+    const muscles = motion ? extractMuscleSelectionsFromTargets(motion.muscle_targets) : undefined;
+    onSelect(motionId, undefined, undefined, muscles);
   };
 
   const handleSelectVariation = (variationId: string) => {
     if (!selectedPrimary) return;
     // Clicking the already-selected variation deselects it
     if (selectedVariation === variationId) {
-      onSelect(selectedPrimary, '', '');
+      // Revert to primary motion's muscles
+      const motion = primaryMotions.find(m => m.id === selectedPrimary);
+      const muscles = motion ? extractMuscleSelectionsFromTargets(motion.muscle_targets) : undefined;
+      onSelect(selectedPrimary, '', '', muscles);
       return;
     }
     const variation = primaryMotionVariations.find(v => v.id === variationId);
     const planes = variation?.motion_planes;
     const hasPlanes = Array.isArray(planes) && planes.length > 0;
     
-    // Select variation (with first plane if any), but never auto-close
-    // User must click "Done" to apply muscles and close
-    onSelect(selectedPrimary, variationId, hasPlanes ? planes[0] : undefined);
+    // Compute muscles from the variation's muscle_targets and apply immediately
+    const muscles = variation ? extractMuscleSelectionsFromTargets(variation.muscle_targets) : undefined;
+    onSelect(selectedPrimary, variationId, hasPlanes ? planes[0] : undefined, muscles);
   };
 
   const handleDone = () => {

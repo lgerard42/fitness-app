@@ -1,13 +1,13 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import { ChevronDown, ToggleLeft, ToggleRight } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import {
   SINGLE_DOUBLE_OPTIONS,
-  GRIP_TYPES_BY_ID,
-  GRIP_WIDTHS_BY_ID,
+  buildGripTypesById,
+  buildGripWidthsById,
 } from '@/constants/data';
-import { useCardioTypesAsStrings, useTrainingFocusAsStrings, usePrimaryMusclesAsStrings, useCableAttachments } from '@/database/useExerciseConfig';
+import { useCardioTypesAsStrings, useTrainingFocusAsStrings, usePrimaryMusclesAsStrings, useCableAttachments, useGripTypes, useGripWidths } from '@/database/useExerciseConfig';
 import { GripImages } from '@/constants/gripImages';
 import { GripWidthImages } from '@/constants/gripWidthImages';
 import Chip from './Chip';
@@ -241,6 +241,10 @@ export const EquipmentBlock: React.FC<{
     showSingleDouble,
   } = props;
   const opts = getGripStanceOptions();
+  const gripTypes = useGripTypes();
+  const GRIP_TYPES_BY_ID = useMemo(() => buildGripTypesById(gripTypes), [gripTypes]);
+  const gripWidths = useGripWidths();
+  const GRIP_WIDTHS_BY_ID = useMemo(() => buildGripWidthsById(gripWidths), [gripWidths]);
 
   const renderEquipmentCircles = () => (
     <>

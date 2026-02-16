@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, Modal, FlatList, StyleSheet, Image } from 'react-native';
 import { COLORS } from '@/constants/colors';
-import { GRIP_TYPES_BY_ID, GRIP_WIDTHS_BY_ID } from '@/constants/data';
+import { buildGripTypesById, buildGripWidthsById } from '@/constants/data';
+import { useGripTypes, useGripWidths } from '@/database/useExerciseConfig';
 import { GripImages } from '@/constants/gripImages';
 
 const PLACEHOLDER_GRIP_IMAGE = require('../../../assets/Equipment/UnselectedOrOtherGrip.png');
@@ -17,21 +18,37 @@ interface GripTypeWidthPickerProps {
 }
 
 // Width option id -> spacing multiplier for circle button
+// Supports both legacy IDs and new database IDs
 const WIDTH_SPACING: Record<string, number> = {
+  // Legacy IDs
   extra_narrow: 0.1,
   narrow: 0.2,
   shoulder_width: 0.35,
   wide: 0.5,
   extra_wide: 0.65,
+  // New database IDs
+  WIDTH_EXTRA_NARROW: 0.1,
+  WIDTH_NARROW: 0.2,
+  WIDTH_SHOULDER: 0.35,
+  WIDTH_WIDE: 0.5,
+  WIDTH_EXTRA_WIDE: 0.65,
 };
 
 // Width option id -> gap between the two vertical lines (px)
+// Supports both legacy IDs and new database IDs
 const WIDTH_ICON_GAP: Record<string, number> = {
+  // Legacy IDs
   extra_narrow: 2,
   narrow: 5,
   shoulder_width: 10,
   wide: 14,
   extra_wide: 18,
+  // New database IDs
+  WIDTH_EXTRA_NARROW: 2,
+  WIDTH_NARROW: 5,
+  WIDTH_SHOULDER: 10,
+  WIDTH_WIDE: 14,
+  WIDTH_EXTRA_WIDE: 18,
 };
 
 const LINE_WIDTH = 2;
@@ -61,6 +78,10 @@ const GripTypeWidthPicker: React.FC<GripTypeWidthPickerProps> = ({
   allowClear = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const gripTypes = useGripTypes();
+  const GRIP_TYPES_BY_ID = useMemo(() => buildGripTypesById(gripTypes), [gripTypes]);
+  const gripWidths = useGripWidths();
+  const GRIP_WIDTHS_BY_ID = useMemo(() => buildGripWidthsById(gripWidths), [gripWidths]);
 
   const handleSelectType = (type: string) => {
     if (type === gripType) {
@@ -80,8 +101,8 @@ const GripTypeWidthPicker: React.FC<GripTypeWidthPickerProps> = ({
   };
 
   const renderCircleButton = (isPreview: boolean = false) => {
-    const effectiveWidth = gripWidth || 'shoulder_width';
-    const spacingMultiplier = WIDTH_SPACING[effectiveWidth] ?? WIDTH_SPACING.shoulder_width;
+    const effectiveWidth = gripWidth || 'WIDTH_SHOULDER';
+    const spacingMultiplier = WIDTH_SPACING[effectiveWidth] ?? WIDTH_SPACING.WIDTH_SHOULDER ?? WIDTH_SPACING.shoulder_width;
     const spacing = spacingMultiplier * 40;
     const buttonWidth = 72 + spacing;
     const buttonHeight = 72;

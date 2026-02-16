@@ -5,7 +5,7 @@
 import * as SQLite from 'expo-sqlite';
 
 const DATABASE_NAME = 'workout.db';
-const DATABASE_VERSION = 7;
+const DATABASE_VERSION = 8;
 
 export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
   const db = await SQLite.openDatabaseAsync(DATABASE_NAME);
@@ -40,6 +40,9 @@ export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
     if (currentVersion < 7) {
       await migrateToV7(db);
     }
+    if (currentVersion < 8) {
+      await migrateToV8(db);
+    }
     await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
   }
 
@@ -64,6 +67,9 @@ export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
   // Re-seed muscle data (muscle_groups, primary/secondary/tertiary muscles) on every
   // app load so muscle pickers stay in sync with JSON tables.
   await seedMuscleData(db);
+
+  // Re-seed grip data (grip_types, grip_widths) on every app load so grip pickers stay in sync.
+  await seedGripData(db);
 
   return db;
 }
@@ -289,6 +295,49 @@ async function createTables(db: SQLite.SQLiteDatabase) {
       is_active INTEGER DEFAULT 1
     );
   `);
+
+  // GRIP_TYPES table
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS grip_types (
+      id TEXT PRIMARY KEY,
+      label TEXT NOT NULL,
+      sub_label TEXT,
+      common_names TEXT,
+      icon TEXT,
+      short_description TEXT,
+      variations TEXT,
+      sort_order INTEGER DEFAULT 0,
+      is_active INTEGER DEFAULT 1
+    );
+  `);
+
+  // GRIP_WIDTHS table
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS grip_widths (
+      id TEXT PRIMARY KEY,
+      label TEXT NOT NULL,
+      sub_label TEXT,
+      common_names TEXT,
+      icon TEXT,
+      short_description TEXT,
+      sort_order INTEGER DEFAULT 0,
+      is_active INTEGER DEFAULT 1
+    );
+  `);
+
+  // ROTATING_GRIP_VARIATIONS table
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS rotating_grip_variations (
+      id TEXT PRIMARY KEY,
+      label TEXT NOT NULL,
+      sub_label TEXT,
+      common_names TEXT,
+      icon TEXT,
+      short_description TEXT,
+      sort_order INTEGER DEFAULT 0,
+      is_active INTEGER DEFAULT 1
+    );
+  `);
 }
 
 async function migrateToV4(db: SQLite.SQLiteDatabase) {
@@ -323,6 +372,13 @@ async function migrateToV7(db: SQLite.SQLiteDatabase) {
     // If table doesn't exist yet, createTables will handle it
     console.warn('Migration V7 warning:', error);
   }
+}
+
+async function migrateToV8(db: SQLite.SQLiteDatabase) {
+  // V8 adds grip_types, grip_widths, and rotating_grip_variations tables
+  // Tables are created in createTables(), so this migration is mainly for
+  // ensuring tables exist if upgrading from older versions
+  // The seedGripData function will populate them
 }
 
 async function seedData(db: SQLite.SQLiteDatabase) {
@@ -726,5 +782,70 @@ async function seedMotionData(db: SQLite.SQLiteDatabase) {
       num(row.sort_order, 0),
       row.is_active !== false ? 1 : 0
     );
+  }
+}
+
+/** Re-seed grip data from JSON on every app load so grip pickers stay in sync. */
+async function seedGripData(db: SQLite.SQLiteDatabase) {
+  try {
+    const str = (v: unknown) => (v == null ? '' : String(v));
+    const num = (v: unknown, def: number) => (v == null ? def : Number(v));
+    const gripTypes = require('./tables/gripTypes.json') as Record<string, unknown>[];
+    const gripWidths = require('./tables/gripWidths.json') as Record<string, unknown>[];
+    const rotatingGripVariations = require('./tables/rotatingGripVariations.json') as Record<string, unknown>[];
+
+    // Clear tables so rows removed from JSON are removed from DB; then re-insert from JSON.
+    await db.execAsync('DELETE FROM rotating_grip_variations');
+    await db.execAsync('DELETE FROM grip_widths');
+    await db.execAsync('DELETE FROM grip_types');
+
+    for (const row of gripTypes) {
+      await db.runAsync(
+        `INSERT OR REPLACE INTO grip_types (id, label, sub_label, common_names, icon, short_description, variations, sort_order, is_active)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        str(row.id),
+        str(row.label),
+        str(row.subLabel ?? row.sub_label),
+        Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
+        str(row.icon),
+        str(row.short_description),
+        str(row.variations),
+        num(row.sort_order, 0),
+        row.is_active !== false ? 1 : 0
+      );
+    }
+
+    for (const row of gripWidths) {
+      await db.runAsync(
+        `INSERT OR REPLACE INTO grip_widths (id, label, sub_label, common_names, icon, short_description, sort_order, is_active)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        str(row.id),
+        str(row.label),
+        str(row.subLabel ?? row.sub_label),
+        Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
+        str(row.icon),
+        str(row.short_description),
+        num(row.sort_order, 0),
+        row.is_active !== false ? 1 : 0
+      );
+    }
+
+    for (const row of rotatingGripVariations) {
+      await db.runAsync(
+        `INSERT OR REPLACE INTO rotating_grip_variations (id, label, sub_label, common_names, icon, short_description, sort_order, is_active)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        str(row.id),
+        str(row.label),
+        str(row.subLabel ?? row.sub_label),
+        Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
+        str(row.icon),
+        str(row.short_description),
+        num(row.sort_order, 0),
+        row.is_active !== false ? 1 : 0
+      );
+    }
+  } catch (error) {
+    console.error('Failed to seed grip data:', error);
+    throw error; // Re-throw to prevent silent failures
   }
 }

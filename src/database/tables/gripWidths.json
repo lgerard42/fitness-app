@@ -1,0 +1,52 @@
+[
+  {
+    "id": "WIDTH_EXTRA_NARROW",
+    "label": "Extra Narrow",
+    "subLabel": "Contactus",
+    "common_names": ["Diamond", "Close-Grip"],
+    "icon": "",
+    "short_description": "Hands touching or nearly touching.",
+    "sort_order": 0,
+    "is_active": true
+  },
+  {
+    "id": "WIDTH_NARROW",
+    "label": "Narrow",
+    "subLabel": "Angustus",
+    "common_names": ["Inside Shoulder", "Close"],
+    "icon": "",
+    "short_description": "Hands positioned inside shoulder width.",
+    "sort_order": 1,
+    "is_active": true
+  },
+  {
+    "id": "WIDTH_SHOULDER",
+    "label": "Shoulder-Width",
+    "subLabel": "Latitudo Humeri",
+    "common_names": ["Standard", "Biacromial"],
+    "icon": "",
+    "short_description": "Hands stacked directly in line with shoulders.",
+    "sort_order": 2,
+    "is_active": true
+  },
+  {
+    "id": "WIDTH_WIDE",
+    "label": "Wide",
+    "subLabel": "Latus",
+    "common_names": ["Outside Shoulder", "Wide"],
+    "icon": "",
+    "short_description": "Hands positioned significantly outside shoulders.",
+    "sort_order": 3,
+    "is_active": true
+  },
+  {
+    "id": "WIDTH_EXTRA_WIDE",
+    "label": "Extra Wide",
+    "subLabel": "Extra Latus",
+    "common_names": ["Snatch Grip", "Collar-to-Collar"],
+    "icon": "",
+    "short_description": "Maximum width, often near the weight collars.",
+    "sort_order": 4,
+    "is_active": true
+  }
+]

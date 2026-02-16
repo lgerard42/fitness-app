@@ -95,6 +95,34 @@ export interface CableAttachment {
   short_description?: string;
 }
 
+export interface GripType {
+  id: string;
+  label: string;
+  sub_label?: string;
+  common_names?: string;
+  icon?: string;
+  short_description?: string;
+  variations?: string;
+}
+
+export interface GripWidth {
+  id: string;
+  label: string;
+  sub_label?: string;
+  common_names?: string;
+  icon?: string;
+  short_description?: string;
+}
+
+export interface RotatingGripVariation {
+  id: string;
+  label: string;
+  sub_label?: string;
+  common_names?: string;
+  icon?: string;
+  short_description?: string;
+}
+
 let dbInstance: SQLite.SQLiteDatabase | null = null;
 
 export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
@@ -481,4 +509,58 @@ export async function buildPrimaryToSecondaryMap(): Promise<Record<string, strin
   });
   
   return map;
+}
+
+/**
+ * Get all grip types
+ */
+export async function getGripTypes(): Promise<GripType[]> {
+  const db = await getDatabase();
+  return await db.getAllAsync<GripType>(
+    'SELECT * FROM grip_types WHERE is_active = 1 ORDER BY sort_order, label'
+  );
+}
+
+/**
+ * Get grip type by ID
+ */
+export async function getGripTypeById(id: string): Promise<GripType | null> {
+  const db = await getDatabase();
+  const result = await db.getFirstAsync<GripType>(
+    'SELECT * FROM grip_types WHERE id = ?',
+    [id]
+  );
+  return result || null;
+}
+
+/**
+ * Get all grip widths
+ */
+export async function getGripWidths(): Promise<GripWidth[]> {
+  const db = await getDatabase();
+  return await db.getAllAsync<GripWidth>(
+    'SELECT * FROM grip_widths WHERE is_active = 1 ORDER BY sort_order, label'
+  );
+}
+
+/**
+ * Get grip width by ID
+ */
+export async function getGripWidthById(id: string): Promise<GripWidth | null> {
+  const db = await getDatabase();
+  const result = await db.getFirstAsync<GripWidth>(
+    'SELECT * FROM grip_widths WHERE id = ?',
+    [id]
+  );
+  return result || null;
+}
+
+/**
+ * Get all rotating grip variations
+ */
+export async function getRotatingGripVariations(): Promise<RotatingGripVariation[]> {
+  const db = await getDatabase();
+  return await db.getAllAsync<RotatingGripVariation>(
+    'SELECT * FROM rotating_grip_variations WHERE is_active = 1 ORDER BY sort_order, label'
+  );
 }

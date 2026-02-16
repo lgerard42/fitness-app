@@ -1,0 +1,162 @@
+[
+  {
+    "id": "NEUTRAL_PRO",
+    "label": "Neutral to Pronated",
+    "subLabel": "Rotatio Interna",
+    "common_names": ["Twist Press"],
+    "icon": "",
+    "short_description": "Starts hammer grip, rotates to overhand.",
+    "sort_order": 0,
+    "is_active": true
+  },
+  {
+    "id": "NEUTRAL_SUP",
+    "label": "Neutral to Supinated",
+    "subLabel": "Rotatio Externa",
+    "common_names": ["Supinating Curl", "Zottman Up"],
+    "icon": "",
+    "short_description": "Starts hammer grip, rotates to underhand.",
+    "sort_order": 1,
+    "is_active": true
+  },
+  {
+    "id": "NEUTRAL_SEMIPRO",
+    "label": "Neutral to Semi-Pro",
+    "subLabel": "Rotatio Partialis Interna",
+    "common_names": ["Partial Twist"],
+    "icon": "",
+    "short_description": "Starts hammer grip, slight inward rotation.",
+    "sort_order": 2,
+    "is_active": true
+  },
+  {
+    "id": "NEUTRAL_SEMISUP",
+    "label": "Neutral to Semi-Sup",
+    "subLabel": "Rotatio Partialis Externa",
+    "common_names": ["Partial Supination"],
+    "icon": "",
+    "short_description": "Starts hammer grip, slight outward rotation.",
+    "sort_order": 3,
+    "is_active": true
+  },
+  {
+    "id": "PRO_NEUTRAL",
+    "label": "Pronated to Neutral",
+    "subLabel": "Rotatio Externa",
+    "common_names": ["Arnold Press"],
+    "icon": "",
+    "short_description": "Starts overhand, rotates to hammer grip.",
+    "sort_order": 4,
+    "is_active": true
+  },
+  {
+    "id": "PRO_SUP",
+    "label": "Pronated to Supinated",
+    "subLabel": "Rotatio Completa",
+    "common_names": ["Full Twist"],
+    "icon": "",
+    "short_description": "Starts overhand, rotates completely to underhand.",
+    "sort_order": 5,
+    "is_active": true
+  },
+  {
+    "id": "PRO_SEMISUP",
+    "label": "Pronated to Semi-Sup",
+    "subLabel": "Rotatio Magna",
+    "common_names": ["EZ Twist"],
+    "icon": "",
+    "short_description": "Starts overhand, rotates past neutral.",
+    "sort_order": 6,
+    "is_active": true
+  },
+  {
+    "id": "SUP_NEUTRAL",
+    "label": "Supinated to Neutral",
+    "subLabel": "Rotatio Interna",
+    "common_names": ["Reverse Twist"],
+    "icon": "",
+    "short_description": "Starts underhand, rotates to hammer grip.",
+    "sort_order": 7,
+    "is_active": true
+  },
+  {
+    "id": "SUP_PRO",
+    "label": "Supinated to Pronated",
+    "subLabel": "Rotatio Completa Inversa",
+    "common_names": ["Zottman Down"],
+    "icon": "",
+    "short_description": "Starts underhand, rotates completely to overhand.",
+    "sort_order": 8,
+    "is_active": true
+  },
+  {
+    "id": "SUP_SEMIPRO",
+    "label": "Supinated to Semi-Pro",
+    "subLabel": "Rotatio Magna Inversa",
+    "common_names": ["Deep Twist"],
+    "icon": "",
+    "short_description": "Starts underhand, rotates past neutral.",
+    "sort_order": 9,
+    "is_active": true
+  },
+  {
+    "id": "SEMIPRO_NEUTRAL",
+    "label": "Semi-Pro to Neutral",
+    "subLabel": "Rotatio Minima Externa",
+    "common_names": ["Micro Twist Out"],
+    "icon": "",
+    "short_description": "Slight rotation from angled overhand to hammer.",
+    "sort_order": 10,
+    "is_active": true
+  },
+  {
+    "id": "SEMIPRO_SUP",
+    "label": "Semi-Pro to Supinated",
+    "subLabel": "Rotatio Magna Externa",
+    "common_names": ["Angled to Underhand"],
+    "icon": "",
+    "short_description": "Rotation from angled overhand to underhand.",
+    "sort_order": 11,
+    "is_active": true
+  },
+  {
+    "id": "SEMIPRO_SEMISUP",
+    "label": "Semi-Pro to Semi-Sup",
+    "subLabel": "Rotatio Media",
+    "common_names": ["EZ Switch"],
+    "icon": "",
+    "short_description": "Rotation from angled overhand to angled underhand.",
+    "sort_order": 12,
+    "is_active": true
+  },
+  {
+    "id": "SEMISUP_NEUTRAL",
+    "label": "Semi-Sup to Neutral",
+    "subLabel": "Rotatio Minima Interna",
+    "common_names": ["Micro Twist In"],
+    "icon": "",
+    "short_description": "Slight rotation from angled underhand to hammer.",
+    "sort_order": 13,
+    "is_active": true
+  },
+  {
+    "id": "SEMISUP_PRO",
+    "label": "Semi-Sup to Pronated",
+    "subLabel": "Rotatio Magna Interna",
+    "common_names": ["Angled to Overhand"],
+    "icon": "",
+    "short_description": "Rotation from angled underhand to overhand.",
+    "sort_order": 14,
+    "is_active": true
+  },
+  {
+    "id": "SEMISUP_SEMIPRO",
+    "label": "Semi-Sup to Semi-Pro",
+    "subLabel": "Rotatio Media Inversa",
+    "common_names": ["EZ Switch Reverse"],
+    "icon": "",
+    "short_description": "Rotation from angled underhand to angled overhand.",
+    "sort_order": 15,
+    "is_active": true
+  }
+]
