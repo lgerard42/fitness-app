@@ -32,6 +32,7 @@ export interface PrimaryMuscle {
   common_names?: string;
   icon?: string;
   short_description?: string;
+  upper_lower?: string; // JSON array string
 }
 
 export interface SecondaryMuscle {

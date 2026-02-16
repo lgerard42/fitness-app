@@ -5,7 +5,7 @@
 import * as SQLite from 'expo-sqlite';
 
 const DATABASE_NAME = 'workout.db';
-const DATABASE_VERSION = 6;
+const DATABASE_VERSION = 7;
 
 export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
   const db = await SQLite.openDatabaseAsync(DATABASE_NAME);
@@ -37,7 +37,24 @@ export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
     if (currentVersion < 6) {
       await reseedSecondaryMuscles(db);
     }
+    if (currentVersion < 7) {
+      await migrateToV7(db);
+    }
     await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
+  }
+
+  // Ensure upper_lower column exists (in case migration didn't run or failed)
+  // This is a safety check before seedMuscleData runs
+  try {
+    const tableInfo = await db.getAllAsync<{ name: string }>(
+      "PRAGMA table_info(primary_muscles)"
+    );
+    const hasColumn = tableInfo.some(col => col.name === 'upper_lower');
+    if (!hasColumn) {
+      await db.execAsync(`ALTER TABLE primary_muscles ADD COLUMN upper_lower TEXT`);
+    }
+  } catch (error) {
+    console.warn('Safety check for upper_lower column failed:', error);
   }
 
   // Re-seed equipment data from JSON on every app load (same idea as motion options
@@ -107,7 +124,8 @@ async function createTables(db: SQLite.SQLiteDatabase) {
       icon TEXT,
       short_description TEXT,
       sort_order INTEGER DEFAULT 0,
-      is_active INTEGER DEFAULT 1
+      is_active INTEGER DEFAULT 1,
+      upper_lower TEXT
     );
   `);
 
@@ -290,6 +308,23 @@ async function migrateToV4(db: SQLite.SQLiteDatabase) {
   }
 }
 
+async function migrateToV7(db: SQLite.SQLiteDatabase) {
+  try {
+    // Check if column exists by trying to query it
+    const tableInfo = await db.getAllAsync<{ name: string }>(
+      "PRAGMA table_info(primary_muscles)"
+    );
+    const hasColumn = tableInfo.some(col => col.name === 'upper_lower');
+    
+    if (!hasColumn) {
+      await db.execAsync(`ALTER TABLE primary_muscles ADD COLUMN upper_lower TEXT`);
+    }
+  } catch (error) {
+    // If table doesn't exist yet, createTables will handle it
+    console.warn('Migration V7 warning:', error);
+  }
+}
+
 async function seedData(db: SQLite.SQLiteDatabase) {
   const exerciseCategories = require('./tables/exerciseCategories.json') as Record<string, unknown>[];
   const cardioTypes = require('./tables/cardioTypes.json') as Record<string, unknown>[];
@@ -351,8 +386,8 @@ async function seedData(db: SQLite.SQLiteDatabase) {
 
   for (const row of primaryMuscles) {
     await db.runAsync(
-      `INSERT INTO primary_muscles (id, label, technical_name, common_names, icon, short_description, sort_order, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO primary_muscles (id, label, technical_name, common_names, icon, short_description, sort_order, is_active, upper_lower)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       str(row.id),
       str(row.label),
       str(row.technical_name),
@@ -360,7 +395,8 @@ async function seedData(db: SQLite.SQLiteDatabase) {
       str(row.icon),
       str(row.short_description),
       num(row.sort_order, 0),
-      row.is_active !== false ? 1 : 0
+      row.is_active !== false ? 1 : 0,
+      Array.isArray(row.upper_lower) ? JSON.stringify(row.upper_lower) : (row.upper_lower != null ? str(row.upper_lower) : '[]')
     );
   }
 
@@ -414,12 +450,25 @@ async function seedData(db: SQLite.SQLiteDatabase) {
 
 /** Re-seed muscle data from JSON on every app load so muscle pickers stay in sync. */
 async function seedMuscleData(db: SQLite.SQLiteDatabase) {
-  const str = (v: unknown) => (v == null ? '' : String(v));
-  const num = (v: unknown, def: number) => (v == null ? def : Number(v));
-  const muscleGroups = require('./tables/muscleGroups.json') as Record<string, unknown>[];
-  const primaryMuscles = require('./tables/primaryMuscles.json') as Record<string, unknown>[];
-  const secondaryMuscles = require('./tables/secondaryMuscles.json') as Record<string, unknown>[];
-  const tertiaryMuscles = require('./tables/tertiaryMuscles.json') as Record<string, unknown>[];
+  try {
+    const str = (v: unknown) => (v == null ? '' : String(v));
+    const num = (v: unknown, def: number) => (v == null ? def : Number(v));
+    const muscleGroups = require('./tables/muscleGroups.json') as Record<string, unknown>[];
+    const primaryMuscles = require('./tables/primaryMuscles.json') as Record<string, unknown>[];
+    const secondaryMuscles = require('./tables/secondaryMuscles.json') as Record<string, unknown>[];
+    const tertiaryMuscles = require('./tables/tertiaryMuscles.json') as Record<string, unknown>[];
+
+    // Check if upper_lower column exists in primary_muscles table
+    const tableInfo = await db.getAllAsync<{ name: string }>(
+      "PRAGMA table_info(primary_muscles)"
+    );
+    const hasUpperLowerColumn = tableInfo.some(col => col.name === 'upper_lower');
+
+    // Clear tables so rows removed from JSON (e.g. Olympic) are removed from DB; then re-insert from JSON.
+    await db.execAsync('DELETE FROM tertiary_muscles');
+    await db.execAsync('DELETE FROM secondary_muscles');
+    await db.execAsync('DELETE FROM primary_muscles');
+    await db.execAsync('DELETE FROM muscle_groups');
 
   for (const row of muscleGroups) {
     await db.runAsync(
@@ -437,18 +486,36 @@ async function seedMuscleData(db: SQLite.SQLiteDatabase) {
   }
 
   for (const row of primaryMuscles) {
-    await db.runAsync(
-      `INSERT OR REPLACE INTO primary_muscles (id, label, technical_name, common_names, icon, short_description, sort_order, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      str(row.id),
-      str(row.label),
-      str(row.technical_name),
-      Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
-      str(row.icon),
-      str(row.short_description),
-      num(row.sort_order, 0),
-      row.is_active !== false ? 1 : 0
-    );
+    if (hasUpperLowerColumn) {
+      // Insert with upper_lower column
+      await db.runAsync(
+        `INSERT OR REPLACE INTO primary_muscles (id, label, technical_name, common_names, icon, short_description, sort_order, is_active, upper_lower)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        str(row.id),
+        str(row.label),
+        str(row.technical_name),
+        Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
+        str(row.icon),
+        str(row.short_description),
+        num(row.sort_order, 0),
+        row.is_active !== false ? 1 : 0,
+        Array.isArray(row.upper_lower) ? JSON.stringify(row.upper_lower) : (row.upper_lower != null ? str(row.upper_lower) : '[]')
+      );
+    } else {
+      // Insert without upper_lower column (for older databases)
+      await db.runAsync(
+        `INSERT OR REPLACE INTO primary_muscles (id, label, technical_name, common_names, icon, short_description, sort_order, is_active)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        str(row.id),
+        str(row.label),
+        str(row.technical_name),
+        Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
+        str(row.icon),
+        str(row.short_description),
+        num(row.sort_order, 0),
+        row.is_active !== false ? 1 : 0
+      );
+    }
   }
 
   for (const row of secondaryMuscles) {
@@ -481,6 +548,10 @@ async function seedMuscleData(db: SQLite.SQLiteDatabase) {
       num(row.sort_order, 0),
       row.is_active !== false ? 1 : 0
     );
+  }
+  } catch (error) {
+    console.error('Failed to seed muscle data:', error);
+    throw error; // Re-throw to prevent silent failures
   }
 }
 

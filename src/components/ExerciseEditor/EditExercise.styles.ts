@@ -392,9 +392,11 @@ const styles = StyleSheet.create({
 export const musclePickerStyles = StyleSheet.create({
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.4)',
+        backgroundColor: 'rgba(0,0,0,0.5)',
         justifyContent: 'center',
         padding: 20,
+        zIndex: 1000,
+        elevation: 1000,
     },
     centered: {
         width: '100%',

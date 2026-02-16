@@ -463,7 +463,7 @@ export const PrimaryMuscleChips: React.FC<{
                 label={m}
                 selected={selected}
                 isPrimary={isPrimary}
-                isSpecial={['Full Body', 'Olympic'].includes(m)}
+                isSpecial={['Full Body'].includes(m)}
                 onClick={() => onMuscleToggle(m)}
                 onMakePrimary={() => onMakePrimary(m)}
                 onSecondaryPress={showSecondaryButton ? () => onOpenSecondaryPopup(m) : undefined}

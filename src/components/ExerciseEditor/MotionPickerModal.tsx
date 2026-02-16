@@ -9,12 +9,17 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { Check, ChevronDown } from 'lucide-react-native';
+import { Check, ChevronDown, ToggleLeft, ToggleRight } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { usePrimaryMuscles, useSecondaryMuscles } from '@/database/useExerciseConfig';
+import primaryMusclesData from '@/database/tables/primaryMuscles.json';
+import Chip from './Chip';
+import editExerciseStyles from './EditExercise.styles';
 
 // Import tertiary muscles directly from JSON (same source as primaryMotions/primaryMotionVariations)
 import tertiaryMusclesData from '@/database/tables/tertiaryMuscles.json';
+
+type UpperLowerFilter = 'Upper Body' | 'Lower Body' | 'Full Body';
 
 interface PrimaryMotion {
   id: string;
@@ -60,7 +65,21 @@ interface MotionPickerModalProps {
   primaryMotions: PrimaryMotion[];
   primaryMotionVariations: PrimaryMotionVariation[];
   motionPlanes: MotionPlane[];
+  onPrimaryMuscleToggle: (muscle: string) => void;
+  onMakePrimary: (muscle: string) => void;
+  secondaryMusclesEnabled: boolean;
+  onSecondaryToggle: () => void;
+  onOpenSecondaryPopup?: (primary: string) => void;
+  getAvailableSecondaryMuscles?: (primary: string) => string[];
+  getHasTertiarySelectedForPrimary?: (primary: string) => boolean;
+  secondaryPopupContent?: React.ReactNode;
 }
+
+const UPPER_LOWER_OPTIONS: { id: UpperLowerFilter; label: string }[] = [
+  { id: 'Upper Body', label: 'Upper Body' },
+  { id: 'Lower Body', label: 'Lower Body' },
+  { id: 'Full Body', label: 'Full Body' },
+];
 
 const MotionPickerModal: React.FC<MotionPickerModalProps> = ({
   visible,
@@ -75,8 +94,17 @@ const MotionPickerModal: React.FC<MotionPickerModalProps> = ({
   primaryMotions,
   primaryMotionVariations,
   motionPlanes,
+  onPrimaryMuscleToggle,
+  onMakePrimary,
+  secondaryMusclesEnabled,
+  onSecondaryToggle,
+  onOpenSecondaryPopup,
+  getAvailableSecondaryMuscles,
+  getHasTertiarySelectedForPrimary,
+  secondaryPopupContent,
 }) => {
   const [selectedPrimary, setSelectedPrimary] = useState<string | null>(selectedPrimaryMotion || null);
+  const [upperLowerFilter, setUpperLowerFilter] = useState<UpperLowerFilter>('Upper Body');
   const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(new Set());
   const [showMoreSections, setShowMoreSections] = useState(false);
   const [showMoreMotions, setShowMoreMotions] = useState<Record<string, boolean>>({});
@@ -85,6 +113,25 @@ const MotionPickerModal: React.FC<MotionPickerModalProps> = ({
   const allSecondaryMuscles = useSecondaryMuscles();
   // Use directly imported JSON data for tertiary muscles (consistent with primaryMotions/primaryMotionVariations)
   const allTertiaryMuscles = tertiaryMusclesData.filter((tm: any) => tm.is_active);
+
+  // Filter primary muscles by upper_lower based on toggle
+  const filteredPrimaryMusclesByUpperLower = useMemo(() => {
+    const data = primaryMusclesData as Array<{ id: string; label: string; upper_lower?: string[] }>;
+    return data
+      .filter((pm: any) => {
+        const upperLower = pm.upper_lower || [];
+        if (upperLowerFilter === 'Upper Body') {
+          return upperLower.includes('Upper Body');
+        }
+        if (upperLowerFilter === 'Lower Body') {
+          return upperLower.includes('Lower Body');
+        }
+        // Full Body: must have BOTH
+        return upperLower.includes('Upper Body') && upperLower.includes('Lower Body');
+      })
+      .sort((a: any, b: any) => (a.sort_order ?? 99) - (b.sort_order ?? 99))
+      .map((pm: any) => pm.label);
+  }, [upperLowerFilter]);
 
   // Update selectedPrimary when prop changes
   useEffect(() => {
@@ -114,7 +161,7 @@ const MotionPickerModal: React.FC<MotionPickerModalProps> = ({
   const getPrimaryMusclesFromTargets = (targets: any): Array<{ id: string; label: string; score: number }> => {
     if (!targets || typeof targets !== 'object') return [];
 
-    const primaryMuscleIds = ['ARMS', 'BACK', 'CHEST', 'CORE', 'LEGS', 'SHOULDERS', 'NECK', 'FULL_BODY', 'OLYMPIC'];
+    const primaryMuscleIds = ['ARMS', 'BACK', 'CHEST', 'CORE', 'LEGS', 'SHOULDERS', 'NECK', 'FULL_BODY'];
     const result: Array<{ id: string; label: string; score: number }> = [];
 
     for (const key in targets) {
@@ -176,7 +223,7 @@ const MotionPickerModal: React.FC<MotionPickerModalProps> = ({
     };
   };
 
-  const PRIMARY_MUSCLE_SECTION_ORDER = ['ARMS', 'BACK', 'CHEST', 'CORE', 'LEGS', 'SHOULDERS', 'NECK', 'FULL_BODY', 'OLYMPIC'];
+  const PRIMARY_MUSCLE_SECTION_ORDER = ['ARMS', 'BACK', 'CHEST', 'CORE', 'LEGS', 'SHOULDERS', 'NECK', 'FULL_BODY'];
 
   // When any primary muscle groups are selected, only show sections for those groups
   const selectedPrimaryGroupIds = useMemo(() => {
@@ -436,9 +483,19 @@ const MotionPickerModal: React.FC<MotionPickerModalProps> = ({
   };
 
   const handleDone = () => {
-    // Apply muscle selections when Done is clicked (computed from current selection)
-    if (computedMuscles && selectedPrimary) {
+    // Apply muscle selections when Done is clicked
+    if (selectedPrimary && computedMuscles) {
+      // Motion selected: use muscles from motion's muscle_targets
       onSelect(selectedPrimary, selectedVariation || undefined, selectedPlane || undefined, computedMuscles);
+    } else if (primaryMuscles.length > 0) {
+      // No motion selected but user picked primary muscles: pass manual selection
+      onSelect('', undefined, undefined, {
+        primaryMuscles,
+        secondaryMuscles,
+        tertiaryMuscles,
+      });
+    } else {
+      onSelect(selectedPrimary || '', selectedVariation || undefined, selectedPlane || undefined);
     }
     onClose();
   };
@@ -484,6 +541,69 @@ const MotionPickerModal: React.FC<MotionPickerModalProps> = ({
                 </View>
               ) : null}
             </View>
+
+            {/* Upper Body / Lower Body / Full Body toggle + Primary Muscle chips */}
+            <View style={styles.upperLowerSection}>
+              <View style={editExerciseStyles.categoryContainer}>
+                {UPPER_LOWER_OPTIONS.map((opt) => (
+                  <TouchableOpacity
+                    key={opt.id}
+                    onPress={() => setUpperLowerFilter(opt.id)}
+                    style={[
+                      editExerciseStyles.categoryButton,
+                      upperLowerFilter === opt.id ? editExerciseStyles.categoryButtonSelected : editExerciseStyles.categoryButtonUnselected,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        editExerciseStyles.categoryText,
+                        upperLowerFilter === opt.id ? editExerciseStyles.categoryTextSelected : editExerciseStyles.categoryTextUnselected,
+                      ]}
+                    >
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <View style={[editExerciseStyles.chipsContainer, styles.muscleChipsContainer]}>
+                <View style={styles.muscleChipsHeader}>
+                  <Text style={styles.muscleChipsLabel}>Primary Muscle Groups</Text>
+                  <TouchableOpacity style={editExerciseStyles.toggleContainer} onPress={onSecondaryToggle}>
+                    <Text style={[editExerciseStyles.toggleLabel, secondaryMusclesEnabled ? editExerciseStyles.textBlue : editExerciseStyles.textSlate]}>
+                      Secondary
+                    </Text>
+                    {secondaryMusclesEnabled ? (
+                      <ToggleRight size={24} color={COLORS.blue[600]} />
+                    ) : (
+                      <ToggleLeft size={24} color={COLORS.slate[400]} />
+                    )}
+                  </TouchableOpacity>
+                </View>
+                {filteredPrimaryMusclesByUpperLower.map((label) => {
+                  const selected = primaryMuscles.includes(label);
+                  const isPrimary = primaryMuscles[0] === label;
+                  const showSecondaryButton = selected && secondaryMusclesEnabled && onOpenSecondaryPopup != null && getAvailableSecondaryMuscles != null;
+                  const available = getAvailableSecondaryMuscles ? getAvailableSecondaryMuscles(label) : [];
+                  const hasSecondarySelected = available.some((sec) => secondaryMuscles.includes(sec));
+                  const hasTertiarySelected = showSecondaryButton && getHasTertiarySelectedForPrimary ? getHasTertiarySelectedForPrimary(label) : undefined;
+                  return (
+                    <Chip
+                      key={label}
+                      label={label}
+                      selected={selected}
+                      isPrimary={isPrimary}
+                      isSpecial={['Full Body'].includes(label)}
+                      onClick={() => onPrimaryMuscleToggle(label)}
+                      onMakePrimary={() => onMakePrimary(label)}
+                      onSecondaryPress={showSecondaryButton ? () => onOpenSecondaryPopup!(label) : undefined}
+                      hasSecondarySelected={showSecondaryButton ? hasSecondarySelected : undefined}
+                      hasTertiarySelected={hasTertiarySelected}
+                    />
+                  );
+                })}
+              </View>
+            </View>
+
             <ScrollView style={styles.column} contentContainerStyle={styles.columnContent}>
               {filteredSections.map((section, sectionIndex) => {
                 const motionsToShow = showMoreMotions[section.primaryId]
@@ -889,6 +1009,7 @@ const MotionPickerModal: React.FC<MotionPickerModalProps> = ({
           </View>
         </KeyboardAvoidingView>
       </TouchableOpacity>
+      {secondaryPopupContent}
     </Modal>
   );
 };
@@ -917,6 +1038,28 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.slate[200],
     borderBottomWidth: 1,
     borderBottomColor: COLORS.slate[250],
+  },
+  upperLowerSection: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 12,
+    backgroundColor: COLORS.white,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.slate[100],
+  },
+  muscleChipsContainer: {
+    marginTop: 12,
+  },
+  muscleChipsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  muscleChipsLabel: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: COLORS.slate[500],
   },
   headerTitle: {
     fontSize: 18,
