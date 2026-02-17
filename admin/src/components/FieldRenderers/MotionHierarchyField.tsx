@@ -444,23 +444,25 @@ export default function MotionHierarchyField({ tableKey, currentRecordId, onFiel
 
       {/* Add dropdown */}
       {tableKey === 'primaryMotions' && (
-        <div className="space-y-2">
+        <div className="flex flex-row gap-2 items-stretch">
           <select
             value=""
             onChange={async (e) => {
               if (!e.target.value) return;
               await addVariationToPrimary(currentRecordId, e.target.value);
             }}
-            className="w-full px-3 py-2 border rounded text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            className="flex-grow min-w-0 px-3 py-2 border rounded text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
           >
             <option value="">Add Existing Variation...</option>
             {(availableAddOptions.type === 'variations' ? availableAddOptions.items : []).map(opt => (
               <option key={opt.id} value={opt.id}>{opt.label} ({opt.id})</option>
             ))}
           </select>
-          <VariationCreator
-            onCreateVariation={(data) => createVariationForPrimary(currentRecordId, data)}
-          />
+          <div className="flex-shrink min-w-fit">
+            <VariationCreator
+              onCreateVariation={(data) => createVariationForPrimary(currentRecordId, data)}
+            />
+          </div>
         </div>
       )}
 
