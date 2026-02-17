@@ -11,7 +11,7 @@ import JsonEditor from './FieldRenderers/JsonEditor';
 import MuscleTargetTree from './FieldRenderers/MuscleTargetTree';
 import ExerciseInputPermissionsField from './FieldRenderers/ExerciseInputPermissionsField';
 import MuscleHierarchyField from './FieldRenderers/MuscleHierarchyField';
-import MotionHierarchyField from './FieldRenderers/MotionHierarchyField';
+import MotionConfigTree from './FieldRenderers/MotionConfigTree';
 import Relationships from './Relationships';
 
 const MATRIX_FIELDS = ['allowed_grip_types', 'allowed_grip_widths', 'allowed_stance_types', 'allowed_stance_widths'];
@@ -30,9 +30,9 @@ const MUSCLE_HIERARCHY_ANCHOR: Record<string, string> = {
 
 const MOTION_TABLES = ['primaryMotions', 'primaryMotionVariations', 'motionPlanes'];
 const MOTION_HIERARCHY_FIELDS: Record<string, string[]> = {
-  primaryMotions: ['variation_ids', 'motion_plane_ids'],
-  primaryMotionVariations: ['primary_motion_key', 'motion_planes'],
-  motionPlanes: ['variation_ids', 'primary_motion_ids'],
+  primaryMotions: ['variation_ids', 'motion_plane_ids', 'muscle_targets'],
+  primaryMotionVariations: ['primary_motion_key', 'motion_planes', 'muscle_targets'],
+  motionPlanes: ['variation_ids', 'primary_motion_ids', 'muscle_targets'],
 };
 const MOTION_HIERARCHY_ANCHOR: Record<string, string> = {
   primaryMotions: 'variation_ids',
@@ -231,21 +231,22 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
                   );
 
                 case 'fk':
-                  // Use MotionHierarchyField for the anchor field on motion tables
+                  // Use MotionConfigTree for the anchor field on motion tables
                   if (isMotionTable && field.name === hierarchyAnchor) {
                     const fieldNames = MOTION_HIERARCHY_FIELDS[schema.key] || [];
-                    const motionHierarchyLabel = (
+                    const motionConfigLabel = (
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Motion Hierarchy
+                        Motion & Muscle Config
                         <span className="text-xs text-gray-400 ml-2">{fieldNames.join(' + ')}</span>
                       </label>
                     );
                     return (
                       <div key={field.name}>
-                        {motionHierarchyLabel}
-                        <MotionHierarchyField
+                        {motionConfigLabel}
+                        <MotionConfigTree
                           tableKey={schema.key as 'primaryMotions' | 'primaryMotionVariations' | 'motionPlanes'}
                           currentRecordId={recordId}
+                          muscleTargets={(data.muscle_targets as Record<string, unknown>) || {}}
                           onFieldsChange={(fields) => {
                             updateMultiple(fields);
                           }}
@@ -289,21 +290,22 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
                       </div>
                     );
                   }
-                  // Use MotionHierarchyField for the anchor field on motion tables
+                  // Use MotionConfigTree for the anchor field on motion tables
                   if (isMotionTable && field.name === hierarchyAnchor) {
                     const fieldNames = MOTION_HIERARCHY_FIELDS[schema.key] || [];
-                    const motionHierarchyLabel = (
+                    const motionConfigLabel = (
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Motion Hierarchy
+                        Motion & Muscle Config
                         <span className="text-xs text-gray-400 ml-2">{fieldNames.join(' + ')}</span>
                       </label>
                     );
                     return (
                       <div key={field.name}>
-                        {motionHierarchyLabel}
-                        <MotionHierarchyField
+                        {motionConfigLabel}
+                        <MotionConfigTree
                           tableKey={schema.key as 'primaryMotions' | 'primaryMotionVariations' | 'motionPlanes'}
                           currentRecordId={recordId}
+                          muscleTargets={(data.muscle_targets as Record<string, unknown>) || {}}
                           onFieldsChange={(fields) => {
                             updateMultiple(fields);
                           }}

@@ -48,6 +48,31 @@ export default function MuscleTargetTree({ value, onChange }: MuscleTargetTreePr
 
   const data = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
 
+  const recomputeParentScores = (nd: Record<string, unknown>) => {
+    for (const pId of Object.keys(nd).filter(k => k !== '_score')) {
+      const pNode = nd[pId] as Record<string, unknown> | undefined;
+      if (!pNode || typeof pNode !== 'object') continue;
+      const sKeys = Object.keys(pNode).filter(k => k !== '_score');
+      for (const sId of sKeys) {
+        const sNode = pNode[sId] as Record<string, unknown> | undefined;
+        if (!sNode || typeof sNode !== 'object') continue;
+        const tKeys = Object.keys(sNode).filter(k => k !== '_score');
+        if (tKeys.length > 0) {
+          sNode._score = Math.round(tKeys.reduce((sum, tId) => {
+            const tNode = sNode[tId] as Record<string, unknown> | undefined;
+            return sum + ((tNode?._score as number) || 0);
+          }, 0) * 100) / 100;
+        }
+      }
+      if (sKeys.length > 0) {
+        pNode._score = Math.round(sKeys.reduce((sum, sId) => {
+          const sNode = pNode[sId] as Record<string, unknown> | undefined;
+          return sum + ((sNode?._score as number) || 0);
+        }, 0) * 100) / 100;
+      }
+    }
+  };
+
   const setScore = (path: string[], score: number) => {
     const newData = JSON.parse(JSON.stringify(data));
     let node = newData;
@@ -63,6 +88,7 @@ export default function MuscleTargetTree({ value, onChange }: MuscleTargetTreePr
     } else {
       node[last]._score = score;
     }
+    recomputeParentScores(newData);
     onChange(newData);
   };
 
@@ -78,6 +104,7 @@ export default function MuscleTargetTree({ value, onChange }: MuscleTargetTreePr
     if (!newData[primaryId][secondaryId]) {
       newData[primaryId][secondaryId] = { _score: 0 };
     }
+    recomputeParentScores(newData);
     onChange(newData);
   };
 
@@ -88,6 +115,7 @@ export default function MuscleTargetTree({ value, onChange }: MuscleTargetTreePr
     if (!newData[primaryId][secondaryId][tertiaryId]) {
       newData[primaryId][secondaryId][tertiaryId] = { _score: 0 };
     }
+    recomputeParentScores(newData);
     onChange(newData);
   };
 
@@ -99,6 +127,7 @@ export default function MuscleTargetTree({ value, onChange }: MuscleTargetTreePr
       node = node[path[i]];
     }
     delete node[path[path.length - 1]];
+    recomputeParentScores(newData);
     onChange(newData);
   };
 
@@ -120,15 +149,19 @@ export default function MuscleTargetTree({ value, onChange }: MuscleTargetTreePr
       .map((tm) => ({ id: tm.id as string, label: tm.label as string }));
   };
 
-  const ScoreInput = ({ path, currentScore }: { path: string[]; currentScore: number }) => (
-    <input
-      type="number"
-      step="0.1"
-      value={currentScore}
-      onChange={(e) => setScore(path, parseFloat(e.target.value) || 0)}
-      className="w-16 px-1 py-0.5 border rounded text-xs text-center focus:outline-none focus:ring-1 focus:ring-blue-500"
-    />
-  );
+  const ScoreInput = ({ path, currentScore, computed }: { path: string[]; currentScore: number; computed?: boolean }) =>
+    computed ? (
+      <span className="w-16 px-1 py-0.5 bg-gray-100 rounded text-xs text-center text-gray-500 italic inline-block"
+        title="Auto-computed from children">{currentScore}</span>
+    ) : (
+      <input
+        type="number"
+        step="0.1"
+        value={currentScore}
+        onChange={(e) => setScore(path, parseFloat(e.target.value) || 0)}
+        className="w-16 px-1 py-0.5 border rounded text-xs text-center focus:outline-none focus:ring-1 focus:ring-blue-500"
+      />
+    );
 
   // List of active primary keys in the data
   const activePrimaries = Object.keys(data).filter((k) => k !== '_score');
@@ -159,7 +192,7 @@ export default function MuscleTargetTree({ value, onChange }: MuscleTargetTreePr
               </button>
               <span className="font-medium text-sm text-red-800">{primaryLabel}</span>
               <span className="text-xs text-gray-400">_score:</span>
-              <ScoreInput path={[primaryId, '_score']} currentScore={primaryScore} />
+              <ScoreInput path={[primaryId, '_score']} currentScore={primaryScore} computed={secondaryKeys.length > 0} />
               <button
                 type="button"
                 onClick={() => removeKey([primaryId])}
@@ -184,19 +217,25 @@ export default function MuscleTargetTree({ value, onChange }: MuscleTargetTreePr
                     (t) => !tertiaryKeys.includes(t.id)
                   );
 
+                  const hasTertiaries = tertiaryKeys.length > 0;
+
                   return (
                     <div key={secondaryId} className="border rounded bg-gray-50">
-                      <div className="flex items-center gap-2 px-2 py-1.5 bg-blue-50">
-                        <button
-                          type="button"
-                          onClick={() => toggleExpanded(subKey)}
-                          className="text-xs text-gray-500 w-4"
-                        >
-                          {isSubExpanded ? '▼' : '▶'}
-                        </button>
-                        <span className="text-sm text-blue-800">{secondaryLabel}</span>
+                      <div className="flex items-center gap-2 px-2 py-1.5 bg-red-50">
+                        {hasTertiaries ? (
+                          <button
+                            type="button"
+                            onClick={() => toggleExpanded(subKey)}
+                            className="text-xs text-gray-500 w-4"
+                          >
+                            {isSubExpanded ? '▼' : '▶'}
+                          </button>
+                        ) : (
+                          <span className="text-[10px] text-gray-400 w-4 flex items-center justify-center">●</span>
+                        )}
+                        <span className="text-sm text-red-800">{secondaryLabel}</span>
                         <span className="text-xs text-gray-400">_score:</span>
-                        <ScoreInput path={[primaryId, secondaryId, '_score']} currentScore={secondaryScore} />
+                        <ScoreInput path={[primaryId, secondaryId, '_score']} currentScore={secondaryScore} computed={tertiaryKeys.length > 0} />
                         <button
                           type="button"
                           onClick={() => removeKey([primaryId, secondaryId])}
@@ -206,7 +245,7 @@ export default function MuscleTargetTree({ value, onChange }: MuscleTargetTreePr
                         </button>
                       </div>
 
-                      {isSubExpanded && (
+                      {hasTertiaries && isSubExpanded && (
                         <div className="pl-6 pr-2 py-1.5 space-y-1">
                           {tertiaryKeys.map((tertiaryId) => {
                             const tertiaryNode = secondaryNode[tertiaryId] as Record<string, unknown> | undefined;
@@ -215,8 +254,8 @@ export default function MuscleTargetTree({ value, onChange }: MuscleTargetTreePr
                               tertiaryMuscles.find((tm) => tm.id === tertiaryId)?.label as string || tertiaryId;
 
                             return (
-                              <div key={tertiaryId} className="flex items-center gap-2 px-2 py-1 bg-green-50 rounded">
-                                <span className="text-xs text-green-800">{tertiaryLabel}</span>
+                              <div key={tertiaryId} className="flex items-center gap-2 px-2 py-1 bg-red-50 rounded">
+                                <span className="text-xs text-red-800">{tertiaryLabel}</span>
                                 <span className="text-xs text-gray-400">_score:</span>
                                 <ScoreInput
                                   path={[primaryId, secondaryId, tertiaryId, '_score']}
@@ -239,7 +278,7 @@ export default function MuscleTargetTree({ value, onChange }: MuscleTargetTreePr
                                 if (e.target.value) addTertiary(primaryId, secondaryId, e.target.value);
                                 e.target.value = '';
                               }}
-                              className="text-xs px-2 py-1 border rounded text-gray-500"
+                              className="text-xs px-2 py-1 border border-red-300 rounded text-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
                               defaultValue=""
                             >
                               <option value="">+ Add tertiary...</option>
@@ -260,7 +299,7 @@ export default function MuscleTargetTree({ value, onChange }: MuscleTargetTreePr
                       if (e.target.value) addSecondary(primaryId, e.target.value);
                       e.target.value = '';
                     }}
-                    className="text-xs px-2 py-1 border rounded text-gray-500"
+                    className="text-xs px-2 py-1 border border-red-300 rounded text-gray-500 focus:outline-none focus:ring-1 focus:ring-red-500"
                     defaultValue=""
                   >
                     <option value="">+ Add secondary...</option>
@@ -281,7 +320,7 @@ export default function MuscleTargetTree({ value, onChange }: MuscleTargetTreePr
             if (e.target.value) addPrimary(e.target.value);
             e.target.value = '';
           }}
-          className="text-sm px-2 py-1.5 border rounded text-gray-500"
+          className="text-sm px-2 py-1.5 border border-red-300 rounded text-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
           defaultValue=""
         >
           <option value="">+ Add primary muscle...</option>

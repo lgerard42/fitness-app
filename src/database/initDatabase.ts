@@ -5,7 +5,7 @@
 import * as SQLite from 'expo-sqlite';
 
 const DATABASE_NAME = 'workout.db';
-const DATABASE_VERSION = 10;
+const DATABASE_VERSION = 11;
 
 export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
   const db = await SQLite.openDatabaseAsync(DATABASE_NAME);
@@ -48,6 +48,9 @@ export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
     }
     if (currentVersion < 10) {
       await migrateToV10(db);
+    }
+    if (currentVersion < 11) {
+      await migrateToV11(db);
     }
     await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
   }
@@ -252,6 +255,7 @@ async function createTables(db: SQLite.SQLiteDatabase) {
       sub_label TEXT,
       common_names TEXT,
       short_description TEXT,
+      muscle_targets TEXT DEFAULT '{}',
       variation_ids TEXT DEFAULT '[]',
       primary_motion_ids TEXT DEFAULT '[]',
       sort_order INTEGER DEFAULT 0,
@@ -536,6 +540,18 @@ async function migrateToV10(db: SQLite.SQLiteDatabase) {
     }
   } catch (e) {
     console.warn('migrateToV10: failed to add denormalized motion columns', e);
+  }
+}
+
+async function migrateToV11(db: SQLite.SQLiteDatabase) {
+  // V11 adds muscle_targets column to motion_planes
+  try {
+    const mpInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(motion_planes)`);
+    if (!mpInfo.some(col => col.name === 'muscle_targets')) {
+      await db.execAsync(`ALTER TABLE motion_planes ADD COLUMN muscle_targets TEXT DEFAULT '{}'`);
+    }
+  } catch (e) {
+    console.warn('migrateToV11: failed to add muscle_targets to motion_planes', e);
   }
 }
 
@@ -900,13 +916,14 @@ async function seedMotionData(db: SQLite.SQLiteDatabase) {
 
   for (const row of motionPlanes) {
     await db.runAsync(
-      `INSERT OR REPLACE INTO motion_planes (id, label, sub_label, common_names, short_description, variation_ids, primary_motion_ids, sort_order, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT OR REPLACE INTO motion_planes (id, label, sub_label, common_names, short_description, muscle_targets, variation_ids, primary_motion_ids, sort_order, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       str(row.id),
       str(row.label),
       str(row.sub_label),
       Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
       str(row.short_description),
+      row.muscle_targets ? JSON.stringify(row.muscle_targets) : '{}',
       Array.isArray(row.variation_ids) ? JSON.stringify(row.variation_ids) : '[]',
       Array.isArray(row.primary_motion_ids) ? JSON.stringify(row.primary_motion_ids) : '[]',
       num(row.sort_order, 0),

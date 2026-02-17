@@ -668,7 +668,7 @@ function VariationCreator({ onCreateVariation }: VariationCreatorProps) {
   if (!showForm) {
     return (
       <button type="button" onClick={() => setShowForm(true)}
-        className="w-full px-3 py-2 text-xs bg-green-50 text-green-700 rounded border border-green-200 hover:bg-green-100">
+        className="whitespace-nowrap px-3 py-2 text-xs bg-green-50 text-green-700 rounded border border-green-200 hover:bg-green-100">
         + Create New Variation
       </button>
     );

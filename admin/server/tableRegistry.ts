@@ -281,6 +281,7 @@ export const TABLE_REGISTRY: TableSchema[] = [
     idField: 'id',
     labelField: 'label',
     fields: subLabelFieldsNoIcon([
+      { name: 'muscle_targets', type: 'json', jsonShape: 'muscle_targets' },
       { name: 'variation_ids', type: 'fk[]', refTable: 'primaryMotionVariations', refLabelField: 'label' },
       { name: 'primary_motion_ids', type: 'fk[]', refTable: 'primaryMotions', refLabelField: 'label' },
     ]),
