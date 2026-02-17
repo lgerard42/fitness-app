@@ -6,9 +6,12 @@ import BooleanField from './FieldRenderers/BooleanField';
 import ArrayField from './FieldRenderers/ArrayField';
 import FKDropdown from './FieldRenderers/FKDropdown';
 import FKMultiSelect from './FieldRenderers/FKMultiSelect';
+import MatrixFieldCheckboxGrid from './FieldRenderers/MatrixFieldCheckboxGrid';
 import JsonEditor from './FieldRenderers/JsonEditor';
 import MuscleTargetTree from './FieldRenderers/MuscleTargetTree';
 import ReverseRelationships from './ReverseRelationships';
+
+const MATRIX_FIELDS = ['allowed_grip_types', 'allowed_grip_widths', 'allowed_stance_types', 'allowed_stance_widths'];
 
 interface RowEditorProps {
   schema: TableSchema;
@@ -141,6 +144,23 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
                   );
 
                 case 'fk[]':
+                  // Use checkbox grid for matrix editor fields
+                  if (MATRIX_FIELDS.includes(field.name)) {
+                    return (
+                      <div key={field.name}>
+                        {label}
+                        <MatrixFieldCheckboxGrid
+                          value={Array.isArray(value) ? (value as string[]) : value == null ? null : []}
+                          options={refData[field.refTable!] || []}
+                          labelField={field.refLabelField || 'label'}
+                          onChange={(v) => update(field.name, v)}
+                          nullable
+                          fieldName={field.name}
+                        />
+                      </div>
+                    );
+                  }
+                  // Use dropdown for other fk[] fields
                   return (
                     <div key={field.name}>
                       {label}
