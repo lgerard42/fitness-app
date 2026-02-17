@@ -40,6 +40,10 @@ export const findExerciseDeep = (list: ExerciseItem[], instanceId: string): Exer
 
 export const flattenExercises = (exercises: ExerciseItem[]): FlatExerciseRow[] => {
   const rows: FlatExerciseRow[] = [];
+  if (!exercises || !Array.isArray(exercises)) {
+    console.warn('⚠️ flattenExercises received invalid exercises:', exercises);
+    return rows;
+  }
   exercises.forEach(item => {
     if (item.type === 'group') {
       rows.push({ type: 'group_header', id: item.instanceId, data: item, depth: 0, groupId: null });
@@ -57,6 +61,10 @@ export const flattenExercises = (exercises: ExerciseItem[]): FlatExerciseRow[] =
 
 export const reconstructExercises = (flatRows: FlatExerciseRow[]): ExerciseItem[] => {
   const newExercises: ExerciseItem[] = [];
+  if (!flatRows || !Array.isArray(flatRows)) {
+    console.warn('⚠️ reconstructExercises received invalid flatRows:', flatRows);
+    return newExercises;
+  }
   let currentGroup: ExerciseGroup | null = null;
 
   flatRows.forEach(row => {

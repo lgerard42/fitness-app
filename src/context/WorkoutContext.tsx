@@ -29,6 +29,19 @@ const STORAGE_KEYS = {
   STATS: 'exercise_stats'
 };
 
+// Sanitize workout data to ensure exercises is always an array
+const sanitizeWorkout = (workout: Workout): Workout => {
+  if (!workout.exercises || !Array.isArray(workout.exercises)) {
+    console.warn('⚠️ Sanitizing workout with invalid exercises:', { 
+      id: workout.id, 
+      exercisesType: typeof workout.exercises,
+      exercisesIsArray: Array.isArray(workout.exercises)
+    });
+    return { ...workout, exercises: [] };
+  }
+  return workout;
+};
+
 interface WorkoutProviderProps {
   children: ReactNode;
 }
@@ -58,7 +71,15 @@ export const WorkoutProvider = ({ children }: WorkoutProviderProps) => {
           const parsed = JSON.parse(library) as ExerciseLibraryItem[];
           setExercisesLibrary(parsed.map(migrateAssistedMachine));
         }
-        if (active) setActiveWorkout(JSON.parse(active) as Workout);
+        if (active) {
+          const parsedActive = JSON.parse(active) as Workout;
+          console.log('📱 Loading active workout:', { 
+            id: parsedActive.id, 
+            exercisesIsArray: Array.isArray(parsedActive.exercises),
+            exercisesLength: parsedActive.exercises?.length 
+          });
+          setActiveWorkout(sanitizeWorkout(parsedActive));
+        }
         if (stats) setExerciseStats(JSON.parse(stats) as ExerciseStatsMap);
       } catch (e) {
         console.error("Failed to load data", e);
@@ -110,7 +131,8 @@ export const WorkoutProvider = ({ children }: WorkoutProviderProps) => {
   };
 
   const updateWorkout = (updatedWorkout: Workout) => {
-    setActiveWorkout(updatedWorkout);
+    const sanitized = sanitizeWorkout(updatedWorkout);
+    setActiveWorkout(sanitized);
   };
 
   const updateHistory = (updatedWorkout: Workout) => {

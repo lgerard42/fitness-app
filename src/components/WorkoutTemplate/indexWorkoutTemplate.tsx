@@ -1158,12 +1158,13 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
   // Group handlers are now in useWorkoutGroups hook
 
   const handleFinish = () => {
-    if (onFinish) {
-      // Before finishing, multiply weights or reps by 2 for exercises with the toggle active
-      // Create a modified workout with multiplied values
-      const modifiedWorkout = {
-        ...currentWorkout,
-        exercises: currentWorkout.exercises.map(ex => {
+    if (!currentWorkout || !onFinish) return;
+    
+    // Before finishing, multiply weights or reps by 2 for exercises with the toggle active
+    // Create a modified workout with multiplied values
+    const modifiedWorkout = {
+      ...currentWorkout,
+      exercises: currentWorkout.exercises.map(ex => {
           if (ex.type === 'group') {
             return {
               ...ex,
@@ -1279,22 +1280,21 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
         })
       };
 
-      // Update the workout with multiplied weights, then finish after update completes
-      handleWorkoutUpdate(modifiedWorkout);
+    // Update the workout with multiplied weights, then finish after update completes
+    handleWorkoutUpdate(modifiedWorkout);
 
-      // Use requestAnimationFrame to ensure the update is processed before finishing
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          if (onFinish) {
-            onFinish();
-          }
-        }, 50);
-      });
-    }
+    // Use requestAnimationFrame to ensure the update is processed before finishing
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        if (onFinish) {
+          onFinish();
+        }
+      }, 50);
+    });
   };
 
   const handleCancel = () => {
-    if (currentWorkout.exercises.length > 0) {
+    if (currentWorkout && currentWorkout.exercises && currentWorkout.exercises.length > 0) {
       setCancelModalOpen(true);
     } else {
       if (onCancel) {
@@ -1372,7 +1372,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
 
 
 
-  const hasExercises = currentWorkout.exercises.length > 0;
+  const hasExercises = currentWorkout && currentWorkout.exercises && currentWorkout.exercises.length > 0;
 
   // Helper function to determine which columns should be visible for an exercise
   const getVisibleColumns = (exercise: Exercise, libraryExercise?: ExerciseLibraryItem): {
@@ -2216,7 +2216,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
   }, [isDragging, showNotes, currentWorkout.sessionNotes, sortedNotes, handlePinNote, handleRemoveNote]);
 
   const renderDraggableExercises = () => {
-    if (currentWorkout.exercises.length === 0) {
+    if (!currentWorkout || !currentWorkout.exercises || currentWorkout.exercises.length === 0) {
       return (
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {notesHeaderComponent}
@@ -2818,8 +2818,8 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
       {supersetSelectionMode && (() => {
         // Determine group type: if editing, get from the group; if creating, default to Superset
         let groupType: GroupType = 'Superset';
-        if (supersetSelectionMode.mode === 'edit' && supersetSelectionMode.supersetId) {
-          const group = currentWorkout.exercises.find(ex => ex.instanceId === supersetSelectionMode.supersetId);
+        if (supersetSelectionMode.mode === 'edit' && supersetSelectionMode.supersetId && currentWorkout) {
+          const group = currentWorkout.exercises?.find(ex => ex.instanceId === supersetSelectionMode.supersetId);
           if (group && group.type === 'group') {
             groupType = group.groupType;
           }
@@ -2857,7 +2857,7 @@ const WorkoutTemplate: React.FC<WorkoutTemplateProps> = ({
               </View>
 
               <ScrollView style={styles.supersetSelectionList} contentContainerStyle={styles.supersetSelectionListContent}>
-                {currentWorkout.exercises.map(exercise => {
+                {currentWorkout && currentWorkout.exercises && currentWorkout.exercises.map(exercise => {
                   if (exercise.type === 'group') {
                     // Determine if this is the superset being edited
                     const isEditingThisSuperset = supersetSelectionMode?.mode === 'edit' &&

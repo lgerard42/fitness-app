@@ -212,6 +212,10 @@ export const useWorkoutDragDrop = ({
   // Convert workout exercises to drag items (base items, no collapse applied)
   const baseDragItems = useMemo((): WorkoutDragItem[] => {
     const items: WorkoutDragItem[] = [];
+    if (!currentWorkout || !currentWorkout.exercises) {
+      console.warn('⚠️ baseDragItems: currentWorkout or exercises is null/undefined');
+      return items;
+    }
     const flatRows = flattenExercises(currentWorkout.exercises);
 
     let currentGroupId: string | null = null;
