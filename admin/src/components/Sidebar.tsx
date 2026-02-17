@@ -1,0 +1,75 @@
+import React from 'react';
+import { NavLink } from 'react-router-dom';
+import type { TableInfo } from '../api';
+
+interface SidebarProps {
+  tables: TableInfo[];
+  groups: string[];
+}
+
+const groupIcons: Record<string, string> = {
+  'Exercise Setup': '🏋️',
+  Muscles: '💪',
+  Equipment: '🔧',
+  Motions: '🔄',
+  'Grips & Stance': '✊',
+};
+
+export default function Sidebar({ tables, groups }: SidebarProps) {
+  return (
+    <aside className="w-64 bg-gray-900 text-gray-100 h-screen overflow-y-auto flex-shrink-0 flex flex-col">
+      <div className="p-4 border-b border-gray-700">
+        <NavLink to="/" className="text-lg font-bold text-white hover:text-blue-400 no-underline">
+          Exercise Config Admin
+        </NavLink>
+      </div>
+
+      <nav className="flex-1 p-2 space-y-1">
+        <NavLink
+          to="/"
+          end
+          className={({ isActive }) =>
+            `block px-3 py-2 rounded text-sm ${isActive ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-800'}`
+          }
+        >
+          Dashboard
+        </NavLink>
+
+        <NavLink
+          to="/matrix"
+          className={({ isActive }) =>
+            `block px-3 py-2 rounded text-sm ${isActive ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-800'}`
+          }
+        >
+          Filter Matrix
+        </NavLink>
+
+        <div className="h-px bg-gray-700 my-2" />
+
+        {groups.map((group) => (
+          <div key={group} className="mb-2">
+            <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+              {groupIcons[group] || '📋'} {group}
+            </div>
+            {tables
+              .filter((t) => t.group === group)
+              .map((t) => (
+                <NavLink
+                  key={t.key}
+                  to={`/table/${t.key}`}
+                  className={({ isActive }) =>
+                    `block px-3 py-1.5 pl-6 rounded text-sm ${
+                      isActive ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800'
+                    }`
+                  }
+                >
+                  <span>{t.label}</span>
+                  <span className="ml-auto text-xs text-gray-500 float-right">{t.rowCount}</span>
+                </NavLink>
+              ))}
+          </div>
+        ))}
+      </nav>
+    </aside>
+  );
+}

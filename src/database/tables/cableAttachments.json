@@ -11,7 +11,16 @@
     "icon": "",
     "short_description": "Two-ended rope for flexible grip and range of motion.",
     "sort_order": 0,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": [
+      "GRIP_NEUTRAL",
+      "GRIP_SEMI_SUPINATED",
+      "GRIP_SEMI_PRONATED",
+      "GRIP_ROTATING"
+    ],
+    "allowed_grip_widths": null,
+    "allowed_stance_types": null,
+    "allowed_stance_widths": null
   },
   {
     "id": "LAT_PULLDOWN_BAR",
@@ -25,7 +34,20 @@
     "icon": "",
     "short_description": "Long bar for wide-grip back exercises.",
     "sort_order": 1,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": [
+      "GRIP_SUPINATED",
+      "GRIP_PRONATED"
+    ],
+    "allowed_grip_widths": [
+      "WIDTH_EXTRA_NARROW",
+      "WIDTH_NARROW",
+      "WIDTH_SHOULDER",
+      "WIDTH_WIDE",
+      "WIDTH_EXTRA_WIDE"
+    ],
+    "allowed_stance_types": null,
+    "allowed_stance_widths": null
   },
   {
     "id": "STRAIGHT_BAR",
@@ -39,7 +61,20 @@
     "icon": "",
     "short_description": "Fixed straight bar for curls or pushdowns.",
     "sort_order": 2,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": [
+      "GRIP_SUPINATED",
+      "GRIP_PRONATED"
+    ],
+    "allowed_grip_widths": [
+      "WIDTH_EXTRA_WIDE",
+      "WIDTH_EXTRA_NARROW",
+      "WIDTH_WIDE",
+      "WIDTH_SHOULDER",
+      "WIDTH_NARROW"
+    ],
+    "allowed_stance_types": null,
+    "allowed_stance_widths": null
   },
   {
     "id": "SINGLE_HANDLE",
@@ -53,7 +88,19 @@
     "icon": "",
     "short_description": "D-shaped stirrup for unilateral (one-arm) work.",
     "sort_order": 3,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": [
+      "GRIP_NEUTRAL",
+      "GRIP_PRONATED",
+      "GRIP_SUPINATED",
+      "GRIP_SEMI_PRONATED",
+      "GRIP_SEMI_SUPINATED",
+      "GRIP_ROTATING",
+      "GRIP_OTHER"
+    ],
+    "allowed_grip_widths": null,
+    "allowed_stance_types": null,
+    "allowed_stance_widths": null
   },
   {
     "id": "V_GRIP",
@@ -67,7 +114,18 @@
     "icon": "",
     "short_description": "Narrow V-shaped handle for rows and pulldowns.",
     "sort_order": 4,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": [
+      "GRIP_NEUTRAL",
+      "GRIP_SEMI_PRONATED",
+      "GRIP_SEMI_SUPINATED"
+    ],
+    "allowed_grip_widths": [
+      "WIDTH_NARROW",
+      "WIDTH_EXTRA_NARROW"
+    ],
+    "allowed_stance_types": null,
+    "allowed_stance_widths": null
   },
   {
     "id": "MAG_GRIP_BAR",
@@ -80,7 +138,21 @@
     "icon": "",
     "short_description": "Ergonomic handles designed to reduce grip fatigue.",
     "sort_order": 5,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": [
+      "GRIP_NEUTRAL",
+      "GRIP_SEMI_PRONATED",
+      "GRIP_SEMI_SUPINATED"
+    ],
+    "allowed_grip_widths": [
+      "WIDTH_EXTRA_NARROW",
+      "WIDTH_NARROW",
+      "WIDTH_SHOULDER",
+      "WIDTH_WIDE",
+      "WIDTH_EXTRA_WIDE"
+    ],
+    "allowed_stance_types": null,
+    "allowed_stance_widths": null
   },
   {
     "id": "PRO_STYLE_BAR",
@@ -93,7 +165,23 @@
     "icon": "",
     "short_description": "Wide bar with neutral-grip handles at the ends.",
     "sort_order": 6,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": [
+      "GRIP_NEUTRAL",
+      "GRIP_PRONATED",
+      "GRIP_SUPINATED",
+      "GRIP_SEMI_PRONATED",
+      "GRIP_SEMI_SUPINATED"
+    ],
+    "allowed_grip_widths": [
+      "WIDTH_EXTRA_NARROW",
+      "WIDTH_NARROW",
+      "WIDTH_SHOULDER",
+      "WIDTH_WIDE",
+      "WIDTH_EXTRA_WIDE"
+    ],
+    "allowed_stance_types": null,
+    "allowed_stance_widths": null
   },
   {
     "id": "MULTI_T_BAR_STYLE",
@@ -106,7 +194,15 @@
     "icon": "",
     "short_description": "Heavy-duty handle for landmine or cable rows.",
     "sort_order": 7,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": [
+      "GRIP_NEUTRAL"
+    ],
+    "allowed_grip_widths": [
+      "WIDTH_SHOULDER"
+    ],
+    "allowed_stance_types": null,
+    "allowed_stance_widths": null
   },
   {
     "id": "MULTI_ROW",
@@ -119,7 +215,23 @@
     "icon": "",
     "short_description": "Handle offering multiple grip widths for rowing.",
     "sort_order": 8,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": [
+      "GRIP_NEUTRAL",
+      "GRIP_PRONATED",
+      "GRIP_SUPINATED",
+      "GRIP_SEMI_PRONATED",
+      "GRIP_SEMI_SUPINATED"
+    ],
+    "allowed_grip_widths": [
+      "WIDTH_EXTRA_NARROW",
+      "WIDTH_NARROW",
+      "WIDTH_SHOULDER",
+      "WIDTH_WIDE",
+      "WIDTH_EXTRA_WIDE"
+    ],
+    "allowed_stance_types": null,
+    "allowed_stance_widths": null
   },
   {
     "id": "EZ_BAR",
@@ -133,7 +245,18 @@
     "icon": "",
     "short_description": "Angled bar for cable curls or tricep work.",
     "sort_order": 9,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": [
+      "GRIP_SEMI_PRONATED",
+      "GRIP_SEMI_SUPINATED"
+    ],
+    "allowed_grip_widths": [
+      "WIDTH_NARROW",
+      "WIDTH_SHOULDER",
+      "WIDTH_WIDE"
+    ],
+    "allowed_stance_types": null,
+    "allowed_stance_widths": null
   },
   {
     "id": "V_BAR",
@@ -146,7 +269,17 @@
     "icon": "",
     "short_description": "Fixed V-shaped bar primarily for tricep pushdowns.",
     "sort_order": 10,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": [
+      "GRIP_SEMI_PRONATED",
+      "GRIP_SEMI_SUPINATED"
+    ],
+    "allowed_grip_widths": [
+      "WIDTH_NARROW",
+      "WIDTH_EXTRA_NARROW"
+    ],
+    "allowed_stance_types": null,
+    "allowed_stance_widths": null
   },
   {
     "id": "ANKLE_STRAP",
@@ -160,7 +293,13 @@
     "icon": "",
     "short_description": "Padded strap for lower body cable movements.",
     "sort_order": 11,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": [
+      "GRIP_NEUTRAL"
+    ],
+    "allowed_grip_widths": null,
+    "allowed_stance_types": null,
+    "allowed_stance_widths": null
   },
   {
     "id": "AB_HARNESS",
@@ -173,7 +312,11 @@
     "icon": "",
     "short_description": "Padded harness worn over shoulders for cable crunches.",
     "sort_order": 12,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": null,
+    "allowed_grip_widths": null,
+    "allowed_stance_types": null,
+    "allowed_stance_widths": null
   },
   {
     "id": "LANDMINE",
@@ -186,7 +329,32 @@
     "icon": "",
     "short_description": "Floor-based pivot for rotational barbell work.",
     "sort_order": 13,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": [
+      "GRIP_NEUTRAL",
+      "GRIP_PRONATED",
+      "GRIP_SEMI_PRONATED",
+      "GRIP_SEMI_SUPINATED"
+    ],
+    "allowed_grip_widths": [
+      "WIDTH_NARROW",
+      "WIDTH_SHOULDER",
+      "WIDTH_WIDE"
+    ],
+    "allowed_stance_types": [
+      "neutral_feet_forward",
+      "toes_out_external_rotation",
+      "toes_in_internal_rotation",
+      "split_stance",
+      "other"
+    ],
+    "allowed_stance_widths": [
+      "extra_narrow",
+      "narrow",
+      "shoulder_width",
+      "wide",
+      "extra_wide"
+    ]
   },
   {
     "id": "OTHER",
@@ -199,6 +367,38 @@
     "icon": "",
     "short_description": "Specialized or custom cable accessories.",
     "sort_order": 14,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": [
+      "GRIP_NEUTRAL",
+      "GRIP_PRONATED",
+      "GRIP_SUPINATED",
+      "GRIP_SEMI_PRONATED",
+      "GRIP_SEMI_SUPINATED",
+      "GRIP_ROTATING",
+      "GRIP_ALTERNATING",
+      "GRIP_FLAT",
+      "GRIP_OTHER"
+    ],
+    "allowed_grip_widths": [
+      "WIDTH_EXTRA_NARROW",
+      "WIDTH_NARROW",
+      "WIDTH_SHOULDER",
+      "WIDTH_WIDE",
+      "WIDTH_EXTRA_WIDE"
+    ],
+    "allowed_stance_types": [
+      "neutral_feet_forward",
+      "toes_out_external_rotation",
+      "toes_in_internal_rotation",
+      "split_stance",
+      "other"
+    ],
+    "allowed_stance_widths": [
+      "extra_narrow",
+      "narrow",
+      "shoulder_width",
+      "wide",
+      "extra_wide"
+    ]
   }
 ]

@@ -1,0 +1,47 @@
+[
+  {
+    "id": "neutral_feet_forward",
+    "label": "Neutral",
+    "subLabel": "Feet Forward",
+    "common_names": ["Standard", "Feet Forward"],
+    "short_description": "Feet parallel, toes pointing straight ahead.",
+    "sort_order": 0,
+    "is_active": true
+  },
+  {
+    "id": "toes_out_external_rotation",
+    "label": "External Rotation",
+    "subLabel": "Toes Out",
+    "common_names": ["Toes Out", "Duck Stance"],
+    "short_description": "Feet angled outward for external hip rotation.",
+    "sort_order": 1,
+    "is_active": true
+  },
+  {
+    "id": "toes_in_internal_rotation",
+    "label": "Internal Rotation",
+    "subLabel": "Toes In",
+    "common_names": ["Toes In", "Pigeon Toe"],
+    "short_description": "Feet angled inward for internal hip rotation.",
+    "sort_order": 2,
+    "is_active": true
+  },
+  {
+    "id": "split_stance",
+    "label": "Split Stance",
+    "subLabel": "",
+    "common_names": ["Staggered", "Lunge Position"],
+    "short_description": "One foot forward, one foot back.",
+    "sort_order": 3,
+    "is_active": true
+  },
+  {
+    "id": "other",
+    "label": "Other",
+    "subLabel": "",
+    "common_names": ["Custom", "Specialized"],
+    "short_description": "Non-standard or specialized foot positioning.",
+    "sort_order": 4,
+    "is_active": true
+  }
+]

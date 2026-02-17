@@ -1,0 +1,47 @@
+[
+  {
+    "id": "extra_narrow",
+    "label": "Extra Narrow",
+    "subLabel": "",
+    "common_names": ["Feet Together"],
+    "short_description": "Feet touching or nearly touching.",
+    "sort_order": 0,
+    "is_active": true
+  },
+  {
+    "id": "narrow",
+    "label": "Narrow",
+    "subLabel": "",
+    "common_names": ["Inside Hip", "Close"],
+    "short_description": "Feet positioned inside hip width.",
+    "sort_order": 1,
+    "is_active": true
+  },
+  {
+    "id": "shoulder_width",
+    "label": "Shoulder Width",
+    "subLabel": "",
+    "common_names": ["Standard", "Hip Width"],
+    "short_description": "Feet aligned with shoulders.",
+    "sort_order": 2,
+    "is_active": true
+  },
+  {
+    "id": "wide",
+    "label": "Wide",
+    "subLabel": "",
+    "common_names": ["Outside Shoulder", "Sumo-ish"],
+    "short_description": "Feet positioned wider than shoulders.",
+    "sort_order": 3,
+    "is_active": true
+  },
+  {
+    "id": "extra_wide",
+    "label": "Extra Wide",
+    "subLabel": "",
+    "common_names": ["Sumo", "Max Width"],
+    "short_description": "Maximum width stance.",
+    "sort_order": 4,
+    "is_active": true
+  }
+]

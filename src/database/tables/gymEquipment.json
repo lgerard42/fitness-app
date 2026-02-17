@@ -17,7 +17,32 @@
     "max_instances": 1,
     "cable_attachments": false,
     "sort_order": 0,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": [
+      "GRIP_PRONATED",
+      "GRIP_SUPINATED",
+      "GRIP_NEUTRAL",
+      "GRIP_ALTERNATING",
+      "GRIP_SEMI_PRONATED",
+      "GRIP_SEMI_SUPINATED",
+      "GRIP_ROTATING",
+      "GRIP_OTHER"
+    ],
+    "allowed_grip_widths": null,
+    "allowed_stance_types": [
+      "neutral_feet_forward",
+      "toes_out_external_rotation",
+      "toes_in_internal_rotation",
+      "split_stance",
+      "other"
+    ],
+    "allowed_stance_widths": [
+      "extra_narrow",
+      "narrow",
+      "shoulder_width",
+      "wide",
+      "extra_wide"
+    ]
   },
   {
     "id": "TRX",
@@ -38,7 +63,31 @@
     "max_instances": 1,
     "cable_attachments": false,
     "sort_order": 1,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": [
+      "GRIP_NEUTRAL",
+      "GRIP_ROTATING",
+      "GRIP_SEMI_SUPINATED",
+      "GRIP_ALTERNATING",
+      "GRIP_SEMI_PRONATED",
+      "GRIP_SUPINATED",
+      "GRIP_PRONATED"
+    ],
+    "allowed_grip_widths": null,
+    "allowed_stance_types": [
+      "neutral_feet_forward",
+      "toes_out_external_rotation",
+      "toes_in_internal_rotation",
+      "split_stance",
+      "other"
+    ],
+    "allowed_stance_widths": [
+      "extra_narrow",
+      "narrow",
+      "shoulder_width",
+      "wide",
+      "extra_wide"
+    ]
   },
   {
     "id": "RINGS",
@@ -58,7 +107,31 @@
     "max_instances": 1,
     "cable_attachments": false,
     "sort_order": 2,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": [
+      "GRIP_NEUTRAL",
+      "GRIP_ROTATING",
+      "GRIP_SEMI_SUPINATED",
+      "GRIP_ALTERNATING",
+      "GRIP_SEMI_PRONATED",
+      "GRIP_SUPINATED",
+      "GRIP_PRONATED"
+    ],
+    "allowed_grip_widths": [
+      "WIDTH_EXTRA_NARROW",
+      "WIDTH_NARROW",
+      "WIDTH_SHOULDER",
+      "WIDTH_EXTRA_WIDE",
+      "WIDTH_WIDE"
+    ],
+    "allowed_stance_types": [
+      "neutral_feet_forward",
+      "toes_out_external_rotation",
+      "toes_in_internal_rotation",
+      "split_stance",
+      "other"
+    ],
+    "allowed_stance_widths": null
   },
   {
     "id": "STABILITY_BALL",
@@ -79,7 +152,11 @@
     "max_instances": 1,
     "cable_attachments": false,
     "sort_order": 3,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": null,
+    "allowed_grip_widths": null,
+    "allowed_stance_types": null,
+    "allowed_stance_widths": null
   },
   {
     "id": "BOSU",
@@ -100,7 +177,17 @@
     "max_instances": 1,
     "cable_attachments": false,
     "sort_order": 4,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": null,
+    "allowed_grip_widths": null,
+    "allowed_stance_types": [
+      "neutral_feet_forward",
+      "toes_out_external_rotation",
+      "toes_in_internal_rotation",
+      "split_stance",
+      "other"
+    ],
+    "allowed_stance_widths": null
   },
   {
     "id": "BALANCE_PAD",
@@ -121,7 +208,11 @@
     "max_instances": 1,
     "cable_attachments": false,
     "sort_order": 5,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": null,
+    "allowed_grip_widths": null,
+    "allowed_stance_types": null,
+    "allowed_stance_widths": null
   },
   {
     "id": "SLIDERS",
@@ -142,7 +233,17 @@
     "max_instances": 1,
     "cable_attachments": false,
     "sort_order": 6,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": null,
+    "allowed_grip_widths": null,
+    "allowed_stance_types": [
+      "neutral_feet_forward",
+      "toes_out_external_rotation",
+      "toes_in_internal_rotation",
+      "split_stance",
+      "other"
+    ],
+    "allowed_stance_widths": null
   },
   {
     "id": "BOX",
@@ -163,7 +264,11 @@
     "max_instances": 1,
     "cable_attachments": false,
     "sort_order": 7,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": null,
+    "allowed_grip_widths": null,
+    "allowed_stance_types": null,
+    "allowed_stance_widths": null
   },
   {
     "id": "BAR",
@@ -184,7 +289,11 @@
     "max_instances": 1,
     "cable_attachments": false,
     "sort_order": 8,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": null,
+    "allowed_grip_widths": null,
+    "allowed_stance_types": null,
+    "allowed_stance_widths": null
   },
   {
     "id": "BENCH",
@@ -205,7 +314,11 @@
     "max_instances": 1,
     "cable_attachments": false,
     "sort_order": 9,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": null,
+    "allowed_grip_widths": null,
+    "allowed_stance_types": null,
+    "allowed_stance_widths": null
   },
   {
     "id": "WALL",
@@ -225,7 +338,11 @@
     "max_instances": 1,
     "cable_attachments": false,
     "sort_order": 10,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": null,
+    "allowed_grip_widths": null,
+    "allowed_stance_types": null,
+    "allowed_stance_widths": null
   },
   {
     "id": "FLOOR",
@@ -246,7 +363,11 @@
     "max_instances": 1,
     "cable_attachments": false,
     "sort_order": 11,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": null,
+    "allowed_grip_widths": null,
+    "allowed_stance_types": null,
+    "allowed_stance_widths": null
   },
   {
     "id": "BARBELL",
@@ -266,7 +387,33 @@
     "max_instances": 1,
     "cable_attachments": false,
     "sort_order": 12,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": [
+      "GRIP_PRONATED",
+      "GRIP_SUPINATED",
+      "GRIP_ALTERNATING"
+    ],
+    "allowed_grip_widths": [
+      "WIDTH_EXTRA_NARROW",
+      "WIDTH_NARROW",
+      "WIDTH_SHOULDER",
+      "WIDTH_WIDE",
+      "WIDTH_EXTRA_WIDE"
+    ],
+    "allowed_stance_types": [
+      "neutral_feet_forward",
+      "toes_out_external_rotation",
+      "toes_in_internal_rotation",
+      "split_stance",
+      "other"
+    ],
+    "allowed_stance_widths": [
+      "extra_narrow",
+      "narrow",
+      "shoulder_width",
+      "wide",
+      "extra_wide"
+    ]
   },
   {
     "id": "EZ_BAR",
@@ -287,7 +434,30 @@
     "max_instances": 1,
     "cable_attachments": false,
     "sort_order": 13,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": [
+      "GRIP_SEMI_PRONATED",
+      "GRIP_SEMI_SUPINATED"
+    ],
+    "allowed_grip_widths": [
+      "WIDTH_NARROW",
+      "WIDTH_SHOULDER",
+      "WIDTH_WIDE"
+    ],
+    "allowed_stance_types": [
+      "neutral_feet_forward",
+      "toes_out_external_rotation",
+      "toes_in_internal_rotation",
+      "split_stance",
+      "other"
+    ],
+    "allowed_stance_widths": [
+      "extra_narrow",
+      "narrow",
+      "shoulder_width",
+      "wide",
+      "extra_wide"
+    ]
   },
   {
     "id": "TRAP_BAR",
@@ -307,7 +477,24 @@
     "max_instances": 1,
     "cable_attachments": false,
     "sort_order": 14,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": [
+      "GRIP_NEUTRAL",
+      "GRIP_SEMI_PRONATED",
+      "GRIP_SEMI_SUPINATED"
+    ],
+    "allowed_grip_widths": null,
+    "allowed_stance_types": [
+      "neutral_feet_forward",
+      "toes_out_external_rotation"
+    ],
+    "allowed_stance_widths": [
+      "extra_narrow",
+      "narrow",
+      "shoulder_width",
+      "wide",
+      "extra_wide"
+    ]
   },
   {
     "id": "SAFETY_SQUAT_BAR",
@@ -327,7 +514,23 @@
     "max_instances": 1,
     "cable_attachments": false,
     "sort_order": 15,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": null,
+    "allowed_grip_widths": null,
+    "allowed_stance_types": [
+      "neutral_feet_forward",
+      "toes_out_external_rotation",
+      "toes_in_internal_rotation",
+      "split_stance",
+      "other"
+    ],
+    "allowed_stance_widths": [
+      "extra_narrow",
+      "narrow",
+      "shoulder_width",
+      "wide",
+      "extra_wide"
+    ]
   },
   {
     "id": "SWISS__FOOTBALL_BAR",
@@ -347,7 +550,32 @@
     "max_instances": 1,
     "cable_attachments": false,
     "sort_order": 16,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": [
+      "GRIP_NEUTRAL",
+      "GRIP_SEMI_PRONATED"
+    ],
+    "allowed_grip_widths": [
+      "WIDTH_EXTRA_NARROW",
+      "WIDTH_NARROW",
+      "WIDTH_SHOULDER",
+      "WIDTH_WIDE",
+      "WIDTH_EXTRA_WIDE"
+    ],
+    "allowed_stance_types": [
+      "neutral_feet_forward",
+      "toes_out_external_rotation",
+      "toes_in_internal_rotation",
+      "split_stance",
+      "other"
+    ],
+    "allowed_stance_widths": [
+      "extra_narrow",
+      "narrow",
+      "shoulder_width",
+      "wide",
+      "extra_wide"
+    ]
   },
   {
     "id": "CAMBERED_BAR",
@@ -367,7 +595,36 @@
     "max_instances": 1,
     "cable_attachments": false,
     "sort_order": 17,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": [
+      "GRIP_PRONATED",
+      "GRIP_ALTERNATING",
+      "GRIP_SUPINATED",
+      "GRIP_NEUTRAL",
+      "GRIP_SEMI_PRONATED",
+      "GRIP_SEMI_SUPINATED"
+    ],
+    "allowed_grip_widths": [
+      "WIDTH_EXTRA_NARROW",
+      "WIDTH_NARROW",
+      "WIDTH_SHOULDER",
+      "WIDTH_WIDE",
+      "WIDTH_EXTRA_WIDE"
+    ],
+    "allowed_stance_types": [
+      "neutral_feet_forward",
+      "toes_out_external_rotation",
+      "toes_in_internal_rotation",
+      "split_stance",
+      "other"
+    ],
+    "allowed_stance_widths": [
+      "extra_narrow",
+      "narrow",
+      "shoulder_width",
+      "wide",
+      "extra_wide"
+    ]
   },
   {
     "id": "DUMBBELL",
@@ -388,7 +645,38 @@
     "max_instances": 2,
     "cable_attachments": false,
     "sort_order": 18,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": [
+      "GRIP_PRONATED",
+      "GRIP_SUPINATED",
+      "GRIP_NEUTRAL",
+      "GRIP_ALTERNATING",
+      "GRIP_SEMI_PRONATED",
+      "GRIP_SEMI_SUPINATED",
+      "GRIP_ROTATING",
+      "GRIP_OTHER"
+    ],
+    "allowed_grip_widths": [
+      "WIDTH_EXTRA_NARROW",
+      "WIDTH_NARROW",
+      "WIDTH_SHOULDER",
+      "WIDTH_WIDE",
+      "WIDTH_EXTRA_WIDE"
+    ],
+    "allowed_stance_types": [
+      "neutral_feet_forward",
+      "toes_out_external_rotation",
+      "toes_in_internal_rotation",
+      "split_stance",
+      "other"
+    ],
+    "allowed_stance_widths": [
+      "extra_narrow",
+      "narrow",
+      "shoulder_width",
+      "wide",
+      "extra_wide"
+    ]
   },
   {
     "id": "KETTLEBELL",
@@ -408,7 +696,35 @@
     "max_instances": 2,
     "cable_attachments": false,
     "sort_order": 19,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": [
+      "GRIP_PRONATED",
+      "GRIP_SUPINATED",
+      "GRIP_NEUTRAL",
+      "GRIP_SEMI_PRONATED",
+      "GRIP_SEMI_SUPINATED"
+    ],
+    "allowed_grip_widths": [
+      "WIDTH_EXTRA_NARROW",
+      "WIDTH_NARROW",
+      "WIDTH_SHOULDER",
+      "WIDTH_WIDE",
+      "WIDTH_EXTRA_WIDE"
+    ],
+    "allowed_stance_types": [
+      "neutral_feet_forward",
+      "toes_out_external_rotation",
+      "toes_in_internal_rotation",
+      "split_stance",
+      "other"
+    ],
+    "allowed_stance_widths": [
+      "extra_narrow",
+      "narrow",
+      "shoulder_width",
+      "wide",
+      "extra_wide"
+    ]
   },
   {
     "id": "PLATE",
@@ -429,7 +745,31 @@
     "max_instances": 2,
     "cable_attachments": false,
     "sort_order": 20,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": [
+      "GRIP_PRONATED",
+      "GRIP_NEUTRAL",
+      "GRIP_OTHER",
+      "GRIP_SEMI_PRONATED",
+      "GRIP_SEMI_SUPINATED",
+      "GRIP_FLAT",
+      "GRIP_SUPINATED"
+    ],
+    "allowed_grip_widths": null,
+    "allowed_stance_types": [
+      "neutral_feet_forward",
+      "toes_out_external_rotation",
+      "toes_in_internal_rotation",
+      "split_stance",
+      "other"
+    ],
+    "allowed_stance_widths": [
+      "extra_narrow",
+      "narrow",
+      "shoulder_width",
+      "wide",
+      "extra_wide"
+    ]
   },
   {
     "id": "MEDICINE_BALL",
@@ -450,7 +790,29 @@
     "max_instances": 1,
     "cable_attachments": false,
     "sort_order": 21,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": null,
+    "allowed_grip_widths": [
+      "WIDTH_EXTRA_NARROW",
+      "WIDTH_NARROW",
+      "WIDTH_SHOULDER",
+      "WIDTH_WIDE",
+      "WIDTH_EXTRA_WIDE"
+    ],
+    "allowed_stance_types": [
+      "neutral_feet_forward",
+      "toes_out_external_rotation",
+      "toes_in_internal_rotation",
+      "split_stance",
+      "other"
+    ],
+    "allowed_stance_widths": [
+      "extra_narrow",
+      "narrow",
+      "shoulder_width",
+      "wide",
+      "extra_wide"
+    ]
   },
   {
     "id": "SANDBAG",
@@ -470,7 +832,33 @@
     "max_instances": 1,
     "cable_attachments": false,
     "sort_order": 22,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": [
+      "GRIP_NEUTRAL",
+      "GRIP_PRONATED",
+      "GRIP_OTHER"
+    ],
+    "allowed_grip_widths": [
+      "WIDTH_EXTRA_NARROW",
+      "WIDTH_NARROW",
+      "WIDTH_SHOULDER",
+      "WIDTH_WIDE",
+      "WIDTH_EXTRA_WIDE"
+    ],
+    "allowed_stance_types": [
+      "neutral_feet_forward",
+      "toes_out_external_rotation",
+      "toes_in_internal_rotation",
+      "split_stance",
+      "other"
+    ],
+    "allowed_stance_widths": [
+      "extra_narrow",
+      "narrow",
+      "shoulder_width",
+      "wide",
+      "extra_wide"
+    ]
   },
   {
     "id": "WEIGHTED_VEST",
@@ -490,7 +878,23 @@
     "max_instances": 1,
     "cable_attachments": false,
     "sort_order": 23,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": null,
+    "allowed_grip_widths": null,
+    "allowed_stance_types": [
+      "neutral_feet_forward",
+      "toes_out_external_rotation",
+      "toes_in_internal_rotation",
+      "split_stance",
+      "other"
+    ],
+    "allowed_stance_widths": [
+      "extra_narrow",
+      "narrow",
+      "shoulder_width",
+      "wide",
+      "extra_wide"
+    ]
   },
   {
     "id": "BODYWEIGHT",
@@ -510,7 +914,38 @@
     "max_instances": 1,
     "cable_attachments": false,
     "sort_order": 24,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": [
+      "GRIP_PRONATED",
+      "GRIP_SUPINATED",
+      "GRIP_NEUTRAL",
+      "GRIP_ROTATING",
+      "GRIP_ALTERNATING",
+      "GRIP_SEMI_PRONATED",
+      "GRIP_SEMI_SUPINATED",
+      "GRIP_OTHER"
+    ],
+    "allowed_grip_widths": [
+      "WIDTH_EXTRA_NARROW",
+      "WIDTH_NARROW",
+      "WIDTH_SHOULDER",
+      "WIDTH_WIDE",
+      "WIDTH_EXTRA_WIDE"
+    ],
+    "allowed_stance_types": [
+      "neutral_feet_forward",
+      "toes_out_external_rotation",
+      "toes_in_internal_rotation",
+      "split_stance",
+      "other"
+    ],
+    "allowed_stance_widths": [
+      "extra_narrow",
+      "narrow",
+      "shoulder_width",
+      "wide",
+      "extra_wide"
+    ]
   },
   {
     "id": "BAND",
@@ -531,7 +966,32 @@
     "max_instances": 2,
     "cable_attachments": false,
     "sort_order": 25,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": [
+      "GRIP_PRONATED",
+      "GRIP_SUPINATED",
+      "GRIP_NEUTRAL",
+      "GRIP_ALTERNATING",
+      "GRIP_SEMI_PRONATED",
+      "GRIP_SEMI_SUPINATED",
+      "GRIP_ROTATING",
+      "GRIP_OTHER"
+    ],
+    "allowed_grip_widths": null,
+    "allowed_stance_types": [
+      "neutral_feet_forward",
+      "toes_out_external_rotation",
+      "toes_in_internal_rotation",
+      "split_stance",
+      "other"
+    ],
+    "allowed_stance_widths": [
+      "extra_narrow",
+      "narrow",
+      "shoulder_width",
+      "wide",
+      "extra_wide"
+    ]
   },
   {
     "id": "CHAINS",
@@ -551,7 +1011,23 @@
     "max_instances": 2,
     "cable_attachments": false,
     "sort_order": 26,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": null,
+    "allowed_grip_widths": null,
+    "allowed_stance_types": [
+      "neutral_feet_forward",
+      "toes_out_external_rotation",
+      "toes_in_internal_rotation",
+      "split_stance",
+      "other"
+    ],
+    "allowed_stance_widths": [
+      "extra_narrow",
+      "narrow",
+      "shoulder_width",
+      "wide",
+      "extra_wide"
+    ]
   },
   {
     "id": "WRIST_ROLLER",
@@ -571,7 +1047,11 @@
     "max_instances": 1,
     "cable_attachments": false,
     "sort_order": 27,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": null,
+    "allowed_grip_widths": null,
+    "allowed_stance_types": null,
+    "allowed_stance_widths": null
   },
   {
     "id": "REPS",
@@ -591,7 +1071,11 @@
     "max_instances": 1,
     "cable_attachments": false,
     "sort_order": 28,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": null,
+    "allowed_grip_widths": null,
+    "allowed_stance_types": null,
+    "allowed_stance_widths": null
   },
   {
     "id": "MACHINE",
@@ -611,7 +1095,35 @@
     "max_instances": 1,
     "cable_attachments": false,
     "sort_order": 29,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": [
+      "GRIP_NEUTRAL",
+      "GRIP_PRONATED",
+      "GRIP_SEMI_PRONATED",
+      "GRIP_SUPINATED",
+      "GRIP_ALTERNATING",
+      "GRIP_SEMI_SUPINATED",
+      "GRIP_ROTATING"
+    ],
+    "allowed_grip_widths": [
+      "WIDTH_EXTRA_NARROW",
+      "WIDTH_NARROW",
+      "WIDTH_SHOULDER",
+      "WIDTH_WIDE",
+      "WIDTH_EXTRA_WIDE"
+    ],
+    "allowed_stance_types": [
+      "neutral_feet_forward",
+      "toes_out_external_rotation",
+      "other"
+    ],
+    "allowed_stance_widths": [
+      "extra_narrow",
+      "narrow",
+      "shoulder_width",
+      "wide",
+      "extra_wide"
+    ]
   },
   {
     "id": "PLATE_LOADED",
@@ -631,7 +1143,35 @@
     "max_instances": 1,
     "cable_attachments": false,
     "sort_order": 30,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": [
+      "GRIP_NEUTRAL",
+      "GRIP_PRONATED",
+      "GRIP_SEMI_PRONATED",
+      "GRIP_SUPINATED",
+      "GRIP_ALTERNATING",
+      "GRIP_SEMI_SUPINATED",
+      "GRIP_ROTATING"
+    ],
+    "allowed_grip_widths": [
+      "WIDTH_EXTRA_NARROW",
+      "WIDTH_NARROW",
+      "WIDTH_SHOULDER",
+      "WIDTH_WIDE",
+      "WIDTH_EXTRA_WIDE"
+    ],
+    "allowed_stance_types": [
+      "neutral_feet_forward",
+      "toes_out_external_rotation",
+      "other"
+    ],
+    "allowed_stance_widths": [
+      "extra_narrow",
+      "narrow",
+      "shoulder_width",
+      "wide",
+      "extra_wide"
+    ]
   },
   {
     "id": "SMITH_MACHINE",
@@ -651,7 +1191,31 @@
     "max_instances": 1,
     "cable_attachments": false,
     "sort_order": 31,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": [
+      "GRIP_PRONATED",
+      "GRIP_ALTERNATING",
+      "GRIP_SUPINATED"
+    ],
+    "allowed_grip_widths": [
+      "WIDTH_EXTRA_NARROW",
+      "WIDTH_NARROW",
+      "WIDTH_SHOULDER",
+      "WIDTH_WIDE",
+      "WIDTH_EXTRA_WIDE"
+    ],
+    "allowed_stance_types": [
+      "neutral_feet_forward",
+      "toes_out_external_rotation",
+      "other"
+    ],
+    "allowed_stance_widths": [
+      "extra_narrow",
+      "narrow",
+      "shoulder_width",
+      "wide",
+      "extra_wide"
+    ]
   },
   {
     "id": "ASSISTED_MACHINE",
@@ -671,7 +1235,35 @@
     "max_instances": 1,
     "cable_attachments": false,
     "sort_order": 32,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": [
+      "GRIP_NEUTRAL",
+      "GRIP_PRONATED",
+      "GRIP_SEMI_PRONATED",
+      "GRIP_SUPINATED",
+      "GRIP_ALTERNATING",
+      "GRIP_SEMI_SUPINATED",
+      "GRIP_ROTATING"
+    ],
+    "allowed_grip_widths": [
+      "WIDTH_EXTRA_NARROW",
+      "WIDTH_NARROW",
+      "WIDTH_SHOULDER",
+      "WIDTH_WIDE",
+      "WIDTH_EXTRA_WIDE"
+    ],
+    "allowed_stance_types": [
+      "neutral_feet_forward",
+      "toes_out_external_rotation",
+      "other"
+    ],
+    "allowed_stance_widths": [
+      "extra_narrow",
+      "narrow",
+      "shoulder_width",
+      "wide",
+      "extra_wide"
+    ]
   },
   {
     "id": "CABLE",
@@ -691,7 +1283,38 @@
     "max_instances": 2,
     "cable_attachments": true,
     "sort_order": 33,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": [
+      "GRIP_PRONATED",
+      "GRIP_SUPINATED",
+      "GRIP_NEUTRAL",
+      "GRIP_ALTERNATING",
+      "GRIP_SEMI_PRONATED",
+      "GRIP_SEMI_SUPINATED",
+      "GRIP_ROTATING",
+      "GRIP_OTHER"
+    ],
+    "allowed_grip_widths": [
+      "WIDTH_EXTRA_NARROW",
+      "WIDTH_NARROW",
+      "WIDTH_SHOULDER",
+      "WIDTH_WIDE",
+      "WIDTH_EXTRA_WIDE"
+    ],
+    "allowed_stance_types": [
+      "neutral_feet_forward",
+      "toes_out_external_rotation",
+      "toes_in_internal_rotation",
+      "split_stance",
+      "other"
+    ],
+    "allowed_stance_widths": [
+      "extra_narrow",
+      "narrow",
+      "shoulder_width",
+      "wide",
+      "extra_wide"
+    ]
   },
   {
     "id": "SLED__PROWLER",
@@ -711,7 +1334,11 @@
     "max_instances": 1,
     "cable_attachments": false,
     "sort_order": 34,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": null,
+    "allowed_grip_widths": null,
+    "allowed_stance_types": null,
+    "allowed_stance_widths": null
   },
   {
     "id": "LOG",
@@ -731,7 +1358,11 @@
     "max_instances": 1,
     "cable_attachments": false,
     "sort_order": 35,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": null,
+    "allowed_grip_widths": null,
+    "allowed_stance_types": null,
+    "allowed_stance_widths": null
   },
   {
     "id": "YOKE",
@@ -751,7 +1382,11 @@
     "max_instances": 1,
     "cable_attachments": false,
     "sort_order": 36,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": null,
+    "allowed_grip_widths": null,
+    "allowed_stance_types": null,
+    "allowed_stance_widths": null
   },
   {
     "id": "TIRE",
@@ -771,7 +1406,11 @@
     "max_instances": 1,
     "cable_attachments": false,
     "sort_order": 37,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": null,
+    "allowed_grip_widths": null,
+    "allowed_stance_types": null,
+    "allowed_stance_widths": null
   },
   {
     "id": "MACE",
@@ -792,7 +1431,11 @@
     "max_instances": 2,
     "cable_attachments": false,
     "sort_order": 38,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": null,
+    "allowed_grip_widths": null,
+    "allowed_stance_types": null,
+    "allowed_stance_widths": null
   },
   {
     "id": "STEEL__INDIAN_CLUB",
@@ -812,7 +1455,11 @@
     "max_instances": 2,
     "cable_attachments": false,
     "sort_order": 39,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": null,
+    "allowed_grip_widths": null,
+    "allowed_stance_types": null,
+    "allowed_stance_widths": null
   },
   {
     "id": "BATTLE_ROPES",
@@ -832,7 +1479,24 @@
     "max_instances": 1,
     "cable_attachments": false,
     "sort_order": 40,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": [
+      "GRIP_NEUTRAL",
+      "GRIP_OTHER",
+      "GRIP_SEMI_PRONATED",
+      "GRIP_SEMI_SUPINATED",
+      "GRIP_SUPINATED",
+      "GRIP_PRONATED"
+    ],
+    "allowed_grip_widths": null,
+    "allowed_stance_types": null,
+    "allowed_stance_widths": [
+      "extra_narrow",
+      "narrow",
+      "shoulder_width",
+      "wide",
+      "extra_wide"
+    ]
   },
   {
     "id": "WEIGHTS_OTHER",
@@ -852,7 +1516,32 @@
     "max_instances": 2,
     "cable_attachments": false,
     "sort_order": 41,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": [
+      "GRIP_PRONATED",
+      "GRIP_SUPINATED",
+      "GRIP_NEUTRAL",
+      "GRIP_ALTERNATING",
+      "GRIP_SEMI_PRONATED",
+      "GRIP_SEMI_SUPINATED",
+      "GRIP_ROTATING",
+      "GRIP_OTHER"
+    ],
+    "allowed_grip_widths": null,
+    "allowed_stance_types": [
+      "neutral_feet_forward",
+      "toes_out_external_rotation",
+      "toes_in_internal_rotation",
+      "split_stance",
+      "other"
+    ],
+    "allowed_stance_widths": [
+      "extra_narrow",
+      "narrow",
+      "shoulder_width",
+      "wide",
+      "extra_wide"
+    ]
   },
   {
     "id": "OLYMPIC_BAR",
@@ -873,6 +1562,10 @@
     "max_instances": 1,
     "cable_attachments": false,
     "sort_order": 42,
-    "is_active": true
+    "is_active": true,
+    "allowed_grip_types": null,
+    "allowed_grip_widths": null,
+    "allowed_stance_types": null,
+    "allowed_stance_widths": null
   }
 ]
