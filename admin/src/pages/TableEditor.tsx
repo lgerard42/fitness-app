@@ -3,6 +3,8 @@ import { useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { api, type TableSchema, type TableField, type FKRef } from '../api';
 import RowEditor from '../components/RowEditor';
+import ColumnSettings from '../components/ColumnSettings';
+import FilterBar, { type FilterRule } from '../components/FilterBar';
 
 interface TableEditorProps {
   schemas: TableSchema[];
@@ -26,12 +28,28 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
   const [editRow, setEditRow] = useState<Record<string, unknown> | null>(null);
   const [isNew, setIsNew] = useState(false);
   const [search, setSearch] = useState('');
+  const [filters, setFilters] = useState<FilterRule[]>([]);
+  const [showFilterForm, setShowFilterForm] = useState(false);
   const [sortCol, setSortCol] = useState('sort_order');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [fkRefs, setFkRefs] = useState<FKRef[]>([]);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [deleteLabel, setDeleteLabel] = useState('');
   const [reassignTarget, setReassignTarget] = useState('');
+  const [showColumnSettings, setShowColumnSettings] = useState(false);
+  const [columnOrder, setColumnOrder] = useState<string[]>([]);
+  const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
+  const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
+  const [resizingColumn, setResizingColumn] = useState<string | null>(null);
+  const [resizeStartX, setResizeStartX] = useState(0);
+  const [resizeStartWidth, setResizeStartWidth] = useState(0);
+  const [justDropped, setJustDropped] = useState(false);
+  const [isDraggingScroll, setIsDraggingScroll] = useState(false);
+  const [scrollStartX, setScrollStartX] = useState(0);
+  const [scrollStartScrollLeft, setScrollStartScrollLeft] = useState(0);
+  const [scrollMouseDown, setScrollMouseDown] = useState(false);
+  const tableScrollRef = React.useRef<HTMLDivElement>(null);
 
   const [refData, setRefData] = useState<Record<string, Record<string, unknown>[]>>({});
 
@@ -71,25 +89,146 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
     setRefData(entries);
   }, [schema]);
 
+  // Load column settings from localStorage
+  const loadColumnSettings = useCallback(() => {
+    if (!key || !schema) return;
+    const storageKey = `table-columns-${key}`;
+    const saved = localStorage.getItem(storageKey);
+    if (saved) {
+      try {
+        const { order, visible, widths } = JSON.parse(saved);
+        setColumnOrder(order);
+        setVisibleColumns(visible);
+        setColumnWidths(widths || {});
+      } catch {
+        // Invalid JSON, use defaults
+        initializeDefaultColumns();
+      }
+    } else {
+      initializeDefaultColumns();
+    }
+  }, [key, schema]);
+
+  const initializeDefaultColumns = useCallback(() => {
+    if (!schema) return;
+    const allFields = schema.fields.filter(
+      (f) => !['json'].includes(f.type) || f.jsonShape !== 'muscle_targets'
+    );
+    const defaultOrder = allFields.map((f) => f.name);
+    const defaultVisible = defaultOrder.slice(0, 8);
+    setColumnOrder(defaultOrder);
+    setVisibleColumns(defaultVisible);
+    setColumnWidths({});
+  }, [schema]);
+
+  const saveColumnSettings = useCallback((visible: string[], order: string[]) => {
+    if (!key) return;
+    const storageKey = `table-columns-${key}`;
+    localStorage.setItem(storageKey, JSON.stringify({ visible, order, widths: columnWidths }));
+    setVisibleColumns(visible);
+    setColumnOrder(order);
+    toast.success('Column settings saved');
+  }, [key, columnWidths]);
+
+  const saveColumnWidths = useCallback(() => {
+    if (!key) return;
+    const storageKey = `table-columns-${key}`;
+    const saved = localStorage.getItem(storageKey);
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+        localStorage.setItem(storageKey, JSON.stringify({ ...data, widths: columnWidths }));
+      } catch {
+        // Ignore
+      }
+    }
+  }, [key, columnWidths]);
+
   useEffect(() => {
     setEditRow(null);
     setIsNew(false);
     setSearch('');
+    setFilters([]);
+    setShowFilterForm(false);
     setSortCol('sort_order');
     setSortDir('asc');
     setDeleteConfirm(null);
     loadData();
     loadRefData();
-  }, [key, loadData, loadRefData]);
+    loadColumnSettings();
+  }, [key, loadData, loadRefData, loadColumnSettings]);
+
+  const applyFilter = (row: Record<string, unknown>, filter: FilterRule): boolean => {
+    const field = schema?.fields.find((f) => f.name === filter.field);
+    if (!field) return true;
+
+    const rowValue = row[filter.field];
+
+    switch (filter.operator) {
+      case 'equals':
+        if (field.type === 'boolean') {
+          return rowValue === filter.value;
+        }
+        return String(rowValue) === String(filter.value);
+
+      case 'contains':
+        return String(rowValue || '').toLowerCase().includes(String(filter.value).toLowerCase());
+
+      case 'not_contains':
+        return !String(rowValue || '').toLowerCase().includes(String(filter.value).toLowerCase());
+
+      case 'greater_than':
+        return Number(rowValue) > Number(filter.value);
+
+      case 'less_than':
+        return Number(rowValue) < Number(filter.value);
+
+      case 'is_null':
+        return rowValue === null || rowValue === undefined || rowValue === '';
+
+      case 'is_not_null':
+        return rowValue !== null && rowValue !== undefined && rowValue !== '';
+
+      case 'in':
+        if (Array.isArray(filter.value)) {
+          if (Array.isArray(rowValue)) {
+            return filter.value.some((v) => rowValue.includes(v));
+          }
+          return filter.value.includes(String(rowValue));
+        }
+        return false;
+
+      case 'not_in':
+        if (Array.isArray(filter.value)) {
+          if (Array.isArray(rowValue)) {
+            return !filter.value.some((v) => rowValue.includes(v));
+          }
+          return !filter.value.includes(String(rowValue));
+        }
+        return true;
+
+      default:
+        return true;
+    }
+  };
 
   const filtered = useMemo(() => {
     let result = rows;
+
+    // Apply text search
     if (search) {
       const q = search.toLowerCase();
       result = result.filter((row) =>
         Object.values(row).some((v) => String(v).toLowerCase().includes(q))
       );
     }
+
+    // Apply filters
+    for (const filter of filters) {
+      result = result.filter((row) => applyFilter(row, filter));
+    }
+
+    // Sort
     result = [...result].sort((a, b) => {
       const aVal = a[sortCol];
       const bVal = b[sortCol];
@@ -103,19 +242,166 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
       return sortDir === 'asc' ? cmp : -cmp;
     });
     return result;
-  }, [rows, search, sortCol, sortDir]);
+  }, [rows, search, filters, sortCol, sortDir, schema]);
 
   const visibleCols = useMemo(() => {
     if (!schema) return [];
-    return schema.fields
-      .filter((f) => !['json'].includes(f.type) || f.jsonShape !== 'muscle_targets')
-      .slice(0, 8);
-  }, [schema]);
+    if (columnOrder.length === 0 || visibleColumns.length === 0) {
+      // Fallback to default if not loaded yet
+      return schema.fields
+        .filter((f) => !['json'].includes(f.type) || f.jsonShape !== 'muscle_targets')
+        .slice(0, 8);
+    }
+    // Use custom order and visibility
+    const fieldMap = new Map(schema.fields.map((f) => [f.name, f]));
+    return columnOrder
+      .map((name) => fieldMap.get(name))
+      .filter((f): f is TableField => f !== undefined && visibleColumns.includes(f.name))
+      .filter((f) => !['json'].includes(f.type) || f.jsonShape !== 'muscle_targets');
+  }, [schema, columnOrder, visibleColumns]);
 
   const handleSort = (col: string) => {
+    if (justDropped) {
+      setJustDropped(false);
+      return;
+    }
     if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
     else { setSortCol(col); setSortDir('asc'); }
   };
+
+  // Column drag-and-drop handlers
+  const handleColumnDragStart = (e: React.DragEvent, columnName: string) => {
+    setDraggedColumn(columnName);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', columnName);
+    e.stopPropagation();
+  };
+
+  const handleColumnDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleColumnDrop = (e: React.DragEvent, targetColumn: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!draggedColumn || draggedColumn === targetColumn) {
+      setDraggedColumn(null);
+      return;
+    }
+
+    const currentOrder = [...columnOrder];
+    const draggedIndex = currentOrder.indexOf(draggedColumn);
+    const targetIndex = currentOrder.indexOf(targetColumn);
+
+    if (draggedIndex === -1 || targetIndex === -1) {
+      setDraggedColumn(null);
+      return;
+    }
+
+    currentOrder.splice(draggedIndex, 1);
+    currentOrder.splice(targetIndex, 0, draggedColumn);
+
+    setColumnOrder(currentOrder);
+    setDraggedColumn(null);
+    setJustDropped(true);
+    saveColumnSettings(visibleColumns, currentOrder);
+  };
+
+  // Column resize handlers
+  const handleResizeStart = (e: React.MouseEvent, columnName: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setResizingColumn(columnName);
+    setResizeStartX(e.clientX);
+    setResizeStartWidth(columnWidths[columnName] || 150);
+  };
+
+  useEffect(() => {
+    if (!resizingColumn) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const diff = e.clientX - resizeStartX;
+      const newWidth = Math.max(80, resizeStartWidth + diff);
+      setColumnWidths((prev) => ({ ...prev, [resizingColumn]: newWidth }));
+    };
+
+    const handleMouseUp = () => {
+      setResizingColumn(null);
+      saveColumnWidths();
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [resizingColumn, resizeStartX, resizeStartWidth, saveColumnWidths]);
+
+  // Drag-to-scroll handlers
+  const handleScrollMouseDown = (e: React.MouseEvent) => {
+    // Don't start drag scroll if clicking on interactive elements
+    const target = e.target as HTMLElement;
+    
+    // Exclude buttons, inputs, draggable columns, resize handles
+    if (
+      target.tagName === 'BUTTON' ||
+      target.tagName === 'INPUT' ||
+      target.tagName === 'SELECT' ||
+      target.closest('button') ||
+      target.closest('input') ||
+      target.closest('select') ||
+      target.closest('[draggable="true"]') ||
+      target.closest('.cursor-col-resize') ||
+      resizingColumn
+    ) {
+      return;
+    }
+
+    // Allow drag-to-scroll on table and container
+    setScrollMouseDown(true);
+    setScrollStartX(e.clientX);
+    if (tableScrollRef.current) {
+      setScrollStartScrollLeft(tableScrollRef.current.scrollLeft);
+    }
+  };
+
+  useEffect(() => {
+    if (!scrollMouseDown) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!tableScrollRef.current) return;
+      
+      // Only start scrolling if mouse moved significantly (prevents accidental scroll on click)
+      const moved = Math.abs(e.clientX - scrollStartX);
+      if (moved > 5) {
+        setIsDraggingScroll(true);
+        document.body.style.userSelect = 'none';
+        document.body.style.cursor = 'grabbing';
+        const diff = scrollStartX - e.clientX;
+        tableScrollRef.current.scrollLeft = scrollStartScrollLeft + diff;
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDraggingScroll(false);
+      setScrollMouseDown(false);
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+    };
+  }, [scrollMouseDown, scrollStartX, scrollStartScrollLeft]);
 
   const handleAdd = () => {
     if (!schema) return;
@@ -237,6 +523,19 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
   // Other rows for reassign dropdown (exclude the one being deleted)
   const otherRows = useMemo(() => rows.filter((r) => r.id !== deleteConfirm), [rows, deleteConfirm]);
 
+  // Column settings data for modal
+  const columnSettingsData = useMemo(() => {
+    if (!schema) return null;
+    const allFields = schema.fields.filter((f) => !['json'].includes(f.type) || f.jsonShape !== 'muscle_targets');
+    const defaultOrder = allFields.map((f) => f.name);
+    const defaultVisible = defaultOrder.slice(0, 8);
+    return {
+      fields: allFields,
+      visibleColumns: visibleColumns.length > 0 ? visibleColumns : defaultVisible,
+      columnOrder: columnOrder.length > 0 ? columnOrder : defaultOrder,
+    };
+  }, [schema, visibleColumns, columnOrder]);
+
   const cellDisplay = (row: Record<string, unknown>, field: TableField) => {
     const val = row[field.name];
     if (val == null) return <span className="text-gray-300">null</span>;
@@ -278,57 +577,187 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
           <h1 className="text-xl font-bold text-gray-800">{schema.label}</h1>
           <p className="text-sm text-gray-400">{schema.file} &middot; {rows.length} rows</p>
         </div>
-        <button
-          onClick={handleAdd}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
-        >
-          + Add Row
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowColumnSettings(true)}
+            className="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 text-sm font-medium flex items-center gap-2"
+            title="Configure columns"
+          >
+            <span>⚙️</span>
+            Columns
+          </button>
+          <button
+            onClick={handleAdd}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
+          >
+            + Add Row
+          </button>
+        </div>
       </div>
 
-      {/* Search */}
-      <input
-        type="text"
-        placeholder="Search rows..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="w-full max-w-md px-3 py-2 border rounded mb-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-      />
+      {/* Search and Filters */}
+      <div className="mb-4 space-y-2">
+        <div className="flex gap-2 items-center">
+          <input
+            type="text"
+            placeholder="Search rows..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="flex-1 max-w-md px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          {schema && (
+            <button
+              type="button"
+              onClick={() => setShowFilterForm(!showFilterForm)}
+              className={`px-3 py-2 text-sm border rounded ${
+                filters.length > 0
+                  ? 'bg-blue-50 border-blue-300 text-blue-700'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              {filters.length > 0 ? `Filters (${filters.length})` : '+ Filter'}
+            </button>
+          )}
+          {filtered.length !== rows.length && (
+            <span className="px-3 py-2 text-sm text-gray-600 bg-gray-100 rounded">
+              Showing {filtered.length} of {rows.length}
+            </span>
+          )}
+        </div>
+        {schema && showFilterForm && (
+          <FilterBar
+            schema={schema}
+            filters={filters}
+            onChange={setFilters}
+            refData={refData}
+            onToggleForm={setShowFilterForm}
+          />
+        )}
+        {filters.length > 0 && !showFilterForm && (
+          <div className="flex flex-wrap gap-2">
+            {filters.map((filter, index) => {
+              const field = schema.fields.find((f) => f.name === filter.field);
+              return (
+                <div
+                  key={index}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded text-sm"
+                >
+                  <span className="font-medium text-blue-800">{field?.name || filter.field}</span>
+                  <span className="text-blue-600">{filter.operator.replace(/_/g, ' ')}</span>
+                  {filter.operator !== 'is_null' && filter.operator !== 'is_not_null' && (
+                    <span className="text-blue-700">
+                      {Array.isArray(filter.value)
+                        ? `[${filter.value.length}]`
+                        : String(filter.value)}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setFilters(filters.filter((_, i) => i !== index))}
+                    className="text-blue-500 hover:text-blue-700 font-bold ml-1"
+                  >
+                    ×
+                  </button>
+                </div>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => setFilters([])}
+              className="px-2 py-1 text-xs text-gray-600 hover:text-gray-800 underline"
+            >
+              Clear all
+            </button>
+          </div>
+        )}
+      </div>
 
       {error && <div className="mb-4 p-3 bg-red-50 text-red-700 rounded text-sm">{error}</div>}
 
       {loading ? (
         <div className="text-gray-400">Loading...</div>
       ) : (
-        <div className="overflow-x-auto border rounded-lg">
-          <table className="w-full text-sm">
+        <div
+          ref={tableScrollRef}
+          onMouseDown={handleScrollMouseDown}
+          className={`overflow-x-auto border rounded-lg ${isDraggingScroll ? 'cursor-grabbing' : scrollMouseDown ? 'cursor-grabbing' : ''}`}
+          style={{ userSelect: isDraggingScroll ? 'none' : 'auto' }}
+        >
+          <table className="w-full text-sm border-collapse">
             <thead className="bg-gray-50 border-b">
               <tr>
-                {visibleCols.map((col) => (
-                  <th
-                    key={col.name}
-                    onClick={() => handleSort(col.name)}
-                    className="px-3 py-2 text-left font-medium text-gray-600 cursor-pointer hover:bg-gray-100 select-none whitespace-nowrap"
-                  >
-                    {col.name}
-                    {col.refTable && <span className="text-blue-400 ml-0.5 text-xs">FK</span>}
-                    {sortCol === col.name && <span className="ml-1">{sortDir === 'asc' ? '↑' : '↓'}</span>}
-                  </th>
-                ))}
-                <th className="px-3 py-2 text-right font-medium text-gray-600 w-28">Actions</th>
+                {visibleCols.map((col, index) => {
+                  const width = columnWidths[col.name] || 150;
+                  const isFirst = index === 0;
+                  return (
+                    <th
+                      key={col.name}
+                      draggable
+                      onDragStart={(e) => handleColumnDragStart(e, col.name)}
+                      onDragOver={handleColumnDragOver}
+                      onDrop={(e) => handleColumnDrop(e, col.name)}
+                      onClick={() => handleSort(col.name)}
+                      style={{ width: `${width}px`, minWidth: `${width}px` }}
+                      className={`px-3 py-2 text-left font-medium text-gray-600 cursor-pointer hover:bg-gray-100 select-none whitespace-nowrap relative ${
+                        isFirst ? 'sticky left-0 z-20 bg-gray-50 border-r border-gray-200' : ''
+                      } ${draggedColumn === col.name ? 'opacity-50' : ''}`}
+                    >
+                      <div className="flex items-center gap-1">
+                        <span
+                          className="text-gray-400 cursor-grab active:cursor-grabbing mr-1"
+                          title="Drag to reorder"
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          ☰
+                        </span>
+                        <span className="flex-1">
+                          {col.name}
+                          {col.refTable && <span className="text-blue-400 ml-0.5 text-xs">FK</span>}
+                          {sortCol === col.name && <span className="ml-1">{sortDir === 'asc' ? '↑' : '↓'}</span>}
+                        </span>
+                      </div>
+                      <div
+                        onMouseDown={(e) => handleResizeStart(e, col.name)}
+                        className={`absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-400 ${
+                          resizingColumn === col.name ? 'bg-blue-500' : ''
+                        }`}
+                        title="Drag to resize"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </th>
+                  );
+                })}
+                <th className="px-3 py-2 text-right font-medium text-gray-600 w-28 sticky right-0 z-10 bg-gray-50">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((row, idx) => (
                 <tr
                   key={String(row.id ?? idx)}
-                  className="border-b hover:bg-blue-50 cursor-pointer"
+                  className="border-b hover:bg-blue-50 cursor-pointer group"
                   onClick={() => { setEditRow({ ...row }); setIsNew(false); }}
                 >
-                  {visibleCols.map((col) => (
-                    <td key={col.name} className="px-3 py-2 max-w-xs truncate">{cellDisplay(row, col)}</td>
-                  ))}
-                  <td className="px-3 py-2 text-right whitespace-nowrap space-x-1">
+                  {visibleCols.map((col, index) => {
+                    const width = columnWidths[col.name] || 150;
+                    const isFirst = index === 0;
+                    return (
+                      <td
+                        key={col.name}
+                        style={{ width: `${width}px`, minWidth: `${width}px` }}
+                        className={`px-3 py-2 truncate ${
+                          isFirst
+                            ? 'sticky left-0 z-10 bg-white group-hover:bg-blue-50 border-r border-gray-200'
+                            : ''
+                        }`}
+                      >
+                        {cellDisplay(row, col)}
+                      </td>
+                    );
+                  })}
+                  <td className="px-3 py-2 text-right whitespace-nowrap space-x-1 sticky right-0 z-10 bg-white group-hover:bg-blue-50 border-l border-gray-200">
                     <button onClick={(e) => { e.stopPropagation(); handleMoveRow(row.id as string, 'up'); }} className="text-gray-400 hover:text-gray-600 text-xs" title="Move up">▲</button>
                     <button onClick={(e) => { e.stopPropagation(); handleMoveRow(row.id as string, 'down'); }} className="text-gray-400 hover:text-gray-600 text-xs" title="Move down">▼</button>
                     <button onClick={(e) => { e.stopPropagation(); handleDeleteClick(row.id as string); }} className="text-red-400 hover:text-red-600 text-xs ml-2">Delete</button>
@@ -448,6 +877,17 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
             </div>
           </div>
         </div>
+      )}
+
+      {/* Column Settings Modal */}
+      {showColumnSettings && columnSettingsData && (
+        <ColumnSettings
+          fields={columnSettingsData.fields}
+          visibleColumns={columnSettingsData.visibleColumns}
+          columnOrder={columnSettingsData.columnOrder}
+          onSave={saveColumnSettings}
+          onClose={() => setShowColumnSettings(false)}
+        />
       )}
     </div>
   );
