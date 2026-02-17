@@ -15,6 +15,21 @@
     "is_active": true,
     "upper_lower": [
       "Upper Body"
+    ],
+    "secondary_muscle_ids": [
+      "BICEPS",
+      "FOREARMS",
+      "TRICEPS"
+    ],
+    "tertiary_muscle_ids": [
+      "OUTER_BICEP",
+      "INNER_BICEP",
+      "INNER_TRICEP",
+      "OUTER_TRICEP",
+      "DEEP_TRICEP",
+      "TOP_FOREARM",
+      "BOTTOM_FOREARM",
+      "OUTER_FOREARM"
     ]
   },
   {
@@ -33,6 +48,18 @@
     "is_active": true,
     "upper_lower": [
       "Upper Body"
+    ],
+    "secondary_muscle_ids": [
+      "LATS",
+      "LOWER_BACK",
+      "MID_BACK",
+      "RHOMBOIDS",
+      "TRAPS",
+      "UPPER_BACK"
+    ],
+    "tertiary_muscle_ids": [
+      "UPPER_TRAPS",
+      "LOWER_TRAPS"
     ]
   },
   {
@@ -51,6 +78,40 @@
     "is_active": true,
     "upper_lower": [
       "Upper Body"
+    ],
+    "secondary_muscle_ids": [
+      "LOWER_CHEST",
+      "MID_CHEST",
+      "UPPER_CHEST"
+    ],
+    "tertiary_muscle_ids": []
+  },
+  {
+    "id": "SHOULDERS",
+    "label": "Shoulders",
+    "technical_name": "Deltoideus",
+    "common_names": [
+      "Shoulders",
+      "Delts",
+      "Shoulder Girdle"
+    ],
+    "icon": "",
+    "short_description": "The shoulder girdle providing a wide range of arm mobility.",
+    "sort_order": 3,
+    "is_active": true,
+    "upper_lower": [
+      "Upper Body"
+    ],
+    "secondary_muscle_ids": [
+      "TRAPS",
+      "FRONT_DELTS",
+      "REAR_DELTS",
+      "ROTATOR_CUFF",
+      "SIDE_DELTS"
+    ],
+    "tertiary_muscle_ids": [
+      "UPPER_TRAPS",
+      "LOWER_TRAPS"
     ]
   },
   {
@@ -66,44 +127,24 @@
     ],
     "icon": "",
     "short_description": "Central stability muscles connecting the upper and lower body.",
-    "sort_order": 3,
-    "is_active": true,
-    "upper_lower": [
-      "Upper Body"
-    ]
-  },
-  {
-    "id": "LEGS",
-    "label": "Legs",
-    "technical_name": "Membrum Inferius",
-    "common_names": [
-      "Legs",
-      "Lower Body",
-      "Quads and Hamstrings"
-    ],
-    "icon": "",
-    "short_description": "The lower limbs, responsible for locomotion and power.",
     "sort_order": 4,
     "is_active": true,
     "upper_lower": [
-      "Lower Body"
-    ]
-  },
-  {
-    "id": "SHOULDERS",
-    "label": "Shoulders",
-    "technical_name": "Deltoideus",
-    "common_names": [
-      "Shoulders",
-      "Delts",
-      "Shoulder Girdle"
-    ],
-    "icon": "",
-    "short_description": "The shoulder girdle providing a wide range of arm mobility.",
-    "sort_order": 5,
-    "is_active": true,
-    "upper_lower": [
       "Upper Body"
+    ],
+    "secondary_muscle_ids": [
+      "LOWER_BACK",
+      "ABS",
+      "HIP_FLEXORS",
+      "OBLIQUES"
+    ],
+    "tertiary_muscle_ids": [
+      "UPPER_ABS",
+      "LOWER_ABS",
+      "MIDDLE_ABS",
+      "UPPER_OBLIQUES",
+      "LOWER_OBLIQUES",
+      "INTERNAL_OBLIQUES"
     ]
   },
   {
@@ -117,10 +158,47 @@
     ],
     "icon": "",
     "short_description": "Muscles supporting the head and cervical spine.",
-    "sort_order": 6,
+    "sort_order": 5,
     "is_active": true,
     "upper_lower": [
       "Upper Body"
+    ],
+    "secondary_muscle_ids": [],
+    "tertiary_muscle_ids": []
+  },
+  {
+    "id": "LEGS",
+    "label": "Legs",
+    "technical_name": "Membrum Inferius",
+    "common_names": [
+      "Legs",
+      "Lower Body",
+      "Quads and Hamstrings"
+    ],
+    "icon": "",
+    "short_description": "The lower limbs, responsible for locomotion and power.",
+    "sort_order": 6,
+    "is_active": true,
+    "upper_lower": [
+      "Lower Body"
+    ],
+    "secondary_muscle_ids": [
+      "CALVES",
+      "GLUTES",
+      "HAMSTRINGS",
+      "INNER_THIGHS",
+      "OUTER_HIPS_THIGHS",
+      "QUADS"
+    ],
+    "tertiary_muscle_ids": [
+      "INNER_QUAD",
+      "OUTER_QUAD",
+      "MID_QUAD",
+      "OUTER_HAMSTRING",
+      "INNER_HAMSTRING",
+      "INNER_CALF",
+      "OUTER_CALF",
+      "LOWER_CALF"
     ]
   },
   {
@@ -140,6 +218,8 @@
     "upper_lower": [
       "Upper Body",
       "Lower Body"
-    ]
+    ],
+    "secondary_muscle_ids": [],
+    "tertiary_muscle_ids": []
   }
 ]

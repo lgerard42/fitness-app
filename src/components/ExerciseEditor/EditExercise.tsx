@@ -498,17 +498,23 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
 
             if (isSelected) {
                 newPrimaries = prev.primaryMuscles.filter(m => m !== muscle);
-                const secondariesToRemove = PRIMARY_TO_SECONDARY_MAP[muscle] || [];
-                newSecondaries = prev.secondaryMuscles.filter(s => !secondariesToRemove.includes(s));
+                const secondariesToRemoveLabels = PRIMARY_TO_SECONDARY_MAP[muscle] || [];
+                newSecondaries = prev.secondaryMuscles.filter(s => !secondariesToRemoveLabels.includes(s));
                 // Clear tertiary muscles that belong to removed secondary muscles
                 if (newTertiaries.length > 0) {
-                    getTertiaryMusclesBySecondary(secondariesToRemove).then(tertiariesToRemove => {
-                        const tertiaryIdsToRemove = tertiariesToRemove.map(t => t.id);
-                        setEditState(prevState => ({
-                            ...prevState,
-                            tertiaryMuscles: (prevState.tertiaryMuscles || []).filter(t => !tertiaryIdsToRemove.includes(t))
-                        }));
-                    });
+                    // Convert labels to IDs
+                    const secondariesToRemoveIds = secondariesToRemoveLabels
+                        .map(label => allSecondaryMuscles.find(s => s.label === label)?.id)
+                        .filter((id): id is string => id !== undefined);
+                    if (secondariesToRemoveIds.length > 0) {
+                        getTertiaryMusclesBySecondary(secondariesToRemoveIds).then(tertiariesToRemove => {
+                            const tertiaryIdsToRemove = tertiariesToRemove.map(t => t.id);
+                            setEditState(prevState => ({
+                                ...prevState,
+                                tertiaryMuscles: (prevState.tertiaryMuscles || []).filter(t => !tertiaryIdsToRemove.includes(t))
+                            }));
+                        });
+                    }
                 }
             } else {
                 if (isSpecial) { newPrimaries = [muscle]; newSecondaries = []; newTertiaries = []; }

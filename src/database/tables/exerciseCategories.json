@@ -11,16 +11,10 @@
     ],
     "icon": "",
     "short_description": "Activities focused on elevating heart rate and improving respiratory efficiency through repetitive motion.",
-    "cardio_types_allowed": {
-      "allowed": "CARDIO_TYPES"
-    },
-    "muscle_groups_allowed": {
-      "allowed": [
-        "PRIMARY_MUSCLES"
-      ]
-    },
-    "training_focus_allowed": {
-      "allowed": "TRAINING_FOCUS"
+    "exercise_input_permissions": {
+      "cardio_types": "allowed",
+      "muscle_groups": "allowed",
+      "training_focus": "allowed"
     },
     "sort_order": 0,
     "is_active": true
@@ -37,20 +31,10 @@
     ],
     "icon": "",
     "short_description": "Movements involving external or bodyweight resistance aimed at increasing muscular force and hypertrophy.",
-    "cardio_types_allowed": {
-      "allowed": "CARDIO_TYPES"
-    },
-    "muscle_groups_allowed": {
-      "required": [
-        "PRIMARY_MUSCLES"
-      ],
-      "allowed": [
-        "SECONDARY_MUSCLES",
-        "TERTIARY_MUSCLES"
-      ]
-    },
-    "training_focus_allowed": {
-      "allowed": "TRAINING_FOCUS"
+    "exercise_input_permissions": {
+      "cardio_types": "allowed",
+      "muscle_groups": "required",
+      "training_focus": "allowed"
     },
     "sort_order": 1,
     "is_active": true
@@ -67,18 +51,10 @@
     ],
     "icon": "",
     "short_description": "Exercises focusing on specific athletic attributes like speed, agility, or motor control rather than just load or heart rate.",
-    "cardio_types_allowed": {
-      "allowed": "CARDIO_TYPES"
-    },
-    "muscle_groups_allowed": {
-      "allowed": [
-        "PRIMARY_MUSCLES",
-        "SECONDARY_MUSCLES",
-        "TERTIARY_MUSCLES"
-      ]
-    },
-    "training_focus_allowed": {
-      "required": "TRAINING_FOCUS"
+    "exercise_input_permissions": {
+      "cardio_types": "allowed",
+      "muscle_groups": "allowed",
+      "training_focus": "required"
     },
     "sort_order": 2,
     "is_active": true

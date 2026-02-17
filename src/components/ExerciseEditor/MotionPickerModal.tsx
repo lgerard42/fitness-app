@@ -241,7 +241,24 @@ const MotionPickerModal: React.FC<MotionPickerModalProps> = ({
   };
 
   // Helper to get selected secondary IDs for a primary
+  // Uses denormalized secondary_muscle_ids field when available
   const getSelectedSecondaryIdsForPrimary = (primaryId: string) => {
+    const primaryMuscle = allPrimaryMuscles.find(pm => pm.id === primaryId);
+    if (primaryMuscle && primaryMuscle.secondary_muscle_ids) {
+      // Use denormalized field
+      try {
+        const secondaryIds = JSON.parse(primaryMuscle.secondary_muscle_ids) as string[];
+        return secondaryIds
+          .map(id => {
+            const sec = allSecondaryMuscles.find(s => s.id === id);
+            return sec && secondaryMuscles.includes(sec.label) ? id : null;
+          })
+          .filter((id): id is string => id !== null);
+      } catch {
+        // Fallback to canonical relationship
+      }
+    }
+    // Fallback: use canonical relationship
     const secondaryMusclesForThisPrimary = allSecondaryMuscles.filter(sec => {
       try {
         const primaryIds = JSON.parse(sec.primary_muscle_ids || '[]') as string[];
@@ -256,7 +273,24 @@ const MotionPickerModal: React.FC<MotionPickerModalProps> = ({
   };
 
   // Helper to get selected tertiary IDs for a primary
+  // Uses denormalized tertiary_muscle_ids field when available
   const getSelectedTertiaryIdsForPrimary = (primaryId: string) => {
+    const primaryMuscle = allPrimaryMuscles.find(pm => pm.id === primaryId);
+    if (primaryMuscle && primaryMuscle.tertiary_muscle_ids) {
+      // Use denormalized field
+      try {
+        const tertiaryIds = JSON.parse(primaryMuscle.tertiary_muscle_ids) as string[];
+        return tertiaryIds
+          .map(id => {
+            const tert = allTertiaryMuscles.find((t: any) => t.id === id);
+            return tert && tertiaryMuscles.includes(tert.label) ? id : null;
+          })
+          .filter((id): id is string => id !== null);
+      } catch {
+        // Fallback to canonical relationship
+      }
+    }
+    // Fallback: use canonical relationship through secondaries
     const secondaryMusclesForThisPrimary = allSecondaryMuscles.filter(sec => {
       try {
         const primaryIds = JSON.parse(sec.primary_muscle_ids || '[]') as string[];

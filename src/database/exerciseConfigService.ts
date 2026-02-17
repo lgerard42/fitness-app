@@ -11,9 +11,7 @@ export interface ExerciseCategory {
   common_names?: string;
   icon?: string;
   short_description?: string;
-  cardio_types_allowed?: string; // JSON string
-  muscle_groups_allowed?: string; // JSON string
-  training_focus_allowed?: string; // JSON string
+  exercise_input_permissions?: string; // JSON string: { cardio_types: "allowed"|"required"|"forbidden", muscle_groups: "...", training_focus: "..." }
 }
 
 export interface CardioType {
@@ -33,6 +31,8 @@ export interface PrimaryMuscle {
   icon?: string;
   short_description?: string;
   upper_lower?: string; // JSON array string
+  secondary_muscle_ids?: string; // JSON array string
+  tertiary_muscle_ids?: string; // JSON array string
 }
 
 export interface SecondaryMuscle {
@@ -43,6 +43,7 @@ export interface SecondaryMuscle {
   icon?: string;
   short_description?: string;
   primary_muscle_ids?: string; // JSON array string
+  tertiary_muscle_ids?: string; // JSON array string
 }
 
 export interface TertiaryMuscle {
@@ -53,6 +54,7 @@ export interface TertiaryMuscle {
   icon?: string;
   short_description?: string;
   secondary_muscle_ids?: string; // JSON array string
+  primary_muscle_ids?: string; // JSON array string
 }
 
 export interface TrainingFocus {
@@ -203,28 +205,28 @@ export async function getSecondaryMuscles(): Promise<SecondaryMuscle[]> {
 
 /**
  * Get secondary muscles by primary muscle ID(s)
+ * Uses the denormalized secondary_muscle_ids field on primary_muscles for better performance
  */
 export async function getSecondaryMusclesByPrimary(primaryIds: string[]): Promise<SecondaryMuscle[]> {
   if (primaryIds.length === 0) return [];
   
   const db = await getDatabase();
-  const placeholders = primaryIds.map(() => '?').join(',');
-  const query = `
-    SELECT * FROM secondary_muscles 
-    WHERE primary_muscle_ids LIKE '%' || ? || '%'
-    ORDER BY label
-  `;
-  
-  // For each primary ID, find secondaries that include it in their primary_muscle_ids JSON array
   const allSecondaries = new Map<string, SecondaryMuscle>();
   
+  // Use denormalized field for better performance
   for (const primaryId of primaryIds) {
-    const results = await db.getAllAsync<SecondaryMuscle>(query, [primaryId]);
-    results.forEach(sec => {
-      if (!allSecondaries.has(sec.id)) {
-        allSecondaries.set(sec.id, sec);
+    const primary = await getPrimaryMuscleById(primaryId);
+    if (primary && primary.secondary_muscle_ids) {
+      const secondaryIds = parseJson<string[]>(primary.secondary_muscle_ids, []);
+      for (const secId of secondaryIds) {
+        if (!allSecondaries.has(secId)) {
+          const sec = await getSecondaryMuscleById(secId);
+          if (sec) {
+            allSecondaries.set(sec.id, sec);
+          }
+        }
       }
-    });
+    }
   }
   
   return Array.from(allSecondaries.values()).sort((a, b) => a.label.localeCompare(b.label));
@@ -252,6 +254,7 @@ export async function getTertiaryMuscles(): Promise<TertiaryMuscle[]> {
 
 /**
  * Get tertiary muscles by secondary muscle ID(s)
+ * Uses the denormalized tertiary_muscle_ids field on secondary_muscles for better performance
  */
 export async function getTertiaryMusclesBySecondary(secondaryIds: string[]): Promise<TertiaryMuscle[]> {
   if (secondaryIds.length === 0) return [];
@@ -259,18 +262,20 @@ export async function getTertiaryMusclesBySecondary(secondaryIds: string[]): Pro
   const db = await getDatabase();
   const allTertiaries = new Map<string, TertiaryMuscle>();
   
+  // Use denormalized field for better performance
   for (const secondaryId of secondaryIds) {
-    const query = `
-      SELECT * FROM tertiary_muscles 
-      WHERE secondary_muscle_ids LIKE '%' || ? || '%'
-      ORDER BY label
-    `;
-    const results = await db.getAllAsync<TertiaryMuscle>(query, [secondaryId]);
-    results.forEach(ter => {
-      if (!allTertiaries.has(ter.id)) {
-        allTertiaries.set(ter.id, ter);
+    const secondary = await getSecondaryMuscleById(secondaryId);
+    if (secondary && secondary.tertiary_muscle_ids) {
+      const tertiaryIds = parseJson<string[]>(secondary.tertiary_muscle_ids, []);
+      for (const tertId of tertiaryIds) {
+        if (!allTertiaries.has(tertId)) {
+          const tert = await getTertiaryMuscleById(tertId);
+          if (tert) {
+            allTertiaries.set(tert.id, tert);
+          }
+        }
       }
-    });
+    }
   }
   
   return Array.from(allTertiaries.values()).sort((a, b) => a.label.localeCompare(b.label));
@@ -286,6 +291,64 @@ export async function getTertiaryMuscleById(id: string): Promise<TertiaryMuscle 
     [id]
   );
   return result || null;
+}
+
+/**
+ * Get tertiary muscles by primary muscle ID(s)
+ * Uses the denormalized tertiary_muscle_ids field on primary_muscles for better performance
+ */
+export async function getTertiaryMusclesByPrimary(primaryIds: string[]): Promise<TertiaryMuscle[]> {
+  if (primaryIds.length === 0) return [];
+  
+  const db = await getDatabase();
+  const allTertiaries = new Map<string, TertiaryMuscle>();
+  
+  // Use denormalized field for better performance
+  for (const primaryId of primaryIds) {
+    const primary = await getPrimaryMuscleById(primaryId);
+    if (primary && primary.tertiary_muscle_ids) {
+      const tertiaryIds = parseJson<string[]>(primary.tertiary_muscle_ids, []);
+      for (const tertId of tertiaryIds) {
+        if (!allTertiaries.has(tertId)) {
+          const tert = await getTertiaryMuscleById(tertId);
+          if (tert) {
+            allTertiaries.set(tert.id, tert);
+          }
+        }
+      }
+    }
+  }
+  
+  return Array.from(allTertiaries.values()).sort((a, b) => a.label.localeCompare(b.label));
+}
+
+/**
+ * Get primary muscles by tertiary muscle ID(s)
+ * Uses the denormalized primary_muscle_ids field on tertiary_muscles for better performance
+ */
+export async function getPrimaryMusclesByTertiary(tertiaryIds: string[]): Promise<PrimaryMuscle[]> {
+  if (tertiaryIds.length === 0) return [];
+  
+  const db = await getDatabase();
+  const allPrimaries = new Map<string, PrimaryMuscle>();
+  
+  // Use denormalized field for better performance
+  for (const tertiaryId of tertiaryIds) {
+    const tertiary = await getTertiaryMuscleById(tertiaryId);
+    if (tertiary && tertiary.primary_muscle_ids) {
+      const primaryIds = parseJson<string[]>(tertiary.primary_muscle_ids, []);
+      for (const priId of primaryIds) {
+        if (!allPrimaries.has(priId)) {
+          const pri = await getPrimaryMuscleById(priId);
+          if (pri) {
+            allPrimaries.set(pri.id, pri);
+          }
+        }
+      }
+    }
+  }
+  
+  return Array.from(allPrimaries.values()).sort((a, b) => a.label.localeCompare(b.label));
 }
 
 /**
@@ -325,10 +388,10 @@ function parseJson<T>(jsonString: string | null | undefined, defaultValue: T): T
  */
 export async function getAllowedCardioTypesForCategory(categoryId: string): Promise<string[]> {
   const category = await getExerciseCategoryById(categoryId);
-  if (!category || !category.cardio_types_allowed) return [];
+  if (!category || !category.exercise_input_permissions) return [];
   
-  const config = parseJson<{ allowed?: string }>(category.cardio_types_allowed, {});
-  if (config.allowed === 'CARDIO_TYPES') {
+  const permissions = parseJson<{ cardio_types?: string }>(category.exercise_input_permissions, {});
+  if (permissions.cardio_types === 'allowed' || permissions.cardio_types === 'required') {
     const allCardioTypes = await getCardioTypes();
     return allCardioTypes.map(ct => ct.id);
   }
@@ -337,18 +400,29 @@ export async function getAllowedCardioTypesForCategory(categoryId: string): Prom
 
 /**
  * Get allowed muscle groups for a category
+ * Returns the permission level and resolves to actual muscle group arrays if needed
  */
 export async function getAllowedMuscleGroupsForCategory(categoryId: string): Promise<{
   required?: string[];
   allowed?: string[];
 }> {
   const category = await getExerciseCategoryById(categoryId);
-  if (!category || !category.muscle_groups_allowed) return {};
+  if (!category || !category.exercise_input_permissions) return {};
   
-  return parseJson<{ required?: string[]; allowed?: string[] }>(
-    category.muscle_groups_allowed,
-    {}
-  );
+  const permissions = parseJson<{ muscle_groups?: string }>(category.exercise_input_permissions, {});
+  const permissionLevel = permissions.muscle_groups || 'forbidden';
+  
+  // For backward compatibility, return structure similar to old format
+  // If required, return PRIMARY_MUSCLES as required
+  // If allowed, return all muscle groups as allowed
+  if (permissionLevel === 'required') {
+    return { required: ['PRIMARY_MUSCLES'] };
+  } else if (permissionLevel === 'allowed') {
+    // Return all muscle group types as allowed
+    return { allowed: ['PRIMARY_MUSCLES', 'SECONDARY_MUSCLES', 'TERTIARY_MUSCLES'] };
+  }
+  
+  return {};
 }
 
 /**
@@ -359,12 +433,19 @@ export async function getAllowedTrainingFocusForCategory(categoryId: string): Pr
   allowed?: string;
 }> {
   const category = await getExerciseCategoryById(categoryId);
-  if (!category || !category.training_focus_allowed) return {};
+  if (!category || !category.exercise_input_permissions) return {};
   
-  return parseJson<{ required?: string; allowed?: string }>(
-    category.training_focus_allowed,
-    {}
-  );
+  const permissions = parseJson<{ training_focus?: string }>(category.exercise_input_permissions, {});
+  const permissionLevel = permissions.training_focus || 'forbidden';
+  
+  // For backward compatibility, return structure similar to old format
+  if (permissionLevel === 'required') {
+    return { required: 'TRAINING_FOCUS' };
+  } else if (permissionLevel === 'allowed') {
+    return { allowed: 'TRAINING_FOCUS' };
+  }
+  
+  return {};
 }
 
 /**
@@ -488,23 +569,30 @@ export async function getSingleDoubleEquipmentLabels(): Promise<string[]> {
 
 /**
  * Build PRIMARY_TO_SECONDARY_MAP from database (for backward compatibility)
+ * Uses denormalized secondary_muscle_ids field for better performance
  */
 export async function buildPrimaryToSecondaryMap(): Promise<Record<string, string[]>> {
   const primaries = await getPrimaryMuscles();
   const secondaries = await getSecondaryMuscles();
   
+  // Build ID -> label map for secondaries
+  const secondaryIdToLabel = new Map<string, string>();
+  secondaries.forEach(sec => {
+    secondaryIdToLabel.set(sec.id, sec.label);
+  });
+  
   const map: Record<string, string[]> = {};
   
   primaries.forEach(primary => {
-    const relatedSecondaries = secondaries
-      .filter(sec => {
-        const primaryIds = parseJson<string[]>(sec.primary_muscle_ids, []);
-        return primaryIds.includes(primary.id);
-      })
-      .map(sec => sec.label);
+    // Use denormalized secondary_muscle_ids field
+    const secondaryIds = parseJson<string[]>(primary.secondary_muscle_ids, []);
+    const relatedSecondaries = secondaryIds
+      .map(id => secondaryIdToLabel.get(id))
+      .filter((label): label is string => label !== undefined)
+      .sort();
     
     if (relatedSecondaries.length > 0) {
-      map[primary.label] = relatedSecondaries.sort();
+      map[primary.label] = relatedSecondaries;
     }
   });
   

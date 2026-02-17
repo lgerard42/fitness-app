@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import type { TableSchema } from '../api';
 import StringField from './FieldRenderers/StringField';
 import NumberField from './FieldRenderers/NumberField';
@@ -9,9 +9,24 @@ import FKMultiSelect from './FieldRenderers/FKMultiSelect';
 import MatrixFieldCheckboxGrid from './FieldRenderers/MatrixFieldCheckboxGrid';
 import JsonEditor from './FieldRenderers/JsonEditor';
 import MuscleTargetTree from './FieldRenderers/MuscleTargetTree';
+import ExerciseInputPermissionsField from './FieldRenderers/ExerciseInputPermissionsField';
+import MuscleHierarchyField from './FieldRenderers/MuscleHierarchyField';
 import Relationships from './Relationships';
 
 const MATRIX_FIELDS = ['allowed_grip_types', 'allowed_grip_widths', 'allowed_stance_types', 'allowed_stance_widths'];
+
+const MUSCLE_TABLES = ['primaryMuscles', 'secondaryMuscles', 'tertiaryMuscles'];
+const MUSCLE_HIERARCHY_FIELDS: Record<string, string[]> = {
+  primaryMuscles: ['secondary_muscle_ids', 'tertiary_muscle_ids'],
+  secondaryMuscles: ['primary_muscle_ids', 'tertiary_muscle_ids'],
+  tertiaryMuscles: ['secondary_muscle_ids', 'primary_muscle_ids'],
+};
+// The first field in each list is used as the "anchor" for positioning
+const MUSCLE_HIERARCHY_ANCHOR: Record<string, string> = {
+  primaryMuscles: 'secondary_muscle_ids',
+  secondaryMuscles: 'primary_muscle_ids',
+  tertiaryMuscles: 'secondary_muscle_ids',
+};
 
 interface RowEditorProps {
   schema: TableSchema;
@@ -24,23 +39,75 @@ interface RowEditorProps {
 
 export default function RowEditor({ schema, row, isNew, refData, onSave, onCancel }: RowEditorProps) {
   const [data, setData] = useState<Record<string, unknown>>({ ...row });
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   const update = (field: string, value: unknown) => {
     setData((prev) => ({ ...prev, [field]: value }));
   };
+
+  const updateMultiple = (fields: Record<string, unknown>) => {
+    setData((prev) => ({ ...prev, ...fields }));
+  };
+
+  const isMuscleTable = MUSCLE_TABLES.includes(schema.key);
+  const hiddenHierarchyFields = isMuscleTable ? MUSCLE_HIERARCHY_FIELDS[schema.key] || [] : [];
+  const hierarchyAnchor = isMuscleTable ? MUSCLE_HIERARCHY_ANCHOR[schema.key] : '';
+
+  // Check if there are unsaved changes
+  const hasUnsavedChanges = useMemo(() => {
+    return JSON.stringify(data) !== JSON.stringify(row);
+  }, [data, row]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave(data);
   };
 
+  const handleCancel = () => {
+    if (hasUnsavedChanges) {
+      setShowUnsavedDialog(true);
+    } else {
+      onCancel();
+    }
+  };
+
+  const handleDiscard = () => {
+    setShowUnsavedDialog(false);
+    onCancel();
+  };
+
+  const handleSaveAndClose = () => {
+    setShowUnsavedDialog(false);
+    onSave(data);
+  };
+
+  // Handle outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        if (hasUnsavedChanges) {
+          setShowUnsavedDialog(true);
+        } else {
+          onCancel();
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [hasUnsavedChanges, onCancel]);
+
   const recordId = String(data[schema.idField] ?? '');
   const recordLabel = String(data[schema.labelField] ?? data[schema.idField] ?? '');
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-start justify-end z-50">
-      <div className="bg-white h-full w-full max-w-2xl shadow-xl overflow-y-auto">
-        <form onSubmit={handleSubmit}>
+    <>
+      <div className="fixed inset-0 bg-black/50 flex items-start justify-end z-50">
+        <div ref={panelRef} className="bg-white h-full w-full max-w-2xl shadow-xl overflow-y-auto">
+          <form onSubmit={handleSubmit}>
           {/* Header */}
           <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
             <h2 className="font-bold text-gray-800">
@@ -49,7 +116,7 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={onCancel}
+                onClick={handleCancel}
                 className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded"
               >
                 Cancel
@@ -65,7 +132,20 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
 
           {/* Fields */}
           <div className="p-6 space-y-4">
-            {schema.fields.map((field) => {
+            {schema.fields
+              .filter((field) => {
+                // Hide all hierarchy-managed FK fields — they're handled by MuscleHierarchyField
+                // Keep only the anchor field (it gets replaced with the hierarchy UI)
+                if (hiddenHierarchyFields.includes(field.name) && field.name !== hierarchyAnchor) return false;
+                return true;
+              })
+              .sort((a, b) => {
+                // Move the hierarchy anchor before sort_order
+                if (a.name === hierarchyAnchor && b.name === 'sort_order') return -1;
+                if (a.name === 'sort_order' && b.name === hierarchyAnchor) return 1;
+                return 0;
+              })
+              .map((field) => {
               const value = data[field.name];
               const label = (
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -144,6 +224,28 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
                   );
 
                 case 'fk[]':
+                  // Use MuscleHierarchyField for the anchor field on any muscle table
+                  if (isMuscleTable && field.name === hierarchyAnchor) {
+                    const fieldNames = MUSCLE_HIERARCHY_FIELDS[schema.key] || [];
+                    const muscleHierarchyLabel = (
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Muscle Hierarchy
+                        <span className="text-xs text-gray-400 ml-2">{fieldNames.join(' + ')}</span>
+                      </label>
+                    );
+                    return (
+                      <div key={field.name}>
+                        {muscleHierarchyLabel}
+                        <MuscleHierarchyField
+                          tableKey={schema.key as 'primaryMuscles' | 'secondaryMuscles' | 'tertiaryMuscles'}
+                          currentRecordId={recordId}
+                          onFieldsChange={(fields) => {
+                            updateMultiple(fields);
+                          }}
+                        />
+                      </div>
+                    );
+                  }
                   // Use checkbox grid for matrix editor fields
                   if (MATRIX_FIELDS.includes(field.name)) {
                     return (
@@ -182,6 +284,17 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
                         {label}
                         <MuscleTargetTree
                           value={(value as Record<string, unknown>) ?? {}}
+                          onChange={(v) => update(field.name, v)}
+                        />
+                      </div>
+                    );
+                  }
+                  if (field.jsonShape === 'exercise_input_permissions') {
+                    return (
+                      <div key={field.name}>
+                        {label}
+                        <ExerciseInputPermissionsField
+                          value={(value as Record<string, string>) ?? undefined}
                           onChange={(v) => update(field.name, v)}
                         />
                       </div>
@@ -227,7 +340,40 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
             )}
           </div>
         </form>
+        </div>
       </div>
-    </div>
+
+      {/* Unsaved Changes Dialog */}
+      {showUnsavedDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+            <h3 className="font-bold text-gray-800 mb-2">Unsaved Changes</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              You have unsaved changes. What would you like to do?
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowUnsavedDialog(false)}
+                className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDiscard}
+                className="px-4 py-2 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+              >
+                Discard Changes
+              </button>
+              <button
+                onClick={handleSaveAndClose}
+                className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Save & Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

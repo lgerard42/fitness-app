@@ -12,7 +12,7 @@ export interface TableField {
   /** For FK / FK[] fields: which field on the referenced table to display (default "label") */
   refLabelField?: string;
   /** For json fields: hint about the shape for specialized editors */
-  jsonShape?: 'muscle_targets' | 'equipment_category_map' | 'allowed_rules' | 'free';
+  jsonShape?: 'muscle_targets' | 'equipment_category_map' | 'allowed_rules' | 'exercise_input_permissions' | 'free';
   /** Default value for new rows */
   defaultValue?: unknown;
 }
@@ -86,9 +86,7 @@ export const TABLE_REGISTRY: TableSchema[] = [
     idField: 'id',
     labelField: 'label',
     fields: standardFields([
-      { name: 'cardio_types_allowed', type: 'json', jsonShape: 'allowed_rules' },
-      { name: 'muscle_groups_allowed', type: 'json', jsonShape: 'allowed_rules' },
-      { name: 'training_focus_allowed', type: 'json', jsonShape: 'allowed_rules' },
+      { name: 'exercise_input_permissions', type: 'json', jsonShape: 'exercise_input_permissions' },
     ]),
   },
   {
@@ -134,6 +132,8 @@ export const TABLE_REGISTRY: TableSchema[] = [
     labelField: 'label',
     fields: standardFields([
       { name: 'upper_lower', type: 'string[]', defaultValue: [] },
+      { name: 'secondary_muscle_ids', type: 'fk[]', refTable: 'secondaryMuscles', refLabelField: 'label' },
+      { name: 'tertiary_muscle_ids', type: 'fk[]', refTable: 'tertiaryMuscles', refLabelField: 'label' },
     ]),
   },
   {
@@ -145,6 +145,7 @@ export const TABLE_REGISTRY: TableSchema[] = [
     labelField: 'label',
     fields: standardFields([
       { name: 'primary_muscle_ids', type: 'fk[]', refTable: 'primaryMuscles', refLabelField: 'label' },
+      { name: 'tertiary_muscle_ids', type: 'fk[]', refTable: 'tertiaryMuscles', refLabelField: 'label' },
     ]),
   },
   {
@@ -156,6 +157,7 @@ export const TABLE_REGISTRY: TableSchema[] = [
     labelField: 'label',
     fields: standardFields([
       { name: 'secondary_muscle_ids', type: 'fk[]', refTable: 'secondaryMuscles', refLabelField: 'label' },
+      { name: 'primary_muscle_ids', type: 'fk[]', refTable: 'primaryMuscles', refLabelField: 'label' },
     ]),
   },
 

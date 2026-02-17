@@ -5,7 +5,7 @@
 import * as SQLite from 'expo-sqlite';
 
 const DATABASE_NAME = 'workout.db';
-const DATABASE_VERSION = 8;
+const DATABASE_VERSION = 9;
 
 export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
   const db = await SQLite.openDatabaseAsync(DATABASE_NAME);
@@ -42,6 +42,9 @@ export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
     }
     if (currentVersion < 8) {
       await migrateToV8(db);
+    }
+    if (currentVersion < 9) {
+      await migrateToV9(db);
     }
     await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
   }
@@ -84,9 +87,7 @@ async function createTables(db: SQLite.SQLiteDatabase) {
       common_names TEXT,
       icon TEXT,
       short_description TEXT,
-      cardio_types_allowed TEXT,
-      muscle_groups_allowed TEXT,
-      training_focus_allowed TEXT,
+      exercise_input_permissions TEXT,
       sort_order INTEGER DEFAULT 0,
       is_active INTEGER DEFAULT 1
     );
@@ -131,7 +132,9 @@ async function createTables(db: SQLite.SQLiteDatabase) {
       short_description TEXT,
       sort_order INTEGER DEFAULT 0,
       is_active INTEGER DEFAULT 1,
-      upper_lower TEXT
+      upper_lower TEXT,
+      secondary_muscle_ids TEXT,
+      tertiary_muscle_ids TEXT
     );
   `);
 
@@ -145,6 +148,7 @@ async function createTables(db: SQLite.SQLiteDatabase) {
       icon TEXT,
       short_description TEXT,
       primary_muscle_ids TEXT,
+      tertiary_muscle_ids TEXT,
       sort_order INTEGER DEFAULT 0,
       is_active INTEGER DEFAULT 1
     );
@@ -160,6 +164,7 @@ async function createTables(db: SQLite.SQLiteDatabase) {
       icon TEXT,
       short_description TEXT,
       secondary_muscle_ids TEXT,
+      primary_muscle_ids TEXT,
       sort_order INTEGER DEFAULT 0,
       is_active INTEGER DEFAULT 1
     );
@@ -381,6 +386,86 @@ async function migrateToV8(db: SQLite.SQLiteDatabase) {
   // The seedGripData function will populate them
 }
 
+async function migrateToV9(db: SQLite.SQLiteDatabase) {
+  // V9 adds denormalized FK columns across all muscle tables
+  const secondaryMuscles = require('./tables/secondaryMuscles.json') as Record<string, unknown>[];
+  const tertiaryMuscles = require('./tables/tertiaryMuscles.json') as Record<string, unknown>[];
+
+  try {
+    // Add tertiary_muscle_ids to secondary_muscles
+    const secInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(secondary_muscles)`);
+    if (!secInfo.some(col => col.name === 'tertiary_muscle_ids')) {
+      await db.execAsync(`ALTER TABLE secondary_muscles ADD COLUMN tertiary_muscle_ids TEXT DEFAULT '[]'`);
+    }
+
+    // Add secondary_muscle_ids and tertiary_muscle_ids to primary_muscles
+    const priInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(primary_muscles)`);
+    if (!priInfo.some(col => col.name === 'secondary_muscle_ids')) {
+      await db.execAsync(`ALTER TABLE primary_muscles ADD COLUMN secondary_muscle_ids TEXT DEFAULT '[]'`);
+    }
+    if (!priInfo.some(col => col.name === 'tertiary_muscle_ids')) {
+      await db.execAsync(`ALTER TABLE primary_muscles ADD COLUMN tertiary_muscle_ids TEXT DEFAULT '[]'`);
+    }
+
+    // Add primary_muscle_ids to tertiary_muscles
+    const terInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(tertiary_muscles)`);
+    if (!terInfo.some(col => col.name === 'primary_muscle_ids')) {
+      await db.execAsync(`ALTER TABLE tertiary_muscles ADD COLUMN primary_muscle_ids TEXT DEFAULT '[]'`);
+    }
+
+    // Populate secondary_muscles.tertiary_muscle_ids
+    const secTertiaryMap: Record<string, string[]> = {};
+    for (const t of tertiaryMuscles) {
+      const sids = Array.isArray(t.secondary_muscle_ids) ? (t.secondary_muscle_ids as string[]) : [];
+      for (const sid of sids) {
+        if (!secTertiaryMap[sid]) secTertiaryMap[sid] = [];
+        secTertiaryMap[sid].push(String(t.id));
+      }
+    }
+    for (const [sid, tids] of Object.entries(secTertiaryMap)) {
+      await db.runAsync(`UPDATE secondary_muscles SET tertiary_muscle_ids = ? WHERE id = ?`, JSON.stringify(tids), sid);
+    }
+
+    // Populate primary_muscles.secondary_muscle_ids and tertiary_muscle_ids
+    const priSecMap: Record<string, string[]> = {};
+    for (const s of secondaryMuscles) {
+      const pids = Array.isArray(s.primary_muscle_ids) ? (s.primary_muscle_ids as string[]) : [];
+      for (const pid of pids) {
+        if (!priSecMap[pid]) priSecMap[pid] = [];
+        priSecMap[pid].push(String(s.id));
+      }
+    }
+    for (const [pid, sids] of Object.entries(priSecMap)) {
+      const tids = tertiaryMuscles
+        .filter(t => {
+          const tsids = Array.isArray(t.secondary_muscle_ids) ? (t.secondary_muscle_ids as string[]) : [];
+          return tsids.some(sid => sids.includes(sid));
+        })
+        .map(t => String(t.id));
+      await db.runAsync(`UPDATE primary_muscles SET secondary_muscle_ids = ?, tertiary_muscle_ids = ? WHERE id = ?`,
+        JSON.stringify(sids), JSON.stringify(tids), pid);
+    }
+
+    // Populate tertiary_muscles.primary_muscle_ids
+    for (const t of tertiaryMuscles) {
+      const tsids = Array.isArray(t.secondary_muscle_ids) ? (t.secondary_muscle_ids as string[]) : [];
+      const pids = new Set<string>();
+      for (const s of secondaryMuscles) {
+        if (tsids.includes(String(s.id))) {
+          const spids = Array.isArray(s.primary_muscle_ids) ? (s.primary_muscle_ids as string[]) : [];
+          spids.forEach(pid => pids.add(pid));
+        }
+      }
+      if (pids.size > 0) {
+        await db.runAsync(`UPDATE tertiary_muscles SET primary_muscle_ids = ? WHERE id = ?`,
+          JSON.stringify([...pids]), String(t.id));
+      }
+    }
+  } catch (e) {
+    console.warn('migrateToV9: failed to add denormalized muscle columns', e);
+  }
+}
+
 async function seedData(db: SQLite.SQLiteDatabase) {
   const exerciseCategories = require('./tables/exerciseCategories.json') as Record<string, unknown>[];
   const cardioTypes = require('./tables/cardioTypes.json') as Record<string, unknown>[];
@@ -394,17 +479,15 @@ async function seedData(db: SQLite.SQLiteDatabase) {
   const num = (v: unknown, def: number) => (v == null ? def : Number(v));
   for (const row of exerciseCategories) {
     await db.runAsync(
-      `INSERT INTO exercise_categories (id, label, technical_name, common_names, icon, short_description, cardio_types_allowed, muscle_groups_allowed, training_focus_allowed, sort_order, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO exercise_categories (id, label, technical_name, common_names, icon, short_description, exercise_input_permissions, sort_order, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       str(row.id),
       str(row.label),
       str(row.technical_name),
       Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
       str(row.icon),
       str(row.short_description),
-      row.cardio_types_allowed ? JSON.stringify(row.cardio_types_allowed) : '',
-      row.muscle_groups_allowed ? JSON.stringify(row.muscle_groups_allowed) : '',
-      row.training_focus_allowed ? JSON.stringify(row.training_focus_allowed) : '',
+      row.exercise_input_permissions ? JSON.stringify(row.exercise_input_permissions) : '',
       num(row.sort_order, 0),
       row.is_active !== false ? 1 : 0
     );
@@ -442,8 +525,8 @@ async function seedData(db: SQLite.SQLiteDatabase) {
 
   for (const row of primaryMuscles) {
     await db.runAsync(
-      `INSERT INTO primary_muscles (id, label, technical_name, common_names, icon, short_description, sort_order, is_active, upper_lower)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO primary_muscles (id, label, technical_name, common_names, icon, short_description, sort_order, is_active, upper_lower, secondary_muscle_ids, tertiary_muscle_ids)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       str(row.id),
       str(row.label),
       str(row.technical_name),
@@ -452,14 +535,16 @@ async function seedData(db: SQLite.SQLiteDatabase) {
       str(row.short_description),
       num(row.sort_order, 0),
       row.is_active !== false ? 1 : 0,
-      Array.isArray(row.upper_lower) ? JSON.stringify(row.upper_lower) : (row.upper_lower != null ? str(row.upper_lower) : '[]')
+      Array.isArray(row.upper_lower) ? JSON.stringify(row.upper_lower) : (row.upper_lower != null ? str(row.upper_lower) : '[]'),
+      Array.isArray(row.secondary_muscle_ids) ? JSON.stringify(row.secondary_muscle_ids) : '[]',
+      Array.isArray(row.tertiary_muscle_ids) ? JSON.stringify(row.tertiary_muscle_ids) : '[]'
     );
   }
 
   for (const row of secondaryMuscles) {
     await db.runAsync(
-      `INSERT INTO secondary_muscles (id, label, technical_name, common_names, icon, short_description, primary_muscle_ids, sort_order, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO secondary_muscles (id, label, technical_name, common_names, icon, short_description, primary_muscle_ids, tertiary_muscle_ids, sort_order, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       str(row.id),
       str(row.label),
       str(row.technical_name),
@@ -467,6 +552,7 @@ async function seedData(db: SQLite.SQLiteDatabase) {
       str(row.icon),
       str(row.short_description),
       Array.isArray(row.primary_muscle_ids) ? JSON.stringify(row.primary_muscle_ids) : '[]',
+      Array.isArray(row.tertiary_muscle_ids) ? JSON.stringify(row.tertiary_muscle_ids) : '[]',
       num(row.sort_order, 0),
       row.is_active !== false ? 1 : 0
     );
@@ -474,8 +560,8 @@ async function seedData(db: SQLite.SQLiteDatabase) {
 
   for (const row of tertiaryMuscles) {
     await db.runAsync(
-      `INSERT INTO tertiary_muscles (id, label, technical_name, common_names, icon, short_description, secondary_muscle_ids, sort_order, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO tertiary_muscles (id, label, technical_name, common_names, icon, short_description, secondary_muscle_ids, primary_muscle_ids, sort_order, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       str(row.id),
       str(row.label),
       str(row.technical_name),
@@ -483,6 +569,7 @@ async function seedData(db: SQLite.SQLiteDatabase) {
       str(row.icon),
       str(row.short_description),
       Array.isArray(row.secondary_muscle_ids) ? JSON.stringify(row.secondary_muscle_ids) : '[]',
+      Array.isArray(row.primary_muscle_ids) ? JSON.stringify(row.primary_muscle_ids) : '[]',
       num(row.sort_order, 0),
       row.is_active !== false ? 1 : 0
     );
@@ -543,10 +630,9 @@ async function seedMuscleData(db: SQLite.SQLiteDatabase) {
 
   for (const row of primaryMuscles) {
     if (hasUpperLowerColumn) {
-      // Insert with upper_lower column
       await db.runAsync(
-        `INSERT OR REPLACE INTO primary_muscles (id, label, technical_name, common_names, icon, short_description, sort_order, is_active, upper_lower)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT OR REPLACE INTO primary_muscles (id, label, technical_name, common_names, icon, short_description, sort_order, is_active, upper_lower, secondary_muscle_ids, tertiary_muscle_ids)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         str(row.id),
         str(row.label),
         str(row.technical_name),
@@ -555,10 +641,11 @@ async function seedMuscleData(db: SQLite.SQLiteDatabase) {
         str(row.short_description),
         num(row.sort_order, 0),
         row.is_active !== false ? 1 : 0,
-        Array.isArray(row.upper_lower) ? JSON.stringify(row.upper_lower) : (row.upper_lower != null ? str(row.upper_lower) : '[]')
+        Array.isArray(row.upper_lower) ? JSON.stringify(row.upper_lower) : (row.upper_lower != null ? str(row.upper_lower) : '[]'),
+        Array.isArray(row.secondary_muscle_ids) ? JSON.stringify(row.secondary_muscle_ids) : '[]',
+        Array.isArray(row.tertiary_muscle_ids) ? JSON.stringify(row.tertiary_muscle_ids) : '[]'
       );
     } else {
-      // Insert without upper_lower column (for older databases)
       await db.runAsync(
         `INSERT OR REPLACE INTO primary_muscles (id, label, technical_name, common_names, icon, short_description, sort_order, is_active)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -576,8 +663,8 @@ async function seedMuscleData(db: SQLite.SQLiteDatabase) {
 
   for (const row of secondaryMuscles) {
     await db.runAsync(
-      `INSERT OR REPLACE INTO secondary_muscles (id, label, technical_name, common_names, icon, short_description, primary_muscle_ids, sort_order, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT OR REPLACE INTO secondary_muscles (id, label, technical_name, common_names, icon, short_description, primary_muscle_ids, tertiary_muscle_ids, sort_order, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       str(row.id),
       str(row.label),
       str(row.technical_name),
@@ -585,6 +672,7 @@ async function seedMuscleData(db: SQLite.SQLiteDatabase) {
       str(row.icon),
       str(row.short_description),
       Array.isArray(row.primary_muscle_ids) ? JSON.stringify(row.primary_muscle_ids) : '[]',
+      Array.isArray(row.tertiary_muscle_ids) ? JSON.stringify(row.tertiary_muscle_ids) : '[]',
       num(row.sort_order, 0),
       row.is_active !== false ? 1 : 0
     );
@@ -592,8 +680,8 @@ async function seedMuscleData(db: SQLite.SQLiteDatabase) {
 
   for (const row of tertiaryMuscles) {
     await db.runAsync(
-      `INSERT OR REPLACE INTO tertiary_muscles (id, label, technical_name, common_names, icon, short_description, secondary_muscle_ids, sort_order, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT OR REPLACE INTO tertiary_muscles (id, label, technical_name, common_names, icon, short_description, secondary_muscle_ids, primary_muscle_ids, sort_order, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       str(row.id),
       str(row.label),
       str(row.technical_name),
@@ -601,6 +689,7 @@ async function seedMuscleData(db: SQLite.SQLiteDatabase) {
       str(row.icon),
       str(row.short_description),
       Array.isArray(row.secondary_muscle_ids) ? JSON.stringify(row.secondary_muscle_ids) : '[]',
+      Array.isArray(row.primary_muscle_ids) ? JSON.stringify(row.primary_muscle_ids) : '[]',
       num(row.sort_order, 0),
       row.is_active !== false ? 1 : 0
     );
@@ -619,8 +708,8 @@ async function reseedSecondaryMuscles(db: SQLite.SQLiteDatabase) {
   const secondaryMuscles = require('./tables/secondaryMuscles.json') as Record<string, unknown>[];
   for (const row of secondaryMuscles) {
     await db.runAsync(
-      `INSERT INTO secondary_muscles (id, label, technical_name, common_names, icon, short_description, primary_muscle_ids, sort_order, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO secondary_muscles (id, label, technical_name, common_names, icon, short_description, primary_muscle_ids, tertiary_muscle_ids, sort_order, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       str(row.id),
       str(row.label),
       str(row.technical_name),
@@ -628,6 +717,7 @@ async function reseedSecondaryMuscles(db: SQLite.SQLiteDatabase) {
       str(row.icon),
       str(row.short_description),
       Array.isArray(row.primary_muscle_ids) ? JSON.stringify(row.primary_muscle_ids) : '[]',
+      Array.isArray(row.tertiary_muscle_ids) ? JSON.stringify(row.tertiary_muscle_ids) : '[]',
       num(row.sort_order, 0),
       row.is_active !== false ? 1 : 0
     );

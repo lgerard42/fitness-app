@@ -49,6 +49,9 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
   const [scrollStartX, setScrollStartX] = useState(0);
   const [scrollStartScrollLeft, setScrollStartScrollLeft] = useState(0);
   const [scrollMouseDown, setScrollMouseDown] = useState(false);
+  const [draggedRowId, setDraggedRowId] = useState<string | null>(null);
+  const [isDraggingRow, setIsDraggingRow] = useState(false);
+  const [rowDragHandleActive, setRowDragHandleActive] = useState(false);
   const tableScrollRef = React.useRef<HTMLDivElement>(null);
 
   const [refData, setRefData] = useState<Record<string, Record<string, unknown>[]>>({});
@@ -345,7 +348,7 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
     // Don't start drag scroll if clicking on interactive elements
     const target = e.target as HTMLElement;
     
-    // Exclude buttons, inputs, draggable columns, resize handles
+    // Exclude buttons, inputs, draggable columns, resize handles, drag handles
     if (
       target.tagName === 'BUTTON' ||
       target.tagName === 'INPUT' ||
@@ -355,7 +358,9 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
       target.closest('select') ||
       target.closest('[draggable="true"]') ||
       target.closest('.cursor-col-resize') ||
-      resizingColumn
+      target.closest('.row-drag-handle') ||
+      resizingColumn ||
+      isDraggingRow
     ) {
       return;
     }
@@ -386,7 +391,14 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
     };
 
     const handleMouseUp = () => {
-      setIsDraggingScroll(false);
+      // Keep isDraggingScroll true briefly to prevent side-panel opening
+      if (isDraggingScroll) {
+        setTimeout(() => {
+          setIsDraggingScroll(false);
+        }, 100);
+      } else {
+        setIsDraggingScroll(false);
+      }
       setScrollMouseDown(false);
       document.body.style.userSelect = '';
       document.body.style.cursor = '';
@@ -433,20 +445,56 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
     }
   };
 
-  const handleMoveRow = async (rowId: string, direction: 'up' | 'down') => {
-    if (!key) return;
-    const idx = filtered.findIndex((r) => r.id === rowId);
-    if (idx === -1) return;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= filtered.length) return;
+  // Row drag-and-drop handlers
+  const handleRowDragStart = (e: React.DragEvent, rowId: string) => {
+    // Only allow drag if drag handle was activated
+    if (!rowDragHandleActive) {
+      e.preventDefault();
+      return;
+    }
+    setDraggedRowId(rowId);
+    setIsDraggingRow(true);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', rowId);
+    e.stopPropagation();
+  };
+
+  const handleRowDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleRowDrop = async (e: React.DragEvent, targetRowId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!key || !draggedRowId || draggedRowId === targetRowId) {
+      setDraggedRowId(null);
+      setIsDraggingRow(false);
+      return;
+    }
+
+    const draggedIdx = filtered.findIndex((r) => r.id === draggedRowId);
+    const targetIdx = filtered.findIndex((r) => r.id === targetRowId);
+    if (draggedIdx === -1 || targetIdx === -1) {
+      setDraggedRowId(null);
+      setIsDraggingRow(false);
+      return;
+    }
+
     const ids = filtered.map((r) => r.id as string);
-    [ids[idx], ids[swapIdx]] = [ids[swapIdx], ids[idx]];
+    ids.splice(draggedIdx, 1);
+    ids.splice(targetIdx, 0, draggedRowId);
+
     try {
       await api.reorder(key, ids);
       await loadData();
       onDataChange();
+      toast.success('Row order updated');
     } catch (err) {
       toast.error(`Reorder failed: ${err}`);
+    } finally {
+      setDraggedRowId(null);
+      setIsDraggingRow(false);
     }
   };
 
@@ -734,36 +782,82 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
               </tr>
             </thead>
             <tbody>
-              {filtered.map((row, idx) => (
-                <tr
-                  key={String(row.id ?? idx)}
-                  className="border-b hover:bg-blue-50 cursor-pointer group"
-                  onClick={() => { setEditRow({ ...row }); setIsNew(false); }}
-                >
-                  {visibleCols.map((col, index) => {
-                    const width = columnWidths[col.name] || 150;
-                    const isFirst = index === 0;
-                    return (
-                      <td
-                        key={col.name}
-                        style={{ width: `${width}px`, minWidth: `${width}px` }}
-                        className={`px-3 py-2 truncate ${
-                          isFirst
-                            ? 'sticky left-0 z-10 bg-white group-hover:bg-blue-50 border-r border-gray-200'
-                            : ''
-                        }`}
-                      >
-                        {cellDisplay(row, col)}
-                      </td>
-                    );
-                  })}
-                  <td className="px-3 py-2 text-right whitespace-nowrap space-x-1 sticky right-0 z-10 bg-white group-hover:bg-blue-50 border-l border-gray-200">
-                    <button onClick={(e) => { e.stopPropagation(); handleMoveRow(row.id as string, 'up'); }} className="text-gray-400 hover:text-gray-600 text-xs" title="Move up">▲</button>
-                    <button onClick={(e) => { e.stopPropagation(); handleMoveRow(row.id as string, 'down'); }} className="text-gray-400 hover:text-gray-600 text-xs" title="Move down">▼</button>
-                    <button onClick={(e) => { e.stopPropagation(); handleDeleteClick(row.id as string); }} className="text-red-400 hover:text-red-600 text-xs ml-2">Delete</button>
-                  </td>
-                </tr>
-              ))}
+              {filtered.map((row, idx) => {
+                const rowId = String(row.id ?? idx);
+                const isDragged = draggedRowId === rowId;
+                return (
+                  <tr
+                    key={rowId}
+                    draggable={true}
+                    onDragStart={(e) => handleRowDragStart(e, rowId)}
+                    onDragOver={handleRowDragOver}
+                    onDrop={(e) => handleRowDrop(e, rowId)}
+                    onDragEnd={() => {
+                      setIsDraggingRow(false);
+                      setDraggedRowId(null);
+                      setRowDragHandleActive(false);
+                    }}
+                    className={`border-b hover:bg-blue-50 cursor-pointer group ${
+                      isDragged ? 'opacity-50' : ''
+                    }`}
+                    onClick={(e) => {
+                      // Don't open side-panel if user was scrolling horizontally or dragging row
+                      if (isDraggingScroll || isDraggingRow) {
+                        return;
+                      }
+                      // Don't open if clicking on drag handle or delete button
+                      const target = e.target as HTMLElement;
+                      if (target.closest('.row-drag-handle') || target.closest('button')) {
+                        return;
+                      }
+                      setEditRow({ ...row });
+                      setIsNew(false);
+                    }}
+                  >
+                    {visibleCols.map((col, index) => {
+                      const width = columnWidths[col.name] || 150;
+                      const isFirst = index === 0;
+                      const isIdField = col.name === schema.idField;
+                      return (
+                        <td
+                          key={col.name}
+                          style={{ width: `${width}px`, minWidth: `${width}px` }}
+                          className={`px-3 py-2 truncate ${
+                            isFirst
+                              ? 'sticky left-0 z-10 bg-white group-hover:bg-blue-50 border-r border-gray-200'
+                              : ''
+                          }`}
+                        >
+                          {isIdField ? (
+                            <div className="flex items-center gap-2">
+                              <span
+                                className="row-drag-handle text-gray-400 cursor-grab active:cursor-grabbing hover:text-gray-600 select-none"
+                                title="Drag to reorder"
+                                onMouseDown={(e) => {
+                                  e.stopPropagation();
+                                  setRowDragHandleActive(true);
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                }}
+                              >
+                                ☰
+                              </span>
+                              <span>{cellDisplay(row, col)}</span>
+                            </div>
+                          ) : (
+                            cellDisplay(row, col)
+                          )}
+                        </td>
+                      );
+                    })}
+                    <td className="px-3 py-2 text-right whitespace-nowrap space-x-1 sticky right-0 z-10 bg-white group-hover:bg-blue-50 border-l border-gray-200">
+                      <button onClick={(e) => { e.stopPropagation(); handleDeleteClick(row.id as string); }} className="text-red-400 hover:text-red-600 text-xs">Delete</button>
+                    </td>
+                  </tr>
+                );
+              })}
               {filtered.length === 0 && (
                 <tr>
                   <td colSpan={visibleCols.length + 1} className="px-3 py-8 text-center text-gray-400">
