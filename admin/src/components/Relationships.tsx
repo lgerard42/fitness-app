@@ -63,6 +63,30 @@ export default function Relationships({
         { label: 'Tertiary Muscles', tableKey: 'tertiaryMuscles' }
       );
     }
+
+    // Primary Motions: show relationships to Variations and Motion Planes
+    if (tableKey === 'primaryMotions') {
+      relationships.push(
+        { label: 'Motion Variations', tableKey: 'primaryMotionVariations' },
+        { label: 'Motion Planes', tableKey: 'motionPlanes' }
+      );
+    }
+
+    // Primary Motion Variations: show relationships to Primary Motions and Motion Planes
+    if (tableKey === 'primaryMotionVariations') {
+      relationships.push(
+        { label: 'Primary Motions', tableKey: 'primaryMotions' },
+        { label: 'Motion Planes', tableKey: 'motionPlanes' }
+      );
+    }
+
+    // Motion Planes: show relationships to Primary Motions and Variations
+    if (tableKey === 'motionPlanes') {
+      relationships.push(
+        { label: 'Primary Motions', tableKey: 'primaryMotions' },
+        { label: 'Motion Variations', tableKey: 'primaryMotionVariations' }
+      );
+    }
     
     return relationships;
   }, [tableKey, recordData]);

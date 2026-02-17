@@ -254,6 +254,8 @@ export const TABLE_REGISTRY: TableSchema[] = [
       { name: 'common_names', type: 'string[]', defaultValue: [] },
       { name: 'short_description', type: 'string' },
       { name: 'muscle_targets', type: 'json', jsonShape: 'muscle_targets' },
+      { name: 'variation_ids', type: 'fk[]', refTable: 'primaryMotionVariations', refLabelField: 'label' },
+      { name: 'motion_plane_ids', type: 'fk[]', refTable: 'motionPlanes', refLabelField: 'label' },
     ]),
   },
   {
@@ -278,7 +280,10 @@ export const TABLE_REGISTRY: TableSchema[] = [
     group: 'Motions',
     idField: 'id',
     labelField: 'label',
-    fields: subLabelFieldsNoIcon(),
+    fields: subLabelFieldsNoIcon([
+      { name: 'variation_ids', type: 'fk[]', refTable: 'primaryMotionVariations', refLabelField: 'label' },
+      { name: 'primary_motion_ids', type: 'fk[]', refTable: 'primaryMotions', refLabelField: 'label' },
+    ]),
   },
 
   // ── Grips & Stance ──────────────────────────────────────────────

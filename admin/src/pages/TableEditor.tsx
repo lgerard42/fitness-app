@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { api, type TableSchema, type TableField, type FKRef } from '../api';
@@ -16,6 +17,114 @@ interface GroupedFKRef {
   tableLabel: string;
   field: string;
   refs: FKRef[];
+}
+
+// ─── Muscle Target Visualization ─────────────────────────────────────
+const MUSCLE_GROUP_COLORS: Record<string, string> = {
+  CHEST:     '#ef4444',
+  BACK:      '#3b82f6',
+  SHOULDERS: '#f97316',
+  ARMS:      '#a855f7',
+  LEGS:      '#22c55e',
+  CORE:      '#eab308',
+  NECK:      '#ec4899',
+};
+
+const MUSCLE_GROUP_LABEL: Record<string, string> = {
+  CHEST: 'Chest', BACK: 'Back', SHOULDERS: 'Shoulders',
+  ARMS: 'Arms', LEGS: 'Legs', CORE: 'Core', NECK: 'Neck',
+};
+
+function MuscleTargetBar({ targets }: { targets: Record<string, unknown> }) {
+  const [hovered, setHovered] = React.useState<string | null>(null);
+  const [tooltipPos, setTooltipPos] = React.useState<{ top: number; left: number } | null>(null);
+  const barRef = useRef<HTMLDivElement>(null);
+
+  const groups = Object.entries(targets)
+    .filter(([k]) => k !== '_score' && MUSCLE_GROUP_COLORS[k])
+    .map(([k, v]) => ({ key: k, score: (v as Record<string, unknown>)?._score as number || 0 }))
+    .filter(g => g.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  const handleMouseEnter = useCallback(() => {
+    const el = barRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    setTooltipPos({
+      left: rect.left,
+      top: rect.top - 4,
+    });
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    setTooltipPos(null);
+    setHovered(null);
+  }, []);
+
+  if (groups.length === 0) return <span className="text-gray-300 text-xs">--</span>;
+
+  const totalScore = groups.reduce((sum, g) => sum + g.score, 0);
+
+  const tooltipEl =
+    tooltipPos && typeof document !== 'undefined'
+      ? createPortal(
+          <div
+            className="fixed z-[9999] pointer-events-none -translate-y-full"
+            style={{ left: tooltipPos.left, top: tooltipPos.top }}
+          >
+            <div className="bg-gray-900 text-white rounded-md px-2.5 py-1.5 shadow-lg whitespace-nowrap" style={{ fontSize: '10px' }}>
+              {groups.map(g => (
+                <div key={g.key} className="flex items-center gap-1.5 py-0.5">
+                  <span className="inline-block w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: MUSCLE_GROUP_COLORS[g.key] }} />
+                  <span className="font-medium">{MUSCLE_GROUP_LABEL[g.key] || g.key}</span>
+                  <span className="text-gray-400 ml-auto pl-3">{g.score.toFixed(1)}</span>
+                </div>
+              ))}
+            </div>
+          </div>,
+          document.body
+        )
+      : null;
+
+  return (
+    <>
+      <div
+        ref={barRef}
+        className="relative"
+        style={{ minWidth: '80px', maxWidth: '160px' }}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        <div className="flex h-5 rounded overflow-hidden bg-gray-100 cursor-default">
+          {groups.map(g => {
+            const pct = (g.score / totalScore) * 100;
+            const color = MUSCLE_GROUP_COLORS[g.key];
+            const isHov = hovered === g.key;
+            return (
+              <div
+                key={g.key}
+                className="relative flex items-center justify-center transition-opacity duration-100"
+                style={{
+                  width: `${pct}%`,
+                  minWidth: pct > 8 ? '14px' : '4px',
+                  backgroundColor: color,
+                  opacity: hovered && !isHov ? 0.4 : 1,
+                }}
+                onMouseEnter={() => setHovered(g.key)}
+              >
+                {pct > 18 && (
+                  <span className="text-white font-semibold leading-none select-none" style={{ fontSize: '8px' }}>
+                    {MUSCLE_GROUP_LABEL[g.key]?.[0] || g.key[0]}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      {tooltipEl}
+    </>
+  );
 }
 
 export default function TableEditor({ schemas, onDataChange }: TableEditorProps) {
@@ -114,9 +223,7 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
 
   const initializeDefaultColumns = useCallback(() => {
     if (!schema) return;
-    const allFields = schema.fields.filter(
-      (f) => !['json'].includes(f.type) || f.jsonShape !== 'muscle_targets'
-    );
+    const allFields = schema.fields;
     const defaultOrder = allFields.map((f) => f.name);
     const defaultVisible = defaultOrder.slice(0, 8);
     setColumnOrder(defaultOrder);
@@ -251,16 +358,13 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
     if (!schema) return [];
     if (columnOrder.length === 0 || visibleColumns.length === 0) {
       // Fallback to default if not loaded yet
-      return schema.fields
-        .filter((f) => !['json'].includes(f.type) || f.jsonShape !== 'muscle_targets')
-        .slice(0, 8);
+      return schema.fields.slice(0, 8);
     }
     // Use custom order and visibility
     const fieldMap = new Map(schema.fields.map((f) => [f.name, f]));
     return columnOrder
       .map((name) => fieldMap.get(name))
-      .filter((f): f is TableField => f !== undefined && visibleColumns.includes(f.name))
-      .filter((f) => !['json'].includes(f.type) || f.jsonShape !== 'muscle_targets');
+      .filter((f): f is TableField => f !== undefined && visibleColumns.includes(f.name));
   }, [schema, columnOrder, visibleColumns]);
 
   const handleSort = (col: string) => {
@@ -574,7 +678,7 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
   // Column settings data for modal
   const columnSettingsData = useMemo(() => {
     if (!schema) return null;
-    const allFields = schema.fields.filter((f) => !['json'].includes(f.type) || f.jsonShape !== 'muscle_targets');
+    const allFields = schema.fields;
     const defaultOrder = allFields.map((f) => f.name);
     const defaultVisible = defaultOrder.slice(0, 8);
     return {
@@ -604,7 +708,12 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
         </span>
       );
     }
-    if (field.type === 'json') return <span className="text-xs text-gray-400">{'{...}'}</span>;
+    if (field.type === 'json') {
+      if (field.jsonShape === 'muscle_targets' && val && typeof val === 'object') {
+        return <MuscleTargetBar targets={val as Record<string, unknown>} />;
+      }
+      return <span className="text-xs text-gray-400">{'{...}'}</span>;
+    }
     if (field.type === 'fk' && field.refTable && refData[field.refTable]) {
       const ref = refData[field.refTable].find((r) => r.id === val);
       if (ref) return String(ref[field.refLabelField || 'label'] || val);

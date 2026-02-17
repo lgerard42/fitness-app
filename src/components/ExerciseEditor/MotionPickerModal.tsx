@@ -27,6 +27,8 @@ interface PrimaryMotion {
   sub_label?: string;
   short_description?: string;
   muscle_targets?: Record<string, any>;
+  variation_ids?: string[];
+  motion_plane_ids?: string[];
   is_active: boolean;
 }
 
@@ -43,6 +45,8 @@ interface PrimaryMotionVariation {
 interface MotionPlane {
   id: string;
   label: string;
+  variation_ids?: string[];
+  primary_motion_ids?: string[];
   is_active: boolean;
 }
 
@@ -414,9 +418,12 @@ const MotionPickerModal: React.FC<MotionPickerModalProps> = ({
 
   // Get filtered and extra variations for a motion
   const getVariationsForMotion = (motionId: string, sectionPrimaryId: string) => {
-    const allVariations = primaryMotionVariations
-      .filter(v => v.primary_motion_key === motionId)
-      .sort((a, b) => {
+    const motion = primaryMotions.find(m => m.id === motionId);
+    const varIds = motion?.variation_ids;
+    const allVariations = (varIds && varIds.length > 0
+      ? primaryMotionVariations.filter(v => varIds.includes(v.id))
+      : primaryMotionVariations.filter(v => v.primary_motion_key === motionId)
+    ).sort((a, b) => {
         const scoreA = getPrimaryScore(a.muscle_targets, sectionPrimaryId);
         const scoreB = getPrimaryScore(b.muscle_targets, sectionPrimaryId);
         return scoreB - scoreA;
@@ -453,11 +460,15 @@ const MotionPickerModal: React.FC<MotionPickerModalProps> = ({
     return { filteredVariations, extraVariations };
   };
 
-  // Get variations for selected primary motion
+  // Get variations for selected primary motion (uses denormalized variation_ids when available)
   const availableVariations = useMemo(() => {
     if (!selectedPrimary) return [];
+    const motion = primaryMotions.find(m => m.id === selectedPrimary);
+    if (motion?.variation_ids && motion.variation_ids.length > 0) {
+      return primaryMotionVariations.filter(v => motion.variation_ids!.includes(v.id));
+    }
     return primaryMotionVariations.filter(v => v.primary_motion_key === selectedPrimary);
-  }, [selectedPrimary, primaryMotionVariations]);
+  }, [selectedPrimary, primaryMotions, primaryMotionVariations]);
 
   // Compute current muscles based on selection (will update when allTertiaryMuscles loads)
   const computedMuscles = useMemo((): MuscleSelections | null => {

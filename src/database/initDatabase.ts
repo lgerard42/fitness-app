@@ -5,7 +5,7 @@
 import * as SQLite from 'expo-sqlite';
 
 const DATABASE_NAME = 'workout.db';
-const DATABASE_VERSION = 9;
+const DATABASE_VERSION = 10;
 
 export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
   const db = await SQLite.openDatabaseAsync(DATABASE_NAME);
@@ -45,6 +45,9 @@ export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
     }
     if (currentVersion < 9) {
       await migrateToV9(db);
+    }
+    if (currentVersion < 10) {
+      await migrateToV10(db);
     }
     await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
   }
@@ -249,6 +252,8 @@ async function createTables(db: SQLite.SQLiteDatabase) {
       sub_label TEXT,
       common_names TEXT,
       short_description TEXT,
+      variation_ids TEXT DEFAULT '[]',
+      primary_motion_ids TEXT DEFAULT '[]',
       sort_order INTEGER DEFAULT 0,
       is_active INTEGER DEFAULT 1
     );
@@ -264,6 +269,8 @@ async function createTables(db: SQLite.SQLiteDatabase) {
       common_names TEXT,
       short_description TEXT,
       muscle_targets TEXT,
+      variation_ids TEXT DEFAULT '[]',
+      motion_plane_ids TEXT DEFAULT '[]',
       sort_order INTEGER DEFAULT 0,
       is_active INTEGER DEFAULT 1
     );
@@ -463,6 +470,72 @@ async function migrateToV9(db: SQLite.SQLiteDatabase) {
     }
   } catch (e) {
     console.warn('migrateToV9: failed to add denormalized muscle columns', e);
+  }
+}
+
+async function migrateToV10(db: SQLite.SQLiteDatabase) {
+  // V10 adds denormalized FK columns across motion tables
+  const primaryMotionVariations = require('./tables/primaryMotionVariations.json') as Record<string, unknown>[];
+
+  try {
+    // Add variation_ids and motion_plane_ids to primary_motions
+    const pmInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(primary_motions)`);
+    if (!pmInfo.some(col => col.name === 'variation_ids')) {
+      await db.execAsync(`ALTER TABLE primary_motions ADD COLUMN variation_ids TEXT DEFAULT '[]'`);
+    }
+    if (!pmInfo.some(col => col.name === 'motion_plane_ids')) {
+      await db.execAsync(`ALTER TABLE primary_motions ADD COLUMN motion_plane_ids TEXT DEFAULT '[]'`);
+    }
+
+    // Add variation_ids and primary_motion_ids to motion_planes
+    const mpInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(motion_planes)`);
+    if (!mpInfo.some(col => col.name === 'variation_ids')) {
+      await db.execAsync(`ALTER TABLE motion_planes ADD COLUMN variation_ids TEXT DEFAULT '[]'`);
+    }
+    if (!mpInfo.some(col => col.name === 'primary_motion_ids')) {
+      await db.execAsync(`ALTER TABLE motion_planes ADD COLUMN primary_motion_ids TEXT DEFAULT '[]'`);
+    }
+
+    // Populate primary_motions.variation_ids and motion_plane_ids
+    const pmVarMap: Record<string, string[]> = {};
+    const pmPlaneMap: Record<string, Set<string>> = {};
+    for (const v of primaryMotionVariations) {
+      const pmKey = String(v.primary_motion_key);
+      if (!pmVarMap[pmKey]) pmVarMap[pmKey] = [];
+      pmVarMap[pmKey].push(String(v.id));
+      if (!pmPlaneMap[pmKey]) pmPlaneMap[pmKey] = new Set();
+      const planes = Array.isArray(v.motion_planes) ? (v.motion_planes as string[]) : [];
+      planes.forEach(p => pmPlaneMap[pmKey].add(p));
+    }
+    for (const [pmKey, varIds] of Object.entries(pmVarMap)) {
+      const planeIds = [...(pmPlaneMap[pmKey] || [])];
+      await db.runAsync(
+        `UPDATE primary_motions SET variation_ids = ?, motion_plane_ids = ? WHERE id = ?`,
+        JSON.stringify(varIds), JSON.stringify(planeIds), pmKey
+      );
+    }
+
+    // Populate motion_planes.variation_ids and primary_motion_ids
+    const mpVarMap: Record<string, string[]> = {};
+    const mpPmMap: Record<string, Set<string>> = {};
+    for (const v of primaryMotionVariations) {
+      const planes = Array.isArray(v.motion_planes) ? (v.motion_planes as string[]) : [];
+      for (const planeId of planes) {
+        if (!mpVarMap[planeId]) mpVarMap[planeId] = [];
+        mpVarMap[planeId].push(String(v.id));
+        if (!mpPmMap[planeId]) mpPmMap[planeId] = new Set();
+        mpPmMap[planeId].add(String(v.primary_motion_key));
+      }
+    }
+    for (const [planeId, varIds] of Object.entries(mpVarMap)) {
+      const pmIds = [...(mpPmMap[planeId] || [])];
+      await db.runAsync(
+        `UPDATE motion_planes SET variation_ids = ?, primary_motion_ids = ? WHERE id = ?`,
+        JSON.stringify(varIds), JSON.stringify(pmIds), planeId
+      );
+    }
+  } catch (e) {
+    console.warn('migrateToV10: failed to add denormalized motion columns', e);
   }
 }
 
@@ -827,13 +900,15 @@ async function seedMotionData(db: SQLite.SQLiteDatabase) {
 
   for (const row of motionPlanes) {
     await db.runAsync(
-      `INSERT OR REPLACE INTO motion_planes (id, label, sub_label, common_names, short_description, sort_order, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT OR REPLACE INTO motion_planes (id, label, sub_label, common_names, short_description, variation_ids, primary_motion_ids, sort_order, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       str(row.id),
       str(row.label),
       str(row.sub_label),
       Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
       str(row.short_description),
+      Array.isArray(row.variation_ids) ? JSON.stringify(row.variation_ids) : '[]',
+      Array.isArray(row.primary_motion_ids) ? JSON.stringify(row.primary_motion_ids) : '[]',
       num(row.sort_order, 0),
       row.is_active !== false ? 1 : 0
     );
@@ -842,8 +917,8 @@ async function seedMotionData(db: SQLite.SQLiteDatabase) {
   for (const row of primaryMotions) {
     const upperLowerBody = str(row.upperLowerBody ?? row.upper_lower_body);
     await db.runAsync(
-      `INSERT OR REPLACE INTO primary_motions (id, upper_lower_body, label, sub_label, common_names, short_description, muscle_targets, sort_order, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT OR REPLACE INTO primary_motions (id, upper_lower_body, label, sub_label, common_names, short_description, muscle_targets, variation_ids, motion_plane_ids, sort_order, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       str(row.id),
       upperLowerBody,
       str(row.label),
@@ -851,6 +926,8 @@ async function seedMotionData(db: SQLite.SQLiteDatabase) {
       Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
       str(row.short_description),
       row.muscle_targets ? JSON.stringify(row.muscle_targets) : '{}',
+      Array.isArray(row.variation_ids) ? JSON.stringify(row.variation_ids) : '[]',
+      Array.isArray(row.motion_plane_ids) ? JSON.stringify(row.motion_plane_ids) : '[]',
       num(row.sort_order, 0),
       row.is_active !== false ? 1 : 0
     );

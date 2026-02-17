@@ -11,6 +11,7 @@ import JsonEditor from './FieldRenderers/JsonEditor';
 import MuscleTargetTree from './FieldRenderers/MuscleTargetTree';
 import ExerciseInputPermissionsField from './FieldRenderers/ExerciseInputPermissionsField';
 import MuscleHierarchyField from './FieldRenderers/MuscleHierarchyField';
+import MotionHierarchyField from './FieldRenderers/MotionHierarchyField';
 import Relationships from './Relationships';
 
 const MATRIX_FIELDS = ['allowed_grip_types', 'allowed_grip_widths', 'allowed_stance_types', 'allowed_stance_widths'];
@@ -21,11 +22,22 @@ const MUSCLE_HIERARCHY_FIELDS: Record<string, string[]> = {
   secondaryMuscles: ['primary_muscle_ids', 'tertiary_muscle_ids'],
   tertiaryMuscles: ['secondary_muscle_ids', 'primary_muscle_ids'],
 };
-// The first field in each list is used as the "anchor" for positioning
 const MUSCLE_HIERARCHY_ANCHOR: Record<string, string> = {
   primaryMuscles: 'secondary_muscle_ids',
   secondaryMuscles: 'primary_muscle_ids',
   tertiaryMuscles: 'secondary_muscle_ids',
+};
+
+const MOTION_TABLES = ['primaryMotions', 'primaryMotionVariations', 'motionPlanes'];
+const MOTION_HIERARCHY_FIELDS: Record<string, string[]> = {
+  primaryMotions: ['variation_ids', 'motion_plane_ids'],
+  primaryMotionVariations: ['primary_motion_key', 'motion_planes'],
+  motionPlanes: ['variation_ids', 'primary_motion_ids'],
+};
+const MOTION_HIERARCHY_ANCHOR: Record<string, string> = {
+  primaryMotions: 'variation_ids',
+  primaryMotionVariations: 'primary_motion_key',
+  motionPlanes: 'variation_ids',
 };
 
 interface RowEditorProps {
@@ -51,8 +63,17 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
   };
 
   const isMuscleTable = MUSCLE_TABLES.includes(schema.key);
-  const hiddenHierarchyFields = isMuscleTable ? MUSCLE_HIERARCHY_FIELDS[schema.key] || [] : [];
-  const hierarchyAnchor = isMuscleTable ? MUSCLE_HIERARCHY_ANCHOR[schema.key] : '';
+  const isMotionTable = MOTION_TABLES.includes(schema.key);
+  const hiddenHierarchyFields = isMuscleTable
+    ? MUSCLE_HIERARCHY_FIELDS[schema.key] || []
+    : isMotionTable
+      ? MOTION_HIERARCHY_FIELDS[schema.key] || []
+      : [];
+  const hierarchyAnchor = isMuscleTable
+    ? MUSCLE_HIERARCHY_ANCHOR[schema.key]
+    : isMotionTable
+      ? MOTION_HIERARCHY_ANCHOR[schema.key]
+      : '';
 
   // Check if there are unsaved changes
   const hasUnsavedChanges = useMemo(() => {
@@ -210,6 +231,28 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
                   );
 
                 case 'fk':
+                  // Use MotionHierarchyField for the anchor field on motion tables
+                  if (isMotionTable && field.name === hierarchyAnchor) {
+                    const fieldNames = MOTION_HIERARCHY_FIELDS[schema.key] || [];
+                    const motionHierarchyLabel = (
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Motion Hierarchy
+                        <span className="text-xs text-gray-400 ml-2">{fieldNames.join(' + ')}</span>
+                      </label>
+                    );
+                    return (
+                      <div key={field.name}>
+                        {motionHierarchyLabel}
+                        <MotionHierarchyField
+                          tableKey={schema.key as 'primaryMotions' | 'primaryMotionVariations' | 'motionPlanes'}
+                          currentRecordId={recordId}
+                          onFieldsChange={(fields) => {
+                            updateMultiple(fields);
+                          }}
+                        />
+                      </div>
+                    );
+                  }
                   return (
                     <div key={field.name}>
                       {label}
@@ -238,6 +281,28 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
                         {muscleHierarchyLabel}
                         <MuscleHierarchyField
                           tableKey={schema.key as 'primaryMuscles' | 'secondaryMuscles' | 'tertiaryMuscles'}
+                          currentRecordId={recordId}
+                          onFieldsChange={(fields) => {
+                            updateMultiple(fields);
+                          }}
+                        />
+                      </div>
+                    );
+                  }
+                  // Use MotionHierarchyField for the anchor field on motion tables
+                  if (isMotionTable && field.name === hierarchyAnchor) {
+                    const fieldNames = MOTION_HIERARCHY_FIELDS[schema.key] || [];
+                    const motionHierarchyLabel = (
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Motion Hierarchy
+                        <span className="text-xs text-gray-400 ml-2">{fieldNames.join(' + ')}</span>
+                      </label>
+                    );
+                    return (
+                      <div key={field.name}>
+                        {motionHierarchyLabel}
+                        <MotionHierarchyField
+                          tableKey={schema.key as 'primaryMotions' | 'primaryMotionVariations' | 'motionPlanes'}
                           currentRecordId={recordId}
                           onFieldsChange={(fields) => {
                             updateMultiple(fields);
