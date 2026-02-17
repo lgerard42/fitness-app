@@ -79,32 +79,41 @@ function MuscleTargetsSubtree({
         if (!sNode || typeof sNode !== 'object') continue;
         const tKeys = Object.keys(sNode).filter(k => k !== '_score');
         if (tKeys.length > 0) {
-          sNode._score = Math.round(tKeys.reduce((sum, tId) => {
+          const sum = tKeys.reduce((sum, tId) => {
             const tNode = sNode[tId] as Record<string, unknown> | undefined;
-            return sum + ((tNode?._score as number) || 0);
-          }, 0) * 100) / 100;
+            const score = typeof tNode?._score === 'number' && !isNaN(tNode._score) ? tNode._score : 0;
+            return sum + score;
+          }, 0);
+          sNode._score = Math.round(sum * 100) / 100;
         }
       }
       if (sKeys.length > 0) {
-        pNode._score = Math.round(sKeys.reduce((sum, sId) => {
+        const sum = sKeys.reduce((sum, sId) => {
           const sNode = pNode[sId] as Record<string, unknown> | undefined;
-          return sum + ((sNode?._score as number) || 0);
-        }, 0) * 100) / 100;
+          const score = typeof sNode?._score === 'number' && !isNaN(sNode._score) ? sNode._score : 0;
+          return sum + score;
+        }, 0);
+        pNode._score = Math.round(sum * 100) / 100;
       }
     }
   };
 
   const setScore = (path: string[], score: number) => {
     if (readOnly || !onChange) return;
+    if (isNaN(score)) return; // Don't set NaN values
     const nd = JSON.parse(JSON.stringify(data));
     let node = nd;
-    for (let i = 0; i < path.length - 1; i++) {
-      if (!node[path[i]] || typeof node[path[i]] !== 'object') node[path[i]] = { _score: 0 };
+    // Navigate to the parent node (path doesn't include '_score')
+    for (let i = 0; i < path.length; i++) {
+      if (!node[path[i]] || typeof node[path[i]] !== 'object') {
+        node[path[i]] = { _score: 0 };
+      }
       node = node[path[i]];
     }
-    const last = path[path.length - 1];
-    if (!node[last] || typeof node[last] !== 'object') node[last] = { _score: score };
-    else node[last]._score = score;
+    // Set _score on the final node
+    if (typeof node === 'object' && node !== null) {
+      node._score = score;
+    }
     recomputeParentScores(nd);
     onChange(nd);
   };
@@ -156,15 +165,50 @@ function MuscleTargetsSubtree({
   const activePrimaries = Object.keys(data).filter(k => k !== '_score');
   const unusedPrimaries = primaryMuscles.filter(pm => !activePrimaries.includes(pm.id));
 
-  const ScoreInput = ({ path, score, computed }: { path: string[]; score: number; computed?: boolean }) =>
-    readOnly || computed ? (
-      <span className={`text-xs font-mono px-1 py-0.5 rounded ${computed ? 'bg-gray-100 text-gray-500 italic' : 'text-gray-500'}`}
-        title={computed ? 'Auto-computed from children' : undefined}>{score}</span>
-    ) : (
-      <input type="number" step="0.1" value={score}
-        onChange={e => setScore(path, parseFloat(e.target.value) || 0)}
-        className="w-14 px-1 py-0.5 border rounded text-xs text-center focus:outline-none focus:ring-1 focus:ring-blue-500" />
+  const ScoreInput = ({ path, score, computed }: { path: string[]; score: number; computed?: boolean }) => {
+    const [localValue, setLocalValue] = useState<string>(String(score));
+    const [isFocused, setIsFocused] = useState(false);
+    
+    useEffect(() => {
+      if (!isFocused) {
+        setLocalValue(String(score));
+      }
+    }, [score, isFocused]);
+
+    if (readOnly || computed) {
+      return (
+        <span className={`text-xs font-mono px-1 py-0.5 rounded ${computed ? 'bg-gray-100 text-gray-500 italic' : 'text-gray-500'}`}
+          title={computed ? 'Auto-computed from children' : undefined}>{score}</span>
+      );
+    }
+
+    return (
+      <input 
+        type="number" 
+        step="0.1" 
+        value={localValue}
+        onFocus={() => setIsFocused(true)}
+        onChange={e => {
+          const val = e.target.value;
+          setLocalValue(val);
+        }}
+        onBlur={e => {
+          setIsFocused(false);
+          const numVal = parseFloat(e.target.value);
+          if (isNaN(numVal) || e.target.value === '') {
+            setLocalValue(String(score));
+          } else {
+            setScore(path, numVal);
+          }
+        }}
+        onKeyDown={e => {
+          if (e.key === 'Enter') {
+            e.currentTarget.blur();
+          }
+        }}
+        className="w-14 px-1 py-0.5 border rounded text-xs text-center focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
     );
+  };
 
   return (
     <div className="space-y-1">
@@ -186,7 +230,7 @@ function MuscleTargetsSubtree({
                 {isExp ? '▼' : '▶'}
               </button>
               <span className="text-xs font-medium text-red-800">{pLabel}</span>
-              <ScoreInput path={[pId, '_score']} score={pScore} computed={pIsComputed} />
+              <ScoreInput path={[pId]} score={pScore} computed={pIsComputed} />
               {!readOnly && (
                 <button type="button" onClick={() => removeKey([pId])} className="ml-auto text-[10px] text-red-400 hover:text-red-600">×</button>
               )}
@@ -217,7 +261,7 @@ function MuscleTargetsSubtree({
                           <span className="text-[8px] text-gray-400 w-3 flex items-center justify-center">●</span>
                         )}
                         <span className="text-xs text-red-800">{sLabel}</span>
-                        <ScoreInput path={[pId, sId, '_score']} score={sScore} computed={sIsComputed} />
+                        <ScoreInput path={[pId, sId]} score={sScore} computed={sIsComputed} />
                         {!readOnly && (
                           <button type="button" onClick={() => removeKey([pId, sId])} className="ml-auto text-[10px] text-red-400 hover:text-red-600">×</button>
                         )}
@@ -231,7 +275,7 @@ function MuscleTargetsSubtree({
                             return (
                               <div key={tId} className="flex items-center gap-1.5 px-2 py-0.5 bg-red-50/60 rounded">
                                 <span className="text-[11px] text-red-800">{tLabel}</span>
-                                <ScoreInput path={[pId, sId, tId, '_score']} score={tScore} />
+                                <ScoreInput path={[pId, sId, tId]} score={tScore} />
                                 {!readOnly && (
                                   <button type="button" onClick={() => removeKey([pId, sId, tId])} className="ml-auto text-[10px] text-red-400 hover:text-red-600">×</button>
                                 )}

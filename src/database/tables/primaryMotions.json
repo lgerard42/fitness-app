@@ -538,9 +538,11 @@
     "short_description": "Moving the arms in a wide arc away from the midline to target the posterior torso.",
     "muscle_targets": {
       "SHOULDERS": {
-        "_score": 1.2,
+        "_score": null,
         "REAR_DELTS": {
-          "_score": 1.2
+          "_score": {
+            "_score": 0.1
+          }
         }
       },
       "BACK": {

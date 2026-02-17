@@ -58,35 +58,39 @@ export default function MuscleTargetTree({ value, onChange }: MuscleTargetTreePr
         if (!sNode || typeof sNode !== 'object') continue;
         const tKeys = Object.keys(sNode).filter(k => k !== '_score');
         if (tKeys.length > 0) {
-          sNode._score = Math.round(tKeys.reduce((sum, tId) => {
+          const sum = tKeys.reduce((sum, tId) => {
             const tNode = sNode[tId] as Record<string, unknown> | undefined;
-            return sum + ((tNode?._score as number) || 0);
-          }, 0) * 100) / 100;
+            const score = typeof tNode?._score === 'number' && !isNaN(tNode._score) ? tNode._score : 0;
+            return sum + score;
+          }, 0);
+          sNode._score = Math.round(sum * 100) / 100;
         }
       }
       if (sKeys.length > 0) {
-        pNode._score = Math.round(sKeys.reduce((sum, sId) => {
+        const sum = sKeys.reduce((sum, sId) => {
           const sNode = pNode[sId] as Record<string, unknown> | undefined;
-          return sum + ((sNode?._score as number) || 0);
-        }, 0) * 100) / 100;
+          const score = typeof sNode?._score === 'number' && !isNaN(sNode._score) ? sNode._score : 0;
+          return sum + score;
+        }, 0);
+        pNode._score = Math.round(sum * 100) / 100;
       }
     }
   };
 
   const setScore = (path: string[], score: number) => {
+    if (isNaN(score)) return; // Don't set NaN values
     const newData = JSON.parse(JSON.stringify(data));
     let node = newData;
-    for (let i = 0; i < path.length - 1; i++) {
+    // Navigate to the parent node (path doesn't include '_score')
+    for (let i = 0; i < path.length; i++) {
       if (!node[path[i]] || typeof node[path[i]] !== 'object') {
         node[path[i]] = { _score: 0 };
       }
       node = node[path[i]];
     }
-    const last = path[path.length - 1];
-    if (!node[last] || typeof node[last] !== 'object') {
-      node[last] = { _score: score };
-    } else {
-      node[last]._score = score;
+    // Set _score on the final node
+    if (typeof node === 'object' && node !== null) {
+      node._score = score;
     }
     recomputeParentScores(newData);
     onChange(newData);
@@ -149,19 +153,51 @@ export default function MuscleTargetTree({ value, onChange }: MuscleTargetTreePr
       .map((tm) => ({ id: tm.id as string, label: tm.label as string }));
   };
 
-  const ScoreInput = ({ path, currentScore, computed }: { path: string[]; currentScore: number; computed?: boolean }) =>
-    computed ? (
-      <span className="w-16 px-1 py-0.5 bg-gray-100 rounded text-xs text-center text-gray-500 italic inline-block"
-        title="Auto-computed from children">{currentScore}</span>
-    ) : (
+  const ScoreInput = ({ path, currentScore, computed }: { path: string[]; currentScore: number; computed?: boolean }) => {
+    const [localValue, setLocalValue] = useState<string>(String(currentScore));
+    const [isFocused, setIsFocused] = useState(false);
+    
+    useEffect(() => {
+      if (!isFocused) {
+        setLocalValue(String(currentScore));
+      }
+    }, [currentScore, isFocused]);
+
+    if (computed) {
+      return (
+        <span className="w-16 px-1 py-0.5 bg-gray-100 rounded text-xs text-center text-gray-500 italic inline-block"
+          title="Auto-computed from children">{currentScore}</span>
+      );
+    }
+
+    return (
       <input
         type="number"
         step="0.1"
-        value={currentScore}
-        onChange={(e) => setScore(path, parseFloat(e.target.value) || 0)}
-        className="w-16 px-1 py-0.5 border rounded text-xs text-center focus:outline-none focus:ring-1 focus:ring-blue-500"
+        value={localValue}
+        onFocus={() => setIsFocused(true)}
+        onChange={(e) => {
+          const val = e.target.value;
+          setLocalValue(val);
+        }}
+        onBlur={(e) => {
+          setIsFocused(false);
+          const numVal = parseFloat(e.target.value);
+          if (isNaN(numVal) || e.target.value === '') {
+            setLocalValue(String(currentScore));
+          } else {
+            setScore(path, numVal);
+          }
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.currentTarget.blur();
+          }
+        }}
+        className="w-16 px-1 py-0.5 border rounded text-xs text-center focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
       />
     );
+  };
 
   // List of active primary keys in the data
   const activePrimaries = Object.keys(data).filter((k) => k !== '_score');
@@ -192,7 +228,7 @@ export default function MuscleTargetTree({ value, onChange }: MuscleTargetTreePr
               </button>
               <span className="font-medium text-sm text-red-800">{primaryLabel}</span>
               <span className="text-xs text-gray-400">_score:</span>
-              <ScoreInput path={[primaryId, '_score']} currentScore={primaryScore} computed={secondaryKeys.length > 0} />
+              <ScoreInput path={[primaryId]} currentScore={primaryScore} computed={secondaryKeys.length > 0} />
               <button
                 type="button"
                 onClick={() => removeKey([primaryId])}
@@ -235,7 +271,7 @@ export default function MuscleTargetTree({ value, onChange }: MuscleTargetTreePr
                         )}
                         <span className="text-sm text-red-800">{secondaryLabel}</span>
                         <span className="text-xs text-gray-400">_score:</span>
-                        <ScoreInput path={[primaryId, secondaryId, '_score']} currentScore={secondaryScore} computed={tertiaryKeys.length > 0} />
+                        <ScoreInput path={[primaryId, secondaryId]} currentScore={secondaryScore} computed={tertiaryKeys.length > 0} />
                         <button
                           type="button"
                           onClick={() => removeKey([primaryId, secondaryId])}
@@ -258,7 +294,7 @@ export default function MuscleTargetTree({ value, onChange }: MuscleTargetTreePr
                                 <span className="text-xs text-red-800">{tertiaryLabel}</span>
                                 <span className="text-xs text-gray-400">_score:</span>
                                 <ScoreInput
-                                  path={[primaryId, secondaryId, tertiaryId, '_score']}
+                                  path={[primaryId, secondaryId, tertiaryId]}
                                   currentScore={tertiaryScore}
                                 />
                                 <button

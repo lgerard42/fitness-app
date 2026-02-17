@@ -1,46 +1,1481 @@
 [
-  {"id": "CRUNCH_STD", "primary_motion_key": "AB_CRUNCH", "label": "Crunch", "common_names": ["Ab Crunch"], "short_description": "Spinal flexion toward pelvis.", "muscle_targets": {"CORE": {"_score": 1.0, "ABS": {"_score": 1.0, "UPPER_ABS": {"_score": 0.5}, "MIDDLE_ABS": {"_score": 0.5}}}}, "motion_planes": [], "sort_order": 0, "is_active": true},
-  {"id": "CRUSH_STD", "primary_motion_key": "CRUSH", "label": "Crush", "common_names": ["Svend Press"], "short_description": "Isometric inward squeezing.", "muscle_targets": {"CHEST": {"_score": 1.0, "MID_CHEST": {"_score": 1.0}}, "SHOULDERS": {"_score": 0.4, "FRONT_DELTS": {"_score": 0.4}}}, "motion_planes": [], "sort_order": 1, "is_active": true},
-  {"id": "CURL_STD", "primary_motion_key": "CURL", "label": "Standard Curl", "common_names": ["Bicep Curl"], "short_description": "Flexion of the elbow bringing weight to shoulder.", "muscle_targets": {"ARMS": {"_score": 1.4, "BICEPS": {"_score": 1.0, "INNER_BICEP": {"_score": 0.5}, "OUTER_BICEP": {"_score": 0.5}}, "FOREARMS": {"_score": 0.4, "BOTTOM_FOREARM": {"_score": 0.4}}}}, "motion_planes": ["LOW_LOW", "LOW_MID"], "sort_order": 2, "is_active": true},
-  {"id": "DIP_CHEST", "primary_motion_key": "DIP", "label": "Chest Dip", "common_names": ["Leaned Dip"], "short_description": "Pushing down with a forward lean.", "muscle_targets": {"CHEST": {"_score": 1.0, "LOWER_CHEST": {"_score": 1.0}}, "ARMS": {"_score": 0.7, "TRICEPS": {"_score": 0.7, "OUTER_TRICEP": {"_score": 0.35}, "DEEP_TRICEP": {"_score": 0.35}}}, "SHOULDERS": {"_score": 0.8, "FRONT_DELTS": {"_score": 0.8}}}, "motion_planes": [], "sort_order": 3, "is_active": true},
-  {"id": "DIP_TRICEPS", "primary_motion_key": "DIP", "label": "Tricep Dip", "common_names": ["Vertical Dip"], "short_description": "Pushing down with upright torso.", "muscle_targets": {"ARMS": {"_score": 1.0, "TRICEPS": {"_score": 1.0, "OUTER_TRICEP": {"_score": 0.5}, "INNER_TRICEP": {"_score": 0.5}}}, "SHOULDERS": {"_score": 0.7, "FRONT_DELTS": {"_score": 0.7}}, "CHEST": {"_score": 0.4, "LOWER_CHEST": {"_score": 0.4}}}, "motion_planes": [], "sort_order": 4, "is_active": true},
-  {"id": "EXT_BACK_STD", "primary_motion_key": "EXTENSION_BACK", "label": "Back Extension", "common_names": ["Hyperextension"], "short_description": "Extending trunk against gravity.", "muscle_targets": {"BACK": {"_score": 1.2, "LOWER_BACK": {"_score": 1.2}}, "LEGS": {"_score": 0.8, "GLUTES": {"_score": 0.5}, "HAMSTRINGS": {"_score": 0.3, "INNER_HAMSTRING": {"_score": 0.15}, "OUTER_HAMSTRING": {"_score": 0.15}}}}, "motion_planes": [], "sort_order": 5, "is_active": true},
-  {"id": "EXT_OVERHEAD", "primary_motion_key": "EXTENSION_ARM", "label": "Overhead Ext", "common_names": ["French Press"], "short_description": "Straightening arm from overhead (Shoulders flexed).", "muscle_targets": {"ARMS": {"_score": 1.0, "TRICEPS": {"_score": 1.0, "INNER_TRICEP": {"_score": 1.0}}}}, "motion_planes": ["LOW_HIGH", "MID_HIGH"], "sort_order": 6, "is_active": true},
-  {"id": "EXT_PUSHDOWN", "primary_motion_key": "EXTENSION_ARM", "label": "Pushdown", "common_names": ["Cable Extension"], "short_description": "Straightening arm downward (Shoulders neutral).", "muscle_targets": {"ARMS": {"_score": 1.0, "TRICEPS": {"_score": 1.0, "OUTER_TRICEP": {"_score": 0.5}, "DEEP_TRICEP": {"_score": 0.5}}}}, "motion_planes": [], "sort_order": 7, "is_active": true},
-  {"id": "FACE_PULL_HIGH", "primary_motion_key": "FACE_PULL", "label": "High Face Pull", "common_names": ["Eye-Level Pull"], "short_description": "Pulling toward the forehead.", "muscle_targets": {"SHOULDERS": {"_score": 1.9, "REAR_DELTS": {"_score": 1.0}, "ROTATOR_CUFF": {"_score": 0.9}}, "BACK": {"_score": 0.7, "TRAPS": {"_score": 0.7, "UPPER_TRAPS": {"_score": 0.7}}}}, "motion_planes": ["HIGH_HIGH", "MID_HIGH"], "sort_order": 8, "is_active": true},
-  {"id": "FACE_PULL_LOW", "primary_motion_key": "FACE_PULL", "label": "Low Face Pull", "common_names": ["Chin-Level Pull"], "short_description": "Pulling toward the chin.", "muscle_targets": {"SHOULDERS": {"_score": 1.5, "REAR_DELTS": {"_score": 1.5}}, "BACK": {"_score": 1.2, "RHOMBOIDS": {"_score": 0.7}, "MID_BACK": {"_score": 0.5}}}, "motion_planes": ["MID_MID", "HIGH_LOW"], "sort_order": 9, "is_active": true},
-  {"id": "FLY_DECLINE", "primary_motion_key": "FLY", "label": "Decline Fly", "common_names": ["Lower Fly"], "short_description": "Hugging arc at a downward angle.", "muscle_targets": {"CHEST": {"_score": 1.0, "LOWER_CHEST": {"_score": 1.0}}, "SHOULDERS": {"_score": 0.2, "FRONT_DELTS": {"_score": 0.2}}}, "motion_planes": ["HIGH_LOW", "MID_LOW"], "sort_order": 10, "is_active": true},
-  {"id": "FLY_FLAT", "primary_motion_key": "FLY", "label": "Flat Fly", "common_names": ["Chest Fly"], "short_description": "Hugging arc on a flat plane.", "muscle_targets": {"CHEST": {"_score": 1.0, "MID_CHEST": {"_score": 1.0}}, "SHOULDERS": {"_score": 0.4, "FRONT_DELTS": {"_score": 0.4}}}, "motion_planes": [], "sort_order": 11, "is_active": true},
-  {"id": "FLY_INCLINE", "primary_motion_key": "FLY", "label": "Incline Fly", "common_names": ["Upper Fly"], "short_description": "Hugging arc at an upward angle.", "muscle_targets": {"CHEST": {"_score": 1.0, "UPPER_CHEST": {"_score": 1.0}}, "SHOULDERS": {"_score": 0.6, "FRONT_DELTS": {"_score": 0.6}}}, "motion_planes": ["LOW_HIGH", "MID_HIGH"], "sort_order": 12, "is_active": true},
-  {"id": "FLY_REVERSE", "primary_motion_key": "REVERSE_FLY", "label": "Reverse Fly", "common_names": ["Rear Delt Fly"], "short_description": "Arcing arms backward (horizontal).", "muscle_targets": {"SHOULDERS": {"_score": 1.2, "REAR_DELTS": {"_score": 1.2}}, "BACK": {"_score": 0.9, "MID_BACK": {"_score": 0.5}, "RHOMBOIDS": {"_score": 0.4}}}, "motion_planes": ["MID_MID", "HIGH_HIGH"], "sort_order": 13, "is_active": true},
-  {"id": "FLY_REVERSE_DECLINE", "primary_motion_key": "REVERSE_FLY", "label": "Decline Rev Fly", "common_names": ["High Cable Rev Fly", "Rear Delt Cross"], "short_description": "Arcing arms backward (downward angle).", "muscle_targets": {"SHOULDERS": {"_score": 1.1, "REAR_DELTS": {"_score": 1.1}}, "BACK": {"_score": 1.0, "TRAPS": {"_score": 0.6, "LOWER_TRAPS": {"_score": 0.6}}, "RHOMBOIDS": {"_score": 0.4}}}, "motion_planes": ["HIGH_LOW", "HIGH_MID"], "sort_order": 14, "is_active": true},
-  {"id": "FLY_REVERSE_INCLINE", "primary_motion_key": "REVERSE_FLY", "label": "Incline Rev Fly", "common_names": ["Y-Fly"], "short_description": "Arcing arms backward (upward angle).", "muscle_targets": {"SHOULDERS": {"_score": 1.0, "REAR_DELTS": {"_score": 1.0}}, "BACK": {"_score": 0.9, "TRAPS": {"_score": 0.6, "LOWER_TRAPS": {"_score": 0.6}}, "LOWER_BACK": {"_score": 0.3}}}, "motion_planes": [], "sort_order": 15, "is_active": true},
-  {"id": "FLY_SCOOP", "primary_motion_key": "FLY", "label": "Scoop", "common_names": ["Low-to-High"], "short_description": "Upward underhand arcing path.", "muscle_targets": {"CHEST": {"_score": 1.0, "UPPER_CHEST": {"_score": 1.0}}, "SHOULDERS": {"_score": 0.7, "FRONT_DELTS": {"_score": 0.7}}}, "motion_planes": [], "sort_order": 16, "is_active": true},
-  {"id": "HINGE_STD", "primary_motion_key": "HINGE", "label": "Deadlift", "common_names": ["Conventional"], "short_description": "Hip-dominant pull from the floor with moderate knee flexion.", "muscle_targets": {"LEGS": {"_score": 1.7, "GLUTES": {"_score": 0.9}, "HAMSTRINGS": {"_score": 0.8, "OUTER_HAMSTRING": {"_score": 0.4}, "INNER_HAMSTRING": {"_score": 0.4}}}, "BACK": {"_score": 1.5, "LOWER_BACK": {"_score": 0.8}, "TRAPS": {"_score": 0.7, "UPPER_TRAPS": {"_score": 0.7}}}}, "motion_planes": [], "sort_order": 17, "is_active": true},
-  {"id": "HINGE_STRAIGHT", "primary_motion_key": "HINGE", "label": "Stiff Leg", "common_names": ["RDL"], "short_description": "Minimal knee bend hip hinge.", "muscle_targets": {"LEGS": {"_score": 1.7, "HAMSTRINGS": {"_score": 1.0, "OUTER_HAMSTRING": {"_score": 0.5}, "INNER_HAMSTRING": {"_score": 0.5}}, "GLUTES": {"_score": 0.7}}, "BACK": {"_score": 0.5, "LOWER_BACK": {"_score": 0.5}}}, "motion_planes": [], "sort_order": 18, "is_active": true},
-  {"id": "HINGE_THRUST", "primary_motion_key": "HINGE", "label": "Hip Thrust", "common_names": ["Glute Bridge", "Kas Glute Bridge"], "short_description": "Hip extension with knees bent, focusing on peak contraction.", "muscle_targets": {"LEGS": {"_score": 1.5, "GLUTES": {"_score": 1.0}, "HAMSTRINGS": {"_score": 0.3, "INNER_HAMSTRING": {"_score": 0.15}, "OUTER_HAMSTRING": {"_score": 0.15}}, "QUADS": {"_score": 0.2, "MID_QUAD": {"_score": 0.2}}}}, "motion_planes": [], "sort_order": 19, "is_active": true},
-  {"id": "LEG_RAISE_STD", "primary_motion_key": "LEG_RAISE", "label": "Leg Raise", "common_names": ["Hanging Legs"], "short_description": "Pelvic tilt toward ribcage.", "muscle_targets": {"CORE": {"_score": 1.8, "ABS": {"_score": 1.0, "LOWER_ABS": {"_score": 1.0}}, "HIP_FLEXORS": {"_score": 0.8}}}, "motion_planes": [], "sort_order": 20, "is_active": true},
-  {"id": "LUNGE_SIDE", "primary_motion_key": "LUNGE", "label": "Lateral Lunge", "common_names": ["Side Lunge", "Cossack Squat"], "short_description": "Stepping out to the side, stretching the inner thigh.", "muscle_targets": {"LEGS": {"_score": 2.0, "QUADS": {"_score": 0.7, "OUTER_QUAD": {"_score": 0.7}}, "INNER_THIGHS": {"_score": 0.8}, "GLUTES": {"_score": 0.5}}}, "motion_planes": [], "sort_order": 21, "is_active": true},
-  {"id": "LUNGE_STATIC", "primary_motion_key": "LUNGE", "label": "Split Squat", "common_names": ["Bulgarian"], "short_description": "Stationary single-leg squat.", "muscle_targets": {"LEGS": {"_score": 2.1, "QUADS": {"_score": 0.9, "MID_QUAD": {"_score": 0.9}}, "GLUTES": {"_score": 0.8}, "INNER_THIGHS": {"_score": 0.4}}}, "motion_planes": [], "sort_order": 22, "is_active": true},
-  {"id": "LUNGE_STEP", "primary_motion_key": "LUNGE", "label": "Walking Lunge", "common_names": ["Forward Lunge"], "short_description": "Dynamic single-leg step.", "muscle_targets": {"LEGS": {"_score": 1.6, "QUADS": {"_score": 0.8, "MID_QUAD": {"_score": 0.8}}, "GLUTES": {"_score": 0.8}}, "CORE": {"_score": 0.4, "OBLIQUES": {"_score": 0.4, "LOWER_OBLIQUES": {"_score": 0.4}}}}, "motion_planes": [], "sort_order": 23, "is_active": true},
-  {"id": "PLANK_STD", "primary_motion_key": "PLANK", "label": "Plank", "common_names": ["Front Hold"], "short_description": "Static prone brace.", "muscle_targets": {"CORE": {"_score": 1.0, "ABS": {"_score": 1.0, "MIDDLE_ABS": {"_score": 1.0}}}, "BACK": {"_score": 0.5, "LOWER_BACK": {"_score": 0.5}}, "SHOULDERS": {"_score": 0.3, "FRONT_DELTS": {"_score": 0.3}}}, "motion_planes": [], "sort_order": 24, "is_active": true},
-  {"id": "PRESS_DECLINE", "primary_motion_key": "PRESS", "label": "Decline Press", "common_names": ["Lower Chest Press"], "short_description": "Pushing at a downward angle (-15°).", "muscle_targets": {"CHEST": {"_score": 1.0, "LOWER_CHEST": {"_score": 1.0}}, "ARMS": {"_score": 0.7, "TRICEPS": {"_score": 0.7, "OUTER_TRICEP": {"_score": 0.35}, "DEEP_TRICEP": {"_score": 0.35}}}, "SHOULDERS": {"_score": 0.2, "FRONT_DELTS": {"_score": 0.2}}}, "motion_planes": ["HIGH_LOW", "MID_LOW"], "sort_order": 25, "is_active": true},
-  {"id": "PRESS_FLAT", "primary_motion_key": "PRESS", "label": "Flat Press", "common_names": ["Standard Bench"], "short_description": "Pushing perpendicular to the torso.", "muscle_targets": {"CHEST": {"_score": 1.0, "MID_CHEST": {"_score": 1.0}}, "ARMS": {"_score": 0.7, "TRICEPS": {"_score": 0.7, "INNER_TRICEP": {"_score": 0.23}, "OUTER_TRICEP": {"_score": 0.23}, "DEEP_TRICEP": {"_score": 0.24}}}, "SHOULDERS": {"_score": 0.5, "FRONT_DELTS": {"_score": 0.5}}}, "motion_planes": [], "sort_order": 26, "is_active": true},
-  {"id": "PRESS_HIGH_INCLINE", "primary_motion_key": "PRESS_VERTICAL", "label": "High Incline Press", "common_names": ["Seated Shoulder Press"], "short_description": "Pushing at a steep 60-80° angle.", "muscle_targets": {"SHOULDERS": {"_score": 0.9, "FRONT_DELTS": {"_score": 0.9}}, "CHEST": {"_score": 0.6, "UPPER_CHEST": {"_score": 0.6}}, "ARMS": {"_score": 0.6, "TRICEPS": {"_score": 0.6, "INNER_TRICEP": {"_score": 0.3}, "OUTER_TRICEP": {"_score": 0.3}}}}, "motion_planes": [], "sort_order": 4, "is_active": true},
-  {"id": "PRESS_INCLINE", "primary_motion_key": "PRESS", "label": "Incline Press", "common_names": ["Upper Chest Press"], "short_description": "Pushing at an upward angle (15-45°).", "muscle_targets": {"CHEST": {"_score": 1.0, "UPPER_CHEST": {"_score": 1.0}}, "SHOULDERS": {"_score": 0.8, "FRONT_DELTS": {"_score": 0.8}}, "ARMS": {"_score": 0.6, "TRICEPS": {"_score": 0.6, "INNER_TRICEP": {"_score": 0.2}, "OUTER_TRICEP": {"_score": 0.2}, "DEEP_TRICEP": {"_score": 0.2}}}}, "motion_planes": ["MID_HIGH", "LOW_HIGH"], "sort_order": 5, "is_active": true},
-  {"id": "PRESS_OVERHEAD", "primary_motion_key": "PRESS_VERTICAL", "label": "Overhead Press", "common_names": ["Military Press", "OHP"], "short_description": "Pushing vertically above the head.", "muscle_targets": {"SHOULDERS": {"_score": 1.5, "FRONT_DELTS": {"_score": 1.0}, "SIDE_DELTS": {"_score": 0.5}}, "ARMS": {"_score": 0.8, "TRICEPS": {"_score": 0.8, "INNER_TRICEP": {"_score": 0.4}, "DEEP_TRICEP": {"_score": 0.4}}}, "CHEST": {"_score": 0.1, "UPPER_CHEST": {"_score": 0.1}}}, "motion_planes": [], "sort_order": 3, "is_active": true},
-  {"id": "PULL_BEHIND", "primary_motion_key": "VERTICAL_PULL", "label": "Behind Neck", "common_names": ["Neck Pull"], "short_description": "Vertical pulling motion behind the head.", "muscle_targets": {"BACK": {"_score": 1.7, "UPPER_BACK": {"_score": 0.9}, "TRAPS": {"_score": 0.8, "UPPER_TRAPS": {"_score": 0.8}}}, "SHOULDERS": {"_score": 0.7, "REAR_DELTS": {"_score": 0.7}}}, "motion_planes": [], "sort_order": 4, "is_active": true},
-  {"id": "PULL_FRONT", "primary_motion_key": "VERTICAL_PULL", "label": "Front Pulldown", "common_names": ["Lat Pull"], "short_description": "Standard vertical pulling motion.", "muscle_targets": {"BACK": {"_score": 1.5, "LATS": {"_score": 1.0}, "MID_BACK": {"_score": 0.5}}, "ARMS": {"_score": 0.6, "BICEPS": {"_score": 0.6, "INNER_BICEP": {"_score": 0.3}, "OUTER_BICEP": {"_score": 0.3}}}}, "motion_planes": [], "sort_order": 5, "is_active": true},
-  {"id": "PULLOVER_BACK", "primary_motion_key": "PULLOVER", "label": "Lat Pullover", "common_names": ["Straight Arm Pull"], "short_description": "Pulling arc focusing on lat stretch.", "muscle_targets": {"BACK": {"_score": 1.5, "LATS": {"_score": 1.0}, "UPPER_BACK": {"_score": 0.5}}, "ARMS": {"_score": 0.4, "TRICEPS": {"_score": 0.4, "INNER_TRICEP": {"_score": 0.4}}}}, "motion_planes": ["HIGH_LOW", "MID_LOW"], "sort_order": 6, "is_active": true},
-  {"id": "PULLOVER_CHEST", "primary_motion_key": "PULLOVER", "label": "Chest Pullover", "common_names": ["Pec Pullover"], "short_description": "Pulling arc focusing on chest squeeze.", "muscle_targets": {"CHEST": {"_score": 0.8, "LOWER_CHEST": {"_score": 0.8}}, "BACK": {"_score": 0.7, "LATS": {"_score": 0.7}}, "ARMS": {"_score": 0.4, "TRICEPS": {"_score": 0.4, "INNER_TRICEP": {"_score": 0.4}}}}, "motion_planes": ["HIGH_LOW", "MID_LOW"], "sort_order": 7, "is_active": true},
-  {"id": "RAISE_FRONT", "primary_motion_key": "RAISE", "label": "Front Raise", "common_names": ["Shoulder Raise"], "short_description": "Arcing arms out to the front.", "muscle_targets": {"SHOULDERS": {"_score": 1.0, "FRONT_DELTS": {"_score": 1.0}}, "CHEST": {"_score": 0.4, "UPPER_CHEST": {"_score": 0.4}}}, "motion_planes": ["LOW_HIGH", "LOW_MID"], "sort_order": 8, "is_active": true},
-  {"id": "RAISE_LATERAL", "primary_motion_key": "RAISE", "label": "Lateral Raise", "common_names": ["Side Raise"], "short_description": "Arcing arms out to the sides.", "muscle_targets": {"SHOULDERS": {"_score": 1.0, "SIDE_DELTS": {"_score": 1.0}}, "BACK": {"_score": 0.3, "TRAPS": {"_score": 0.3, "UPPER_TRAPS": {"_score": 0.3}}}}, "motion_planes": ["LOW_HIGH", "LOW_MID"], "sort_order": 9, "is_active": true},
-  {"id": "RAISE_V", "primary_motion_key": "RAISE", "label": "V-Raise", "common_names": ["Scaption"], "short_description": "Arcing arms at a 45-degree angle.", "muscle_targets": {"SHOULDERS": {"_score": 2.1, "SIDE_DELTS": {"_score": 0.8}, "FRONT_DELTS": {"_score": 0.6}, "ROTATOR_CUFF": {"_score": 0.7}}}, "motion_planes": [], "sort_order": 10, "is_active": true},
-  {"id": "ROTATION_CABLE", "primary_motion_key": "ROTATION", "label": "Cable Twist", "common_names": ["Woodchop"], "short_description": "Horizontal twisting motion.", "muscle_targets": {"CORE": {"_score": 1.6, "OBLIQUES": {"_score": 1.0, "UPPER_OBLIQUES": {"_score": 0.5}, "LOWER_OBLIQUES": {"_score": 0.5}}, "ABS": {"_score": 0.6, "MIDDLE_ABS": {"_score": 0.6}}}}, "motion_planes": ["HIGH_LOW", "MID_MID", "LOW_HIGH"], "sort_order": 11, "is_active": true},
-  {"id": "ROW_HIGH", "primary_motion_key": "HORIZONTAL_ROW", "label": "High Row", "common_names": ["Sternum Row"], "short_description": "Pulling toward the upper chest.", "muscle_targets": {"BACK": {"_score": 1.7, "UPPER_BACK": {"_score": 1.0}, "TRAPS": {"_score": 0.7, "LOWER_TRAPS": {"_score": 0.7}}}, "SHOULDERS": {"_score": 0.8, "REAR_DELTS": {"_score": 0.8}}}, "motion_planes": ["HIGH_MID", "MID_HIGH"], "sort_order": 12, "is_active": true},
-  {"id": "ROW_LOW", "primary_motion_key": "HORIZONTAL_ROW", "label": "Low Row", "common_names": ["Belly Row"], "short_description": "Pulling toward the hips/navel.", "muscle_targets": {"BACK": {"_score": 1.5, "LATS": {"_score": 1.0}, "MID_BACK": {"_score": 0.5}}, "ARMS": {"_score": 0.6, "BICEPS": {"_score": 0.6, "OUTER_BICEP": {"_score": 0.6}}}}, "motion_planes": ["LOW_LOW", "MID_LOW"], "sort_order": 13, "is_active": true},
-  {"id": "ROW_MID", "primary_motion_key": "HORIZONTAL_ROW", "label": "Mid Row", "common_names": ["Standard Row"], "short_description": "Pulling toward the stomach.", "muscle_targets": {"BACK": {"_score": 2.5, "MID_BACK": {"_score": 1.0}, "RHOMBOIDS": {"_score": 0.9}, "LATS": {"_score": 0.6}}, "ARMS": {"_score": 0.5, "BICEPS": {"_score": 0.5, "INNER_BICEP": {"_score": 0.25}, "OUTER_BICEP": {"_score": 0.25}}}}, "motion_planes": ["MID_MID", "LOW_MID"], "sort_order": 14, "is_active": true},
-  {"id": "SHRUG_STD", "primary_motion_key": "SHRUG", "label": "Standard Shrug", "common_names": ["Trap Shrug"], "short_description": "Vertical shoulder elevation.", "muscle_targets": {"BACK": {"_score": 1.0, "TRAPS": {"_score": 1.0, "UPPER_TRAPS": {"_score": 1.0}}}, "NECK": {"_score": 0.4}}, "motion_planes": [], "sort_order": 15, "is_active": true},
-  {"id": "SQUAT_FRONT", "primary_motion_key": "SQUAT", "label": "Front Squat", "common_names": ["Quad Squat"], "short_description": "Upright squat emphasizing knees.", "muscle_targets": {"LEGS": {"_score": 1.0, "QUADS": {"_score": 1.0, "INNER_QUAD": {"_score": 0.5}, "MID_QUAD": {"_score": 0.5}}}, "BACK": {"_score": 0.7, "UPPER_BACK": {"_score": 0.7}}, "CORE": {"_score": 0.6, "ABS": {"_score": 0.6, "UPPER_ABS": {"_score": 0.6}}}}, "motion_planes": [], "sort_order": 16, "is_active": true},
-  {"id": "SQUAT_REGULAR", "primary_motion_key": "SQUAT", "label": "Back Squat", "common_names": ["Standard Squat"], "short_description": "Balanced knee/hip flexion.", "muscle_targets": {"LEGS": {"_score": 1.7, "QUADS": {"_score": 0.9, "OUTER_QUAD": {"_score": 0.3}, "INNER_QUAD": {"_score": 0.3}, "MID_QUAD": {"_score": 0.3}}, "GLUTES": {"_score": 0.8}}, "BACK": {"_score": 0.5, "LOWER_BACK": {"_score": 0.5}}}, "motion_planes": [], "sort_order": 17, "is_active": true}
+  {
+    "id": "CRUNCH_STD",
+    "primary_motion_key": "AB_CRUNCH",
+    "label": "Crunch",
+    "common_names": [
+      "Ab Crunch"
+    ],
+    "short_description": "Spinal flexion toward pelvis.",
+    "muscle_targets": {
+      "CORE": {
+        "_score": 1,
+        "ABS": {
+          "_score": 1,
+          "UPPER_ABS": {
+            "_score": 0.5
+          },
+          "MIDDLE_ABS": {
+            "_score": 0.5
+          }
+        }
+      }
+    },
+    "motion_planes": [],
+    "sort_order": 0,
+    "is_active": true
+  },
+  {
+    "id": "CRUSH_STD",
+    "primary_motion_key": "CRUSH",
+    "label": "Crush",
+    "common_names": [
+      "Svend Press"
+    ],
+    "short_description": "Isometric inward squeezing.",
+    "muscle_targets": {
+      "CHEST": {
+        "_score": 1,
+        "MID_CHEST": {
+          "_score": 1
+        }
+      },
+      "SHOULDERS": {
+        "_score": 0.4,
+        "FRONT_DELTS": {
+          "_score": 0.4
+        }
+      }
+    },
+    "motion_planes": [],
+    "sort_order": 1,
+    "is_active": true
+  },
+  {
+    "id": "CURL_STD",
+    "primary_motion_key": "CURL",
+    "label": "Standard Curl",
+    "common_names": [
+      "Bicep Curl"
+    ],
+    "short_description": "Flexion of the elbow bringing weight to shoulder.",
+    "muscle_targets": {
+      "ARMS": {
+        "_score": 1.4,
+        "BICEPS": {
+          "_score": 1,
+          "INNER_BICEP": {
+            "_score": 0.5
+          },
+          "OUTER_BICEP": {
+            "_score": 0.5
+          }
+        },
+        "FOREARMS": {
+          "_score": 0.4,
+          "BOTTOM_FOREARM": {
+            "_score": 0.4
+          }
+        }
+      }
+    },
+    "motion_planes": [
+      "LOW_LOW",
+      "LOW_MID"
+    ],
+    "sort_order": 2,
+    "is_active": true
+  },
+  {
+    "id": "DIP_CHEST",
+    "primary_motion_key": "DIP",
+    "label": "Chest Dip",
+    "common_names": [
+      "Leaned Dip"
+    ],
+    "short_description": "Pushing down with a forward lean.",
+    "muscle_targets": {
+      "CHEST": {
+        "_score": 1,
+        "LOWER_CHEST": {
+          "_score": 1
+        }
+      },
+      "ARMS": {
+        "_score": 0.7,
+        "TRICEPS": {
+          "_score": 0.7,
+          "OUTER_TRICEP": {
+            "_score": 0.35
+          },
+          "DEEP_TRICEP": {
+            "_score": 0.35
+          }
+        }
+      },
+      "SHOULDERS": {
+        "_score": 0.8,
+        "FRONT_DELTS": {
+          "_score": 0.8
+        }
+      }
+    },
+    "motion_planes": [],
+    "sort_order": 3,
+    "is_active": true
+  },
+  {
+    "id": "DIP_TRICEPS",
+    "primary_motion_key": "DIP",
+    "label": "Tricep Dip",
+    "common_names": [
+      "Vertical Dip"
+    ],
+    "short_description": "Pushing down with upright torso.",
+    "muscle_targets": {
+      "ARMS": {
+        "_score": 1,
+        "TRICEPS": {
+          "_score": 1,
+          "OUTER_TRICEP": {
+            "_score": 0.5
+          },
+          "INNER_TRICEP": {
+            "_score": 0.5
+          }
+        }
+      },
+      "SHOULDERS": {
+        "_score": 0.7,
+        "FRONT_DELTS": {
+          "_score": 0.7
+        }
+      },
+      "CHEST": {
+        "_score": 0.4,
+        "LOWER_CHEST": {
+          "_score": 0.4
+        }
+      }
+    },
+    "motion_planes": [],
+    "sort_order": 4,
+    "is_active": true
+  },
+  {
+    "id": "EXT_BACK_STD",
+    "primary_motion_key": "EXTENSION_BACK",
+    "label": "Back Extension",
+    "common_names": [
+      "Hyperextension"
+    ],
+    "short_description": "Extending trunk against gravity.",
+    "muscle_targets": {
+      "BACK": {
+        "_score": 1.2,
+        "LOWER_BACK": {
+          "_score": 1.2
+        }
+      },
+      "LEGS": {
+        "_score": 0.8,
+        "GLUTES": {
+          "_score": 0.5
+        },
+        "HAMSTRINGS": {
+          "_score": 0.3,
+          "INNER_HAMSTRING": {
+            "_score": 0.15
+          },
+          "OUTER_HAMSTRING": {
+            "_score": 0.15
+          }
+        }
+      }
+    },
+    "motion_planes": [],
+    "sort_order": 5,
+    "is_active": true
+  },
+  {
+    "id": "EXT_OVERHEAD",
+    "primary_motion_key": "EXTENSION_ARM",
+    "label": "Overhead Ext",
+    "common_names": [
+      "French Press"
+    ],
+    "short_description": "Straightening arm from overhead (Shoulders flexed).",
+    "muscle_targets": {
+      "ARMS": {
+        "_score": 1,
+        "TRICEPS": {
+          "_score": 1,
+          "INNER_TRICEP": {
+            "_score": 1
+          }
+        }
+      }
+    },
+    "motion_planes": [
+      "LOW_HIGH",
+      "MID_HIGH"
+    ],
+    "sort_order": 6,
+    "is_active": true
+  },
+  {
+    "id": "EXT_PUSHDOWN",
+    "primary_motion_key": "EXTENSION_ARM",
+    "label": "Pushdown",
+    "common_names": [
+      "Cable Extension"
+    ],
+    "short_description": "Straightening arm downward (Shoulders neutral).",
+    "muscle_targets": {
+      "ARMS": {
+        "_score": 1,
+        "TRICEPS": {
+          "_score": 1,
+          "OUTER_TRICEP": {
+            "_score": 0.5
+          },
+          "DEEP_TRICEP": {
+            "_score": 0.5
+          }
+        }
+      }
+    },
+    "motion_planes": [],
+    "sort_order": 7,
+    "is_active": true
+  },
+  {
+    "id": "FACE_PULL_HIGH",
+    "primary_motion_key": "FACE_PULL",
+    "label": "High Face Pull",
+    "common_names": [
+      "Eye-Level Pull"
+    ],
+    "short_description": "Pulling toward the forehead.",
+    "muscle_targets": {
+      "SHOULDERS": {
+        "_score": 1.9,
+        "REAR_DELTS": {
+          "_score": 1
+        },
+        "ROTATOR_CUFF": {
+          "_score": 0.9
+        }
+      },
+      "BACK": {
+        "_score": 0.7,
+        "TRAPS": {
+          "_score": 0.7,
+          "UPPER_TRAPS": {
+            "_score": 0.7
+          }
+        }
+      }
+    },
+    "motion_planes": [
+      "HIGH_HIGH",
+      "MID_HIGH"
+    ],
+    "sort_order": 8,
+    "is_active": true
+  },
+  {
+    "id": "FACE_PULL_LOW",
+    "primary_motion_key": "FACE_PULL",
+    "label": "Low Face Pull",
+    "common_names": [
+      "Chin-Level Pull"
+    ],
+    "short_description": "Pulling toward the chin.",
+    "muscle_targets": {
+      "SHOULDERS": {
+        "_score": 1.5,
+        "REAR_DELTS": {
+          "_score": 1.5
+        }
+      },
+      "BACK": {
+        "_score": 1.2,
+        "RHOMBOIDS": {
+          "_score": 0.7
+        },
+        "MID_BACK": {
+          "_score": 0.5
+        }
+      }
+    },
+    "motion_planes": [
+      "MID_MID",
+      "HIGH_LOW"
+    ],
+    "sort_order": 9,
+    "is_active": true
+  },
+  {
+    "id": "FLY_DECLINE",
+    "primary_motion_key": "FLY",
+    "label": "Decline Fly",
+    "common_names": [
+      "Lower Fly"
+    ],
+    "short_description": "Hugging arc at a downward angle.",
+    "muscle_targets": {
+      "CHEST": {
+        "_score": 1,
+        "LOWER_CHEST": {
+          "_score": 1
+        }
+      },
+      "SHOULDERS": {
+        "_score": 0.2,
+        "FRONT_DELTS": {
+          "_score": 0.2
+        }
+      }
+    },
+    "motion_planes": [
+      "HIGH_LOW",
+      "MID_LOW"
+    ],
+    "sort_order": 10,
+    "is_active": true
+  },
+  {
+    "id": "FLY_FLAT",
+    "primary_motion_key": "FLY",
+    "label": "Flat Fly",
+    "common_names": [
+      "Chest Fly"
+    ],
+    "short_description": "Hugging arc on a flat plane.",
+    "muscle_targets": {
+      "CHEST": {
+        "_score": 1,
+        "MID_CHEST": {
+          "_score": 1
+        }
+      },
+      "SHOULDERS": {
+        "_score": 0.4,
+        "FRONT_DELTS": {
+          "_score": 0.4
+        }
+      }
+    },
+    "motion_planes": [],
+    "sort_order": 11,
+    "is_active": true
+  },
+  {
+    "id": "FLY_INCLINE",
+    "primary_motion_key": "FLY",
+    "label": "Incline Fly",
+    "common_names": [
+      "Upper Fly"
+    ],
+    "short_description": "Hugging arc at an upward angle.",
+    "muscle_targets": {
+      "CHEST": {
+        "_score": 1,
+        "UPPER_CHEST": {
+          "_score": 1
+        }
+      },
+      "SHOULDERS": {
+        "_score": 0.6,
+        "FRONT_DELTS": {
+          "_score": 0.6
+        }
+      }
+    },
+    "motion_planes": [
+      "LOW_HIGH",
+      "MID_HIGH"
+    ],
+    "sort_order": 12,
+    "is_active": true
+  },
+  {
+    "id": "FLY_REVERSE",
+    "primary_motion_key": "REVERSE_FLY",
+    "label": "Reverse Fly",
+    "common_names": [
+      "Rear Delt Fly"
+    ],
+    "short_description": "Arcing arms backward (horizontal).",
+    "muscle_targets": {
+      "SHOULDERS": {
+        "_score": 1.2,
+        "REAR_DELTS": {
+          "_score": 1.2
+        }
+      },
+      "BACK": {
+        "_score": 0.9,
+        "MID_BACK": {
+          "_score": 0.5
+        },
+        "RHOMBOIDS": {
+          "_score": 0.4
+        }
+      }
+    },
+    "motion_planes": [
+      "MID_MID",
+      "HIGH_HIGH"
+    ],
+    "sort_order": 13,
+    "is_active": true
+  },
+  {
+    "id": "FLY_REVERSE_DECLINE",
+    "primary_motion_key": "REVERSE_FLY",
+    "label": "Decline Rev Fly",
+    "common_names": [
+      "High Cable Rev Fly",
+      "Rear Delt Cross"
+    ],
+    "short_description": "Arcing arms backward (downward angle).",
+    "muscle_targets": {
+      "SHOULDERS": {
+        "_score": 1.1,
+        "REAR_DELTS": {
+          "_score": 1.1
+        }
+      },
+      "BACK": {
+        "_score": 1,
+        "TRAPS": {
+          "_score": 0.6,
+          "LOWER_TRAPS": {
+            "_score": 0.6
+          }
+        },
+        "RHOMBOIDS": {
+          "_score": 0.4
+        }
+      }
+    },
+    "motion_planes": [
+      "HIGH_LOW",
+      "HIGH_MID"
+    ],
+    "sort_order": 14,
+    "is_active": true
+  },
+  {
+    "id": "FLY_REVERSE_INCLINE",
+    "primary_motion_key": "REVERSE_FLY",
+    "label": "Incline Rev Fly",
+    "common_names": [
+      "Y-Fly"
+    ],
+    "short_description": "Arcing arms backward (upward angle).",
+    "muscle_targets": {
+      "SHOULDERS": {
+        "_score": 1,
+        "REAR_DELTS": {
+          "_score": 1
+        }
+      },
+      "BACK": {
+        "_score": 0.9,
+        "TRAPS": {
+          "_score": 0.6,
+          "LOWER_TRAPS": {
+            "_score": 0.6
+          }
+        },
+        "LOWER_BACK": {
+          "_score": 0.3
+        }
+      }
+    },
+    "motion_planes": [],
+    "sort_order": 15,
+    "is_active": true
+  },
+  {
+    "id": "FLY_SCOOP",
+    "primary_motion_key": "FLY",
+    "label": "Scoop",
+    "common_names": [
+      "Low-to-High"
+    ],
+    "short_description": "Upward underhand arcing path.",
+    "muscle_targets": {
+      "CHEST": {
+        "_score": 1,
+        "UPPER_CHEST": {
+          "_score": 1
+        }
+      },
+      "SHOULDERS": {
+        "_score": 0.7,
+        "FRONT_DELTS": {
+          "_score": 0.7
+        }
+      }
+    },
+    "motion_planes": [],
+    "sort_order": 16,
+    "is_active": true
+  },
+  {
+    "id": "HINGE_STD",
+    "primary_motion_key": "HINGE",
+    "label": "Deadlift",
+    "common_names": [
+      "Conventional"
+    ],
+    "short_description": "Hip-dominant pull from the floor with moderate knee flexion.",
+    "muscle_targets": {
+      "LEGS": {
+        "_score": 1.7,
+        "GLUTES": {
+          "_score": 0.9
+        },
+        "HAMSTRINGS": {
+          "_score": 0.8,
+          "OUTER_HAMSTRING": {
+            "_score": 0.4
+          },
+          "INNER_HAMSTRING": {
+            "_score": 0.4
+          }
+        }
+      },
+      "BACK": {
+        "_score": 1.5,
+        "LOWER_BACK": {
+          "_score": 0.8
+        },
+        "TRAPS": {
+          "_score": 0.7,
+          "UPPER_TRAPS": {
+            "_score": 0.7
+          }
+        }
+      }
+    },
+    "motion_planes": [],
+    "sort_order": 17,
+    "is_active": true
+  },
+  {
+    "id": "HINGE_STRAIGHT",
+    "primary_motion_key": "HINGE",
+    "label": "Stiff Leg",
+    "common_names": [
+      "RDL"
+    ],
+    "short_description": "Minimal knee bend hip hinge.",
+    "muscle_targets": {
+      "LEGS": {
+        "_score": 1.7,
+        "HAMSTRINGS": {
+          "_score": 1,
+          "OUTER_HAMSTRING": {
+            "_score": 0.5
+          },
+          "INNER_HAMSTRING": {
+            "_score": 0.5
+          }
+        },
+        "GLUTES": {
+          "_score": 0.7
+        }
+      },
+      "BACK": {
+        "_score": 0.5,
+        "LOWER_BACK": {
+          "_score": 0.5
+        }
+      }
+    },
+    "motion_planes": [],
+    "sort_order": 18,
+    "is_active": true
+  },
+  {
+    "id": "HINGE_THRUST",
+    "primary_motion_key": "HINGE",
+    "label": "Hip Thrust",
+    "common_names": [
+      "Glute Bridge",
+      "Kas Glute Bridge"
+    ],
+    "short_description": "Hip extension with knees bent, focusing on peak contraction.",
+    "muscle_targets": {
+      "LEGS": {
+        "_score": 1.5,
+        "GLUTES": {
+          "_score": 1
+        },
+        "HAMSTRINGS": {
+          "_score": 0.3,
+          "INNER_HAMSTRING": {
+            "_score": 0.15
+          },
+          "OUTER_HAMSTRING": {
+            "_score": 0.15
+          }
+        },
+        "QUADS": {
+          "_score": 0.2,
+          "MID_QUAD": {
+            "_score": 0.2
+          }
+        }
+      }
+    },
+    "motion_planes": [],
+    "sort_order": 19,
+    "is_active": true
+  },
+  {
+    "id": "LEG_RAISE_STD",
+    "primary_motion_key": "LEG_RAISE",
+    "label": "Leg Raise",
+    "common_names": [
+      "Hanging Legs"
+    ],
+    "short_description": "Pelvic tilt toward ribcage.",
+    "muscle_targets": {
+      "CORE": {
+        "_score": 1.8,
+        "ABS": {
+          "_score": 1,
+          "LOWER_ABS": {
+            "_score": 1
+          }
+        },
+        "HIP_FLEXORS": {
+          "_score": 0.8
+        }
+      }
+    },
+    "motion_planes": [],
+    "sort_order": 20,
+    "is_active": true
+  },
+  {
+    "id": "LUNGE_SIDE",
+    "primary_motion_key": "LUNGE",
+    "label": "Lateral Lunge",
+    "common_names": [
+      "Side Lunge",
+      "Cossack Squat"
+    ],
+    "short_description": "Stepping out to the side, stretching the inner thigh.",
+    "muscle_targets": {
+      "LEGS": {
+        "_score": 2,
+        "QUADS": {
+          "_score": 0.7,
+          "OUTER_QUAD": {
+            "_score": 0.7
+          }
+        },
+        "INNER_THIGHS": {
+          "_score": 0.8
+        },
+        "GLUTES": {
+          "_score": 0.5
+        }
+      }
+    },
+    "motion_planes": [],
+    "sort_order": 21,
+    "is_active": true
+  },
+  {
+    "id": "LUNGE_STATIC",
+    "primary_motion_key": "LUNGE",
+    "label": "Split Squat",
+    "common_names": [
+      "Bulgarian"
+    ],
+    "short_description": "Stationary single-leg squat.",
+    "muscle_targets": {
+      "LEGS": {
+        "_score": 2.1,
+        "QUADS": {
+          "_score": 0.9,
+          "MID_QUAD": {
+            "_score": 0.9
+          }
+        },
+        "GLUTES": {
+          "_score": 0.8
+        },
+        "INNER_THIGHS": {
+          "_score": 0.4
+        }
+      }
+    },
+    "motion_planes": [],
+    "sort_order": 22,
+    "is_active": true
+  },
+  {
+    "id": "LUNGE_STEP",
+    "primary_motion_key": "LUNGE",
+    "label": "Walking Lunge",
+    "common_names": [
+      "Forward Lunge"
+    ],
+    "short_description": "Dynamic single-leg step.",
+    "muscle_targets": {
+      "LEGS": {
+        "_score": 1.6,
+        "QUADS": {
+          "_score": 0.8,
+          "MID_QUAD": {
+            "_score": 0.8
+          }
+        },
+        "GLUTES": {
+          "_score": 0.8
+        }
+      },
+      "CORE": {
+        "_score": 0.4,
+        "OBLIQUES": {
+          "_score": 0.4,
+          "LOWER_OBLIQUES": {
+            "_score": 0.4
+          }
+        }
+      }
+    },
+    "motion_planes": [],
+    "sort_order": 23,
+    "is_active": true
+  },
+  {
+    "id": "PLANK_STD",
+    "primary_motion_key": "PLANK",
+    "label": "Plank",
+    "common_names": [
+      "Front Hold"
+    ],
+    "short_description": "Static prone brace.",
+    "muscle_targets": {
+      "CORE": {
+        "_score": 1,
+        "ABS": {
+          "_score": 1,
+          "MIDDLE_ABS": {
+            "_score": 1
+          }
+        }
+      },
+      "BACK": {
+        "_score": 0.5,
+        "LOWER_BACK": {
+          "_score": 0.5
+        }
+      },
+      "SHOULDERS": {
+        "_score": 0.3,
+        "FRONT_DELTS": {
+          "_score": 0.3
+        }
+      }
+    },
+    "motion_planes": [],
+    "sort_order": 24,
+    "is_active": true
+  },
+  {
+    "id": "PRESS_DECLINE",
+    "primary_motion_key": "PRESS",
+    "label": "Decline Press",
+    "common_names": [
+      "Lower Chest Press"
+    ],
+    "short_description": "Pushing at a downward angle (-15°).",
+    "muscle_targets": {
+      "CHEST": {
+        "_score": 1,
+        "LOWER_CHEST": {
+          "_score": 1
+        }
+      },
+      "ARMS": {
+        "_score": 0.7,
+        "TRICEPS": {
+          "_score": 0.7,
+          "OUTER_TRICEP": {
+            "_score": 0.35
+          },
+          "DEEP_TRICEP": {
+            "_score": 0.35
+          }
+        }
+      },
+      "SHOULDERS": {
+        "_score": 0.2,
+        "FRONT_DELTS": {
+          "_score": 0.2
+        }
+      }
+    },
+    "motion_planes": [
+      "HIGH_LOW",
+      "MID_LOW"
+    ],
+    "sort_order": 25,
+    "is_active": true
+  },
+  {
+    "id": "PRESS_FLAT",
+    "primary_motion_key": "PRESS",
+    "label": "Flat Press",
+    "common_names": [
+      "Standard Bench"
+    ],
+    "short_description": "Pushing perpendicular to the torso.",
+    "muscle_targets": {
+      "CHEST": {
+        "_score": 1,
+        "MID_CHEST": {
+          "_score": 1
+        }
+      },
+      "ARMS": {
+        "_score": 0.7,
+        "TRICEPS": {
+          "_score": 0.7,
+          "INNER_TRICEP": {
+            "_score": 0.23
+          },
+          "OUTER_TRICEP": {
+            "_score": 0.23
+          },
+          "DEEP_TRICEP": {
+            "_score": 0.24
+          }
+        }
+      },
+      "SHOULDERS": {
+        "_score": 0.5,
+        "FRONT_DELTS": {
+          "_score": 0.5
+        }
+      }
+    },
+    "motion_planes": [],
+    "sort_order": 26,
+    "is_active": true
+  },
+  {
+    "id": "PRESS_HIGH_INCLINE",
+    "primary_motion_key": "PRESS_VERTICAL",
+    "label": "High Incline Press",
+    "common_names": [
+      "Seated Shoulder Press"
+    ],
+    "short_description": "Pushing at a steep 60-80° angle.",
+    "muscle_targets": {
+      "SHOULDERS": {
+        "_score": 0.9,
+        "FRONT_DELTS": {
+          "_score": 0.9
+        }
+      },
+      "CHEST": {
+        "_score": 0.6,
+        "UPPER_CHEST": {
+          "_score": 0.6
+        }
+      },
+      "ARMS": {
+        "_score": 0.6,
+        "TRICEPS": {
+          "_score": 0.6,
+          "INNER_TRICEP": {
+            "_score": 0.3
+          },
+          "OUTER_TRICEP": {
+            "_score": 0.3
+          }
+        }
+      }
+    },
+    "motion_planes": [],
+    "sort_order": 4,
+    "is_active": true
+  },
+  {
+    "id": "PRESS_INCLINE",
+    "primary_motion_key": "PRESS",
+    "label": "Incline Press",
+    "common_names": [
+      "Upper Chest Press"
+    ],
+    "short_description": "Pushing at an upward angle (15-45°).",
+    "muscle_targets": {
+      "CHEST": {
+        "_score": 1,
+        "UPPER_CHEST": {
+          "_score": 1
+        }
+      },
+      "SHOULDERS": {
+        "_score": 0.8,
+        "FRONT_DELTS": {
+          "_score": 0.8
+        }
+      },
+      "ARMS": {
+        "_score": 0.6,
+        "TRICEPS": {
+          "_score": 0.6,
+          "INNER_TRICEP": {
+            "_score": 0.2
+          },
+          "OUTER_TRICEP": {
+            "_score": 0.2
+          },
+          "DEEP_TRICEP": {
+            "_score": 0.2
+          }
+        }
+      }
+    },
+    "motion_planes": [
+      "MID_HIGH",
+      "LOW_HIGH"
+    ],
+    "sort_order": 5,
+    "is_active": true
+  },
+  {
+    "id": "PRESS_OVERHEAD",
+    "primary_motion_key": "PRESS_VERTICAL",
+    "label": "Overhead Press",
+    "common_names": [
+      "Military Press",
+      "OHP"
+    ],
+    "short_description": "Pushing vertically above the head.",
+    "muscle_targets": {
+      "SHOULDERS": {
+        "_score": 1.5,
+        "FRONT_DELTS": {
+          "_score": 1
+        },
+        "SIDE_DELTS": {
+          "_score": 0.5
+        }
+      },
+      "ARMS": {
+        "_score": 0.8,
+        "TRICEPS": {
+          "_score": 0.8,
+          "INNER_TRICEP": {
+            "_score": 0.4
+          },
+          "DEEP_TRICEP": {
+            "_score": 0.4
+          }
+        }
+      },
+      "CHEST": {
+        "_score": 0.1,
+        "UPPER_CHEST": {
+          "_score": 0.1
+        }
+      }
+    },
+    "motion_planes": [],
+    "sort_order": 3,
+    "is_active": true
+  },
+  {
+    "id": "PULL_BEHIND",
+    "primary_motion_key": "VERTICAL_PULL",
+    "label": "Behind Neck",
+    "common_names": [
+      "Neck Pull"
+    ],
+    "short_description": "Vertical pulling motion behind the head.",
+    "muscle_targets": {
+      "BACK": {
+        "_score": 1.7,
+        "UPPER_BACK": {
+          "_score": 0.9
+        },
+        "TRAPS": {
+          "_score": 0.8,
+          "UPPER_TRAPS": {
+            "_score": 0.8
+          }
+        }
+      },
+      "SHOULDERS": {
+        "_score": 0.7,
+        "REAR_DELTS": {
+          "_score": 0.7
+        }
+      }
+    },
+    "motion_planes": [],
+    "sort_order": 4,
+    "is_active": true
+  },
+  {
+    "id": "PULL_FRONT",
+    "primary_motion_key": "VERTICAL_PULL",
+    "label": "Front Pulldown",
+    "common_names": [
+      "Lat Pull"
+    ],
+    "short_description": "Standard vertical pulling motion.",
+    "muscle_targets": {
+      "BACK": {
+        "_score": 1.5,
+        "LATS": {
+          "_score": 1
+        },
+        "MID_BACK": {
+          "_score": 0.5
+        }
+      },
+      "ARMS": {
+        "_score": 0.6,
+        "BICEPS": {
+          "_score": 0.6,
+          "INNER_BICEP": {
+            "_score": 0.3
+          },
+          "OUTER_BICEP": {
+            "_score": 0.3
+          }
+        }
+      }
+    },
+    "motion_planes": [],
+    "sort_order": 5,
+    "is_active": true
+  },
+  {
+    "id": "PULLOVER_BACK",
+    "primary_motion_key": "PULLOVER",
+    "label": "Lat Pullover",
+    "common_names": [
+      "Straight Arm Pull"
+    ],
+    "short_description": "Pulling arc focusing on lat stretch.",
+    "muscle_targets": {
+      "BACK": {
+        "_score": 1.5,
+        "LATS": {
+          "_score": 1
+        },
+        "UPPER_BACK": {
+          "_score": 0.5
+        }
+      },
+      "ARMS": {
+        "_score": 0.4,
+        "TRICEPS": {
+          "_score": 0.4,
+          "INNER_TRICEP": {
+            "_score": 0.4
+          }
+        }
+      }
+    },
+    "motion_planes": [
+      "HIGH_LOW",
+      "MID_LOW"
+    ],
+    "sort_order": 6,
+    "is_active": true
+  },
+  {
+    "id": "PULLOVER_CHEST",
+    "primary_motion_key": "PULLOVER",
+    "label": "Chest Pullover",
+    "common_names": [
+      "Pec Pullover"
+    ],
+    "short_description": "Pulling arc focusing on chest squeeze.",
+    "muscle_targets": {
+      "CHEST": {
+        "_score": 0.8,
+        "LOWER_CHEST": {
+          "_score": 0.8
+        }
+      },
+      "BACK": {
+        "_score": 0.7,
+        "LATS": {
+          "_score": 0.7
+        }
+      },
+      "ARMS": {
+        "_score": 0.4,
+        "TRICEPS": {
+          "_score": 0.4,
+          "INNER_TRICEP": {
+            "_score": 0.4
+          }
+        }
+      }
+    },
+    "motion_planes": [
+      "HIGH_LOW",
+      "MID_LOW"
+    ],
+    "sort_order": 7,
+    "is_active": true
+  },
+  {
+    "id": "RAISE_FRONT",
+    "primary_motion_key": "RAISE",
+    "label": "Front Raise",
+    "common_names": [
+      "Shoulder Raise"
+    ],
+    "short_description": "Arcing arms out to the front.",
+    "muscle_targets": {
+      "SHOULDERS": {
+        "_score": 1,
+        "FRONT_DELTS": {
+          "_score": 1
+        }
+      },
+      "CHEST": {
+        "_score": 0.4,
+        "UPPER_CHEST": {
+          "_score": 0.4
+        }
+      }
+    },
+    "motion_planes": [
+      "LOW_HIGH",
+      "LOW_MID"
+    ],
+    "sort_order": 8,
+    "is_active": true
+  },
+  {
+    "id": "RAISE_LATERAL",
+    "primary_motion_key": "RAISE",
+    "label": "Lateral Raise",
+    "common_names": [
+      "Side Raise"
+    ],
+    "short_description": "Arcing arms out to the sides.",
+    "muscle_targets": {
+      "SHOULDERS": {
+        "_score": 1,
+        "SIDE_DELTS": {
+          "_score": 1
+        }
+      },
+      "BACK": {
+        "_score": 0.3,
+        "TRAPS": {
+          "_score": 0.3,
+          "UPPER_TRAPS": {
+            "_score": 0.3
+          }
+        }
+      }
+    },
+    "motion_planes": [
+      "LOW_HIGH",
+      "LOW_MID"
+    ],
+    "sort_order": 9,
+    "is_active": true
+  },
+  {
+    "id": "RAISE_V",
+    "primary_motion_key": "RAISE",
+    "label": "V-Raise",
+    "common_names": [
+      "Scaption"
+    ],
+    "short_description": "Arcing arms at a 45-degree angle.",
+    "muscle_targets": {
+      "SHOULDERS": {
+        "_score": 2.1,
+        "SIDE_DELTS": {
+          "_score": 0.8
+        },
+        "FRONT_DELTS": {
+          "_score": 0.6
+        },
+        "ROTATOR_CUFF": {
+          "_score": 0.7
+        }
+      }
+    },
+    "motion_planes": [],
+    "sort_order": 10,
+    "is_active": true
+  },
+  {
+    "id": "ROTATION_CABLE",
+    "primary_motion_key": "ROTATION",
+    "label": "Cable Twist",
+    "common_names": [
+      "Woodchop"
+    ],
+    "short_description": "Horizontal twisting motion.",
+    "muscle_targets": {
+      "CORE": {
+        "_score": 1.6,
+        "OBLIQUES": {
+          "_score": 1,
+          "UPPER_OBLIQUES": {
+            "_score": 0.5
+          },
+          "LOWER_OBLIQUES": {
+            "_score": 0.5
+          }
+        },
+        "ABS": {
+          "_score": 0.6,
+          "MIDDLE_ABS": {
+            "_score": 0.6
+          }
+        }
+      }
+    },
+    "motion_planes": [
+      "HIGH_LOW",
+      "MID_MID",
+      "LOW_HIGH"
+    ],
+    "sort_order": 11,
+    "is_active": true
+  },
+  {
+    "id": "ROW_HIGH",
+    "primary_motion_key": "HORIZONTAL_ROW",
+    "label": "High Row",
+    "common_names": [
+      "Sternum Row"
+    ],
+    "short_description": "Pulling toward the upper chest.",
+    "muscle_targets": {
+      "BACK": {
+        "_score": 1.7,
+        "UPPER_BACK": {
+          "_score": 1
+        },
+        "TRAPS": {
+          "_score": 0.7,
+          "LOWER_TRAPS": {
+            "_score": 0.7
+          }
+        }
+      },
+      "SHOULDERS": {
+        "_score": 0.8,
+        "REAR_DELTS": {
+          "_score": 0.8
+        }
+      }
+    },
+    "motion_planes": [
+      "HIGH_MID",
+      "MID_HIGH"
+    ],
+    "sort_order": 12,
+    "is_active": true
+  },
+  {
+    "id": "ROW_LOW",
+    "primary_motion_key": "HORIZONTAL_ROW",
+    "label": "Low Row",
+    "common_names": [
+      "Belly Row"
+    ],
+    "short_description": "Pulling toward the hips/navel.",
+    "muscle_targets": {
+      "BACK": {
+        "_score": 1.5,
+        "LATS": {
+          "_score": 1
+        },
+        "MID_BACK": {
+          "_score": 0.5
+        }
+      },
+      "ARMS": {
+        "_score": 0.6,
+        "BICEPS": {
+          "_score": 0.6,
+          "OUTER_BICEP": {
+            "_score": 0.6
+          }
+        }
+      }
+    },
+    "motion_planes": [
+      "LOW_LOW",
+      "MID_LOW"
+    ],
+    "sort_order": 13,
+    "is_active": true
+  },
+  {
+    "id": "ROW_MID",
+    "primary_motion_key": "HORIZONTAL_ROW",
+    "label": "Mid Row",
+    "common_names": [
+      "Standard Row"
+    ],
+    "short_description": "Pulling toward the stomach.",
+    "muscle_targets": {
+      "BACK": {
+        "_score": 2.5,
+        "MID_BACK": {
+          "_score": 1
+        },
+        "RHOMBOIDS": {
+          "_score": 0.9
+        },
+        "LATS": {
+          "_score": 0.6
+        }
+      },
+      "ARMS": {
+        "_score": 0.5,
+        "BICEPS": {
+          "_score": 0.5,
+          "INNER_BICEP": {
+            "_score": 0.25
+          },
+          "OUTER_BICEP": {
+            "_score": 0.25
+          }
+        }
+      }
+    },
+    "motion_planes": [
+      "MID_MID",
+      "LOW_MID"
+    ],
+    "sort_order": 14,
+    "is_active": true
+  },
+  {
+    "id": "SHRUG_STD",
+    "primary_motion_key": "SHRUG",
+    "label": "Standard Shrug",
+    "common_names": [
+      "Trap Shrug"
+    ],
+    "short_description": "Vertical shoulder elevation.",
+    "muscle_targets": {
+      "BACK": {
+        "_score": 1,
+        "TRAPS": {
+          "_score": 1,
+          "UPPER_TRAPS": {
+            "_score": 1
+          }
+        }
+      },
+      "NECK": {
+        "_score": 0.4
+      }
+    },
+    "motion_planes": [],
+    "sort_order": 15,
+    "is_active": true
+  },
+  {
+    "id": "SQUAT_FRONT",
+    "primary_motion_key": "SQUAT",
+    "label": "Front Squat",
+    "common_names": [
+      "Quad Squat"
+    ],
+    "short_description": "Upright squat emphasizing knees.",
+    "muscle_targets": {
+      "LEGS": {
+        "_score": 1,
+        "QUADS": {
+          "_score": 1,
+          "INNER_QUAD": {
+            "_score": 0.5
+          },
+          "MID_QUAD": {
+            "_score": 0.5
+          }
+        }
+      },
+      "BACK": {
+        "_score": 0.7,
+        "UPPER_BACK": {
+          "_score": 0.7
+        }
+      },
+      "CORE": {
+        "_score": 0.6,
+        "ABS": {
+          "_score": 0.6,
+          "UPPER_ABS": {
+            "_score": 0.6
+          }
+        }
+      }
+    },
+    "motion_planes": [],
+    "sort_order": 16,
+    "is_active": true
+  },
+  {
+    "id": "SQUAT_REGULAR",
+    "primary_motion_key": "SQUAT",
+    "label": "Back Squat",
+    "common_names": [
+      "Standard Squat"
+    ],
+    "short_description": "Balanced knee/hip flexion.",
+    "muscle_targets": {
+      "LEGS": {
+        "_score": 1.7,
+        "QUADS": {
+          "_score": 0.9,
+          "OUTER_QUAD": {
+            "_score": 0.3
+          },
+          "INNER_QUAD": {
+            "_score": 0.3
+          },
+          "MID_QUAD": {
+            "_score": 0.3
+          }
+        },
+        "GLUTES": {
+          "_score": 0.8
+        }
+      },
+      "BACK": {
+        "_score": 0.5,
+        "LOWER_BACK": {
+          "_score": 0.5
+        }
+      }
+    },
+    "motion_planes": [],
+    "sort_order": 17,
+    "is_active": true
+  }
 ]
