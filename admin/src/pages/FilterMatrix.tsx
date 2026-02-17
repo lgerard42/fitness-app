@@ -18,37 +18,110 @@ const TABS: { key: MatrixTab; label: string; refTable: string }[] = [
   { key: 'allowed_stance_widths', label: 'Stance Widths', refTable: 'stanceWidths' },
 ];
 
+const ALLOWED_COLS: MatrixTab[] = ['allowed_grip_types', 'allowed_grip_widths', 'allowed_stance_types', 'allowed_stance_widths'];
+
+function rowHasChanges(row: Record<string, unknown>, saved: Record<string, unknown>): boolean {
+  for (const col of ALLOWED_COLS) {
+    const a = row[col];
+    const b = saved[col];
+    if (Array.isArray(a) && Array.isArray(b)) {
+      if (a.length !== b.length) return true;
+      const sa = [...a].sort();
+      const sb = [...b].sort();
+      if (sa.some((v, i) => v !== sb[i])) return true;
+    } else if (a !== b) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export default function FilterMatrix({ onDataChange }: FilterMatrixProps) {
   const [sourceTable, setSourceTable] = useState<SourceTable>('gymEquipment');
   const [activeTab, setActiveTab] = useState<MatrixTab>('allowed_grip_types');
   const [viewMode, setViewMode] = useState<ViewMode>('equipment');
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
+  const [savedRows, setSavedRows] = useState<Record<string, unknown>[]>([]);
   const [colOptions, setColOptions] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [copySource, setCopySource] = useState('');
 
   const currentTabDef = TABS.find((t) => t.key === activeTab)!;
 
-  const loadData = useCallback(async () => {
+  const hasChanges = useMemo(() => {
+    if (rows.length !== savedRows.length) return true;
+    return rows.some((r, i) => {
+      const saved = savedRows.find((s) => s.id === r.id);
+      return !saved || rowHasChanges(r, saved);
+    });
+  }, [rows, savedRows]);
+
+  const loadEquip = useCallback(async () => {
     setLoading(true);
     try {
-      const [equipData, refData] = await Promise.all([
-        api.getTable(sourceTable),
-        api.getTable(currentTabDef.refTable),
-      ]);
-      setRows(Array.isArray(equipData) ? equipData as Record<string, unknown>[] : []);
-      setColOptions(Array.isArray(refData) ? refData as Record<string, unknown>[] : []);
+      const equipData = await api.getTable(sourceTable);
+      const data = Array.isArray(equipData) ? (equipData as Record<string, unknown>[]) : [];
+      setRows(data);
+      setSavedRows(data);
     } catch (err) {
-      console.error('Failed to load matrix data:', err);
+      console.error('Failed to load equipment:', err);
       toast.error('Failed to load data');
     } finally {
       setLoading(false);
     }
-  }, [sourceTable, currentTabDef.refTable]);
+  }, [sourceTable]);
+
+  const loadColOptions = useCallback(async () => {
+    try {
+      const refData = await api.getTable(currentTabDef.refTable);
+      setColOptions(Array.isArray(refData) ? refData as Record<string, unknown>[] : []);
+    } catch (err) {
+      console.error('Failed to load options:', err);
+    }
+  }, [currentTabDef.refTable]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    loadEquip();
+  }, [loadEquip]);
+
+  useEffect(() => {
+    loadColOptions();
+  }, [loadColOptions]);
+
+  const handleSave = useCallback(async () => {
+    setSaving(true);
+    try {
+      const updates: Record<string, Record<string, unknown>> = {};
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const saved = savedRows.find((s) => s.id === row.id);
+        if (!saved || rowHasChanges(row, saved)) {
+          updates[row.id as string] = {
+            allowed_grip_types: row.allowed_grip_types,
+            allowed_grip_widths: row.allowed_grip_widths,
+            allowed_stance_types: row.allowed_stance_types,
+            allowed_stance_widths: row.allowed_stance_widths,
+          };
+        }
+      }
+      if (Object.keys(updates).length > 0) {
+        await api.bulkUpdateMatrix(sourceTable, updates);
+        setSavedRows([...rows]);
+        toast.success('Changes saved');
+        onDataChange();
+      }
+    } catch (err) {
+      toast.error('Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  }, [sourceTable, rows, savedRows, onDataChange]);
+
+  const handleCancel = useCallback(() => {
+    setRows([...savedRows]);
+    toast.success('Changes discarded');
+  }, [savedRows]);
 
   const isChecked = (row: Record<string, unknown>, colId: string): boolean => {
     const val = row[activeTab];
@@ -75,7 +148,7 @@ export default function FilterMatrix({ onDataChange }: FilterMatrixProps) {
     }).length;
   };
 
-  const toggleCell = async (rowIdx: number, colId: string) => {
+  const toggleCell = (rowIdx: number, colId: string) => {
     const row = rows[rowIdx];
     const current = row[activeTab];
     let newVal: string[] | null;
@@ -95,16 +168,9 @@ export default function FilterMatrix({ onDataChange }: FilterMatrixProps) {
     const updated = [...rows];
     updated[rowIdx] = { ...updated[rowIdx], [activeTab]: newVal };
     setRows(updated);
-
-    try {
-      await api.updateRow(sourceTable, row.id as string, { [activeTab]: newVal });
-    } catch (err) {
-      toast.error('Failed to update');
-      loadData();
-    }
   };
 
-  const toggleNull = async (rowIdx: number) => {
+  const toggleNull = (rowIdx: number) => {
     const row = rows[rowIdx];
     const current = row[activeTab];
     const newVal = current === null || current === undefined ? [] : null;
@@ -112,96 +178,51 @@ export default function FilterMatrix({ onDataChange }: FilterMatrixProps) {
     const updated = [...rows];
     updated[rowIdx] = { ...updated[rowIdx], [activeTab]: newVal };
     setRows(updated);
-
-    try {
-      await api.updateRow(sourceTable, row.id as string, { [activeTab]: newVal });
-      toast.success(newVal === null ? `Set ${row.label} to N/A` : `Enabled ${row.label}`);
-    } catch (err) {
-      toast.error('Failed to update');
-      loadData();
-    }
   };
 
-  const selectAllForRow = async (rowIdx: number) => {
-    const row = rows[rowIdx];
+  const selectAllForRow = (rowIdx: number) => {
     const allIds = colOptions.map((o) => String(o.id));
     const updated = [...rows];
     updated[rowIdx] = { ...updated[rowIdx], [activeTab]: allIds };
     setRows(updated);
-    try {
-      await api.updateRow(sourceTable, row.id as string, { [activeTab]: allIds });
-      toast.success(`Selected all for ${row.label}`);
-    } catch {
-      loadData();
-    }
   };
 
-  const clearAllForRow = async (rowIdx: number) => {
-    const row = rows[rowIdx];
+  const clearAllForRow = (rowIdx: number) => {
     const updated = [...rows];
     updated[rowIdx] = { ...updated[rowIdx], [activeTab]: [] };
     setRows(updated);
-    try {
-      await api.updateRow(sourceTable, row.id as string, { [activeTab]: [] });
-      toast.success(`Cleared all for ${row.label}`);
-    } catch {
-      loadData();
-    }
   };
 
-  const selectAllForColumn = async (optionId: string) => {
-    const updates: Record<string, Record<string, unknown>> = {};
+  const selectAllForColumn = (optionId: string) => {
     const updated = rows.map((row) => {
       const current = row[activeTab];
       if (current === null || current === undefined) return row;
       const arr = Array.isArray(current) ? current : [];
       if (arr.includes(optionId)) return row;
       const newVal = [...arr, optionId];
-      updates[row.id as string] = { [activeTab]: newVal };
       return { ...row, [activeTab]: newVal };
     });
     setRows(updated);
-    try {
-      await api.bulkUpdateMatrix(sourceTable, updates);
-      toast.success(`Enabled "${optionId}" for all equipment`);
-    } catch {
-      loadData();
-    }
   };
 
-  const clearAllForColumn = async (optionId: string) => {
-    const updates: Record<string, Record<string, unknown>> = {};
+  const clearAllForColumn = (optionId: string) => {
     const updated = rows.map((row) => {
       const current = row[activeTab];
       if (!Array.isArray(current) || !current.includes(optionId)) return row;
       const newVal = current.filter((v: string) => v !== optionId);
-      updates[row.id as string] = { [activeTab]: newVal };
       return { ...row, [activeTab]: newVal };
     });
     setRows(updated);
-    try {
-      await api.bulkUpdateMatrix(sourceTable, updates);
-      toast.success(`Disabled "${optionId}" for all equipment`);
-    } catch {
-      loadData();
-    }
   };
 
-  const copyRulesFrom = async (sourceId: string, targetIdx: number) => {
+  const copyRulesFrom = (sourceId: string, targetIdx: number) => {
     const sourceRow = rows.find((r) => r.id === sourceId);
     if (!sourceRow) return;
-    const targetRow = rows[targetIdx];
     const newVal = sourceRow[activeTab];
 
     const updated = [...rows];
-    updated[targetIdx] = { ...updated[targetIdx], [activeTab]: newVal };
+    updated[targetIdx] = { ...updated[targetIdx], [activeTab]: Array.isArray(newVal) ? [...newVal] : newVal };
     setRows(updated);
-    try {
-      await api.updateRow(sourceTable, targetRow.id as string, { [activeTab]: Array.isArray(newVal) ? newVal : null });
-      toast.success(`Copied rules from ${sourceRow.label} to ${targetRow.label}`);
-    } catch {
-      loadData();
-    }
   };
 
   // Stats for summary bar
@@ -287,6 +308,28 @@ export default function FilterMatrix({ onDataChange }: FilterMatrixProps) {
           </button>
         ))}
       </div>
+
+      {/* Save / Cancel bar - shown when there are unsaved changes */}
+      {hasChanges && !loading && (
+        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between">
+          <span className="text-sm font-medium text-amber-800">You have unsaved changes</span>
+          <div className="flex gap-2">
+            <button
+              onClick={handleCancel}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {saving ? 'Saving...' : 'Save changes'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="text-gray-400">Loading matrix...</div>

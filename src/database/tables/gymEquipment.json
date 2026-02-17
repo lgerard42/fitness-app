@@ -19,13 +19,13 @@
     "sort_order": 0,
     "is_active": true,
     "allowed_grip_types": [
+      "GRIP_NEUTRAL",
       "GRIP_PRONATED",
       "GRIP_SUPINATED",
-      "GRIP_NEUTRAL",
-      "GRIP_ALTERNATING",
       "GRIP_SEMI_PRONATED",
       "GRIP_SEMI_SUPINATED",
       "GRIP_ROTATING",
+      "GRIP_ALTERNATING",
       "GRIP_OTHER"
     ],
     "allowed_grip_widths": null,
