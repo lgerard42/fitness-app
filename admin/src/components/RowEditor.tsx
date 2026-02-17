@@ -9,7 +9,7 @@ import FKMultiSelect from './FieldRenderers/FKMultiSelect';
 import MatrixFieldCheckboxGrid from './FieldRenderers/MatrixFieldCheckboxGrid';
 import JsonEditor from './FieldRenderers/JsonEditor';
 import MuscleTargetTree from './FieldRenderers/MuscleTargetTree';
-import ReverseRelationships from './ReverseRelationships';
+import Relationships from './Relationships';
 
 const MATRIX_FIELDS = ['allowed_grip_types', 'allowed_grip_widths', 'allowed_stance_types', 'allowed_stance_widths'];
 
@@ -208,17 +208,20 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
               }
             })}
 
-            {/* Reverse Relationships Section */}
+            {/* Relationships Section */}
             {!isNew && recordId && (
               <div className="pt-4 border-t">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Reverse Relationships
-                  <span className="text-xs text-gray-400 ml-2">What references this record</span>
+                  Relationships
+                  <span className="text-xs text-gray-400 ml-2">Incoming and outgoing references</span>
                 </label>
-                <ReverseRelationships
+                <Relationships
                   tableKey={schema.key}
                   recordId={recordId}
                   recordLabel={recordLabel}
+                  schema={schema}
+                  recordData={data}
+                  refData={refData}
                 />
               </div>
             )}
