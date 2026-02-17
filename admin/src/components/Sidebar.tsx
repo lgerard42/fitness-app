@@ -44,6 +44,15 @@ export default function Sidebar({ tables, groups }: SidebarProps) {
           Filter Matrix
         </NavLink>
 
+        <NavLink
+          to="/graph"
+          className={({ isActive }) =>
+            `block px-3 py-2 rounded text-sm ${isActive ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-800'}`
+          }
+        >
+          Relationship Graph
+        </NavLink>
+
         <div className="h-px bg-gray-700 my-2" />
 
         {groups.map((group) => (

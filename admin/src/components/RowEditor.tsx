@@ -8,6 +8,7 @@ import FKDropdown from './FieldRenderers/FKDropdown';
 import FKMultiSelect from './FieldRenderers/FKMultiSelect';
 import JsonEditor from './FieldRenderers/JsonEditor';
 import MuscleTargetTree from './FieldRenderers/MuscleTargetTree';
+import ReverseRelationships from './ReverseRelationships';
 
 interface RowEditorProps {
   schema: TableSchema;
@@ -30,6 +31,9 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
     onSave(data);
   };
 
+  const recordId = String(data[schema.idField] ?? '');
+  const recordLabel = String(data[schema.labelField] ?? data[schema.idField] ?? '');
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-start justify-end z-50">
       <div className="bg-white h-full w-full max-w-2xl shadow-xl overflow-y-auto">
@@ -37,7 +41,7 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
           {/* Header */}
           <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
             <h2 className="font-bold text-gray-800">
-              {isNew ? 'Add Row' : `Edit: ${data[schema.labelField] || data[schema.idField]}`}
+              {isNew ? 'Add Row' : `Edit: ${recordLabel}`}
             </h2>
             <div className="flex gap-2">
               <button
@@ -65,10 +69,10 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
                   {field.name}
                   {field.required && <span className="text-red-500 ml-0.5">*</span>}
                   <span className="text-xs text-gray-400 ml-2">{field.type}</span>
+                  {field.refTable && <span className="text-xs text-blue-400 ml-1">&rarr; {field.refTable}</span>}
                 </label>
               );
 
-              // ID field: editable only when creating
               if (field.name === 'id' || field.name === schema.idField) {
                 return (
                   <div key={field.name}>
@@ -131,6 +135,7 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
                         options={refData[field.refTable!] || []}
                         labelField={field.refLabelField || 'label'}
                         onChange={(v) => update(field.name, v)}
+                        refTable={field.refTable}
                       />
                     </div>
                   );
@@ -145,6 +150,7 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
                         labelField={field.refLabelField || 'label'}
                         onChange={(v) => update(field.name, v)}
                         nullable
+                        refTable={field.refTable}
                       />
                     </div>
                   );
@@ -181,6 +187,21 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
                   );
               }
             })}
+
+            {/* Reverse Relationships Section */}
+            {!isNew && recordId && (
+              <div className="pt-4 border-t">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Reverse Relationships
+                  <span className="text-xs text-gray-400 ml-2">What references this record</span>
+                </label>
+                <ReverseRelationships
+                  tableKey={schema.key}
+                  recordId={recordId}
+                  recordLabel={recordLabel}
+                />
+              </div>
+            )}
           </div>
         </form>
       </div>

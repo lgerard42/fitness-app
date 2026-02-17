@@ -144,14 +144,69 @@ router.put('/:key/rows/:id', (req: Request, res: Response) => {
   }
 });
 
-/** DELETE /api/tables/:key/rows/:id — delete a row */
+/**
+ * Helper: remove or reassign FK references across all tables when deleting a row.
+ * breakLinks  = set the FK to '' (for fk) or remove from array (for fk[])
+ * reassignTo  = replace old ID with new ID in all FK fields
+ */
+function handleFKCleanup(targetKey: string, targetId: string, mode: 'break' | 'reassign', reassignTo?: string) {
+  for (const schema of TABLE_REGISTRY) {
+    const fkFields = schema.fields.filter(
+      (f) => (f.type === 'fk' || f.type === 'fk[]') && f.refTable === targetKey
+    );
+    if (fkFields.length === 0) continue;
+
+    try {
+      const data = readTable(schema.file);
+      if (!Array.isArray(data)) continue;
+
+      let changed = false;
+      for (const row of data as Record<string, unknown>[]) {
+        for (const f of fkFields) {
+          const val = row[f.name];
+          if (f.type === 'fk') {
+            if (val === targetId) {
+              row[f.name] = mode === 'reassign' && reassignTo ? reassignTo : '';
+              changed = true;
+            }
+          } else if (f.type === 'fk[]' && Array.isArray(val)) {
+            if (val.includes(targetId)) {
+              if (mode === 'reassign' && reassignTo) {
+                row[f.name] = val.map((v: string) => v === targetId ? reassignTo : v);
+              } else {
+                row[f.name] = val.filter((v: string) => v !== targetId);
+              }
+              changed = true;
+            }
+          }
+        }
+      }
+      if (changed) writeTable(schema.file, data);
+    } catch {
+      // skip if table file is missing
+    }
+  }
+}
+
+/** DELETE /api/tables/:key/rows/:id — delete a row, with optional FK cleanup */
 router.delete('/:key/rows/:id', (req: Request, res: Response) => {
   const schema = getSchema(req.params.key);
   if (!schema) {
     res.status(404).json({ error: `Table "${req.params.key}" not found in registry` });
     return;
   }
+
+  const breakLinks = req.query.breakLinks === 'true';
+  const reassignTo = req.query.reassignTo as string | undefined;
+
   try {
+    // Handle FK cleanup before deleting
+    if (reassignTo) {
+      handleFKCleanup(req.params.key, req.params.id, 'reassign', reassignTo);
+    } else if (breakLinks) {
+      handleFKCleanup(req.params.key, req.params.id, 'break');
+    }
+
     const data = readTable(schema.file);
 
     if (schema.isKeyValueMap && data && typeof data === 'object' && !Array.isArray(data)) {
@@ -202,7 +257,6 @@ router.post('/:key/reorder', (req: Request, res: Response) => {
     const reordered = orderedIds
       .filter((id) => byId.has(id))
       .map((id, i) => ({ ...byId.get(id)!, sort_order: i }));
-    // Append any rows not in the orderedIds list at the end
     for (const row of data) {
       if (!orderedIds.includes(row.id as string)) {
         reordered.push({ ...row, sort_order: reordered.length });
@@ -212,6 +266,36 @@ router.post('/:key/reorder', (req: Request, res: Response) => {
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: `Failed to reorder: ${err}` });
+  }
+});
+
+/** POST /api/tables/bulk-matrix — bulk update allowed_* columns for filter matrix */
+router.post('/bulk-matrix', (req: Request, res: Response) => {
+  const { sourceTable, updates } = req.body as {
+    sourceTable: string;
+    updates: Record<string, Record<string, unknown>>;
+  };
+  const schema = getSchema(sourceTable);
+  if (!schema) {
+    res.status(404).json({ error: `Table "${sourceTable}" not found in registry` });
+    return;
+  }
+  try {
+    const data = readTable(schema.file);
+    if (!Array.isArray(data)) {
+      res.status(500).json({ error: 'Table data is not an array' });
+      return;
+    }
+    for (const row of data as Record<string, unknown>[]) {
+      const id = row.id as string;
+      if (updates[id]) {
+        Object.assign(row, updates[id]);
+      }
+    }
+    writeTable(schema.file, data);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: `Bulk update failed: ${err}` });
   }
 });
 

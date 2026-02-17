@@ -25,10 +25,31 @@ router.get('/:key', (req: Request, res: Response) => {
   res.json(schema);
 });
 
-/** GET /api/relationships — compute FK graph */
+/** GET /api/schema/meta/relationships — compute FK graph with node metadata */
 router.get('/meta/relationships', (_req: Request, res: Response) => {
+  const nodes: Array<{ key: string; label: string; group: string; rowCount: number }> = [];
   const edges: Array<{ from: string; to: string; field: string; type: 'fk' | 'fk[]' }> = [];
+
   for (const schema of TABLE_REGISTRY) {
+    let rowCount = 0;
+    try {
+      const data = readTable(schema.file);
+      if (schema.isKeyValueMap && data && typeof data === 'object' && !Array.isArray(data)) {
+        rowCount = Object.keys(data).length;
+      } else if (Array.isArray(data)) {
+        rowCount = data.length;
+      }
+    } catch {
+      // file might not exist yet
+    }
+
+    nodes.push({
+      key: schema.key,
+      label: schema.label,
+      group: schema.group,
+      rowCount,
+    });
+
     for (const field of schema.fields) {
       if ((field.type === 'fk' || field.type === 'fk[]') && field.refTable) {
         edges.push({
@@ -40,10 +61,11 @@ router.get('/meta/relationships', (_req: Request, res: Response) => {
       }
     }
   }
-  res.json({ edges });
+
+  res.json({ nodes, edges });
 });
 
-/** POST /api/validate/:key — validate a row and check FK integrity */
+/** POST /api/schema/:key/validate — validate a row and check FK integrity */
 router.post('/:key/validate', (req: Request, res: Response) => {
   const schema = getSchema(req.params.key);
   if (!schema) {

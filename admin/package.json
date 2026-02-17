@@ -11,8 +11,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@xyflow/react": "^12.10.0",
     "cors": "^2.8.5",
-    "express": "^4.21.0"
+    "express": "^4.21.0",
+    "react-hot-toast": "^2.6.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
