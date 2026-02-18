@@ -175,6 +175,8 @@ export const TABLE_REGISTRY: TableSchema[] = [
       { name: 'common_names', type: 'string[]', defaultValue: [] },
       { name: 'short_description', type: 'string' },
       { name: 'muscle_targets', type: 'json', jsonShape: 'muscle_targets' },
+      { name: 'grip_type_ids', type: 'fk[]', refTable: 'gripTypes', refLabelField: 'label' },
+      { name: 'grip_type_configs', type: 'json', jsonShape: 'grip_type_configs' },
       { name: 'motion_variation_ids', type: 'fk[]', refTable: 'primaryMotionVariations', refLabelField: 'label' },
       { name: 'motion_plane_ids', type: 'fk[]', refTable: 'motionPlanes', refLabelField: 'label' },
     ]),

@@ -127,6 +127,7 @@
     "is_active": true,
     "motion_variation_ids": [
       "FLY_DECLINE",
+      "FLY_INCLINE",
       "PRESS_DECLINE",
       "PULLOVER_BACK",
       "PULLOVER_CHEST",

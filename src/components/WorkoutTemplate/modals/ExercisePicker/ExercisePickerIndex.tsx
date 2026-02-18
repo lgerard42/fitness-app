@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { View, Modal, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Modal, TouchableOpacity, StyleSheet, InteractionManager } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { COLORS } from '@/constants/colors';
@@ -1493,8 +1493,12 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
   }, [selectedOrder, exerciseGroups, getGroupedExercises, filtered, exerciseSetGroups, exerciseInstanceSetGroups, itemSetGroupsMap, itemIdToOrderIndices]);
 
   const handleAddAction = () => {
+    // Convert to workout format first to capture current state values
+    // This must happen before clearing state since convertToWorkoutFormat depends on state
     const { exercisesToAdd, groupsMetadata } = convertToWorkoutFormat();
-    onAdd(exercisesToAdd, null, groupsMetadata);
+    
+    // Clear state immediately to allow modal to start closing smoothly
+    // This gives the UI a chance to respond before the expensive parent update
     setSelectedIds([]);
     setSelectedOrder([]);
     setExerciseGroups([]);
@@ -1509,6 +1513,15 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ isOpen, onClose, onAdd,
     setItemIdToOrderIndices({});
     setItemSetGroupsMap({});
     prevItemSetGroupsMapRef.current = {};
+
+    // Defer the expensive parent update to after interactions (modal close, state updates)
+    // This prevents UI freezing when adding many exercises
+    // Use requestAnimationFrame first to allow modal animation to start
+    requestAnimationFrame(() => {
+      InteractionManager.runAfterInteractions(() => {
+        onAdd(exercisesToAdd, null, groupsMetadata);
+      });
+    });
   };
 
   // Sync data from list view back to itemSetGroupsMap before opening drag and drop modal

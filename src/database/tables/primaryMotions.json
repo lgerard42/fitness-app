@@ -44,7 +44,9 @@
       "DIP_CHEST",
       "DIP_TRICEPS"
     ],
-    "motion_plane_ids": []
+    "motion_plane_ids": [],
+    "grip_type_ids": [],
+    "grip_type_configs": {}
   },
   {
     "id": "CURL",
@@ -77,7 +79,9 @@
     "motion_plane_ids": [
       "LOW_LOW",
       "LOW_MID"
-    ]
+    ],
+    "grip_type_ids": [],
+    "grip_type_configs": {}
   },
   {
     "id": "EXTENSION_ARM",
@@ -114,7 +118,9 @@
     "motion_plane_ids": [
       "LOW_HIGH",
       "MID_HIGH"
-    ]
+    ],
+    "grip_type_ids": [],
+    "grip_type_configs": {}
   },
   {
     "id": "PULLOVER",
@@ -158,7 +164,9 @@
     "motion_plane_ids": [
       "HIGH_LOW",
       "MID_LOW"
-    ]
+    ],
+    "grip_type_ids": [],
+    "grip_type_configs": {}
   },
   {
     "id": "SHRUG",
@@ -191,7 +199,9 @@
     "motion_variation_ids": [
       "SHRUG_STD"
     ],
-    "motion_plane_ids": []
+    "motion_plane_ids": [],
+    "grip_type_ids": [],
+    "grip_type_configs": {}
   },
   {
     "id": "VERTICAL_PULL",
@@ -235,7 +245,9 @@
       "PULL_BEHIND",
       "PULL_FRONT"
     ],
-    "motion_plane_ids": []
+    "motion_plane_ids": [],
+    "grip_type_ids": [],
+    "grip_type_configs": {}
   },
   {
     "id": "HORIZONTAL_ROW",
@@ -284,7 +296,9 @@
       "MID_LOW",
       "MID_MID",
       "LOW_MID"
-    ]
+    ],
+    "grip_type_ids": [],
+    "grip_type_configs": {}
   },
   {
     "id": "CRUSH",
@@ -315,7 +329,9 @@
     "motion_variation_ids": [
       "CRUSH_STD"
     ],
-    "motion_plane_ids": []
+    "motion_plane_ids": [],
+    "grip_type_ids": [],
+    "grip_type_configs": {}
   },
   {
     "id": "PRESS",
@@ -369,7 +385,9 @@
       "MID_LOW",
       "MID_HIGH",
       "LOW_HIGH"
-    ]
+    ],
+    "grip_type_ids": [],
+    "grip_type_configs": {}
   },
   {
     "id": "FLY",
@@ -405,7 +423,9 @@
     "motion_plane_ids": [
       "HIGH_LOW",
       "MID_LOW"
-    ]
+    ],
+    "grip_type_ids": [],
+    "grip_type_configs": {}
   },
   {
     "id": "FLEXION_NECK",
@@ -424,7 +444,9 @@
     "sort_order": 10,
     "is_active": true,
     "motion_variation_ids": [],
-    "motion_plane_ids": []
+    "motion_plane_ids": [],
+    "grip_type_ids": [],
+    "grip_type_configs": {}
   },
   {
     "id": "EXTENSION_NECK",
@@ -443,7 +465,9 @@
     "sort_order": 11,
     "is_active": true,
     "motion_variation_ids": [],
-    "motion_plane_ids": []
+    "motion_plane_ids": [],
+    "grip_type_ids": [],
+    "grip_type_configs": {}
   },
   {
     "id": "RAISE",
@@ -474,7 +498,9 @@
     "motion_plane_ids": [
       "LOW_HIGH",
       "LOW_MID"
-    ]
+    ],
+    "grip_type_ids": [],
+    "grip_type_configs": {}
   },
   {
     "id": "PRESS_VERTICAL",
@@ -521,7 +547,9 @@
       "PRESS_HIGH_INCLINE",
       "PRESS_OVERHEAD"
     ],
-    "motion_plane_ids": []
+    "motion_plane_ids": [],
+    "grip_type_ids": [],
+    "grip_type_configs": {}
   },
   {
     "id": "REVERSE_FLY",
@@ -567,7 +595,9 @@
       "HIGH_HIGH",
       "HIGH_LOW",
       "HIGH_MID"
-    ]
+    ],
+    "grip_type_ids": [],
+    "grip_type_configs": {}
   },
   {
     "id": "FACE_PULL",
@@ -606,7 +636,9 @@
       "MID_HIGH",
       "MID_MID",
       "HIGH_LOW"
-    ]
+    ],
+    "grip_type_ids": [],
+    "grip_type_configs": {}
   },
   {
     "id": "EXTENSION_BACK",
@@ -639,7 +671,13 @@
     "motion_variation_ids": [
       "EXT_BACK_STD"
     ],
-    "motion_plane_ids": []
+    "motion_plane_ids": [],
+    "grip_type_ids": [
+      "GRIP_SUPINATED"
+    ],
+    "grip_type_configs": {
+      "GRIP_SUPINATED": {}
+    }
   },
   {
     "id": "CALF_RAISE",
@@ -667,7 +705,9 @@
     "sort_order": 17,
     "is_active": true,
     "motion_variation_ids": [],
-    "motion_plane_ids": []
+    "motion_plane_ids": [],
+    "grip_type_ids": [],
+    "grip_type_configs": {}
   },
   {
     "id": "LEG_CURL",
@@ -695,7 +735,9 @@
     "sort_order": 18,
     "is_active": true,
     "motion_variation_ids": [],
-    "motion_plane_ids": []
+    "motion_plane_ids": [],
+    "grip_type_ids": [],
+    "grip_type_configs": {}
   },
   {
     "id": "LEG_EXTENSION",
@@ -726,7 +768,9 @@
     "sort_order": 19,
     "is_active": true,
     "motion_variation_ids": [],
-    "motion_plane_ids": []
+    "motion_plane_ids": [],
+    "grip_type_ids": [],
+    "grip_type_configs": {}
   },
   {
     "id": "HINGE",
@@ -767,7 +811,9 @@
       "HINGE_STRAIGHT",
       "HINGE_THRUST"
     ],
-    "motion_plane_ids": []
+    "motion_plane_ids": [],
+    "grip_type_ids": [],
+    "grip_type_configs": {}
   },
   {
     "id": "SQUAT",
@@ -816,7 +862,9 @@
       "SQUAT_FRONT",
       "SQUAT_REGULAR"
     ],
-    "motion_plane_ids": []
+    "motion_plane_ids": [],
+    "grip_type_ids": [],
+    "grip_type_configs": {}
   },
   {
     "id": "LUNGE",
@@ -851,7 +899,9 @@
       "LUNGE_STATIC",
       "LUNGE_STEP"
     ],
-    "motion_plane_ids": []
+    "motion_plane_ids": [],
+    "grip_type_ids": [],
+    "grip_type_configs": {}
   },
   {
     "id": "PLANK",
@@ -884,7 +934,9 @@
     "motion_variation_ids": [
       "PLANK_STD"
     ],
-    "motion_plane_ids": []
+    "motion_plane_ids": [],
+    "grip_type_ids": [],
+    "grip_type_configs": {}
   },
   {
     "id": "AB_CRUNCH",
@@ -914,7 +966,9 @@
     "motion_variation_ids": [
       "CRUNCH_STD"
     ],
-    "motion_plane_ids": []
+    "motion_plane_ids": [],
+    "grip_type_ids": [],
+    "grip_type_configs": {}
   },
   {
     "id": "SIDE_BEND",
@@ -939,7 +993,9 @@
     "sort_order": 25,
     "is_active": true,
     "motion_variation_ids": [],
-    "motion_plane_ids": []
+    "motion_plane_ids": [],
+    "grip_type_ids": [],
+    "grip_type_configs": {}
   },
   {
     "id": "ROTATION",
@@ -973,7 +1029,9 @@
       "HIGH_LOW",
       "MID_MID",
       "LOW_HIGH"
-    ]
+    ],
+    "grip_type_ids": [],
+    "grip_type_configs": {}
   },
   {
     "id": "LEG_RAISE",
@@ -1003,6 +1061,8 @@
     "motion_variation_ids": [
       "LEG_RAISE_STD"
     ],
-    "motion_plane_ids": []
+    "motion_plane_ids": [],
+    "grip_type_ids": [],
+    "grip_type_configs": {}
   }
 ]

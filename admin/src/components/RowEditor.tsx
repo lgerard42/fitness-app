@@ -30,7 +30,7 @@ const MUSCLE_HIERARCHY_ANCHOR: Record<string, string> = {
 
 const MOTION_TABLES = ['primaryMotions', 'primaryMotionVariations', 'motionPlanes'];
 const MOTION_HIERARCHY_FIELDS: Record<string, string[]> = {
-  primaryMotions: ['motion_variation_ids', 'motion_plane_ids', 'muscle_targets'],
+  primaryMotions: ['motion_variation_ids', 'motion_plane_ids', 'muscle_targets', 'grip_type_ids', 'grip_type_configs'],
   primaryMotionVariations: ['primary_motion_ids', 'motion_plane_ids', 'muscle_targets'],
   motionPlanes: ['motion_variation_ids', 'primary_motion_ids', 'muscle_targets'],
 };

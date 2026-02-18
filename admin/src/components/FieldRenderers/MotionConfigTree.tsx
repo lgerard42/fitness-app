@@ -19,10 +19,13 @@ interface MotionRecord {
   motion_variation_ids?: string[];
   motion_plane_ids?: string[];
   muscle_targets?: Record<string, unknown>;
+  grip_type_ids?: string[];
+  grip_type_configs?: Record<string, Record<string, unknown>>;
   [key: string]: unknown;
 }
 
 interface MuscleOption { id: string; label: string; }
+interface GripTypeOption { id: string; label: string; }
 
 // ---------------------------------------------------------------------------
 // Recompute derived FK fields
@@ -490,6 +493,87 @@ function MuscleTargetsToggle({
 }
 
 // ---------------------------------------------------------------------------
+// Inline grip types toggle (sits in the parent header row, similar to MuscleTargetsToggle)
+// ---------------------------------------------------------------------------
+function GripTypesToggle({
+  gtKey,
+  gripTypeIds,
+  gripTypes,
+  expanded,
+  toggle,
+}: {
+  gtKey: string;
+  gripTypeIds: string[];
+  gripTypes: GripTypeOption[];
+  expanded: Set<string>;
+  toggle: (key: string) => void;
+}) {
+  const isExp = expanded.has(gtKey);
+  const count = gripTypeIds.length;
+  const [showTooltip, setShowTooltip] = useState(false);
+  const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  const handleMouseEnter = () => {
+    if (count === 0) return;
+    if (wrapperRef.current) {
+      const rect = wrapperRef.current.getBoundingClientRect();
+      setTooltipPosition({
+        top: rect.bottom + window.scrollY + 4,
+        left: rect.left + window.scrollX,
+      });
+    }
+    setShowTooltip(true);
+  };
+
+  const handleMouseLeave = () => {
+    setShowTooltip(false);
+  };
+
+  const linkedNames = gripTypeIds
+    .map(id => gripTypes.find(g => g.id === id))
+    .filter(Boolean)
+    .map(g => g!.label);
+
+  return (
+    <>
+      <div
+        ref={wrapperRef}
+        className="flex items-center gap-1 cursor-pointer bg-emerald-50/60 hover:bg-emerald-100/80 rounded px-1.5 py-0.5 flex-shrink-0"
+        onClick={e => { e.stopPropagation(); toggle(gtKey); }}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        <span className="text-[10px] text-emerald-800 font-bold flex-shrink-0">
+          Grip Types{count > 0 ? ` (${count})` : ''}
+        </span>
+        <button type="button" className="text-[10px] text-emerald-600/70 w-3 flex-shrink-0">
+          {isExp ? '▼' : '▶'}
+        </button>
+      </div>
+      {showTooltip && count > 0 && createPortal(
+        <div
+          className="fixed z-[100] bg-gray-900 text-white text-xs rounded px-3 py-2 whitespace-pre-line shadow-xl border border-gray-700 pointer-events-none"
+          style={{
+            top: `${tooltipPosition.top}px`,
+            left: `${tooltipPosition.left}px`,
+            width: '240px',
+          }}
+        >
+          <div className="font-semibold mb-1 text-emerald-300">Grip Types:</div>
+          <div className="font-mono text-[11px]">
+            {linkedNames.map((name, i) => (
+              <div key={i}>{i < linkedNames.length - 1 ? '├─' : '└─'} {name}</div>
+            ))}
+          </div>
+        </div>,
+        document.body
+      )}
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main MotionConfigTree
 // ---------------------------------------------------------------------------
 export default function MotionConfigTree({ tableKey, currentRecordId, muscleTargets, onFieldsChange }: MotionConfigTreeProps) {
@@ -499,22 +583,25 @@ export default function MotionConfigTree({ tableKey, currentRecordId, muscleTarg
   const [primaryMuscles, setPrimaryMuscles] = useState<MuscleOption[]>([]);
   const [secondaryMuscles, setSecondaryMuscles] = useState<Record<string, unknown>[]>([]);
   const [tertiaryMuscles, setTertiaryMuscles] = useState<Record<string, unknown>[]>([]);
+  const [gripTypes, setGripTypes] = useState<GripTypeOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const loadAll = useCallback(async () => {
     try {
-      const [pm, v, mp, pmMuscles, smMuscles, tmMuscles] = await Promise.all([
+      const [pm, v, mp, pmMuscles, smMuscles, tmMuscles, gt] = await Promise.all([
         api.getTable('primaryMotions'),
         api.getTable('primaryMotionVariations'),
         api.getTable('motionPlanes'),
         api.getTable('primaryMuscles'),
         api.getTable('secondaryMuscles'),
         api.getTable('tertiaryMuscles'),
+        api.getTable('gripTypes'),
       ]);
       setPrimaryMotions((pm as MotionRecord[]) || []);
       setVariations((v as MotionRecord[]) || []);
       setMotionPlanes((mp as MotionRecord[]) || []);
+      setGripTypes((gt as GripTypeOption[]) || []);
       setPrimaryMuscles((pmMuscles as MuscleOption[]) || []);
       setSecondaryMuscles((smMuscles as Record<string, unknown>[]) || []);
       setTertiaryMuscles((tmMuscles as Record<string, unknown>[]) || []);
@@ -553,6 +640,8 @@ export default function MotionConfigTree({ tableKey, currentRecordId, muscleTarg
       if (tableKey === 'primaryMotions') {
         fields.motion_variation_ids = cur.motion_variation_ids || [];
         fields.motion_plane_ids = cur.motion_plane_ids || [];
+        fields.grip_type_ids = cur.grip_type_ids || [];
+        fields.grip_type_configs = cur.grip_type_configs || {};
       } else if (tableKey === 'primaryMotionVariations') {
         fields.primary_motion_ids = cur.primary_motion_ids || '';
         fields.motion_plane_ids = cur.motion_plane_ids || [];
@@ -638,6 +727,53 @@ export default function MotionConfigTree({ tableKey, currentRecordId, muscleTarg
       console.error('Failed to save muscle_targets:', err);
     }
   }, [variations, primaryMotions, motionPlanes]);
+
+  // ── Grip type operations for primary motions ──
+  const addGripTypeToPrimary = useCallback(async (primaryId: string, gripTypeId: string) => {
+    const ps = primaryMotions.map(p => {
+      if (p.id !== primaryId) return { ...p };
+      const existing = p.grip_type_ids || [];
+      if (existing.includes(gripTypeId)) return { ...p };
+      const configs = p.grip_type_configs || {};
+      return {
+        ...p,
+        grip_type_ids: [...existing, gripTypeId],
+        grip_type_configs: { ...configs, [gripTypeId]: configs[gripTypeId] || {} },
+      };
+    });
+    await syncAfterChange(ps, variations.map(v => ({ ...v })), motionPlanes.map(m => ({ ...m })));
+  }, [primaryMotions, variations, motionPlanes, syncAfterChange]);
+
+  const removeGripTypeFromPrimary = useCallback(async (primaryId: string, gripTypeId: string) => {
+    const ps = primaryMotions.map(p => {
+      if (p.id !== primaryId) return { ...p };
+      const configs = { ...(p.grip_type_configs || {}) };
+      delete configs[gripTypeId];
+      return {
+        ...p,
+        grip_type_ids: (p.grip_type_ids || []).filter(id => id !== gripTypeId),
+        grip_type_configs: configs,
+      };
+    });
+    await syncAfterChange(ps, variations.map(v => ({ ...v })), motionPlanes.map(m => ({ ...m })));
+  }, [primaryMotions, variations, motionPlanes, syncAfterChange]);
+
+  const saveGripTypeMuscleTargets = useCallback(async (primaryId: string, gripTypeId: string, newTargets: Record<string, unknown>) => {
+    const ps = primaryMotions.map(p => {
+      if (p.id !== primaryId) return { ...p };
+      const configs = { ...(p.grip_type_configs || {}) };
+      configs[gripTypeId] = newTargets;
+      return { ...p, grip_type_configs: configs };
+    });
+    const pm = ps.find(p => p.id === primaryId);
+    if (pm) {
+      try { await api.updateRow('primaryMotions', primaryId, pm); } catch (err) { console.error('Failed to save grip type config:', err); }
+    }
+    setPrimaryMotions([...ps]);
+    if (tableKey === 'primaryMotions' && primaryId === currentRecordId) {
+      onFieldsChange({ grip_type_configs: pm?.grip_type_configs || {} });
+    }
+  }, [primaryMotions, tableKey, currentRecordId, onFieldsChange]);
 
   // ── Create new variation ──
   const createVariation = useCallback(async (primaryId: string, newData: Record<string, unknown>) => {
@@ -827,6 +963,10 @@ export default function MotionConfigTree({ tableKey, currentRecordId, muscleTarg
     const unlinkedVars = variations.filter(v => !v.primary_motion_ids);
 
     const pmMtKey = `mt-pm-${pm.id}`;
+    const pmGtKey = `gt-pm-${pm.id}`;
+    const pmGripIds = pm.grip_type_ids || [];
+    const pmGripConfigs = pm.grip_type_configs || {};
+    const availableGripTypes = gripTypes.filter(g => !pmGripIds.includes(g.id));
     return (
       <div key={pm.id} className="border rounded-lg bg-gray-50 overflow-hidden">
         <div className={`px-3 py-2 border-b flex items-center gap-2 ${current ? 'bg-indigo-100' : 'bg-indigo-50'}`}>
@@ -840,10 +980,64 @@ export default function MotionConfigTree({ tableKey, currentRecordId, muscleTarg
             <span className="text-xs text-gray-400">{pm.id}</span>
           </div>
           <MuscleTargetsToggle mtKey={pmMtKey} targets={mt.targets} primaryMuscles={primaryMuscles} secondaryMuscles={secondaryMuscles} tertiaryMuscles={tertiaryMuscles} expanded={expanded} toggle={toggle} />
+          <GripTypesToggle gtKey={pmGtKey} gripTypeIds={pmGripIds} gripTypes={gripTypes} expanded={expanded} toggle={toggle} />
         </div>
         {expanded.has(pmMtKey) && (
           <div className="px-3 py-1 border-b bg-red-100">
             <MuscleTargetsSubtree targets={mt.targets} depth={0} onChange={mt.onChange} {...mtProps} />
+          </div>
+        )}
+        {expanded.has(pmGtKey) && (
+          <div className="px-3 py-2 border-b bg-emerald-50">
+            {pmGripIds.length === 0 && (
+              <div className="text-[10px] text-gray-400 italic mb-1">No grip types linked yet.</div>
+            )}
+            {pmGripIds.map(gId => {
+              const gt = gripTypes.find(g => g.id === gId);
+              const gtLabel = gt?.label || gId;
+              const gtMtKey = `mt-grip-${pm.id}-${gId}`;
+              const gtTargets = (pmGripConfigs[gId] || {}) as Record<string, unknown>;
+              const isGtMtExp = expanded.has(gtMtKey);
+              return (
+                <div key={gId} className="rounded border bg-white overflow-hidden mb-1.5 last:mb-0">
+                  <div className="flex items-center gap-2 px-2 py-1 bg-emerald-50/80">
+                    <span className="text-xs font-medium text-emerald-800">{gtLabel}</span>
+                    <span className="text-[10px] text-gray-400">{gId}</span>
+                    <MuscleTargetsToggle
+                      mtKey={gtMtKey}
+                      targets={gtTargets}
+                      primaryMuscles={primaryMuscles}
+                      secondaryMuscles={secondaryMuscles}
+                      tertiaryMuscles={tertiaryMuscles}
+                      expanded={expanded}
+                      toggle={toggle}
+                    />
+                    <button type="button" onClick={() => removeGripTypeFromPrimary(pm.id, gId)}
+                      className="ml-auto text-[10px] text-red-400 hover:text-red-600 flex-shrink-0">×</button>
+                  </div>
+                  {isGtMtExp && (
+                    <div className="px-2 py-1 border-t bg-red-100">
+                      <MuscleTargetsSubtree
+                        targets={gtTargets}
+                        depth={0}
+                        onChange={(v: Record<string, unknown>) => saveGripTypeMuscleTargets(pm.id, gId, v)}
+                        {...mtProps}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {availableGripTypes.length > 0 && (
+              <select
+                value=""
+                onChange={async e => { if (e.target.value) await addGripTypeToPrimary(pm.id, e.target.value); }}
+                className="mt-1 px-1 py-0.5 border border-emerald-300 rounded text-[10px] text-emerald-600 focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+              >
+                <option value="">Add Grip Type...</option>
+                {availableGripTypes.map(g => <option key={g.id} value={g.id}>{g.label} ({g.id})</option>)}
+              </select>
+            )}
           </div>
         )}
 

@@ -5,7 +5,7 @@
 import * as SQLite from 'expo-sqlite';
 
 const DATABASE_NAME = 'workout.db';
-const DATABASE_VERSION = 11;
+const DATABASE_VERSION = 12;
 
 export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
   const db = await SQLite.openDatabaseAsync(DATABASE_NAME);
@@ -51,6 +51,9 @@ export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
     }
     if (currentVersion < 11) {
       await migrateToV11(db);
+    }
+    if (currentVersion < 12) {
+      await migrateToV12(db);
     }
     await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
   }
@@ -273,6 +276,8 @@ async function createTables(db: SQLite.SQLiteDatabase) {
       common_names TEXT,
       short_description TEXT,
       muscle_targets TEXT,
+      grip_type_ids TEXT DEFAULT '[]',
+      grip_type_configs TEXT DEFAULT '{}',
       motion_variation_ids TEXT DEFAULT '[]',
       motion_plane_ids TEXT DEFAULT '[]',
       sort_order INTEGER DEFAULT 0,
@@ -552,6 +557,21 @@ async function migrateToV11(db: SQLite.SQLiteDatabase) {
     }
   } catch (e) {
     console.warn('migrateToV11: failed to add muscle_targets to motion_planes', e);
+  }
+}
+
+async function migrateToV12(db: SQLite.SQLiteDatabase) {
+  // V12 adds grip_type_ids and grip_type_configs columns to primary_motions
+  try {
+    const pmInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(primary_motions)`);
+    if (!pmInfo.some(col => col.name === 'grip_type_ids')) {
+      await db.execAsync(`ALTER TABLE primary_motions ADD COLUMN grip_type_ids TEXT DEFAULT '[]'`);
+    }
+    if (!pmInfo.some(col => col.name === 'grip_type_configs')) {
+      await db.execAsync(`ALTER TABLE primary_motions ADD COLUMN grip_type_configs TEXT DEFAULT '{}'`);
+    }
+  } catch (e) {
+    console.warn('migrateToV12: failed to add grip columns to primary_motions', e);
   }
 }
 
@@ -934,8 +954,8 @@ async function seedMotionData(db: SQLite.SQLiteDatabase) {
   for (const row of primaryMotions) {
     const upperLowerBody = str(row.upperLowerBody ?? row.upper_lower_body);
     await db.runAsync(
-      `INSERT OR REPLACE INTO primary_motions (id, upper_lower_body, label, sub_label, common_names, short_description, muscle_targets, motion_variation_ids, motion_plane_ids, sort_order, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT OR REPLACE INTO primary_motions (id, upper_lower_body, label, sub_label, common_names, short_description, muscle_targets, grip_type_ids, grip_type_configs, motion_variation_ids, motion_plane_ids, sort_order, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       str(row.id),
       upperLowerBody,
       str(row.label),
@@ -943,6 +963,8 @@ async function seedMotionData(db: SQLite.SQLiteDatabase) {
       Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
       str(row.short_description),
       row.muscle_targets ? JSON.stringify(row.muscle_targets) : '{}',
+      Array.isArray(row.grip_type_ids) ? JSON.stringify(row.grip_type_ids) : '[]',
+      row.grip_type_configs ? JSON.stringify(row.grip_type_configs) : '{}',
       Array.isArray(row.motion_variation_ids) ? JSON.stringify(row.motion_variation_ids) : '[]',
       Array.isArray(row.motion_plane_ids) ? JSON.stringify(row.motion_plane_ids) : '[]',
       num(row.sort_order, 0),
