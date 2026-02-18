@@ -672,12 +672,8 @@
       "EXT_BACK_STD"
     ],
     "motion_plane_ids": [],
-    "grip_type_ids": [
-      "GRIP_SUPINATED"
-    ],
-    "grip_type_configs": {
-      "GRIP_SUPINATED": {}
-    }
+    "grip_type_ids": [],
+    "grip_type_configs": {}
   },
   {
     "id": "CALF_RAISE",

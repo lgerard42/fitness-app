@@ -1,5 +1,6 @@
 [
   {
+    "grip_type_id": "GRIP_ROTATING",
     "id": "NEUTRAL_PRO",
     "label": "Neutral to Pronated",
     "subLabel": "Rotatio Interna",
@@ -10,6 +11,7 @@
     "is_active": true
   },
   {
+    "grip_type_id": "GRIP_ROTATING",
     "id": "NEUTRAL_SUP",
     "label": "Neutral to Supinated",
     "subLabel": "Rotatio Externa",
@@ -20,6 +22,7 @@
     "is_active": true
   },
   {
+    "grip_type_id": "GRIP_ROTATING",
     "id": "NEUTRAL_SEMIPRO",
     "label": "Neutral to Semi-Pro",
     "subLabel": "Rotatio Partialis Interna",
@@ -30,6 +33,7 @@
     "is_active": true
   },
   {
+    "grip_type_id": "GRIP_ROTATING",
     "id": "NEUTRAL_SEMISUP",
     "label": "Neutral to Semi-Sup",
     "subLabel": "Rotatio Partialis Externa",
@@ -40,6 +44,7 @@
     "is_active": true
   },
   {
+    "grip_type_id": "GRIP_ROTATING",
     "id": "PRO_NEUTRAL",
     "label": "Pronated to Neutral",
     "subLabel": "Rotatio Externa",
@@ -50,6 +55,7 @@
     "is_active": true
   },
   {
+    "grip_type_id": "GRIP_ROTATING",
     "id": "PRO_SUP",
     "label": "Pronated to Supinated",
     "subLabel": "Rotatio Completa",
@@ -60,6 +66,7 @@
     "is_active": true
   },
   {
+    "grip_type_id": "GRIP_ROTATING",
     "id": "PRO_SEMISUP",
     "label": "Pronated to Semi-Sup",
     "subLabel": "Rotatio Magna",
@@ -70,6 +77,7 @@
     "is_active": true
   },
   {
+    "grip_type_id": "GRIP_ROTATING",
     "id": "SUP_NEUTRAL",
     "label": "Supinated to Neutral",
     "subLabel": "Rotatio Interna",
@@ -80,6 +88,7 @@
     "is_active": true
   },
   {
+    "grip_type_id": "GRIP_ROTATING",
     "id": "SUP_PRO",
     "label": "Supinated to Pronated",
     "subLabel": "Rotatio Completa Inversa",
@@ -90,6 +99,7 @@
     "is_active": true
   },
   {
+    "grip_type_id": "GRIP_ROTATING",
     "id": "SUP_SEMIPRO",
     "label": "Supinated to Semi-Pro",
     "subLabel": "Rotatio Magna Inversa",
@@ -100,6 +110,7 @@
     "is_active": true
   },
   {
+    "grip_type_id": "GRIP_ROTATING",
     "id": "SEMIPRO_NEUTRAL",
     "label": "Semi-Pro to Neutral",
     "subLabel": "Rotatio Minima Externa",
@@ -110,6 +121,7 @@
     "is_active": true
   },
   {
+    "grip_type_id": "GRIP_ROTATING",
     "id": "SEMIPRO_SUP",
     "label": "Semi-Pro to Supinated",
     "subLabel": "Rotatio Magna Externa",
@@ -120,6 +132,7 @@
     "is_active": true
   },
   {
+    "grip_type_id": "GRIP_ROTATING",
     "id": "SEMIPRO_SEMISUP",
     "label": "Semi-Pro to Semi-Sup",
     "subLabel": "Rotatio Media",
@@ -130,6 +143,7 @@
     "is_active": true
   },
   {
+    "grip_type_id": "GRIP_ROTATING",
     "id": "SEMISUP_NEUTRAL",
     "label": "Semi-Sup to Neutral",
     "subLabel": "Rotatio Minima Interna",
@@ -140,6 +154,7 @@
     "is_active": true
   },
   {
+    "grip_type_id": "GRIP_ROTATING",
     "id": "SEMISUP_PRO",
     "label": "Semi-Sup to Pronated",
     "subLabel": "Rotatio Magna Interna",
@@ -150,6 +165,7 @@
     "is_active": true
   },
   {
+    "grip_type_id": "GRIP_ROTATING",
     "id": "SEMISUP_SEMIPRO",
     "label": "Semi-Sup to Semi-Pro",
     "subLabel": "Rotatio Media Inversa",

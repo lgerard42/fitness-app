@@ -104,7 +104,8 @@ export interface GripType {
   common_names?: string;
   icon?: string;
   short_description?: string;
-  variations?: string;
+  /** IDs from grip_type_variations (grip type variations) */
+  grip_type_variation_ids?: string[];
 }
 
 export interface GripWidth {
@@ -119,6 +120,8 @@ export interface GripWidth {
 export interface RotatingGripVariation {
   id: string;
   label: string;
+  /** Which grip type this variation belongs to (e.g. GRIP_ROTATING) */
+  grip_type_id?: string;
   sub_label?: string;
   common_names?: string;
   icon?: string;

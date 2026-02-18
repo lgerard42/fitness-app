@@ -12,7 +12,7 @@ export interface TableField {
   /** For FK / FK[] fields: which field on the referenced table to display (default "label") */
   refLabelField?: string;
   /** For json fields: hint about the shape for specialized editors */
-  jsonShape?: 'muscle_targets' | 'equipment_category_map' | 'allowed_rules' | 'exercise_input_permissions' | 'free';
+  jsonShape?: 'muscle_targets' | 'grip_type_configs' | 'equipment_category_map' | 'allowed_rules' | 'exercise_input_permissions' | 'free';
   /** Default value for new rows */
   defaultValue?: unknown;
 }
@@ -223,7 +223,7 @@ export const TABLE_REGISTRY: TableSchema[] = [
       { name: 'common_names', type: 'string[]', defaultValue: [] },
       { name: 'icon', type: 'string', defaultValue: '' },
       { name: 'short_description', type: 'string' },
-      { name: 'variations', type: 'string', defaultValue: '' },
+      { name: 'grip_type_variation_ids', type: 'fk[]', refTable: 'gripTypeVariations', refLabelField: 'label' },
     ]),
   },
   {
@@ -241,13 +241,14 @@ export const TABLE_REGISTRY: TableSchema[] = [
     ]),
   },
   {
-    key: 'rotatingGripVariations',
-    file: 'rotatingGripVariations.json',
-    label: 'Rotating Grip Variations',
+    key: 'gripTypeVariations',
+    file: 'gripTypeVariations.json',
+    label: 'Grip Type Variations',
     group: 'Grips & Stance',
     idField: 'id',
     labelField: 'label',
     fields: baseFields([
+      { name: 'grip_type_id', type: 'fk', refTable: 'gripTypes', refLabelField: 'label' },
       { name: 'subLabel', type: 'string' },
       { name: 'common_names', type: 'string[]', defaultValue: [] },
       { name: 'icon', type: 'string', defaultValue: '' },

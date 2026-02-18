@@ -201,17 +201,24 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
     setRefData(entries);
   }, [schema]);
 
-  // Load column settings from localStorage
+  // Load column settings from localStorage; merge in any schema fields missing from saved config (e.g. new columns)
   const loadColumnSettings = useCallback(() => {
     if (!key || !schema) return;
     const storageKey = `table-columns-${key}`;
     const saved = localStorage.getItem(storageKey);
+    const allFieldNames = schema.fields.map((f) => f.name);
     if (saved) {
       try {
         const { order, visible, widths } = JSON.parse(saved);
-        setColumnOrder(order);
-        setVisibleColumns(visible);
-        setColumnWidths(widths || {});
+        const orderSet = new Set(Array.isArray(order) ? order : []);
+        const visibleSet = new Set(Array.isArray(visible) ? visible : []);
+        const missing = allFieldNames.filter((n) => !orderSet.has(n));
+        const mergedOrder = Array.isArray(order) && order.length > 0 ? [...order, ...missing] : allFieldNames;
+        missing.forEach((n) => visibleSet.add(n));
+        const mergedVisible = Array.isArray(visible) && visible.length > 0 ? [...visible, ...missing] : mergedOrder.slice(0, 8);
+        setColumnOrder(mergedOrder);
+        setVisibleColumns(mergedVisible.length > 0 ? Array.from(visibleSet) : mergedOrder.slice(0, 8));
+        setColumnWidths(widths && typeof widths === 'object' ? widths : {});
       } catch {
         // Invalid JSON, use defaults
         initializeDefaultColumns();
@@ -711,6 +718,10 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
     if (field.type === 'json') {
       if (field.jsonShape === 'muscle_targets' && val && typeof val === 'object') {
         return <MuscleTargetBar targets={val as Record<string, unknown>} />;
+      }
+      if (field.jsonShape === 'grip_type_configs' && val && typeof val === 'object' && !Array.isArray(val)) {
+        const keys = Object.keys(val as Record<string, unknown>);
+        return keys.length === 0 ? <span className="text-gray-300">—</span> : <span className="text-xs">{keys.length} grip config(s)</span>;
       }
       return <span className="text-xs text-gray-400">{'{...}'}</span>;
     }

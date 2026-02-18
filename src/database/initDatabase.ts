@@ -5,7 +5,7 @@
 import * as SQLite from 'expo-sqlite';
 
 const DATABASE_NAME = 'workout.db';
-const DATABASE_VERSION = 12;
+const DATABASE_VERSION = 14;
 
 export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
   const db = await SQLite.openDatabaseAsync(DATABASE_NAME);
@@ -54,6 +54,12 @@ export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
     }
     if (currentVersion < 12) {
       await migrateToV12(db);
+    }
+    if (currentVersion < 13) {
+      await migrateToV13(db);
+    }
+    if (currentVersion < 14) {
+      await migrateToV14(db);
     }
     await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
   }
@@ -326,7 +332,7 @@ async function createTables(db: SQLite.SQLiteDatabase) {
       common_names TEXT,
       icon TEXT,
       short_description TEXT,
-      variations TEXT,
+      grip_type_variation_ids TEXT DEFAULT '[]',
       sort_order INTEGER DEFAULT 0,
       is_active INTEGER DEFAULT 1
     );
@@ -350,6 +356,7 @@ async function createTables(db: SQLite.SQLiteDatabase) {
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS rotating_grip_variations (
       id TEXT PRIMARY KEY,
+      grip_type_id TEXT,
       label TEXT NOT NULL,
       sub_label TEXT,
       common_names TEXT,
@@ -572,6 +579,38 @@ async function migrateToV12(db: SQLite.SQLiteDatabase) {
     }
   } catch (e) {
     console.warn('migrateToV12: failed to add grip columns to primary_motions', e);
+  }
+}
+
+async function migrateToV13(db: SQLite.SQLiteDatabase) {
+  // V13: grip_types.variations -> variation_ids; rotating_grip_variations.grip_type_id
+  try {
+    const gtInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(grip_types)`);
+    if (!gtInfo.some(col => col.name === 'variation_ids')) {
+      await db.execAsync(`ALTER TABLE grip_types ADD COLUMN variation_ids TEXT DEFAULT '[]'`);
+    }
+    const rgInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(rotating_grip_variations)`);
+    if (!rgInfo.some(col => col.name === 'grip_type_id')) {
+      await db.execAsync(`ALTER TABLE rotating_grip_variations ADD COLUMN grip_type_id TEXT`);
+    }
+  } catch (e) {
+    console.warn('migrateToV13: failed to add grip variation columns', e);
+  }
+}
+
+async function migrateToV14(db: SQLite.SQLiteDatabase) {
+  // V14: grip_types.variation_ids -> grip_type_variation_ids (column rename / new column)
+  try {
+    const gtInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(grip_types)`);
+    if (!gtInfo.some(col => col.name === 'grip_type_variation_ids')) {
+      await db.execAsync(`ALTER TABLE grip_types ADD COLUMN grip_type_variation_ids TEXT DEFAULT '[]'`);
+      const hasOld = gtInfo.some(col => col.name === 'variation_ids');
+      if (hasOld) {
+        await db.execAsync(`UPDATE grip_types SET grip_type_variation_ids = variation_ids WHERE variation_ids IS NOT NULL AND variation_ids != ''`);
+      }
+    }
+  } catch (e) {
+    console.warn('migrateToV14: failed to add grip_type_variation_ids', e);
   }
 }
 
@@ -998,7 +1037,7 @@ async function seedGripData(db: SQLite.SQLiteDatabase) {
     const num = (v: unknown, def: number) => (v == null ? def : Number(v));
     const gripTypes = require('./tables/gripTypes.json') as Record<string, unknown>[];
     const gripWidths = require('./tables/gripWidths.json') as Record<string, unknown>[];
-    const rotatingGripVariations = require('./tables/rotatingGripVariations.json') as Record<string, unknown>[];
+    const gripTypeVariations = require('./tables/gripTypeVariations.json') as Record<string, unknown>[];
 
     // Clear tables so rows removed from JSON are removed from DB; then re-insert from JSON.
     await db.execAsync('DELETE FROM rotating_grip_variations');
@@ -1006,8 +1045,10 @@ async function seedGripData(db: SQLite.SQLiteDatabase) {
     await db.execAsync('DELETE FROM grip_types');
 
     for (const row of gripTypes) {
+      const variationIds = (row as Record<string, unknown>).grip_type_variation_ids;
+      const variationIdsStr = Array.isArray(variationIds) ? JSON.stringify(variationIds) : '[]';
       await db.runAsync(
-        `INSERT OR REPLACE INTO grip_types (id, label, sub_label, common_names, icon, short_description, variations, sort_order, is_active)
+        `INSERT OR REPLACE INTO grip_types (id, label, sub_label, common_names, icon, short_description, grip_type_variation_ids, sort_order, is_active)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         str(row.id),
         str(row.label),
@@ -1015,7 +1056,7 @@ async function seedGripData(db: SQLite.SQLiteDatabase) {
         Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
         str(row.icon),
         str(row.short_description),
-        str(row.variations),
+        variationIdsStr,
         num(row.sort_order, 0),
         row.is_active !== false ? 1 : 0
       );
@@ -1036,11 +1077,13 @@ async function seedGripData(db: SQLite.SQLiteDatabase) {
       );
     }
 
-    for (const row of rotatingGripVariations) {
+    for (const row of gripTypeVariations) {
+      const gripTypeId = str((row as Record<string, unknown>).grip_type_id ?? row.grip_type_id);
       await db.runAsync(
-        `INSERT OR REPLACE INTO rotating_grip_variations (id, label, sub_label, common_names, icon, short_description, sort_order, is_active)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT OR REPLACE INTO rotating_grip_variations (id, grip_type_id, label, sub_label, common_names, icon, short_description, sort_order, is_active)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         str(row.id),
+        gripTypeId,
         str(row.label),
         str(row.subLabel ?? row.sub_label),
         Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
