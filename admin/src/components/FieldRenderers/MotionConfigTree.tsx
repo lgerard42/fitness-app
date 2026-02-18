@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { api } from '../../api';
 
@@ -14,11 +15,9 @@ interface MotionConfigTreeProps {
 interface MotionRecord {
   id: string;
   label: string;
-  primary_motion_key?: string;
-  variation_ids?: string[];
-  motion_planes?: string[];
+  primary_motion_ids?: string | string[];
+  motion_variation_ids?: string[];
   motion_plane_ids?: string[];
-  primary_motion_ids?: string[];
   muscle_targets?: Record<string, unknown>;
   [key: string]: unknown;
 }
@@ -30,16 +29,25 @@ interface MuscleOption { id: string; label: string; }
 // ---------------------------------------------------------------------------
 function recomputeAllDerived(primaries: MotionRecord[], variations: MotionRecord[], planes: MotionRecord[]) {
   for (const p of primaries) {
-    const relVars = variations.filter(v => v.primary_motion_key === p.id);
-    p.variation_ids = relVars.map(v => v.id);
+    const relVars = variations.filter(v => v.primary_motion_ids === p.id);
+    p.motion_variation_ids = relVars.map(v => v.id);
     const planeSet = new Set<string>();
-    for (const v of relVars) { (v.motion_planes || []).forEach(mp => planeSet.add(mp)); }
+    for (const v of relVars) { (v.motion_plane_ids || []).forEach(mp => planeSet.add(mp)); }
     p.motion_plane_ids = [...planeSet];
   }
   for (const mp of planes) {
-    const relVars = variations.filter(v => (v.motion_planes || []).includes(mp.id));
-    mp.variation_ids = relVars.map(v => v.id);
-    mp.primary_motion_ids = [...new Set(relVars.map(v => v.primary_motion_key!).filter(Boolean))];
+    const relVars = variations.filter(v => (v.motion_plane_ids || []).includes(mp.id));
+    mp.motion_variation_ids = relVars.map(v => v.id);
+    const pmIds: string[] = [];
+    for (const v of relVars) {
+      const pmId = v.primary_motion_ids;
+      if (typeof pmId === 'string' && pmId) {
+        pmIds.push(pmId);
+      } else if (Array.isArray(pmId)) {
+        pmIds.push(...pmId.filter((id): id is string => Boolean(id)));
+      }
+    }
+    mp.primary_motion_ids = [...new Set(pmIds)] as string[];
   }
 }
 
@@ -318,6 +326,170 @@ function MuscleTargetsSubtree({
 }
 
 // ---------------------------------------------------------------------------
+// Helper: Collect all scores from all depth levels for tooltip (tree structure)
+// ---------------------------------------------------------------------------
+function collectAllScores(
+  data: Record<string, unknown>,
+  primaryMuscles: MuscleOption[],
+  secondaryMuscles: Record<string, unknown>[],
+  tertiaryMuscles: Record<string, unknown>[]
+): string {
+  const lines: string[] = [];
+  
+  const pKeys = Object.keys(data).filter(k => k !== '_score');
+  
+  for (let pIdx = 0; pIdx < pKeys.length; pIdx++) {
+    const pId = pKeys[pIdx];
+    const pNode = data[pId] as Record<string, unknown> | undefined;
+    if (!pNode || typeof pNode !== 'object') continue;
+    const pLabel = primaryMuscles.find(pm => pm.id === pId)?.label || pId;
+    const pScore = typeof pNode._score === 'number' ? pNode._score : 0;
+    
+    const sKeys = Object.keys(pNode).filter(k => k !== '_score');
+    const isLastPrimary = pIdx === pKeys.length - 1;
+    
+    if (sKeys.length === 0) {
+      lines.push(`${isLastPrimary ? '└' : '├'}─ ${pLabel}: ${pScore}`);
+    } else {
+      lines.push(`${isLastPrimary ? '└' : '├'}─ ${pLabel}: ${pScore}`);
+      for (let sIdx = 0; sIdx < sKeys.length; sIdx++) {
+        const sId = sKeys[sIdx];
+        const sNode = pNode[sId] as Record<string, unknown> | undefined;
+        if (!sNode || typeof sNode !== 'object') continue;
+        const sLabel = secondaryMuscles.find(s => s.id === sId)?.label as string || sId;
+        const sScore = typeof sNode._score === 'number' ? sNode._score : 0;
+        
+        const tKeys = Object.keys(sNode).filter(k => k !== '_score');
+        const isLastSecondary = sIdx === sKeys.length - 1;
+        
+        // Build secondary prefix: when last primary, replace pipe with spaces
+        let secondaryPrefix: string;
+        if (isLastPrimary) {
+          // Last primary: use 3 spaces instead of '│  ' to properly indent
+          secondaryPrefix = isLastSecondary ? '   └' : '   ├';
+        } else {
+          // Not last primary: use standard '│  ' prefix
+          secondaryPrefix = isLastSecondary ? '│  └' : '│  ├';
+        }
+        
+        if (tKeys.length === 0) {
+          lines.push(`${secondaryPrefix}─ ${sLabel}: ${sScore}`);
+        } else {
+          lines.push(`${secondaryPrefix}─ ${sLabel}: ${sScore}`);
+          for (let tIdx = 0; tIdx < tKeys.length; tIdx++) {
+            const tId = tKeys[tIdx];
+            const tNode = sNode[tId] as Record<string, unknown> | undefined;
+            const tLabel = tertiaryMuscles.find(t => t.id === tId)?.label as string || tId;
+            const tScore = typeof tNode?._score === 'number' ? tNode._score : 0;
+            const isLastTertiary = tIdx === tKeys.length - 1;
+            
+            // Build tertiary prefix: account for both primary and secondary being last
+            let tertiaryPrefix: string;
+            if (isLastPrimary) {
+              // Last primary: replace pipes with spaces at this level
+              if (isLastSecondary) {
+                // Last secondary too: use 6 spaces (3 for primary level + 3 for secondary level)
+                tertiaryPrefix = isLastTertiary ? '      └' : '      ├';
+              } else {
+                // Not last secondary: use 3 spaces + pipe + 2 spaces
+                tertiaryPrefix = isLastTertiary ? '   │  └' : '   │  ├';
+              }
+            } else {
+              // Not last primary: use standard pipe structure
+              if (isLastSecondary) {
+                // Last secondary: use pipe + 5 spaces
+                tertiaryPrefix = isLastTertiary ? '│     └' : '│     ├';
+              } else {
+                // Not last secondary: use pipe + 2 spaces + pipe + 2 spaces
+                tertiaryPrefix = isLastTertiary ? '│  │  └' : '│  │  ├';
+              }
+            }
+            lines.push(`${tertiaryPrefix}─ ${tLabel}: ${tScore}`);
+          }
+        }
+      }
+    }
+  }
+  
+  return lines.length > 0 ? lines.join('\n') : 'none';
+}
+
+// ---------------------------------------------------------------------------
+// Inline muscle targets toggle (sits in the parent header row)
+// ---------------------------------------------------------------------------
+function MuscleTargetsToggle({
+  mtKey,
+  targets,
+  primaryMuscles,
+  secondaryMuscles,
+  tertiaryMuscles,
+  expanded,
+  toggle,
+}: {
+  mtKey: string;
+  targets: Record<string, unknown>;
+  primaryMuscles: MuscleOption[];
+  secondaryMuscles: Record<string, unknown>[];
+  tertiaryMuscles: Record<string, unknown>[];
+  expanded: Set<string>;
+  toggle: (key: string) => void;
+}) {
+  const isExp = expanded.has(mtKey);
+  const data = targets && typeof targets === 'object' && !Array.isArray(targets) ? targets : {};
+  const tooltipText = collectAllScores(data, primaryMuscles, secondaryMuscles, tertiaryMuscles);
+  const [showTooltip, setShowTooltip] = useState(false);
+  const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  const handleMouseEnter = () => {
+    if (tooltipText === 'none') return;
+    if (wrapperRef.current) {
+      const rect = wrapperRef.current.getBoundingClientRect();
+      setTooltipPosition({
+        top: rect.bottom + window.scrollY + 4,
+        left: rect.left + window.scrollX,
+      });
+    }
+    setShowTooltip(true);
+  };
+
+  const handleMouseLeave = () => {
+    setShowTooltip(false);
+  };
+
+  return (
+    <>
+      <div
+        ref={wrapperRef}
+        className="flex items-center gap-1 cursor-pointer bg-red-50/60 hover:bg-red-100/80 rounded px-1.5 py-0.5 flex-shrink-0"
+        onClick={e => { e.stopPropagation(); toggle(mtKey); }}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        <span className="text-[10px] text-red-800 font-bold flex-shrink-0">Muscles</span>
+        <button type="button" className="text-[10px] text-red-600/70 w-3 flex-shrink-0">
+          {isExp ? '▼' : '▶'}
+        </button>
+      </div>
+      {showTooltip && tooltipText !== 'none' && createPortal(
+        <div
+          className="fixed z-[100] bg-gray-900 text-white text-xs rounded px-3 py-2 whitespace-pre-line shadow-xl border border-gray-700 pointer-events-none"
+          style={{
+            top: `${tooltipPosition.top}px`,
+            left: `${tooltipPosition.left}px`,
+            width: '320px',
+          }}
+        >
+          <div className="font-semibold mb-1 text-red-300">Muscle Scores:</div>
+          <div className="font-mono text-[11px]">{tooltipText}</div>
+        </div>,
+        document.body
+      )}
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main MotionConfigTree
 // ---------------------------------------------------------------------------
 export default function MotionConfigTree({ tableKey, currentRecordId, muscleTargets, onFieldsChange }: MotionConfigTreeProps) {
@@ -379,13 +551,13 @@ export default function MotionConfigTree({ tableKey, currentRecordId, muscleTarg
     if (cur) {
       const fields: Record<string, unknown> = {};
       if (tableKey === 'primaryMotions') {
-        fields.variation_ids = cur.variation_ids || [];
+        fields.motion_variation_ids = cur.motion_variation_ids || [];
         fields.motion_plane_ids = cur.motion_plane_ids || [];
       } else if (tableKey === 'primaryMotionVariations') {
-        fields.primary_motion_key = cur.primary_motion_key || '';
-        fields.motion_planes = cur.motion_planes || [];
+        fields.primary_motion_ids = cur.primary_motion_ids || '';
+        fields.motion_plane_ids = cur.motion_plane_ids || [];
       } else {
-        fields.variation_ids = cur.variation_ids || [];
+        fields.motion_variation_ids = cur.motion_variation_ids || [];
         fields.primary_motion_ids = cur.primary_motion_ids || [];
       }
       onFieldsChange(fields);
@@ -394,42 +566,46 @@ export default function MotionConfigTree({ tableKey, currentRecordId, muscleTarg
 
   // ── Hierarchy link/unlink operations ──
   const addVariationToPrimary = useCallback(async (primaryId: string, variationId: string) => {
-    const vs = variations.map(v => v.id === variationId ? { ...v, primary_motion_key: primaryId } : { ...v });
+    const vs = variations.map(v => v.id === variationId ? { ...v, primary_motion_ids: primaryId } : { ...v });
     await syncAfterChange(primaryMotions.map(p => ({ ...p })), vs, motionPlanes.map(m => ({ ...m })));
   }, [primaryMotions, variations, motionPlanes, syncAfterChange]);
 
   const removeVariationFromPrimary = useCallback(async (variationId: string) => {
-    const vs = variations.map(v => v.id === variationId ? { ...v, primary_motion_key: '' } : { ...v });
+    const vs = variations.map(v => v.id === variationId ? { ...v, primary_motion_ids: '' } : { ...v });
     await syncAfterChange(primaryMotions.map(p => ({ ...p })), vs, motionPlanes.map(m => ({ ...m })));
   }, [primaryMotions, variations, motionPlanes, syncAfterChange]);
 
   const addPlaneToVariation = useCallback(async (variationId: string, planeId: string) => {
-    const vs = variations.map(v => v.id === variationId ? { ...v, motion_planes: [...(v.motion_planes || []), planeId] } : { ...v });
+    const vs = variations.map(v => v.id === variationId ? { ...v, motion_plane_ids: [...(v.motion_plane_ids || []), planeId] } : { ...v });
     await syncAfterChange(primaryMotions.map(p => ({ ...p })), vs, motionPlanes.map(m => ({ ...m })));
   }, [primaryMotions, variations, motionPlanes, syncAfterChange]);
 
   const removePlaneFromVariation = useCallback(async (variationId: string, planeId: string) => {
-    const vs = variations.map(v => v.id === variationId ? { ...v, motion_planes: (v.motion_planes || []).filter(id => id !== planeId) } : { ...v });
+    const vs = variations.map(v => v.id === variationId ? { ...v, motion_plane_ids: (v.motion_plane_ids || []).filter(id => id !== planeId) } : { ...v });
     await syncAfterChange(primaryMotions.map(p => ({ ...p })), vs, motionPlanes.map(m => ({ ...m })));
   }, [primaryMotions, variations, motionPlanes, syncAfterChange]);
 
   const setPrimaryForVariation = useCallback(async (variationId: string, primaryId: string) => {
-    const vs = variations.map(v => v.id === variationId ? { ...v, primary_motion_key: primaryId } : { ...v });
+    const vs = variations.map(v => v.id === variationId ? { ...v, primary_motion_ids: primaryId } : { ...v });
     await syncAfterChange(primaryMotions.map(p => ({ ...p })), vs, motionPlanes.map(m => ({ ...m })));
-  }, [primaryMotions, variations, motionPlanes, syncAfterChange]);
+    // If this is the current record being edited, update the form state
+    if (tableKey === 'primaryMotionVariations' && variationId === currentRecordId) {
+      onFieldsChange({ primary_motion_ids: primaryId });
+    }
+  }, [primaryMotions, variations, motionPlanes, syncAfterChange, tableKey, currentRecordId, onFieldsChange]);
 
   const removePrimaryFromVariation = useCallback(async (variationId: string) => {
-    const vs = variations.map(v => v.id === variationId ? { ...v, primary_motion_key: '' } : { ...v });
+    const vs = variations.map(v => v.id === variationId ? { ...v, primary_motion_ids: '' } : { ...v });
     await syncAfterChange(primaryMotions.map(p => ({ ...p })), vs, motionPlanes.map(m => ({ ...m })));
   }, [primaryMotions, variations, motionPlanes, syncAfterChange]);
 
   const addVariationToPlane = useCallback(async (planeId: string, variationId: string) => {
-    const vs = variations.map(v => v.id === variationId ? { ...v, motion_planes: [...(v.motion_planes || []), planeId] } : { ...v });
+    const vs = variations.map(v => v.id === variationId ? { ...v, motion_plane_ids: [...(v.motion_plane_ids || []), planeId] } : { ...v });
     await syncAfterChange(primaryMotions.map(p => ({ ...p })), vs, motionPlanes.map(m => ({ ...m })));
   }, [primaryMotions, variations, motionPlanes, syncAfterChange]);
 
   const removeVariationFromPlane = useCallback(async (planeId: string, variationId: string) => {
-    const vs = variations.map(v => v.id === variationId ? { ...v, motion_planes: (v.motion_planes || []).filter(id => id !== planeId) } : { ...v });
+    const vs = variations.map(v => v.id === variationId ? { ...v, motion_plane_ids: (v.motion_plane_ids || []).filter(id => id !== planeId) } : { ...v });
     await syncAfterChange(primaryMotions.map(p => ({ ...p })), vs, motionPlanes.map(m => ({ ...m })));
   }, [primaryMotions, variations, motionPlanes, syncAfterChange]);
 
@@ -466,7 +642,7 @@ export default function MotionConfigTree({ tableKey, currentRecordId, muscleTarg
   // ── Create new variation ──
   const createVariation = useCallback(async (primaryId: string, newData: Record<string, unknown>) => {
     try {
-      await api.addRow('primaryMotionVariations', { ...newData, primary_motion_key: primaryId, motion_planes: [], muscle_targets: {} });
+      await api.addRow('primaryMotionVariations', { ...newData, primary_motion_ids: primaryId, motion_plane_ids: [], muscle_targets: {} });
       const [p, v, m] = await Promise.all([
         api.getTable('primaryMotions') as Promise<MotionRecord[]>,
         api.getTable('primaryMotionVariations') as Promise<MotionRecord[]>,
@@ -482,7 +658,7 @@ export default function MotionConfigTree({ tableKey, currentRecordId, muscleTarg
       await api.addRow('motionPlanes', newData);
       const allPlanes = await api.getTable('motionPlanes') as MotionRecord[];
       const vs = variations.map(v =>
-        v.id === variationId ? { ...v, motion_planes: [...(v.motion_planes || []), String(newData.id)] } : { ...v }
+        v.id === variationId ? { ...v, motion_plane_ids: [...(v.motion_plane_ids || []), String(newData.id)] } : { ...v }
       );
       await syncAfterChange(primaryMotions.map(p => ({ ...p })), vs, allPlanes);
     } catch (err) { console.error('Failed to create motion plane:', err); alert('Failed to create motion plane.'); }
@@ -516,8 +692,8 @@ export default function MotionConfigTree({ tableKey, currentRecordId, muscleTarg
     const cur = variations.find(v => v.id === currentRecordId);
     if (!cur) return <div className="text-xs text-gray-400 italic">Record not found.</div>;
     focusVariationId = currentRecordId;
-    if (cur.primary_motion_key) {
-      const pm = primaryMotions.find(p => p.id === cur.primary_motion_key);
+    if (cur.primary_motion_ids) {
+      const pm = primaryMotions.find(p => p.id === cur.primary_motion_ids);
       if (pm) rootPrimaries = [pm];
       else orphanVariation = cur;
     } else {
@@ -528,12 +704,12 @@ export default function MotionConfigTree({ tableKey, currentRecordId, muscleTarg
     const curPlane = motionPlanes.find(mp => mp.id === currentRecordId);
     if (!curPlane) return <div className="text-xs text-gray-400 italic">Record not found.</div>;
     focusPlaneId = currentRecordId;
-    const parentVars = variations.filter(v => (v.motion_planes || []).includes(currentRecordId));
+    const parentVars = variations.filter(v => (v.motion_plane_ids || []).includes(currentRecordId));
     if (parentVars.length > 0) {
-      const pmIds = [...new Set(parentVars.map(v => v.primary_motion_key).filter(Boolean))] as string[];
+      const pmIds = [...new Set(parentVars.map(v => v.primary_motion_ids).filter(Boolean))] as string[];
       rootPrimaries = primaryMotions.filter(p => pmIds.includes(p.id));
       // If some parent vars have no primary, set the first as orphan so it still shows
-      const orphanVars = parentVars.filter(v => !v.primary_motion_key);
+      const orphanVars = parentVars.filter(v => !v.primary_motion_ids);
       if (orphanVars.length > 0 && rootPrimaries.length === 0) {
         focusVariationId = orphanVars[0].id;
         orphanVariation = orphanVars[0];
@@ -558,26 +734,27 @@ export default function MotionConfigTree({ tableKey, currentRecordId, muscleTarg
   };
 
   // Render a single plane node
-  const renderPlane = (mp: MotionRecord, vId: string, keyPrefix: string) => {
-    const mpKey = `${keyPrefix}-plane-${mp.id}`;
-    const isMpExp = expanded.has(mpKey);
+  const renderPlane = (mp: MotionRecord, vId: string, _keyPrefix: string) => {
     const current = isCurrent('motionPlanes', mp.id);
     const mt = mtFor('motionPlanes', mp.id, mp);
+    const planeMtKey = `mt-plane-${mp.id}`;
     return (
       <div key={mp.id} className={`rounded border overflow-hidden ${current ? 'ring-2 ring-blue-400' : 'bg-white'}`}>
-        <div className={`flex items-center gap-2 px-2 py-1 border-b ${current ? 'bg-blue-100' : 'bg-blue-50/60'}`}>
-          <button type="button" onClick={() => toggle(mpKey)} className="text-[10px] text-gray-500 w-3">{isMpExp ? '▼' : '▶'}</button>
-          {current ? (
-            <span className="text-xs font-bold text-blue-800">{mp.label}</span>
-          ) : (
-            <Link to="/table/motionPlanes" className="text-xs font-medium text-blue-700 hover:underline">{mp.label}</Link>
-          )}
-          <span className="text-[10px] text-gray-400">{mp.id}</span>
+        <div className={`flex items-center gap-2 px-2 py-1 ${current ? 'bg-blue-100' : 'bg-blue-50/60'}`}>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {current ? (
+              <span className="text-xs font-bold text-blue-800">{mp.label}</span>
+            ) : (
+              <Link to="/table/motionPlanes" className="text-xs font-medium text-blue-700 hover:underline">{mp.label}</Link>
+            )}
+            <span className="text-[10px] text-gray-400">{mp.id}</span>
+          </div>
+          <MuscleTargetsToggle mtKey={planeMtKey} targets={mt.targets} primaryMuscles={primaryMuscles} secondaryMuscles={secondaryMuscles} tertiaryMuscles={tertiaryMuscles} expanded={expanded} toggle={toggle} />
           <button type="button" onClick={() => removePlaneFromVariation(vId, mp.id)}
-            className="ml-auto text-[10px] text-red-400 hover:text-red-600">×</button>
+            className="ml-auto text-[10px] text-red-400 hover:text-red-600 flex-shrink-0">×</button>
         </div>
-        {isMpExp && (
-          <div className="pl-4 pr-2 py-1 space-y-1">
+        {expanded.has(planeMtKey) && (
+          <div className="px-2 py-1 border-t bg-red-100">
             <MuscleTargetsSubtree targets={mt.targets} depth={2} onChange={mt.onChange} {...mtProps} />
           </div>
         )}
@@ -591,34 +768,36 @@ export default function MotionConfigTree({ tableKey, currentRecordId, muscleTarg
     const isVExp = expanded.has(vKey);
     const current = isCurrent('primaryMotionVariations', v.id);
     const mt = mtFor('primaryMotionVariations', v.id, v);
-    const vPlanes = motionPlanes.filter(mp => (v.motion_planes || []).includes(mp.id));
-    const availPlanes = motionPlanes.filter(mp => !(v.motion_planes || []).includes(mp.id));
+    const vPlanes = motionPlanes.filter(mp => (v.motion_plane_ids || []).includes(mp.id));
+    const availPlanes = motionPlanes.filter(mp => !(v.motion_plane_ids || []).includes(mp.id));
     // When viewing from motionPlanes table, filter to only show the focused plane
     const displayPlanes = focusPlaneId ? vPlanes.filter(mp => mp.id === focusPlaneId) : vPlanes;
-    const hiddenPlaneCount = vPlanes.length - displayPlanes.length;
+    const varMtKey = `mt-var-${v.id}`;
 
     return (
       <div key={v.id} className={`rounded border overflow-hidden ${current ? 'ring-2 ring-blue-400' : 'bg-white'}`}>
         <div className={`px-2 py-1.5 border-b flex items-center gap-2 ${current ? 'bg-blue-100' : 'bg-gray-50'}`}>
-          <button type="button" onClick={() => toggle(vKey)} className="text-[10px] text-gray-500 w-3">{isVExp ? '▼' : '▶'}</button>
-          {current ? (
-            <span className="text-xs font-bold text-gray-900">{v.label}</span>
-          ) : (
-            <Link to="/table/primaryMotionVariations" className="text-xs font-medium text-blue-600 hover:underline">{v.label}</Link>
-          )}
-          <span className="text-[10px] text-gray-400">{v.id}</span>
+          <button type="button" onClick={() => toggle(vKey)} className="text-[10px] text-gray-500 w-3 flex-shrink-0">{isVExp ? '▼' : '▶'}</button>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {current ? (
+              <span className="text-xs font-bold text-gray-900">{v.label}</span>
+            ) : (
+              <Link to="/table/primaryMotionVariations" className="text-xs font-medium text-blue-600 hover:underline">{v.label}</Link>
+            )}
+            <span className="text-[10px] text-gray-400">{v.id}</span>
+          </div>
+          <MuscleTargetsToggle mtKey={varMtKey} targets={mt.targets} primaryMuscles={primaryMuscles} secondaryMuscles={secondaryMuscles} tertiaryMuscles={tertiaryMuscles} expanded={expanded} toggle={toggle} />
           <button type="button" onClick={() => removeVariationFromPrimary(v.id)}
-            className="ml-auto text-[10px] text-red-500 hover:text-red-700 px-1">Remove</button>
+            className="ml-auto text-[10px] text-red-500 hover:text-red-700 px-1 flex-shrink-0">Remove</button>
         </div>
+        {expanded.has(varMtKey) && (
+          <div className="px-2 py-1 border-b bg-red-100">
+            <MuscleTargetsSubtree targets={mt.targets} depth={1} onChange={mt.onChange} {...mtProps} />
+          </div>
+        )}
         {isVExp && (
           <div className="pl-4 pr-2 py-1.5 space-y-1.5">
-            <MuscleTargetsSubtree targets={mt.targets} depth={1} onChange={mt.onChange} {...mtProps} />
-
             {displayPlanes.map(mp => renderPlane(mp, v.id, `${keyPrefix}-var-${v.id}`))}
-
-            {hiddenPlaneCount > 0 && (
-              <div className="text-[10px] text-gray-400 italic pl-1">+ {hiddenPlaneCount} other plane{hiddenPlaneCount > 1 ? 's' : ''}</div>
-            )}
 
             {/* Add plane (only when not filtering to a specific plane) */}
             {!focusPlaneId && (
@@ -638,40 +817,46 @@ export default function MotionConfigTree({ tableKey, currentRecordId, muscleTarg
     const isRootExp = expanded.has(rootKey);
     const current = isCurrent('primaryMotions', pm.id);
     const mt = mtFor('primaryMotions', pm.id, pm);
-    const relVars = variations.filter(v => v.primary_motion_key === pm.id);
-    // When viewing from variations table, filter to show only the focused variation
-    const displayVars = focusVariationId ? relVars.filter(v => v.id === focusVariationId) : relVars;
-    const hiddenVarCount = relVars.length - displayVars.length;
-    const unlinkedVars = variations.filter(v => !v.primary_motion_key);
+    const relVars = variations.filter(v => v.primary_motion_ids === pm.id);
+    // When viewing from variations/planes table, filter to show only relevant branches
+    const displayVars = focusVariationId
+      ? relVars.filter(v => v.id === focusVariationId)
+      : focusPlaneId
+        ? relVars.filter(v => (v.motion_plane_ids || []).includes(focusPlaneId!))
+        : relVars;
+    const unlinkedVars = variations.filter(v => !v.primary_motion_ids);
 
+    const pmMtKey = `mt-pm-${pm.id}`;
     return (
       <div key={pm.id} className="border rounded-lg bg-gray-50 overflow-hidden">
         <div className={`px-3 py-2 border-b flex items-center gap-2 ${current ? 'bg-indigo-100' : 'bg-indigo-50'}`}>
           <button type="button" onClick={() => toggle(rootKey)} className="text-xs text-gray-500 w-4 flex-shrink-0">{isRootExp ? '▼' : '▶'}</button>
-          {current ? (
-            <span className="text-sm font-bold text-gray-900">{pm.label}</span>
-          ) : (
-            <Link to="/table/primaryMotions" className="text-sm font-medium text-blue-600 hover:underline">{pm.label}</Link>
-          )}
-          <span className="text-xs text-gray-400">{pm.id}</span>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {current ? (
+              <span className="text-sm font-bold text-gray-900">{pm.label}</span>
+            ) : (
+              <Link to="/table/primaryMotions" className="text-sm font-medium text-blue-600 hover:underline">{pm.label}</Link>
+            )}
+            <span className="text-xs text-gray-400">{pm.id}</span>
+          </div>
+          <MuscleTargetsToggle mtKey={pmMtKey} targets={mt.targets} primaryMuscles={primaryMuscles} secondaryMuscles={secondaryMuscles} tertiaryMuscles={tertiaryMuscles} expanded={expanded} toggle={toggle} />
         </div>
+        {expanded.has(pmMtKey) && (
+          <div className="px-3 py-1 border-b bg-red-100">
+            <MuscleTargetsSubtree targets={mt.targets} depth={0} onChange={mt.onChange} {...mtProps} />
+          </div>
+        )}
 
         {isRootExp && (
           <div className="pl-4 pr-2 py-2 space-y-2">
-            <MuscleTargetsSubtree targets={mt.targets} depth={0} onChange={mt.onChange} {...mtProps} />
-
             {displayVars.map(v => renderVariation(v, pm.id, `pm-${pm.id}`))}
 
-            {hiddenVarCount > 0 && (
-              <div className="text-[10px] text-gray-400 italic pl-1">+ {hiddenVarCount} other variation{hiddenVarCount > 1 ? 's' : ''}</div>
-            )}
-
-            {/* Add variation controls (only when not filtering to a specific variation/plane) */}
+            {/* Add variation controls (only when viewing from primaryMotions) */}
             {!focusVariationId && !focusPlaneId && (
               <div className="flex flex-row gap-2 items-stretch">
                 <select value="" onChange={async e => { if (e.target.value) await addVariationToPrimary(pm.id, e.target.value); }}
                   className="px-1 py-0.5 border border-blue-300 rounded text-[10px] text-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none">
-                  <option value="">Add Existing Variation...</option>
+                  <option value="">Add Motion Variation...</option>
                   {unlinkedVars.map(v => <option key={v.id} value={v.id}>{v.label} ({v.id})</option>)}
                 </select>
                 <div className="flex-shrink-0 min-w-fit">
@@ -679,6 +864,20 @@ export default function MotionConfigTree({ tableKey, currentRecordId, muscleTarg
                 </div>
               </div>
             )}
+
+            {/* For planes: add this plane to another variation under this primary */}
+            {focusPlaneId && (() => {
+              const availVarsForPm = relVars.filter(v => !(v.motion_plane_ids || []).includes(focusPlaneId!));
+              return availVarsForPm.length > 0 ? (
+                <select value="" onChange={async e => {
+                  if (e.target.value) await addPlaneToVariation(e.target.value, focusPlaneId!);
+                }}
+                  className="px-1 py-0.5 border border-blue-300 rounded text-[10px] text-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none">
+                  <option value="">Add to another variation...</option>
+                  {availVarsForPm.map(v => <option key={v.id} value={v.id}>{v.label} ({v.id})</option>)}
+                </select>
+              ) : null;
+            })()}
           </div>
         )}
       </div>
@@ -690,26 +889,33 @@ export default function MotionConfigTree({ tableKey, currentRecordId, muscleTarg
     const rootKey = `orphan-var-${v.id}`;
     const isRootExp = expanded.has(rootKey);
     const mt = mtFor('primaryMotionVariations', v.id, v);
-    const vPlanes = motionPlanes.filter(mp => (v.motion_planes || []).includes(mp.id));
-    const availPlanes = motionPlanes.filter(mp => !(v.motion_planes || []).includes(mp.id));
+    const vPlanes = motionPlanes.filter(mp => (v.motion_plane_ids || []).includes(mp.id));
+    const availPlanes = motionPlanes.filter(mp => !(v.motion_plane_ids || []).includes(mp.id));
     const displayPlanes = focusPlaneId ? vPlanes.filter(mp => mp.id === focusPlaneId) : vPlanes;
     const hiddenPlaneCount = vPlanes.length - displayPlanes.length;
     const availPrimaries = primaryMotions;
 
+    const orphanVarMtKey = `mt-orphan-var-${v.id}`;
     return (
       <div className="border rounded-lg bg-gray-50 overflow-hidden">
         <div className="px-3 py-2 bg-amber-50 border-b flex items-center gap-2">
           <button type="button" onClick={() => toggle(rootKey)} className="text-xs text-gray-500 w-4 flex-shrink-0">{isRootExp ? '▼' : '▶'}</button>
-          <span className="text-xs text-amber-600 italic">No Primary Motion</span>
-          <span className="text-xs text-gray-400">→</span>
-          <span className="text-sm font-bold text-gray-900">{v.label}</span>
-          <span className="text-xs text-gray-400">{v.id}</span>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className="text-xs text-amber-600 italic">No Primary Motion</span>
+            <span className="text-xs text-gray-400">→</span>
+            <span className="text-sm font-bold text-gray-900">{v.label}</span>
+            <span className="text-xs text-gray-400">{v.id}</span>
+          </div>
+          <MuscleTargetsToggle mtKey={orphanVarMtKey} targets={mt.targets} primaryMuscles={primaryMuscles} secondaryMuscles={secondaryMuscles} tertiaryMuscles={tertiaryMuscles} expanded={expanded} toggle={toggle} />
         </div>
+        {expanded.has(orphanVarMtKey) && (
+          <div className="px-3 py-1 border-b bg-red-100">
+            <MuscleTargetsSubtree targets={mt.targets} depth={0} onChange={mt.onChange} {...mtProps} />
+          </div>
+        )}
 
         {isRootExp && (
           <div className="pl-4 pr-2 py-2 space-y-2">
-            <MuscleTargetsSubtree targets={mt.targets} depth={0} onChange={mt.onChange} {...mtProps} />
-
             {displayPlanes.map(mp => renderPlane(mp, v.id, `orphan-var-${v.id}`))}
             {hiddenPlaneCount > 0 && (
               <div className="text-[10px] text-gray-400 italic pl-1">+ {hiddenPlaneCount} other plane{hiddenPlaneCount > 1 ? 's' : ''}</div>
@@ -737,21 +943,29 @@ export default function MotionConfigTree({ tableKey, currentRecordId, muscleTarg
     const rootKey = `orphan-plane-${mp.id}`;
     const isRootExp = expanded.has(rootKey);
     const mt = mtFor('motionPlanes', mp.id, mp);
-    const unlinkedVars = variations.filter(v => !(v.motion_planes || []).includes(mp.id));
+    const unlinkedVars = variations.filter(v => !(v.motion_plane_ids || []).includes(mp.id));
 
+    const orphanPlaneMtKey = `mt-orphan-plane-${mp.id}`;
     return (
       <div className="border rounded-lg bg-gray-50 overflow-hidden">
         <div className="px-3 py-2 bg-amber-50 border-b flex items-center gap-2">
           <button type="button" onClick={() => toggle(rootKey)} className="text-xs text-gray-500 w-4 flex-shrink-0">{isRootExp ? '▼' : '▶'}</button>
-          <span className="text-xs text-amber-600 italic">No linked variations</span>
-          <span className="text-xs text-gray-400">→</span>
-          <span className="text-sm font-bold text-blue-800">{mp.label}</span>
-          <span className="text-xs text-gray-400">{mp.id}</span>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className="text-xs text-amber-600 italic">No linked variations</span>
+            <span className="text-xs text-gray-400">→</span>
+            <span className="text-sm font-bold text-blue-800">{mp.label}</span>
+            <span className="text-xs text-gray-400">{mp.id}</span>
+          </div>
+          <MuscleTargetsToggle mtKey={orphanPlaneMtKey} targets={mt.targets} primaryMuscles={primaryMuscles} secondaryMuscles={secondaryMuscles} tertiaryMuscles={tertiaryMuscles} expanded={expanded} toggle={toggle} />
         </div>
+        {expanded.has(orphanPlaneMtKey) && (
+          <div className="px-3 py-1 border-b bg-red-100">
+            <MuscleTargetsSubtree targets={mt.targets} depth={0} onChange={mt.onChange} {...mtProps} />
+          </div>
+        )}
 
         {isRootExp && (
           <div className="pl-4 pr-2 py-2 space-y-2">
-            <MuscleTargetsSubtree targets={mt.targets} depth={0} onChange={mt.onChange} {...mtProps} />
             <select value="" onChange={async e => { if (e.target.value) await addVariationToPlane(mp.id, e.target.value); }}
               className="px-1 py-0.5 border border-blue-300 rounded text-[10px] text-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none">
               <option value="">Add Variation...</option>
@@ -763,12 +977,91 @@ export default function MotionConfigTree({ tableKey, currentRecordId, muscleTarg
     );
   };
 
+  // For variations: primary motions that don't already have this variation
+  const addToPrimaryOptions = focusVariationId
+    ? primaryMotions.filter(pm => {
+        const cur = variations.find(v => v.id === focusVariationId);
+        return cur && pm.id !== cur.primary_motion_ids;
+      })
+    : [];
+
   // Main render
   return (
     <div className="space-y-2">
       {rootPrimaries.map(pm => renderPrimaryMotionTree(pm))}
       {orphanVariation && renderOrphanVariation(orphanVariation)}
       {orphanPlane && renderOrphanPlane(orphanPlane)}
+
+      {/* For variations: option to link to a different primary motion */}
+      {focusVariationId && addToPrimaryOptions.length > 0 && (
+        <select value="" onChange={async e => {
+          if (e.target.value) await setPrimaryForVariation(focusVariationId!, e.target.value);
+        }}
+          className="px-1 py-0.5 border border-blue-300 rounded text-[10px] text-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none">
+          <option value="">{rootPrimaries.length > 0 ? 'Move to another Primary Motion...' : 'Set Primary Motion...'}</option>
+          {addToPrimaryOptions.map(p => <option key={p.id} value={p.id}>{p.label} ({p.id})</option>)}
+        </select>
+      )}
+
+      {/* For planes: two-step picker to add to a variation under a different primary motion */}
+      {focusPlaneId && (
+        <TwoStepVariationPicker
+          primaryMotions={primaryMotions}
+          variations={variations}
+          focusPlaneId={focusPlaneId}
+          rootPrimaryIds={rootPrimaries.map(p => p.id)}
+          onAdd={async (variationId) => { await addPlaneToVariation(variationId, focusPlaneId!); }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// TwoStepVariationPicker: pick a primary motion then a variation
+// ---------------------------------------------------------------------------
+function TwoStepVariationPicker({ primaryMotions, variations, focusPlaneId, rootPrimaryIds, onAdd }: {
+  primaryMotions: MotionRecord[];
+  variations: MotionRecord[];
+  focusPlaneId: string;
+  rootPrimaryIds: string[];
+  onAdd: (variationId: string) => Promise<void>;
+}) {
+  const [selectedPmId, setSelectedPmId] = useState<string>('');
+
+  // Only show primary motions that have at least one variation not already linked to this plane
+  const availPrimaries = primaryMotions.filter(pm => {
+    // Exclude primaries already shown as root containers
+    if (rootPrimaryIds.includes(pm.id)) return false;
+    const pmVars = variations.filter(v => v.primary_motion_ids === pm.id);
+    return pmVars.some(v => !(v.motion_plane_ids || []).includes(focusPlaneId));
+  });
+
+  const selectedPmVars = selectedPmId
+    ? variations.filter(v => v.primary_motion_ids === selectedPmId && !(v.motion_plane_ids || []).includes(focusPlaneId))
+    : [];
+
+  if (availPrimaries.length === 0) return null;
+
+  return (
+    <div className="flex gap-1.5 items-center">
+      <select value={selectedPmId} onChange={e => setSelectedPmId(e.target.value)}
+        className="px-1 py-0.5 border border-blue-300 rounded text-[10px] text-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none">
+        <option value="">Select Primary Motion...</option>
+        {availPrimaries.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+      </select>
+      {selectedPmId && (
+        <select value="" onChange={async e => {
+          if (e.target.value) {
+            await onAdd(e.target.value);
+            setSelectedPmId('');
+          }
+        }}
+          className="px-1 py-0.5 border border-blue-300 rounded text-[10px] text-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none">
+          <option value="">Select Variation...</option>
+          {selectedPmVars.map(v => <option key={v.id} value={v.id}>{v.label}</option>)}
+        </select>
+      )}
     </div>
   );
 }
@@ -809,7 +1102,7 @@ function PlaneAdder({ availablePlanes, allMotionPlanes, onAdd, onCreate }: {
     <div className="flex gap-1.5 items-stretch">
       <select value="" onChange={async e => { if (e.target.value) await onAdd(e.target.value); }}
         className="px-1 py-0.5 border border-blue-300 rounded text-[10px] text-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
-        <option value="">+ plane...</option>
+        <option value="">Add Motion Plane...</option>
         {availablePlanes.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
       </select>
       <button type="button" onClick={() => setShowCreate(true)}

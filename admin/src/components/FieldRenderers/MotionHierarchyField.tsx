@@ -13,11 +13,9 @@ interface MotionHierarchyFieldProps {
 interface MotionRecord {
   id: string;
   label: string;
-  primary_motion_key?: string;
-  variation_ids?: string[];
-  motion_planes?: string[];
+  primary_motion_ids?: string | string[];
+  motion_variation_ids?: string[];
   motion_plane_ids?: string[];
-  primary_motion_ids?: string[];
   [key: string]: unknown;
 }
 
@@ -30,32 +28,41 @@ function recomputeAllDerived(
   variations: MotionRecord[],
   planes: MotionRecord[]
 ) {
-  // primaryMotions: variation_ids and motion_plane_ids are derived
+  // primaryMotions: motion_variation_ids and motion_plane_ids are derived
   for (const p of primaries) {
-    const relVars = variations.filter(v => v.primary_motion_key === p.id);
-    p.variation_ids = relVars.map(v => v.id);
+    const relVars = variations.filter(v => v.primary_motion_ids === p.id);
+    p.motion_variation_ids = relVars.map(v => v.id);
     const planeSet = new Set<string>();
     for (const v of relVars) {
-      (v.motion_planes || []).forEach(mp => planeSet.add(mp));
+      (v.motion_plane_ids || []).forEach(mp => planeSet.add(mp));
     }
     p.motion_plane_ids = [...planeSet];
   }
 
-  // motionPlanes: variation_ids and primary_motion_ids are derived
+  // motionPlanes: motion_variation_ids and primary_motion_ids are derived
   for (const mp of planes) {
-    const relVars = variations.filter(v => (v.motion_planes || []).includes(mp.id));
-    mp.variation_ids = relVars.map(v => v.id);
-    mp.primary_motion_ids = [...new Set(relVars.map(v => v.primary_motion_key!).filter(Boolean))];
+    const relVars = variations.filter(v => (v.motion_plane_ids || []).includes(mp.id));
+    mp.motion_variation_ids = relVars.map(v => v.id);
+    const pmIds: string[] = [];
+    for (const v of relVars) {
+      const pmId = v.primary_motion_ids;
+      if (typeof pmId === 'string' && pmId) {
+        pmIds.push(pmId);
+      } else if (Array.isArray(pmId)) {
+        pmIds.push(...pmId.filter(Boolean));
+      }
+    }
+    mp.primary_motion_ids = [...new Set(pmIds)];
   }
 }
 
 function getCurrentRecordFields(tableKey: MotionTableKey, record: MotionRecord): Record<string, unknown> {
   if (tableKey === 'primaryMotions') {
-    return { variation_ids: record.variation_ids || [], motion_plane_ids: record.motion_plane_ids || [] };
+    return { motion_variation_ids: record.motion_variation_ids || [], motion_plane_ids: record.motion_plane_ids || [] };
   } else if (tableKey === 'primaryMotionVariations') {
-    return { primary_motion_key: record.primary_motion_key || '', motion_planes: record.motion_planes || [] };
+    return { primary_motion_ids: record.primary_motion_ids || '', motion_plane_ids: record.motion_plane_ids || [] };
   } else {
-    return { variation_ids: record.variation_ids || [], primary_motion_ids: record.primary_motion_ids || [] };
+    return { motion_variation_ids: record.motion_variation_ids || [], primary_motion_ids: record.primary_motion_ids || [] };
   }
 }
 
@@ -146,14 +153,14 @@ export default function MotionHierarchyField({ tableKey, currentRecordId, onFiel
   // Primary Motions: add/remove variation
   const addVariationToPrimary = useCallback(async (primaryId: string, variationId: string) => {
     const vars = variations.map(v =>
-      v.id === variationId ? { ...v, primary_motion_key: primaryId } : { ...v }
+      v.id === variationId ? { ...v, primary_motion_ids: primaryId } : { ...v }
     );
     await syncAfterChange(primaryMotions.map(p => ({ ...p })), vars, motionPlanes.map(m => ({ ...m })));
   }, [primaryMotions, variations, motionPlanes, syncAfterChange]);
 
   const removeVariationFromPrimary = useCallback(async (_primaryId: string, variationId: string) => {
     const vars = variations.map(v =>
-      v.id === variationId ? { ...v, primary_motion_key: '' } : { ...v }
+      v.id === variationId ? { ...v, primary_motion_ids: '' } : { ...v }
     );
     await syncAfterChange(primaryMotions.map(p => ({ ...p })), vars, motionPlanes.map(m => ({ ...m })));
   }, [primaryMotions, variations, motionPlanes, syncAfterChange]);
@@ -161,14 +168,14 @@ export default function MotionHierarchyField({ tableKey, currentRecordId, onFiel
   // Variations: change primary motion
   const setPrimaryForVariation = useCallback(async (variationId: string, primaryId: string) => {
     const vars = variations.map(v =>
-      v.id === variationId ? { ...v, primary_motion_key: primaryId } : { ...v }
+      v.id === variationId ? { ...v, primary_motion_ids: primaryId } : { ...v }
     );
     await syncAfterChange(primaryMotions.map(p => ({ ...p })), vars, motionPlanes.map(m => ({ ...m })));
   }, [primaryMotions, variations, motionPlanes, syncAfterChange]);
 
   const removePrimaryFromVariation = useCallback(async (variationId: string) => {
     const vars = variations.map(v =>
-      v.id === variationId ? { ...v, primary_motion_key: '' } : { ...v }
+      v.id === variationId ? { ...v, primary_motion_ids: '' } : { ...v }
     );
     await syncAfterChange(primaryMotions.map(p => ({ ...p })), vars, motionPlanes.map(m => ({ ...m })));
   }, [primaryMotions, variations, motionPlanes, syncAfterChange]);
@@ -176,14 +183,14 @@ export default function MotionHierarchyField({ tableKey, currentRecordId, onFiel
   // Variations: add/remove motion plane
   const addPlaneToVariation = useCallback(async (variationId: string, planeId: string) => {
     const vars = variations.map(v =>
-      v.id === variationId ? { ...v, motion_planes: [...(v.motion_planes || []), planeId] } : { ...v }
+      v.id === variationId ? { ...v, motion_plane_ids: [...(v.motion_plane_ids || []), planeId] } : { ...v }
     );
     await syncAfterChange(primaryMotions.map(p => ({ ...p })), vars, motionPlanes.map(m => ({ ...m })));
   }, [primaryMotions, variations, motionPlanes, syncAfterChange]);
 
   const removePlaneFromVariation = useCallback(async (variationId: string, planeId: string) => {
     const vars = variations.map(v =>
-      v.id === variationId ? { ...v, motion_planes: (v.motion_planes || []).filter(id => id !== planeId) } : { ...v }
+      v.id === variationId ? { ...v, motion_plane_ids: (v.motion_plane_ids || []).filter(id => id !== planeId) } : { ...v }
     );
     await syncAfterChange(primaryMotions.map(p => ({ ...p })), vars, motionPlanes.map(m => ({ ...m })));
   }, [primaryMotions, variations, motionPlanes, syncAfterChange]);
@@ -191,14 +198,14 @@ export default function MotionHierarchyField({ tableKey, currentRecordId, onFiel
   // Motion Planes: add/remove variation link
   const addVariationToPlane = useCallback(async (planeId: string, variationId: string) => {
     const vars = variations.map(v =>
-      v.id === variationId ? { ...v, motion_planes: [...(v.motion_planes || []), planeId] } : { ...v }
+      v.id === variationId ? { ...v, motion_plane_ids: [...(v.motion_plane_ids || []), planeId] } : { ...v }
     );
     await syncAfterChange(primaryMotions.map(p => ({ ...p })), vars, motionPlanes.map(m => ({ ...m })));
   }, [primaryMotions, variations, motionPlanes, syncAfterChange]);
 
   const removeVariationFromPlane = useCallback(async (planeId: string, variationId: string) => {
     const vars = variations.map(v =>
-      v.id === variationId ? { ...v, motion_planes: (v.motion_planes || []).filter(id => id !== planeId) } : { ...v }
+      v.id === variationId ? { ...v, motion_plane_ids: (v.motion_plane_ids || []).filter(id => id !== planeId) } : { ...v }
     );
     await syncAfterChange(primaryMotions.map(p => ({ ...p })), vars, motionPlanes.map(m => ({ ...m })));
   }, [primaryMotions, variations, motionPlanes, syncAfterChange]);
@@ -206,7 +213,7 @@ export default function MotionHierarchyField({ tableKey, currentRecordId, onFiel
   // Create a new variation for a primary motion
   const createVariationForPrimary = useCallback(async (primaryId: string, newData: Record<string, unknown>) => {
     try {
-      await api.addRow('primaryMotionVariations', { ...newData, primary_motion_key: primaryId, motion_planes: [] });
+      await api.addRow('primaryMotionVariations', { ...newData, primary_motion_ids: primaryId, motion_plane_ids: [] });
       const [p, v, m] = await Promise.all([
         api.getTable('primaryMotions') as Promise<MotionRecord[]>,
         api.getTable('primaryMotionVariations') as Promise<MotionRecord[]>,
@@ -223,12 +230,12 @@ export default function MotionHierarchyField({ tableKey, currentRecordId, onFiel
   const createPlaneForVariation = useCallback(async (variationId: string, newData: Record<string, unknown>) => {
     try {
       await api.addRow('motionPlanes', { ...newData });
-      // After creation, add the new plane to the variation's motion_planes
+      // After creation, add the new plane to the variation's motion_plane_ids
       const allPlanes = await api.getTable('motionPlanes') as MotionRecord[];
       const newPlane = allPlanes.find(p => p.id === newData.id);
       if (newPlane) {
         const vars = variations.map(v =>
-          v.id === variationId ? { ...v, motion_planes: [...(v.motion_planes || []), String(newData.id)] } : { ...v }
+          v.id === variationId ? { ...v, motion_plane_ids: [...(v.motion_plane_ids || []), String(newData.id)] } : { ...v }
         );
         await syncAfterChange(primaryMotions.map(p => ({ ...p })), vars, allPlanes);
       }
@@ -249,11 +256,11 @@ export default function MotionHierarchyField({ tableKey, currentRecordId, onFiel
       // Show variations (expandable to show motion planes)
       const current = primaryMotions.find(p => p.id === currentRecordId);
       if (!current) return [];
-      const relatedVars = variations.filter(v => v.primary_motion_key === currentRecordId);
+      const relatedVars = variations.filter(v => v.primary_motion_ids === currentRecordId);
       return relatedVars.map(v => ({
         type: 'primary-view' as const,
         variation: v,
-        planes: motionPlanes.filter(mp => (v.motion_planes || []).includes(mp.id)),
+        planes: motionPlanes.filter(mp => (v.motion_plane_ids || []).includes(mp.id)),
       }));
     }
 
@@ -261,10 +268,10 @@ export default function MotionHierarchyField({ tableKey, currentRecordId, onFiel
       // Show parent primary motion with current variation and child motion planes
       const current = variations.find(v => v.id === currentRecordId);
       if (!current) return [];
-      const primary = current.primary_motion_key
-        ? primaryMotions.find(p => p.id === current.primary_motion_key)
+      const primary = current.primary_motion_ids
+        ? primaryMotions.find(p => p.id === current.primary_motion_ids)
         : null;
-      const planes = motionPlanes.filter(mp => (current.motion_planes || []).includes(mp.id));
+      const planes = motionPlanes.filter(mp => (current.motion_plane_ids || []).includes(mp.id));
       return [{
         type: 'variation-view' as const,
         primary: primary || null,
@@ -276,9 +283,9 @@ export default function MotionHierarchyField({ tableKey, currentRecordId, onFiel
     // motionPlanes: show variations and their primaries that reference this plane
     const current = motionPlanes.find(mp => mp.id === currentRecordId);
     if (!current) return [];
-    const relatedVars = variations.filter(v => (v.motion_planes || []).includes(currentRecordId));
+    const relatedVars = variations.filter(v => (v.motion_plane_ids || []).includes(currentRecordId));
     return relatedVars.map(v => {
-      const primary = v.primary_motion_key ? primaryMotions.find(p => p.id === v.primary_motion_key) : null;
+      const primary = v.primary_motion_ids ? primaryMotions.find(p => p.id === v.primary_motion_ids) : null;
       return {
         type: 'plane-view' as const,
         variation: v,
@@ -292,16 +299,16 @@ export default function MotionHierarchyField({ tableKey, currentRecordId, onFiel
   const availableAddOptions = useMemo(() => {
     if (tableKey === 'primaryMotions') {
       // Can add variations that don't already belong to this primary
-      const linkedVarIds = variations.filter(v => v.primary_motion_key === currentRecordId).map(v => v.id);
-      return { type: 'variations' as const, items: variations.filter(v => !linkedVarIds.includes(v.id) && !v.primary_motion_key) };
+      const linkedVarIds = variations.filter(v => v.primary_motion_ids === currentRecordId).map(v => v.id);
+      return { type: 'variations' as const, items: variations.filter(v => !linkedVarIds.includes(v.id) && !v.primary_motion_ids) };
     }
     if (tableKey === 'primaryMotionVariations') {
       // Can change primary motion
       const current = variations.find(v => v.id === currentRecordId);
-      return { type: 'primaries' as const, items: primaryMotions.filter(p => p.id !== current?.primary_motion_key) };
+      return { type: 'primaries' as const, items: primaryMotions.filter(p => p.id !== current?.primary_motion_ids) };
     }
     // motionPlanes: can add variations that don't already use this plane
-    const linkedVarIds = variations.filter(v => (v.motion_planes || []).includes(currentRecordId)).map(v => v.id);
+    const linkedVarIds = variations.filter(v => (v.motion_plane_ids || []).includes(currentRecordId)).map(v => v.id);
     return { type: 'variations' as const, items: variations.filter(v => !linkedVarIds.includes(v.id)) };
   }, [tableKey, currentRecordId, primaryMotions, variations, motionPlanes]);
 
@@ -453,7 +460,7 @@ export default function MotionHierarchyField({ tableKey, currentRecordId, onFiel
             }}
             className="flex-grow min-w-0 px-3 py-2 border rounded text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
           >
-            <option value="">Add Existing Variation...</option>
+            <option value="">Add Motion Variation...</option>
             {(availableAddOptions.type === 'variations' ? availableAddOptions.items : []).map(opt => (
               <option key={opt.id} value={opt.id}>{opt.label} ({opt.id})</option>
             ))}
@@ -466,7 +473,7 @@ export default function MotionHierarchyField({ tableKey, currentRecordId, onFiel
         </div>
       )}
 
-      {tableKey === 'primaryMotionVariations' && !variations.find(v => v.id === currentRecordId)?.primary_motion_key && (
+      {tableKey === 'primaryMotionVariations' && !variations.find(v => v.id === currentRecordId)?.primary_motion_ids && (
         <select
           value=""
           onChange={async (e) => {

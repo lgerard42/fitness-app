@@ -27,25 +27,25 @@ interface PrimaryMotion {
   sub_label?: string;
   short_description?: string;
   muscle_targets?: Record<string, any>;
-  variation_ids?: string[];
+  motion_variation_ids?: string[];
   motion_plane_ids?: string[];
   is_active: boolean;
 }
 
 interface PrimaryMotionVariation {
   id: string;
-  primary_motion_key: string;
+  primary_motion_ids: string;
   label: string;
   short_description?: string;
   muscle_targets?: Record<string, any>;
-  motion_planes?: string[];
+  motion_plane_ids?: string[];
   is_active: boolean;
 }
 
 interface MotionPlane {
   id: string;
   label: string;
-  variation_ids?: string[];
+  motion_variation_ids?: string[];
   primary_motion_ids?: string[];
   is_active: boolean;
 }
@@ -419,15 +419,15 @@ const MotionPickerModal: React.FC<MotionPickerModalProps> = ({
   // Get filtered and extra variations for a motion
   const getVariationsForMotion = (motionId: string, sectionPrimaryId: string) => {
     const motion = primaryMotions.find(m => m.id === motionId);
-    const varIds = motion?.variation_ids;
+    const varIds = motion?.motion_variation_ids;
     const allVariations = (varIds && varIds.length > 0
       ? primaryMotionVariations.filter(v => varIds.includes(v.id))
-      : primaryMotionVariations.filter(v => v.primary_motion_key === motionId)
+      : primaryMotionVariations.filter(v => v.primary_motion_ids === motionId)
     ).sort((a, b) => {
-        const scoreA = getPrimaryScore(a.muscle_targets, sectionPrimaryId);
-        const scoreB = getPrimaryScore(b.muscle_targets, sectionPrimaryId);
-        return scoreB - scoreA;
-      });
+      const scoreA = getPrimaryScore(a.muscle_targets, sectionPrimaryId);
+      const scoreB = getPrimaryScore(b.muscle_targets, sectionPrimaryId);
+      return scoreB - scoreA;
+    });
 
     const selectedSecondaryIds = getSelectedSecondaryIdsForPrimary(sectionPrimaryId);
     const selectedTertiaryIds = getSelectedTertiaryIdsForPrimary(sectionPrimaryId);
@@ -460,14 +460,14 @@ const MotionPickerModal: React.FC<MotionPickerModalProps> = ({
     return { filteredVariations, extraVariations };
   };
 
-  // Get variations for selected primary motion (uses denormalized variation_ids when available)
+  // Get variations for selected primary motion (uses denormalized motion_variation_ids when available)
   const availableVariations = useMemo(() => {
     if (!selectedPrimary) return [];
     const motion = primaryMotions.find(m => m.id === selectedPrimary);
-    if (motion?.variation_ids && motion.variation_ids.length > 0) {
-      return primaryMotionVariations.filter(v => motion.variation_ids!.includes(v.id));
+    if (motion?.motion_variation_ids && motion.motion_variation_ids.length > 0) {
+      return primaryMotionVariations.filter(v => motion.motion_variation_ids!.includes(v.id));
     }
-    return primaryMotionVariations.filter(v => v.primary_motion_key === selectedPrimary);
+    return primaryMotionVariations.filter(v => v.primary_motion_ids === selectedPrimary);
   }, [selectedPrimary, primaryMotions, primaryMotionVariations]);
 
   // Compute current muscles based on selection (will update when allTertiaryMuscles loads)
@@ -494,7 +494,7 @@ const MotionPickerModal: React.FC<MotionPickerModalProps> = ({
     if (selectedPrimary && availableVariations.length === 1 && selectedVariation !== availableVariations[0].id) {
       const variation = availableVariations[0];
       const muscles = extractMuscleSelectionsFromTargets(variation.muscle_targets);
-      onSelect(selectedPrimary, variation.id, variation.motion_planes?.[0], muscles);
+      onSelect(selectedPrimary, variation.id, variation.motion_plane_ids?.[0], muscles);
     }
   }, [selectedPrimary, availableVariations, selectedVariation, onSelect]);
 
@@ -506,7 +506,7 @@ const MotionPickerModal: React.FC<MotionPickerModalProps> = ({
       return;
     }
     setSelectedPrimary(motionId);
-    
+
     // Compute muscles from the motion's muscle_targets and apply immediately
     const motion = primaryMotions.find(m => m.id === motionId);
     const muscles = motion ? extractMuscleSelectionsFromTargets(motion.muscle_targets) : undefined;
@@ -524,9 +524,9 @@ const MotionPickerModal: React.FC<MotionPickerModalProps> = ({
       return;
     }
     const variation = primaryMotionVariations.find(v => v.id === variationId);
-    const planes = variation?.motion_planes;
+    const planes = variation?.motion_plane_ids;
     const hasPlanes = Array.isArray(planes) && planes.length > 0;
-    
+
     // Compute muscles from the variation's muscle_targets and apply immediately
     const muscles = variation ? extractMuscleSelectionsFromTargets(variation.muscle_targets) : undefined;
     onSelect(selectedPrimary, variationId, hasPlanes ? planes[0] : undefined, muscles);

@@ -10,7 +10,7 @@
     "short_description": "Resistance moves from above the head diagonally down toward the waist.",
     "sort_order": 0,
     "is_active": true,
-    "variation_ids": [
+    "motion_variation_ids": [
       "FACE_PULL_LOW",
       "FLY_DECLINE",
       "FLY_REVERSE_DECLINE",
@@ -38,7 +38,7 @@
     "short_description": "Resistance moves from above the head diagonally down toward the chest.",
     "sort_order": 1,
     "is_active": true,
-    "variation_ids": [
+    "motion_variation_ids": [
       "FLY_REVERSE_DECLINE",
       "ROW_HIGH"
     ],
@@ -58,7 +58,7 @@
     "short_description": "Resistance moves horizontally at head height.",
     "sort_order": 2,
     "is_active": true,
-    "variation_ids": [
+    "motion_variation_ids": [
       "FACE_PULL_HIGH",
       "FLY_REVERSE"
     ],
@@ -77,7 +77,7 @@
     "short_description": "Resistance moves from chest height diagonally up toward the face.",
     "sort_order": 3,
     "is_active": true,
-    "variation_ids": [
+    "motion_variation_ids": [
       "EXT_OVERHEAD",
       "FACE_PULL_HIGH",
       "FLY_INCLINE",
@@ -87,7 +87,6 @@
     "primary_motion_ids": [
       "EXTENSION_ARM",
       "FACE_PULL",
-      "FLY",
       "PRESS",
       "HORIZONTAL_ROW"
     ]
@@ -103,7 +102,7 @@
     "short_description": "Resistance moves horizontally at chest height.",
     "sort_order": 4,
     "is_active": true,
-    "variation_ids": [
+    "motion_variation_ids": [
       "FACE_PULL_LOW",
       "FLY_REVERSE",
       "ROTATION_CABLE",
@@ -126,7 +125,7 @@
     "short_description": "Resistance moves from chest height diagonally down toward the waist.",
     "sort_order": 5,
     "is_active": true,
-    "variation_ids": [
+    "motion_variation_ids": [
       "FLY_DECLINE",
       "PRESS_DECLINE",
       "PULLOVER_BACK",
@@ -151,7 +150,7 @@
     "short_description": "Resistance moves from the floor diagonally up toward the face.",
     "sort_order": 6,
     "is_active": true,
-    "variation_ids": [
+    "motion_variation_ids": [
       "EXT_OVERHEAD",
       "FLY_INCLINE",
       "PRESS_INCLINE",
@@ -161,7 +160,6 @@
     ],
     "primary_motion_ids": [
       "EXTENSION_ARM",
-      "FLY",
       "PRESS",
       "RAISE",
       "ROTATION"
@@ -177,7 +175,7 @@
     "short_description": "Resistance moves from the floor diagonally up toward the chest.",
     "sort_order": 7,
     "is_active": true,
-    "variation_ids": [
+    "motion_variation_ids": [
       "CURL_STD",
       "RAISE_FRONT",
       "RAISE_LATERAL",
@@ -200,7 +198,7 @@
     "short_description": "Resistance moves horizontally at hip/waist height.",
     "sort_order": 8,
     "is_active": true,
-    "variation_ids": [
+    "motion_variation_ids": [
       "CURL_STD",
       "ROW_LOW"
     ],

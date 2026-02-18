@@ -40,7 +40,7 @@
     },
     "sort_order": 0,
     "is_active": true,
-    "variation_ids": [
+    "motion_variation_ids": [
       "DIP_CHEST",
       "DIP_TRICEPS"
     ],
@@ -71,7 +71,7 @@
     },
     "sort_order": 1,
     "is_active": true,
-    "variation_ids": [
+    "motion_variation_ids": [
       "CURL_STD"
     ],
     "motion_plane_ids": [
@@ -107,7 +107,7 @@
     },
     "sort_order": 2,
     "is_active": true,
-    "variation_ids": [
+    "motion_variation_ids": [
       "EXT_OVERHEAD",
       "EXT_PUSHDOWN"
     ],
@@ -151,7 +151,7 @@
     },
     "sort_order": 3,
     "is_active": true,
-    "variation_ids": [
+    "motion_variation_ids": [
       "PULLOVER_BACK",
       "PULLOVER_CHEST"
     ],
@@ -188,7 +188,7 @@
     },
     "sort_order": 4,
     "is_active": true,
-    "variation_ids": [
+    "motion_variation_ids": [
       "SHRUG_STD"
     ],
     "motion_plane_ids": []
@@ -231,7 +231,7 @@
     },
     "sort_order": 5,
     "is_active": true,
-    "variation_ids": [
+    "motion_variation_ids": [
       "PULL_BEHIND",
       "PULL_FRONT"
     ],
@@ -272,7 +272,7 @@
     },
     "sort_order": 6,
     "is_active": true,
-    "variation_ids": [
+    "motion_variation_ids": [
       "ROW_HIGH",
       "ROW_LOW",
       "ROW_MID"
@@ -312,7 +312,7 @@
     },
     "sort_order": 7,
     "is_active": true,
-    "variation_ids": [
+    "motion_variation_ids": [
       "CRUSH_STD"
     ],
     "motion_plane_ids": []
@@ -359,7 +359,7 @@
     },
     "sort_order": 8,
     "is_active": true,
-    "variation_ids": [
+    "motion_variation_ids": [
       "PRESS_DECLINE",
       "PRESS_FLAT",
       "PRESS_INCLINE"
@@ -397,17 +397,14 @@
     },
     "sort_order": 9,
     "is_active": true,
-    "variation_ids": [
+    "motion_variation_ids": [
       "FLY_DECLINE",
       "FLY_FLAT",
-      "FLY_INCLINE",
       "FLY_SCOOP"
     ],
     "motion_plane_ids": [
       "HIGH_LOW",
-      "MID_LOW",
-      "LOW_HIGH",
-      "MID_HIGH"
+      "MID_LOW"
     ]
   },
   {
@@ -426,7 +423,7 @@
     },
     "sort_order": 10,
     "is_active": true,
-    "variation_ids": [],
+    "motion_variation_ids": [],
     "motion_plane_ids": []
   },
   {
@@ -445,7 +442,7 @@
     },
     "sort_order": 11,
     "is_active": true,
-    "variation_ids": [],
+    "motion_variation_ids": [],
     "motion_plane_ids": []
   },
   {
@@ -469,7 +466,7 @@
     },
     "sort_order": 12,
     "is_active": true,
-    "variation_ids": [
+    "motion_variation_ids": [
       "RAISE_FRONT",
       "RAISE_LATERAL",
       "RAISE_V"
@@ -520,7 +517,7 @@
     },
     "sort_order": 13,
     "is_active": true,
-    "variation_ids": [
+    "motion_variation_ids": [
       "PRESS_HIGH_INCLINE",
       "PRESS_OVERHEAD"
     ],
@@ -560,7 +557,7 @@
     },
     "sort_order": 14,
     "is_active": true,
-    "variation_ids": [
+    "motion_variation_ids": [
       "FLY_REVERSE",
       "FLY_REVERSE_DECLINE",
       "FLY_REVERSE_INCLINE"
@@ -600,7 +597,7 @@
     },
     "sort_order": 15,
     "is_active": true,
-    "variation_ids": [
+    "motion_variation_ids": [
       "FACE_PULL_HIGH",
       "FACE_PULL_LOW"
     ],
@@ -639,7 +636,7 @@
     },
     "sort_order": 16,
     "is_active": true,
-    "variation_ids": [
+    "motion_variation_ids": [
       "EXT_BACK_STD"
     ],
     "motion_plane_ids": []
@@ -669,7 +666,7 @@
     },
     "sort_order": 17,
     "is_active": true,
-    "variation_ids": [],
+    "motion_variation_ids": [],
     "motion_plane_ids": []
   },
   {
@@ -697,7 +694,7 @@
     },
     "sort_order": 18,
     "is_active": true,
-    "variation_ids": [],
+    "motion_variation_ids": [],
     "motion_plane_ids": []
   },
   {
@@ -728,7 +725,7 @@
     },
     "sort_order": 19,
     "is_active": true,
-    "variation_ids": [],
+    "motion_variation_ids": [],
     "motion_plane_ids": []
   },
   {
@@ -765,7 +762,7 @@
     },
     "sort_order": 20,
     "is_active": true,
-    "variation_ids": [
+    "motion_variation_ids": [
       "HINGE_STD",
       "HINGE_STRAIGHT",
       "HINGE_THRUST"
@@ -815,7 +812,7 @@
     },
     "sort_order": 21,
     "is_active": true,
-    "variation_ids": [
+    "motion_variation_ids": [
       "SQUAT_FRONT",
       "SQUAT_REGULAR"
     ],
@@ -849,7 +846,7 @@
     },
     "sort_order": 22,
     "is_active": true,
-    "variation_ids": [
+    "motion_variation_ids": [
       "LUNGE_SIDE",
       "LUNGE_STATIC",
       "LUNGE_STEP"
@@ -884,7 +881,7 @@
     },
     "sort_order": 23,
     "is_active": true,
-    "variation_ids": [
+    "motion_variation_ids": [
       "PLANK_STD"
     ],
     "motion_plane_ids": []
@@ -914,7 +911,7 @@
     },
     "sort_order": 24,
     "is_active": true,
-    "variation_ids": [
+    "motion_variation_ids": [
       "CRUNCH_STD"
     ],
     "motion_plane_ids": []
@@ -941,7 +938,7 @@
     },
     "sort_order": 25,
     "is_active": true,
-    "variation_ids": [],
+    "motion_variation_ids": [],
     "motion_plane_ids": []
   },
   {
@@ -969,7 +966,7 @@
     },
     "sort_order": 26,
     "is_active": true,
-    "variation_ids": [
+    "motion_variation_ids": [
       "ROTATION_CABLE"
     ],
     "motion_plane_ids": [
@@ -1003,7 +1000,7 @@
     },
     "sort_order": 27,
     "is_active": true,
-    "variation_ids": [
+    "motion_variation_ids": [
       "LEG_RAISE_STD"
     ],
     "motion_plane_ids": []

@@ -1,7 +1,7 @@
 [
   {
     "id": "CRUNCH_STD",
-    "primary_motion_key": "AB_CRUNCH",
+    "primary_motion_ids": "AB_CRUNCH",
     "label": "Crunch",
     "common_names": [
       "Ab Crunch"
@@ -21,13 +21,13 @@
         }
       }
     },
-    "motion_planes": [],
+    "motion_plane_ids": [],
     "sort_order": 0,
     "is_active": true
   },
   {
     "id": "CRUSH_STD",
-    "primary_motion_key": "CRUSH",
+    "primary_motion_ids": "CRUSH",
     "label": "Crush",
     "common_names": [
       "Svend Press"
@@ -47,13 +47,13 @@
         }
       }
     },
-    "motion_planes": [],
+    "motion_plane_ids": [],
     "sort_order": 1,
     "is_active": true
   },
   {
     "id": "CURL_STD",
-    "primary_motion_key": "CURL",
+    "primary_motion_ids": "CURL",
     "label": "Standard Curl",
     "common_names": [
       "Bicep Curl"
@@ -79,7 +79,7 @@
         }
       }
     },
-    "motion_planes": [
+    "motion_plane_ids": [
       "LOW_LOW",
       "LOW_MID"
     ],
@@ -88,7 +88,7 @@
   },
   {
     "id": "DIP_CHEST",
-    "primary_motion_key": "DIP",
+    "primary_motion_ids": "DIP",
     "label": "Chest Dip",
     "common_names": [
       "Leaned Dip"
@@ -120,13 +120,13 @@
         }
       }
     },
-    "motion_planes": [],
+    "motion_plane_ids": [],
     "sort_order": 3,
     "is_active": true
   },
   {
     "id": "DIP_TRICEPS",
-    "primary_motion_key": "DIP",
+    "primary_motion_ids": "DIP",
     "label": "Tricep Dip",
     "common_names": [
       "Vertical Dip"
@@ -158,13 +158,13 @@
         }
       }
     },
-    "motion_planes": [],
+    "motion_plane_ids": [],
     "sort_order": 4,
     "is_active": true
   },
   {
     "id": "EXT_BACK_STD",
-    "primary_motion_key": "EXTENSION_BACK",
+    "primary_motion_ids": "EXTENSION_BACK",
     "label": "Back Extension",
     "common_names": [
       "Hyperextension"
@@ -193,13 +193,13 @@
         }
       }
     },
-    "motion_planes": [],
+    "motion_plane_ids": [],
     "sort_order": 5,
     "is_active": true
   },
   {
     "id": "EXT_OVERHEAD",
-    "primary_motion_key": "EXTENSION_ARM",
+    "primary_motion_ids": "EXTENSION_ARM",
     "label": "Overhead Ext",
     "common_names": [
       "French Press"
@@ -216,7 +216,7 @@
         }
       }
     },
-    "motion_planes": [
+    "motion_plane_ids": [
       "LOW_HIGH",
       "MID_HIGH"
     ],
@@ -225,7 +225,7 @@
   },
   {
     "id": "EXT_PUSHDOWN",
-    "primary_motion_key": "EXTENSION_ARM",
+    "primary_motion_ids": "EXTENSION_ARM",
     "label": "Pushdown",
     "common_names": [
       "Cable Extension"
@@ -245,13 +245,13 @@
         }
       }
     },
-    "motion_planes": [],
+    "motion_plane_ids": [],
     "sort_order": 7,
     "is_active": true
   },
   {
     "id": "FACE_PULL_HIGH",
-    "primary_motion_key": "FACE_PULL",
+    "primary_motion_ids": "FACE_PULL",
     "label": "High Face Pull",
     "common_names": [
       "Eye-Level Pull"
@@ -277,7 +277,7 @@
         }
       }
     },
-    "motion_planes": [
+    "motion_plane_ids": [
       "HIGH_HIGH",
       "MID_HIGH"
     ],
@@ -286,7 +286,7 @@
   },
   {
     "id": "FACE_PULL_LOW",
-    "primary_motion_key": "FACE_PULL",
+    "primary_motion_ids": "FACE_PULL",
     "label": "Low Face Pull",
     "common_names": [
       "Chin-Level Pull"
@@ -309,7 +309,7 @@
         }
       }
     },
-    "motion_planes": [
+    "motion_plane_ids": [
       "MID_MID",
       "HIGH_LOW"
     ],
@@ -318,7 +318,7 @@
   },
   {
     "id": "FLY_DECLINE",
-    "primary_motion_key": "FLY",
+    "primary_motion_ids": "FLY",
     "label": "Decline Fly",
     "common_names": [
       "Lower Fly"
@@ -338,7 +338,7 @@
         }
       }
     },
-    "motion_planes": [
+    "motion_plane_ids": [
       "HIGH_LOW",
       "MID_LOW"
     ],
@@ -347,7 +347,7 @@
   },
   {
     "id": "FLY_FLAT",
-    "primary_motion_key": "FLY",
+    "primary_motion_ids": "FLY",
     "label": "Flat Fly",
     "common_names": [
       "Chest Fly"
@@ -367,13 +367,13 @@
         }
       }
     },
-    "motion_planes": [],
+    "motion_plane_ids": [],
     "sort_order": 11,
     "is_active": true
   },
   {
     "id": "FLY_INCLINE",
-    "primary_motion_key": "FLY",
+    "primary_motion_ids": "",
     "label": "Incline Fly",
     "common_names": [
       "Upper Fly"
@@ -393,16 +393,17 @@
         }
       }
     },
-    "motion_planes": [
+    "motion_plane_ids": [
       "LOW_HIGH",
-      "MID_HIGH"
+      "MID_HIGH",
+      "MID_LOW"
     ],
     "sort_order": 12,
     "is_active": true
   },
   {
     "id": "FLY_REVERSE",
-    "primary_motion_key": "REVERSE_FLY",
+    "primary_motion_ids": "REVERSE_FLY",
     "label": "Reverse Fly",
     "common_names": [
       "Rear Delt Fly"
@@ -425,7 +426,7 @@
         }
       }
     },
-    "motion_planes": [
+    "motion_plane_ids": [
       "MID_MID",
       "HIGH_HIGH"
     ],
@@ -434,7 +435,7 @@
   },
   {
     "id": "FLY_REVERSE_DECLINE",
-    "primary_motion_key": "REVERSE_FLY",
+    "primary_motion_ids": "REVERSE_FLY",
     "label": "Decline Rev Fly",
     "common_names": [
       "High Cable Rev Fly",
@@ -461,7 +462,7 @@
         }
       }
     },
-    "motion_planes": [
+    "motion_plane_ids": [
       "HIGH_LOW",
       "HIGH_MID"
     ],
@@ -470,7 +471,7 @@
   },
   {
     "id": "FLY_REVERSE_INCLINE",
-    "primary_motion_key": "REVERSE_FLY",
+    "primary_motion_ids": "REVERSE_FLY",
     "label": "Incline Rev Fly",
     "common_names": [
       "Y-Fly"
@@ -496,13 +497,13 @@
         }
       }
     },
-    "motion_planes": [],
+    "motion_plane_ids": [],
     "sort_order": 15,
     "is_active": true
   },
   {
     "id": "FLY_SCOOP",
-    "primary_motion_key": "FLY",
+    "primary_motion_ids": "FLY",
     "label": "Scoop",
     "common_names": [
       "Low-to-High"
@@ -522,13 +523,13 @@
         }
       }
     },
-    "motion_planes": [],
+    "motion_plane_ids": [],
     "sort_order": 16,
     "is_active": true
   },
   {
     "id": "HINGE_STD",
-    "primary_motion_key": "HINGE",
+    "primary_motion_ids": "HINGE",
     "label": "Deadlift",
     "common_names": [
       "Conventional"
@@ -563,13 +564,13 @@
         }
       }
     },
-    "motion_planes": [],
+    "motion_plane_ids": [],
     "sort_order": 17,
     "is_active": true
   },
   {
     "id": "HINGE_STRAIGHT",
-    "primary_motion_key": "HINGE",
+    "primary_motion_ids": "HINGE",
     "label": "Stiff Leg",
     "common_names": [
       "RDL"
@@ -598,13 +599,13 @@
         }
       }
     },
-    "motion_planes": [],
+    "motion_plane_ids": [],
     "sort_order": 18,
     "is_active": true
   },
   {
     "id": "HINGE_THRUST",
-    "primary_motion_key": "HINGE",
+    "primary_motion_ids": "HINGE",
     "label": "Hip Thrust",
     "common_names": [
       "Glute Bridge",
@@ -634,13 +635,13 @@
         }
       }
     },
-    "motion_planes": [],
+    "motion_plane_ids": [],
     "sort_order": 19,
     "is_active": true
   },
   {
     "id": "LEG_RAISE_STD",
-    "primary_motion_key": "LEG_RAISE",
+    "primary_motion_ids": "LEG_RAISE",
     "label": "Leg Raise",
     "common_names": [
       "Hanging Legs"
@@ -660,13 +661,13 @@
         }
       }
     },
-    "motion_planes": [],
+    "motion_plane_ids": [],
     "sort_order": 20,
     "is_active": true
   },
   {
     "id": "LUNGE_SIDE",
-    "primary_motion_key": "LUNGE",
+    "primary_motion_ids": "LUNGE",
     "label": "Lateral Lunge",
     "common_names": [
       "Side Lunge",
@@ -690,13 +691,13 @@
         }
       }
     },
-    "motion_planes": [],
+    "motion_plane_ids": [],
     "sort_order": 21,
     "is_active": true
   },
   {
     "id": "LUNGE_STATIC",
-    "primary_motion_key": "LUNGE",
+    "primary_motion_ids": "LUNGE",
     "label": "Split Squat",
     "common_names": [
       "Bulgarian"
@@ -719,13 +720,13 @@
         }
       }
     },
-    "motion_planes": [],
+    "motion_plane_ids": [],
     "sort_order": 22,
     "is_active": true
   },
   {
     "id": "LUNGE_STEP",
-    "primary_motion_key": "LUNGE",
+    "primary_motion_ids": "LUNGE",
     "label": "Walking Lunge",
     "common_names": [
       "Forward Lunge"
@@ -754,13 +755,13 @@
         }
       }
     },
-    "motion_planes": [],
+    "motion_plane_ids": [],
     "sort_order": 23,
     "is_active": true
   },
   {
     "id": "PLANK_STD",
-    "primary_motion_key": "PLANK",
+    "primary_motion_ids": "PLANK",
     "label": "Plank",
     "common_names": [
       "Front Hold"
@@ -789,13 +790,13 @@
         }
       }
     },
-    "motion_planes": [],
+    "motion_plane_ids": [],
     "sort_order": 24,
     "is_active": true
   },
   {
     "id": "PRESS_DECLINE",
-    "primary_motion_key": "PRESS",
+    "primary_motion_ids": "PRESS",
     "label": "Decline Press",
     "common_names": [
       "Lower Chest Press"
@@ -827,7 +828,7 @@
         }
       }
     },
-    "motion_planes": [
+    "motion_plane_ids": [
       "HIGH_LOW",
       "MID_LOW"
     ],
@@ -836,7 +837,7 @@
   },
   {
     "id": "PRESS_FLAT",
-    "primary_motion_key": "PRESS",
+    "primary_motion_ids": "PRESS",
     "label": "Flat Press",
     "common_names": [
       "Standard Bench"
@@ -871,13 +872,13 @@
         }
       }
     },
-    "motion_planes": [],
+    "motion_plane_ids": [],
     "sort_order": 26,
     "is_active": true
   },
   {
     "id": "PRESS_HIGH_INCLINE",
-    "primary_motion_key": "PRESS_VERTICAL",
+    "primary_motion_ids": "PRESS_VERTICAL",
     "label": "High Incline Press",
     "common_names": [
       "Seated Shoulder Press"
@@ -909,13 +910,13 @@
         }
       }
     },
-    "motion_planes": [],
+    "motion_plane_ids": [],
     "sort_order": 4,
     "is_active": true
   },
   {
     "id": "PRESS_INCLINE",
-    "primary_motion_key": "PRESS",
+    "primary_motion_ids": "PRESS",
     "label": "Incline Press",
     "common_names": [
       "Upper Chest Press"
@@ -950,7 +951,7 @@
         }
       }
     },
-    "motion_planes": [
+    "motion_plane_ids": [
       "MID_HIGH",
       "LOW_HIGH"
     ],
@@ -959,7 +960,7 @@
   },
   {
     "id": "PRESS_OVERHEAD",
-    "primary_motion_key": "PRESS_VERTICAL",
+    "primary_motion_ids": "PRESS_VERTICAL",
     "label": "Overhead Press",
     "common_names": [
       "Military Press",
@@ -995,13 +996,13 @@
         }
       }
     },
-    "motion_planes": [],
+    "motion_plane_ids": [],
     "sort_order": 3,
     "is_active": true
   },
   {
     "id": "PULL_BEHIND",
-    "primary_motion_key": "VERTICAL_PULL",
+    "primary_motion_ids": "VERTICAL_PULL",
     "label": "Behind Neck",
     "common_names": [
       "Neck Pull"
@@ -1027,13 +1028,13 @@
         }
       }
     },
-    "motion_planes": [],
+    "motion_plane_ids": [],
     "sort_order": 4,
     "is_active": true
   },
   {
     "id": "PULL_FRONT",
-    "primary_motion_key": "VERTICAL_PULL",
+    "primary_motion_ids": "VERTICAL_PULL",
     "label": "Front Pulldown",
     "common_names": [
       "Lat Pull"
@@ -1062,13 +1063,13 @@
         }
       }
     },
-    "motion_planes": [],
+    "motion_plane_ids": [],
     "sort_order": 5,
     "is_active": true
   },
   {
     "id": "PULLOVER_BACK",
-    "primary_motion_key": "PULLOVER",
+    "primary_motion_ids": "PULLOVER",
     "label": "Lat Pullover",
     "common_names": [
       "Straight Arm Pull"
@@ -1094,7 +1095,7 @@
         }
       }
     },
-    "motion_planes": [
+    "motion_plane_ids": [
       "HIGH_LOW",
       "MID_LOW"
     ],
@@ -1103,7 +1104,7 @@
   },
   {
     "id": "PULLOVER_CHEST",
-    "primary_motion_key": "PULLOVER",
+    "primary_motion_ids": "PULLOVER",
     "label": "Chest Pullover",
     "common_names": [
       "Pec Pullover"
@@ -1132,7 +1133,7 @@
         }
       }
     },
-    "motion_planes": [
+    "motion_plane_ids": [
       "HIGH_LOW",
       "MID_LOW"
     ],
@@ -1141,7 +1142,7 @@
   },
   {
     "id": "RAISE_FRONT",
-    "primary_motion_key": "RAISE",
+    "primary_motion_ids": "RAISE",
     "label": "Front Raise",
     "common_names": [
       "Shoulder Raise"
@@ -1161,7 +1162,7 @@
         }
       }
     },
-    "motion_planes": [
+    "motion_plane_ids": [
       "LOW_HIGH",
       "LOW_MID"
     ],
@@ -1170,7 +1171,7 @@
   },
   {
     "id": "RAISE_LATERAL",
-    "primary_motion_key": "RAISE",
+    "primary_motion_ids": "RAISE",
     "label": "Lateral Raise",
     "common_names": [
       "Side Raise"
@@ -1193,7 +1194,7 @@
         }
       }
     },
-    "motion_planes": [
+    "motion_plane_ids": [
       "LOW_HIGH",
       "LOW_MID"
     ],
@@ -1202,7 +1203,7 @@
   },
   {
     "id": "RAISE_V",
-    "primary_motion_key": "RAISE",
+    "primary_motion_ids": "RAISE",
     "label": "V-Raise",
     "common_names": [
       "Scaption"
@@ -1222,13 +1223,13 @@
         }
       }
     },
-    "motion_planes": [],
+    "motion_plane_ids": [],
     "sort_order": 10,
     "is_active": true
   },
   {
     "id": "ROTATION_CABLE",
-    "primary_motion_key": "ROTATION",
+    "primary_motion_ids": "ROTATION",
     "label": "Cable Twist",
     "common_names": [
       "Woodchop"
@@ -1254,7 +1255,7 @@
         }
       }
     },
-    "motion_planes": [
+    "motion_plane_ids": [
       "HIGH_LOW",
       "MID_MID",
       "LOW_HIGH"
@@ -1264,7 +1265,7 @@
   },
   {
     "id": "ROW_HIGH",
-    "primary_motion_key": "HORIZONTAL_ROW",
+    "primary_motion_ids": "HORIZONTAL_ROW",
     "label": "High Row",
     "common_names": [
       "Sternum Row"
@@ -1290,7 +1291,7 @@
         }
       }
     },
-    "motion_planes": [
+    "motion_plane_ids": [
       "HIGH_MID",
       "MID_HIGH"
     ],
@@ -1299,7 +1300,7 @@
   },
   {
     "id": "ROW_LOW",
-    "primary_motion_key": "HORIZONTAL_ROW",
+    "primary_motion_ids": "HORIZONTAL_ROW",
     "label": "Low Row",
     "common_names": [
       "Belly Row"
@@ -1325,7 +1326,7 @@
         }
       }
     },
-    "motion_planes": [
+    "motion_plane_ids": [
       "LOW_LOW",
       "MID_LOW"
     ],
@@ -1334,7 +1335,7 @@
   },
   {
     "id": "ROW_MID",
-    "primary_motion_key": "HORIZONTAL_ROW",
+    "primary_motion_ids": "HORIZONTAL_ROW",
     "label": "Mid Row",
     "common_names": [
       "Standard Row"
@@ -1366,7 +1367,7 @@
         }
       }
     },
-    "motion_planes": [
+    "motion_plane_ids": [
       "MID_MID",
       "LOW_MID"
     ],
@@ -1375,7 +1376,7 @@
   },
   {
     "id": "SHRUG_STD",
-    "primary_motion_key": "SHRUG",
+    "primary_motion_ids": "SHRUG",
     "label": "Standard Shrug",
     "common_names": [
       "Trap Shrug"
@@ -1395,13 +1396,13 @@
         "_score": 0.4
       }
     },
-    "motion_planes": [],
+    "motion_plane_ids": [],
     "sort_order": 15,
     "is_active": true
   },
   {
     "id": "SQUAT_FRONT",
-    "primary_motion_key": "SQUAT",
+    "primary_motion_ids": "SQUAT",
     "label": "Front Squat",
     "common_names": [
       "Quad Squat"
@@ -1436,13 +1437,13 @@
         }
       }
     },
-    "motion_planes": [],
+    "motion_plane_ids": [],
     "sort_order": 16,
     "is_active": true
   },
   {
     "id": "SQUAT_REGULAR",
-    "primary_motion_key": "SQUAT",
+    "primary_motion_ids": "SQUAT",
     "label": "Back Squat",
     "common_names": [
       "Standard Squat"
@@ -1474,7 +1475,7 @@
         }
       }
     },
-    "motion_planes": [],
+    "motion_plane_ids": [],
     "sort_order": 17,
     "is_active": true
   }
