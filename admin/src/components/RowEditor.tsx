@@ -18,26 +18,22 @@ const MATRIX_FIELDS = ['allowed_grip_types', 'allowed_grip_widths', 'allowed_sta
 
 const MUSCLE_TABLES = ['primaryMuscles', 'secondaryMuscles', 'tertiaryMuscles'];
 const MUSCLE_HIERARCHY_FIELDS: Record<string, string[]> = {
-  primaryMuscles: ['secondary_muscle_ids', 'tertiary_muscle_ids'],
-  secondaryMuscles: ['primary_muscle_ids', 'tertiary_muscle_ids'],
-  tertiaryMuscles: ['secondary_muscle_ids', 'primary_muscle_ids'],
+  secondaryMuscles: ['primary_muscle_ids'],
+  tertiaryMuscles: ['secondary_muscle_ids'],
 };
 const MUSCLE_HIERARCHY_ANCHOR: Record<string, string> = {
-  primaryMuscles: 'secondary_muscle_ids',
   secondaryMuscles: 'primary_muscle_ids',
   tertiaryMuscles: 'secondary_muscle_ids',
 };
 
-const MOTION_TABLES = ['primaryMotions', 'primaryMotionVariations', 'motionPlanes'];
+const MOTION_TABLES = ['primaryMotions', 'primaryMotionVariations'];
 const MOTION_HIERARCHY_FIELDS: Record<string, string[]> = {
-  primaryMotions: ['motion_variation_ids', 'motion_plane_ids', 'muscle_targets', 'grip_type_ids', 'grip_type_configs'],
-  primaryMotionVariations: ['primary_motion_ids', 'motion_plane_ids', 'muscle_targets'],
-  motionPlanes: ['motion_variation_ids', 'primary_motion_ids', 'muscle_targets'],
+  primaryMotions: ['muscle_targets', 'motion_planes'],
+  primaryMotionVariations: ['primary_motion_key', 'muscle_targets', 'motion_planes'],
 };
 const MOTION_HIERARCHY_ANCHOR: Record<string, string> = {
-  primaryMotions: 'motion_variation_ids',
-  primaryMotionVariations: 'primary_motion_ids',
-  motionPlanes: 'motion_variation_ids',
+  primaryMotions: 'muscle_targets',
+  primaryMotionVariations: 'primary_motion_key',
 };
 
 interface RowEditorProps {
@@ -386,6 +382,21 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
                       );
                   }
                 })}
+
+              {/* Muscle Hierarchy for primaryMuscles (no FK anchor, rendered standalone) */}
+              {!isNew && recordId && schema.key === 'primaryMuscles' && (
+                <div className="pt-4 border-t">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Muscle Hierarchy
+                    <span className="text-xs text-gray-400 ml-2">Secondary & Tertiary muscles linked to this primary</span>
+                  </label>
+                  <MuscleHierarchyField
+                    tableKey="primaryMuscles"
+                    currentRecordId={recordId}
+                    onFieldsChange={() => {}}
+                  />
+                </div>
+              )}
 
               {/* Relationships Section */}
               {!isNew && recordId && (

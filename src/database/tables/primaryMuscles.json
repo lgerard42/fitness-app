@@ -2,224 +2,113 @@
   {
     "id": "ARMS",
     "label": "Arms",
-    "technical_name": "Membrum Superius",
-    "common_names": [
-      "Arms",
-      "Upper Arm",
-      "Elbow Flexors",
-      "Elbow Extensors"
-    ],
-    "icon": "",
-    "short_description": "Muscles of the upper limb including flexors and extensors.",
+    "upper_lower": ["Upper Body"],
+    "common_names": ["Arms", "Upper Arm", "Biceps and Triceps"],
+    "technical_name": "Brachium et Antebrachium",
+    "short_description": "The muscles of the upper limb responsible for elbow and wrist movement.",
+    "function": "Flexion and extension of the elbow and wrist joints.",
+    "location": "Upper limb, from the shoulder joint down to the wrist.",
+    "triggers": "Bending or straightening the elbows; gripping or curling.",
     "sort_order": 0,
-    "is_active": true,
-    "upper_lower": [
-      "Upper Body"
-    ],
-    "secondary_muscle_ids": [
-      "BICEPS",
-      "FOREARMS",
-      "TRICEPS"
-    ],
-    "tertiary_muscle_ids": [
-      "OUTER_BICEP",
-      "INNER_BICEP",
-      "INNER_TRICEP",
-      "OUTER_TRICEP",
-      "DEEP_TRICEP",
-      "TOP_FOREARM",
-      "BOTTOM_FOREARM",
-      "OUTER_FOREARM"
-    ]
+    "icon": "",
+    "is_active": true
   },
   {
     "id": "BACK",
     "label": "Back",
+    "upper_lower": ["Upper Body"],
+    "common_names": ["Back", "Posterior Chain", "Lats and Traps"],
     "technical_name": "Dorsum",
-    "common_names": [
-      "Back",
-      "Posterior Chain",
-      "Pulling Muscles",
-      "Lats"
-    ],
-    "icon": "",
-    "short_description": "The posterior torso, primary for pulling movements.",
+    "short_description": "The large musculature of the posterior torso.",
+    "function": "Pulling, rowing, and stabilizing the spine and scapula.",
+    "location": "Posterior torso, spanning from the base of the neck to the pelvis.",
+    "triggers": "Pulling resistance toward the body; extending the spine.",
     "sort_order": 1,
-    "is_active": true,
-    "upper_lower": [
-      "Upper Body"
-    ],
-    "secondary_muscle_ids": [
-      "LATS",
-      "LOWER_BACK",
-      "MID_BACK",
-      "RHOMBOIDS",
-      "TRAPS",
-      "UPPER_BACK"
-    ],
-    "tertiary_muscle_ids": [
-      "UPPER_TRAPS",
-      "LOWER_TRAPS"
-    ]
+    "icon": "",
+    "is_active": true
   },
   {
     "id": "CHEST",
     "label": "Chest",
-    "technical_name": "Thorax",
-    "common_names": [
-      "Chest",
-      "Pecs",
-      "Push Muscles",
-      "Anterior Torso"
-    ],
-    "icon": "",
-    "short_description": "The anterior upper torso, primary for pushing movements.",
+    "upper_lower": ["Upper Body"],
+    "common_names": ["Chest", "Pecs", "Push Muscles"],
+    "technical_name": "Musculi Pectorales",
+    "short_description": "The primary pushing muscles of the anterior torso.",
+    "function": "Pushing outward and bringing the arms across the midline of the body (adduction).",
+    "location": "Anterior upper torso, covering the ribcage.",
+    "triggers": "Pushing resistance away from the body; hugging or arcing motions.",
     "sort_order": 2,
-    "is_active": true,
-    "upper_lower": [
-      "Upper Body"
-    ],
-    "secondary_muscle_ids": [
-      "LOWER_CHEST",
-      "MID_CHEST",
-      "UPPER_CHEST"
-    ],
-    "tertiary_muscle_ids": []
-  },
-  {
-    "id": "SHOULDERS",
-    "label": "Shoulders",
-    "technical_name": "Deltoideus",
-    "common_names": [
-      "Shoulders",
-      "Delts",
-      "Shoulder Girdle"
-    ],
     "icon": "",
-    "short_description": "The shoulder girdle providing a wide range of arm mobility.",
-    "sort_order": 3,
-    "is_active": true,
-    "upper_lower": [
-      "Upper Body"
-    ],
-    "secondary_muscle_ids": [
-      "TRAPS",
-      "FRONT_DELTS",
-      "REAR_DELTS",
-      "ROTATOR_CUFF",
-      "SIDE_DELTS"
-    ],
-    "tertiary_muscle_ids": [
-      "UPPER_TRAPS",
-      "LOWER_TRAPS"
-    ]
+    "is_active": true
   },
   {
     "id": "CORE",
     "label": "Core",
-    "technical_name": "Abdomen & Pelvis",
-    "common_names": [
-      "Core",
-      "Midsection",
-      "Abs",
-      "Stabilizers",
-      "Trunk"
-    ],
+    "upper_lower": ["Upper Body"],
+    "common_names": ["Core", "Midsection", "Abs", "Trunk"],
+    "technical_name": "Musculi Abdominis",
+    "short_description": "The stabilizing center of the body.",
+    "function": "Spinal flexion, rotation, and maintaining rigid torso stability.",
+    "location": "The midsection, wrapping around the front and sides of the waist.",
+    "triggers": "Planking, crunching, twisting, or bracing against heavy loads.",
+    "sort_order": 3,
     "icon": "",
-    "short_description": "Central stability muscles connecting the upper and lower body.",
-    "sort_order": 4,
-    "is_active": true,
-    "upper_lower": [
-      "Upper Body"
-    ],
-    "secondary_muscle_ids": [
-      "LOWER_BACK",
-      "ABS",
-      "HIP_FLEXORS",
-      "OBLIQUES"
-    ],
-    "tertiary_muscle_ids": [
-      "UPPER_ABS",
-      "LOWER_ABS",
-      "MIDDLE_ABS",
-      "UPPER_OBLIQUES",
-      "LOWER_OBLIQUES",
-      "INTERNAL_OBLIQUES"
-    ]
-  },
-  {
-    "id": "NECK",
-    "label": "Neck",
-    "technical_name": "Cervix",
-    "common_names": [
-      "Neck",
-      "Cervical Spine",
-      "Upper Traps"
-    ],
-    "icon": "",
-    "short_description": "Muscles supporting the head and cervical spine.",
-    "sort_order": 5,
-    "is_active": true,
-    "upper_lower": [
-      "Upper Body"
-    ],
-    "secondary_muscle_ids": [],
-    "tertiary_muscle_ids": []
+    "is_active": true
   },
   {
     "id": "LEGS",
     "label": "Legs",
+    "upper_lower": ["Lower Body"],
+    "common_names": ["Legs", "Lower Body", "Quads and Hams"],
     "technical_name": "Membrum Inferius",
-    "common_names": [
-      "Legs",
-      "Lower Body",
-      "Quads and Hamstrings"
-    ],
+    "short_description": "The primary movers of the lower body.",
+    "function": "Squatting, hinging, walking, and jumping.",
+    "location": "The lower limb, from the hip joint down to the ankles.",
+    "triggers": "Pushing against the floor; bending the knees; extending the hips.",
+    "sort_order": 4,
     "icon": "",
-    "short_description": "The lower limbs, responsible for locomotion and power.",
+    "is_active": true
+  },
+  {
+    "id": "SHOULDERS",
+    "label": "Shoulders",
+    "upper_lower": ["Upper Body"],
+    "common_names": ["Shoulders", "Delts", "Shoulder Girdle"],
+    "technical_name": "Deltoideus",
+    "short_description": "The highly mobile muscles capping the shoulder joint.",
+    "function": "Raising the arms overhead, forward, or to the sides; rotating the arm.",
+    "location": "The top and lateral sides of the upper torso/arm intersection.",
+    "triggers": "Pressing vertically overhead; raising the arms laterally or frontally.",
+    "sort_order": 5,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "NECK",
+    "label": "Neck",
+    "upper_lower": ["Upper Body"],
+    "common_names": ["Neck", "Cervical Spine"],
+    "technical_name": "Cervix",
+    "short_description": "The muscles supporting and articulating the head.",
+    "function": "Head flexion, extension, and lateral rotation.",
+    "location": "Cervical spine area, above the collarbone and upper traps.",
+    "triggers": "Nodding the head forward or lifting the head backward.",
     "sort_order": 6,
-    "is_active": true,
-    "upper_lower": [
-      "Lower Body"
-    ],
-    "secondary_muscle_ids": [
-      "CALVES",
-      "GLUTES",
-      "HAMSTRINGS",
-      "INNER_THIGHS",
-      "OUTER_HIPS_THIGHS",
-      "QUADS"
-    ],
-    "tertiary_muscle_ids": [
-      "INNER_QUAD",
-      "OUTER_QUAD",
-      "MID_QUAD",
-      "OUTER_HAMSTRING",
-      "INNER_HAMSTRING",
-      "INNER_CALF",
-      "OUTER_CALF",
-      "LOWER_CALF"
-    ]
+    "icon": "",
+    "is_active": true
   },
   {
     "id": "FULL_BODY",
     "label": "Full Body",
+    "upper_lower": ["Upper Body", "Lower Body"],
+    "common_names": ["Full Body", "Compound", "Total Body"],
     "technical_name": "Totum Corpus",
-    "common_names": [
-      "Full Body",
-      "Compound",
-      "Total Body",
-      "Metabolic"
-    ],
-    "icon": "",
-    "short_description": "Exercises that engage multiple major muscle groups simultaneously.",
+    "short_description": "Systemic movements engaging the entire muscular system.",
+    "function": "Maximum force production and systemic energy expenditure.",
+    "location": "The entire skeletal musculature.",
+    "triggers": "Olympic lifting, heavily loaded carries, or explosive plyometrics.",
     "sort_order": 7,
-    "is_active": true,
-    "upper_lower": [
-      "Upper Body",
-      "Lower Body"
-    ],
-    "secondary_muscle_ids": [],
-    "tertiary_muscle_ids": []
+    "icon": "",
+    "is_active": true
   }
 ]

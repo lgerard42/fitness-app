@@ -15,43 +15,14 @@ interface MuscleRecord {
   label: string;
   primary_muscle_ids?: string[];
   secondary_muscle_ids?: string[];
-  tertiary_muscle_ids?: string[];
   [key: string]: unknown;
 }
 
-// ---------------------------------------------------------------------------
-// Recompute helpers
-// ---------------------------------------------------------------------------
-
-function recomputeAllDerived(
-  primaries: MuscleRecord[],
-  secondaries: MuscleRecord[],
-  tertiaries: MuscleRecord[]
-) {
-  for (const p of primaries) {
-    const sids = secondaries.filter(s => s.primary_muscle_ids?.includes(p.id)).map(s => s.id);
-    const tids = tertiaries
-      .filter(t => (t.secondary_muscle_ids || []).some(sid => sids.includes(sid)))
-      .map(t => t.id);
-    p.secondary_muscle_ids = sids;
-    p.tertiary_muscle_ids = tids;
-  }
-  for (const s of secondaries) {
-    s.tertiary_muscle_ids = tertiaries.filter(t => t.secondary_muscle_ids?.includes(s.id)).map(t => t.id);
-  }
-  for (const t of tertiaries) {
-    const parentSecs = secondaries.filter(s => t.secondary_muscle_ids?.includes(s.id));
-    t.primary_muscle_ids = [...new Set(parentSecs.flatMap(s => s.primary_muscle_ids || []))];
-  }
-}
-
 function getCurrentRecordFields(tableKey: MuscleTableKey, record: MuscleRecord): Record<string, string[]> {
-  if (tableKey === 'primaryMuscles') {
-    return { secondary_muscle_ids: record.secondary_muscle_ids || [], tertiary_muscle_ids: record.tertiary_muscle_ids || [] };
-  } else if (tableKey === 'secondaryMuscles') {
-    return { primary_muscle_ids: record.primary_muscle_ids || [], tertiary_muscle_ids: record.tertiary_muscle_ids || [] };
+  if (tableKey === 'secondaryMuscles') {
+    return { primary_muscle_ids: record.primary_muscle_ids || [] };
   } else {
-    return { secondary_muscle_ids: record.secondary_muscle_ids || [], primary_muscle_ids: record.primary_muscle_ids || [] };
+    return { secondary_muscle_ids: record.secondary_muscle_ids || [] };
   }
 }
 
@@ -102,38 +73,31 @@ export default function MuscleHierarchyField({ tableKey, currentRecordId, onFiel
     updatedSecondaries: MuscleRecord[],
     updatedTertiaries: MuscleRecord[]
   ) => {
-    recomputeAllDerived(updatedPrimaries, updatedSecondaries, updatedTertiaries);
-
-    // Save all three tables via PUT (the RowEditor save will write the current record on top)
+    // Save changed tables (only the ones with canonical FK changes)
     try {
       const saves: Promise<unknown>[] = [];
-      if (tableKey !== 'primaryMuscles') saves.push(api.putTable('primaryMuscles', updatedPrimaries));
-      if (tableKey !== 'secondaryMuscles') saves.push(api.putTable('secondaryMuscles', updatedSecondaries));
-      if (tableKey !== 'tertiaryMuscles') saves.push(api.putTable('tertiaryMuscles', updatedTertiaries));
+      if (tableKey === 'primaryMuscles' || tableKey === 'secondaryMuscles') {
+        saves.push(api.putTable('secondaryMuscles', updatedSecondaries));
+      }
+      if (tableKey === 'primaryMuscles' || tableKey === 'secondaryMuscles' || tableKey === 'tertiaryMuscles') {
+        saves.push(api.putTable('tertiaryMuscles', updatedTertiaries));
+      }
       await Promise.all(saves);
     } catch (err) {
       console.error('Failed to sync muscle hierarchy:', err);
-    }
-
-    // Also save other records in the CURRENT table (not the current record itself)
-    const currentTable = tableKey === 'primaryMuscles' ? updatedPrimaries
-      : tableKey === 'secondaryMuscles' ? updatedSecondaries : updatedTertiaries;
-    for (const rec of currentTable) {
-      if (rec.id !== currentRecordId) {
-        try {
-          await api.updateRow(tableKey, rec.id, rec);
-        } catch { /* skip */ }
-      }
     }
 
     setPrimaryMuscles([...updatedPrimaries]);
     setSecondaryMuscles([...updatedSecondaries]);
     setTertiaryMuscles([...updatedTertiaries]);
 
-    // Update the current record's fields via callback
-    const current = currentTable.find(r => r.id === currentRecordId);
-    if (current) {
-      onFieldsChange(getCurrentRecordFields(tableKey, current));
+    // Update the current record's fields via callback (primaryMuscles has no FK fields to update)
+    if (tableKey === 'secondaryMuscles') {
+      const current = updatedSecondaries.find(r => r.id === currentRecordId);
+      if (current) onFieldsChange(getCurrentRecordFields(tableKey, current));
+    } else if (tableKey === 'tertiaryMuscles') {
+      const current = updatedTertiaries.find(r => r.id === currentRecordId);
+      if (current) onFieldsChange(getCurrentRecordFields(tableKey, current));
     }
   }, [tableKey, currentRecordId, onFieldsChange]);
 

@@ -1,211 +1,83 @@
 [
   {
-    "id": "HIGH_LOW",
-    "label": "High to Low",
-    "sub_label": "Altum ad Humile",
-    "common_names": [
-      "High-to-Low",
-      "Downward Cross"
-    ],
-    "short_description": "Resistance moves from above the head diagonally down toward the waist.",
-    "sort_order": 0,
-    "is_active": true,
-    "motion_variation_ids": [
-      "FACE_PULL_LOW",
-      "FLY_DECLINE",
-      "FLY_REVERSE_DECLINE",
-      "PRESS_DECLINE",
-      "PULLOVER_BACK",
-      "PULLOVER_CHEST",
-      "ROTATION_CABLE"
-    ],
-    "primary_motion_ids": [
-      "FACE_PULL",
-      "FLY",
-      "REVERSE_FLY",
-      "PRESS",
-      "PULLOVER",
-      "ROTATION"
-    ]
-  },
-  {
-    "id": "HIGH_MID",
-    "label": "High to Mid",
-    "sub_label": "Altum ad Medium",
-    "common_names": [
-      "Decline Path"
-    ],
-    "short_description": "Resistance moves from above the head diagonally down toward the chest.",
-    "sort_order": 1,
-    "is_active": true,
-    "motion_variation_ids": [
-      "FLY_REVERSE_DECLINE",
-      "ROW_HIGH"
-    ],
-    "primary_motion_ids": [
-      "REVERSE_FLY",
-      "HORIZONTAL_ROW"
-    ]
-  },
-  {
     "id": "HIGH_HIGH",
-    "label": "High to High",
-    "sub_label": "Altum ad Altum",
-    "common_names": [
-      "High Level",
-      "Face Path"
-    ],
-    "short_description": "Resistance moves horizontally at head height.",
-    "sort_order": 2,
-    "is_active": true,
-    "motion_variation_ids": [
-      "FACE_PULL_HIGH",
-      "FLY_REVERSE"
-    ],
-    "primary_motion_ids": [
-      "FACE_PULL",
-      "REVERSE_FLY"
-    ]
+    "label": "High -> High",
+    "common_names": ["Face Level", "High Horizontal", "Upper Alignment"],
+    "short_description": "Resistance moves horizontally at head or eye height.",
+    "sort_order": 0,
+    "icon": "",
+    "is_active": true
   },
   {
     "id": "MID_HIGH",
-    "label": "Mid to High",
-    "sub_label": "Medium ad Altum",
-    "common_names": [
-      "Incline Path"
-    ],
-    "short_description": "Resistance moves from chest height diagonally up toward the face.",
-    "sort_order": 3,
-    "is_active": true,
-    "motion_variation_ids": [
-      "EXT_OVERHEAD",
-      "FACE_PULL_HIGH",
-      "FLY_INCLINE",
-      "PRESS_INCLINE",
-      "ROW_HIGH"
-    ],
-    "primary_motion_ids": [
-      "EXTENSION_ARM",
-      "FACE_PULL",
-      "PRESS",
-      "HORIZONTAL_ROW"
-    ]
-  },
-  {
-    "id": "MID_MID",
-    "label": "Mid to Mid",
-    "sub_label": "Medium ad Medium",
-    "common_names": [
-      "Standard",
-      "Flat Path"
-    ],
-    "short_description": "Resistance moves horizontally at chest height.",
-    "sort_order": 4,
-    "is_active": true,
-    "motion_variation_ids": [
-      "FACE_PULL_LOW",
-      "FLY_REVERSE",
-      "ROTATION_CABLE",
-      "ROW_MID"
-    ],
-    "primary_motion_ids": [
-      "FACE_PULL",
-      "REVERSE_FLY",
-      "ROTATION",
-      "HORIZONTAL_ROW"
-    ]
-  },
-  {
-    "id": "MID_LOW",
-    "label": "Mid to Low",
-    "sub_label": "Medium ad Humile",
-    "common_names": [
-      "Decline Pressdown"
-    ],
-    "short_description": "Resistance moves from chest height diagonally down toward the waist.",
-    "sort_order": 5,
-    "is_active": true,
-    "motion_variation_ids": [
-      "FLY_DECLINE",
-      "FLY_INCLINE",
-      "PRESS_DECLINE",
-      "PULLOVER_BACK",
-      "PULLOVER_CHEST",
-      "ROW_LOW"
-    ],
-    "primary_motion_ids": [
-      "FLY",
-      "PRESS",
-      "PULLOVER",
-      "HORIZONTAL_ROW"
-    ]
+    "label": "Mid-Height -> High",
+    "common_names": ["Incline Path", "Upward Press", "High Diagonal"],
+    "short_description": "Resistance moves diagonally from chest height up toward the face.",
+    "sort_order": 1,
+    "icon": "",
+    "is_active": true
   },
   {
     "id": "LOW_HIGH",
-    "label": "Low to High",
-    "sub_label": "Humile ad Altum",
-    "common_names": [
-      "Low-to-High",
-      "Scoop Path"
-    ],
-    "short_description": "Resistance moves from the floor diagonally up toward the face.",
-    "sort_order": 6,
-    "is_active": true,
-    "motion_variation_ids": [
-      "EXT_OVERHEAD",
-      "FLY_INCLINE",
-      "PRESS_INCLINE",
-      "RAISE_FRONT",
-      "RAISE_LATERAL",
-      "ROTATION_CABLE"
-    ],
-    "primary_motion_ids": [
-      "EXTENSION_ARM",
-      "PRESS",
-      "RAISE",
-      "ROTATION"
-    ]
+    "label": "Low -> High",
+    "common_names": ["Low-to-High", "Scoop Path", "Upward Sweep", "Ascending Plane"],
+    "short_description": "Resistance moves diagonally from the floor up toward the chest or face.",
+    "sort_order": 2,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "HIGH_MID",
+    "label": "High -> Mid-Height",
+    "common_names": ["Decline Path", "High-to-Mid", "Downward Diagonal"],
+    "short_description": "Resistance moves diagonally from above the head down toward the chest.",
+    "sort_order": 3,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "MID_MID",
+    "label": "Mid-Height -> Mid-Height",
+    "common_names": ["Flat Path", "Standard Horizontal", "Chest Level", "Parallel Path"],
+    "short_description": "Resistance moves horizontally at chest or torso height.",
+    "sort_order": 4,
+    "icon": "",
+    "is_active": true
   },
   {
     "id": "LOW_MID",
-    "label": "Low to Mid",
-    "sub_label": "Humile ad Medium",
-    "common_names": [
-      "Upward Path"
-    ],
-    "short_description": "Resistance moves from the floor diagonally up toward the chest.",
+    "label": "Low -> Mid-Height",
+    "common_names": ["Upward Path", "Shallow Scoop", "Low Diagonal"],
+    "short_description": "Resistance moves diagonally from the floor up toward the stomach/chest.",
+    "sort_order": 5,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "HIGH_LOW",
+    "label": "High -> Low",
+    "common_names": ["Downward Cross", "High-to-Low", "Descending Plane", "Chop Path"],
+    "short_description": "Resistance moves diagonally from above the head down toward the waist.",
+    "sort_order": 6,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "MID_LOW",
+    "label": "Mid-Height -> Low",
+    "common_names": ["Decline Pressdown", "Mid-to-Low", "Shallow Decline"],
+    "short_description": "Resistance moves diagonally from chest height down toward the hips.",
     "sort_order": 7,
-    "is_active": true,
-    "motion_variation_ids": [
-      "CURL_STD",
-      "RAISE_FRONT",
-      "RAISE_LATERAL",
-      "ROW_MID"
-    ],
-    "primary_motion_ids": [
-      "CURL",
-      "RAISE",
-      "HORIZONTAL_ROW"
-    ]
+    "icon": "",
+    "is_active": true
   },
   {
     "id": "LOW_LOW",
-    "label": "Low to Low",
-    "sub_label": "Humile ad Humile",
-    "common_names": [
-      "Low Level",
-      "Hip Path"
-    ],
-    "short_description": "Resistance moves horizontally at hip/waist height.",
+    "label": "Low -> Low",
+    "common_names": ["Hip Level", "Low Horizontal", "Waist Level", "Floor Parallel"],
+    "short_description": "Resistance moves horizontally at waist or hip height.",
     "sort_order": 8,
-    "is_active": true,
-    "motion_variation_ids": [
-      "CURL_STD",
-      "ROW_LOW"
-    ],
-    "primary_motion_ids": [
-      "CURL",
-      "HORIZONTAL_ROW"
-    ]
+    "icon": "",
+    "is_active": true
   }
 ]

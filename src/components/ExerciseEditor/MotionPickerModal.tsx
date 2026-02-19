@@ -24,29 +24,25 @@ type UpperLowerFilter = 'Upper Body' | 'Lower Body' | 'Full Body';
 interface PrimaryMotion {
   id: string;
   label: string;
-  sub_label?: string;
   short_description?: string;
   muscle_targets?: Record<string, any>;
-  motion_variation_ids?: string[];
-  motion_plane_ids?: string[];
+  motion_planes?: { default?: string; options?: string[] };
   is_active: boolean;
 }
 
 interface PrimaryMotionVariation {
   id: string;
-  primary_motion_ids: string;
+  primary_motion_key: string;
   label: string;
   short_description?: string;
   muscle_targets?: Record<string, any>;
-  motion_plane_ids?: string[];
+  motion_planes?: { default?: string; options?: string[] };
   is_active: boolean;
 }
 
 interface MotionPlane {
   id: string;
   label: string;
-  motion_variation_ids?: string[];
-  primary_motion_ids?: string[];
   is_active: boolean;
 }
 
@@ -245,24 +241,7 @@ const MotionPickerModal: React.FC<MotionPickerModalProps> = ({
   };
 
   // Helper to get selected secondary IDs for a primary
-  // Uses denormalized secondary_muscle_ids field when available
   const getSelectedSecondaryIdsForPrimary = (primaryId: string) => {
-    const primaryMuscle = allPrimaryMuscles.find(pm => pm.id === primaryId);
-    if (primaryMuscle && primaryMuscle.secondary_muscle_ids) {
-      // Use denormalized field
-      try {
-        const secondaryIds = JSON.parse(primaryMuscle.secondary_muscle_ids) as string[];
-        return secondaryIds
-          .map(id => {
-            const sec = allSecondaryMuscles.find(s => s.id === id);
-            return sec && secondaryMuscles.includes(sec.label) ? id : null;
-          })
-          .filter((id): id is string => id !== null);
-      } catch {
-        // Fallback to canonical relationship
-      }
-    }
-    // Fallback: use canonical relationship
     const secondaryMusclesForThisPrimary = allSecondaryMuscles.filter(sec => {
       try {
         const primaryIds = JSON.parse(sec.primary_muscle_ids || '[]') as string[];
@@ -277,24 +256,7 @@ const MotionPickerModal: React.FC<MotionPickerModalProps> = ({
   };
 
   // Helper to get selected tertiary IDs for a primary
-  // Uses denormalized tertiary_muscle_ids field when available
   const getSelectedTertiaryIdsForPrimary = (primaryId: string) => {
-    const primaryMuscle = allPrimaryMuscles.find(pm => pm.id === primaryId);
-    if (primaryMuscle && primaryMuscle.tertiary_muscle_ids) {
-      // Use denormalized field
-      try {
-        const tertiaryIds = JSON.parse(primaryMuscle.tertiary_muscle_ids) as string[];
-        return tertiaryIds
-          .map(id => {
-            const tert = allTertiaryMuscles.find((t: any) => t.id === id);
-            return tert && tertiaryMuscles.includes(tert.label) ? id : null;
-          })
-          .filter((id): id is string => id !== null);
-      } catch {
-        // Fallback to canonical relationship
-      }
-    }
-    // Fallback: use canonical relationship through secondaries
     const secondaryMusclesForThisPrimary = allSecondaryMuscles.filter(sec => {
       try {
         const primaryIds = JSON.parse(sec.primary_muscle_ids || '[]') as string[];
@@ -305,7 +267,6 @@ const MotionPickerModal: React.FC<MotionPickerModalProps> = ({
     });
     const secondaryIdsForThisPrimary = secondaryMusclesForThisPrimary.map(sec => sec.id);
     const tertiaryMusclesForThisPrimary = allTertiaryMuscles.filter((tert: any) => {
-      // secondary_muscle_ids can be an array (from JSON) or a JSON string (from database)
       let secIds: string[] = [];
       if (Array.isArray(tert.secondary_muscle_ids)) {
         secIds = tert.secondary_muscle_ids;
@@ -418,12 +379,8 @@ const MotionPickerModal: React.FC<MotionPickerModalProps> = ({
 
   // Get filtered and extra variations for a motion
   const getVariationsForMotion = (motionId: string, sectionPrimaryId: string) => {
-    const motion = primaryMotions.find(m => m.id === motionId);
-    const varIds = motion?.motion_variation_ids;
-    const allVariations = (varIds && varIds.length > 0
-      ? primaryMotionVariations.filter(v => varIds.includes(v.id))
-      : primaryMotionVariations.filter(v => v.primary_motion_ids === motionId)
-    ).sort((a, b) => {
+    const allVariations = primaryMotionVariations.filter(v => v.primary_motion_key === motionId)
+    .sort((a, b) => {
       const scoreA = getPrimaryScore(a.muscle_targets, sectionPrimaryId);
       const scoreB = getPrimaryScore(b.muscle_targets, sectionPrimaryId);
       return scoreB - scoreA;
@@ -460,15 +417,10 @@ const MotionPickerModal: React.FC<MotionPickerModalProps> = ({
     return { filteredVariations, extraVariations };
   };
 
-  // Get variations for selected primary motion (uses denormalized motion_variation_ids when available)
   const availableVariations = useMemo(() => {
     if (!selectedPrimary) return [];
-    const motion = primaryMotions.find(m => m.id === selectedPrimary);
-    if (motion?.motion_variation_ids && motion.motion_variation_ids.length > 0) {
-      return primaryMotionVariations.filter(v => motion.motion_variation_ids!.includes(v.id));
-    }
-    return primaryMotionVariations.filter(v => v.primary_motion_ids === selectedPrimary);
-  }, [selectedPrimary, primaryMotions, primaryMotionVariations]);
+    return primaryMotionVariations.filter(v => v.primary_motion_key === selectedPrimary);
+  }, [selectedPrimary, primaryMotionVariations]);
 
   // Compute current muscles based on selection (will update when allTertiaryMuscles loads)
   const computedMuscles = useMemo((): MuscleSelections | null => {
@@ -494,7 +446,9 @@ const MotionPickerModal: React.FC<MotionPickerModalProps> = ({
     if (selectedPrimary && availableVariations.length === 1 && selectedVariation !== availableVariations[0].id) {
       const variation = availableVariations[0];
       const muscles = extractMuscleSelectionsFromTargets(variation.muscle_targets);
-      onSelect(selectedPrimary, variation.id, variation.motion_plane_ids?.[0], muscles);
+      const planeConfig = variation.motion_planes;
+      const defaultPlane = planeConfig?.default;
+      onSelect(selectedPrimary, variation.id, defaultPlane, muscles);
     }
   }, [selectedPrimary, availableVariations, selectedVariation, onSelect]);
 
@@ -524,12 +478,11 @@ const MotionPickerModal: React.FC<MotionPickerModalProps> = ({
       return;
     }
     const variation = primaryMotionVariations.find(v => v.id === variationId);
-    const planes = variation?.motion_plane_ids;
-    const hasPlanes = Array.isArray(planes) && planes.length > 0;
+    const planeConfig = variation?.motion_planes;
+    const defaultPlane = planeConfig?.default;
 
-    // Compute muscles from the variation's muscle_targets and apply immediately
     const muscles = variation ? extractMuscleSelectionsFromTargets(variation.muscle_targets) : undefined;
-    onSelect(selectedPrimary, variationId, hasPlanes ? planes[0] : undefined, muscles);
+    onSelect(selectedPrimary, variationId, defaultPlane, muscles);
   };
 
   const handleDone = () => {

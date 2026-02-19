@@ -201,26 +201,27 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
     setRefData(entries);
   }, [schema]);
 
-  // Load column settings from localStorage; merge in any schema fields missing from saved config (e.g. new columns)
+  // Load column settings from localStorage; filter stale fields and merge in any new schema fields
   const loadColumnSettings = useCallback(() => {
     if (!key || !schema) return;
     const storageKey = `table-columns-${key}`;
     const saved = localStorage.getItem(storageKey);
     const allFieldNames = schema.fields.map((f) => f.name);
+    const allFieldSet = new Set(allFieldNames);
     if (saved) {
       try {
         const { order, visible, widths } = JSON.parse(saved);
-        const orderSet = new Set(Array.isArray(order) ? order : []);
-        const visibleSet = new Set(Array.isArray(visible) ? visible : []);
+        const validOrder = (Array.isArray(order) ? order : []).filter((n: string) => allFieldSet.has(n));
+        const validVisible = (Array.isArray(visible) ? visible : []).filter((n: string) => allFieldSet.has(n));
+        const orderSet = new Set(validOrder);
         const missing = allFieldNames.filter((n) => !orderSet.has(n));
-        const mergedOrder = Array.isArray(order) && order.length > 0 ? [...order, ...missing] : allFieldNames;
+        const mergedOrder = validOrder.length > 0 ? [...validOrder, ...missing] : allFieldNames;
+        const visibleSet = new Set(validVisible);
         missing.forEach((n) => visibleSet.add(n));
-        const mergedVisible = Array.isArray(visible) && visible.length > 0 ? [...visible, ...missing] : mergedOrder.slice(0, 8);
         setColumnOrder(mergedOrder);
-        setVisibleColumns(mergedVisible.length > 0 ? Array.from(visibleSet) : mergedOrder.slice(0, 8));
+        setVisibleColumns(visibleSet.size > 0 ? Array.from(visibleSet) : mergedOrder.slice(0, 8));
         setColumnWidths(widths && typeof widths === 'object' ? widths : {});
       } catch {
-        // Invalid JSON, use defaults
         initializeDefaultColumns();
       }
     } else {
@@ -765,12 +766,14 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
     const defaultOrder = allFieldNames;
     const defaultVisible = defaultOrder.slice(0, 8);
     
-    // Ensure columnOrder includes ALL fields (merge any missing)
+    // Ensure columnOrder includes ALL current fields and excludes stale ones
     let finalOrder: string[];
     if (columnOrder.length > 0) {
-      const orderSet = new Set(columnOrder);
+      const allFieldSet = new Set(allFieldNames);
+      const validOrder = columnOrder.filter((n) => allFieldSet.has(n));
+      const orderSet = new Set(validOrder);
       const missing = allFieldNames.filter((n) => !orderSet.has(n));
-      finalOrder = [...columnOrder, ...missing];
+      finalOrder = [...validOrder, ...missing];
     } else {
       finalOrder = defaultOrder;
     }
@@ -806,9 +809,14 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
       if (field.jsonShape === 'muscle_targets' && val && typeof val === 'object') {
         return <MuscleTargetBar targets={val as Record<string, unknown>} />;
       }
-      if (field.jsonShape === 'grip_type_configs' && val && typeof val === 'object' && !Array.isArray(val)) {
+      if (field.jsonShape === 'delta_rules' && val && typeof val === 'object' && !Array.isArray(val)) {
         const keys = Object.keys(val as Record<string, unknown>);
-        return keys.length === 0 ? <span className="text-gray-300">—</span> : <span className="text-xs">{keys.length} grip config(s)</span>;
+        return keys.length === 0 ? <span className="text-gray-300">—</span> : <span className="text-xs">{keys.length} rule(s)</span>;
+      }
+      if (field.jsonShape === 'motion_planes_config' && val && typeof val === 'object' && !Array.isArray(val)) {
+        const cfg = val as { default?: string; options?: string[] };
+        if (!cfg.default && (!cfg.options || cfg.options.length === 0)) return <span className="text-gray-300">—</span>;
+        return <span className="text-xs">{cfg.options?.length || 0} plane(s)</span>;
       }
       return <span className="text-xs text-gray-400">{'{...}'}</span>;
     }

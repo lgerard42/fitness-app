@@ -1,47 +1,77 @@
 [
   {
-    "id": "neutral_feet_forward",
-    "label": "Neutral",
-    "subLabel": "Feet Forward",
-    "common_names": ["Standard", "Feet Forward"],
-    "short_description": "Feet parallel, toes pointing straight ahead.",
+    "id": "BILATERAL",
+    "label": "Bilateral",
+    "common_names": ["Standard Stance", "Two-Legged", "Symmetrical"],
+    "delta_rules": {},
+    "short_description": "Standard stance where both legs bear the load equally. Baseline score.",
     "sort_order": 0,
+    "icon": "",
     "is_active": true
   },
   {
-    "id": "toes_out_external_rotation",
-    "label": "External Rotation",
-    "subLabel": "Toes Out",
-    "common_names": ["Toes Out", "Duck Stance"],
-    "short_description": "Feet angled outward for external hip rotation.",
+    "id": "STAGGERED",
+    "label": "Staggered",
+    "common_names": ["B-Stance", "Kickstand", "Offset Stance"],
+    "delta_rules": {
+      "HINGE": {
+        "delta": {
+          "GLUTES": 0.15,
+          "HAMSTRINGS": 0.10,
+          "BACK_LOWER": -0.10
+        },
+        "option_planes": {},
+        "variations": {}
+      },
+      "SQUAT": {
+        "delta": {
+          "GLUTES": 0.10,
+          "QUADS": 0.05
+        },
+        "option_planes": {},
+        "variations": {}
+      }
+    },
+    "short_description": "One foot is slightly behind the other for balance, placing ~70-80% of the load on the front leg.",
     "sort_order": 1,
+    "icon": "",
     "is_active": true
   },
   {
-    "id": "toes_in_internal_rotation",
-    "label": "Internal Rotation",
-    "subLabel": "Toes In",
-    "common_names": ["Toes In", "Pigeon Toe"],
-    "short_description": "Feet angled inward for internal hip rotation.",
+    "id": "SINGLE_LEG",
+    "label": "Single Leg",
+    "common_names": ["Unilateral", "One-Legged", "Pistol Stance"],
+    "delta_rules": {
+      "HINGE": {
+        "delta": {
+          "GLUTE_MEDIUS": 0.30,
+          "GLUTES": 0.15,
+          "CORE": 0.10,
+          "BACK_LOWER": -0.15
+        },
+        "option_planes": {},
+        "variations": {}
+      },
+      "SQUAT": {
+        "delta": {
+          "GLUTE_MEDIUS": 0.25,
+          "GLUTES": 0.15,
+          "CORE": 0.10
+        },
+        "option_planes": {},
+        "variations": {}
+      },
+      "CALF_RAISE": {
+        "delta": {
+          "CORE": 0.10
+        },
+        "option_planes": {},
+        "variations": {}
+      }
+    },
+    "short_description": "Only one foot is in contact with the ground/platform. Maximizes stability demand.",
     "sort_order": 2,
-    "is_active": true
-  },
-  {
-    "id": "split_stance",
-    "label": "Split Stance",
-    "subLabel": "",
-    "common_names": ["Staggered", "Lunge Position"],
-    "short_description": "One foot forward, one foot back.",
-    "sort_order": 3,
-    "is_active": true
-  },
-  {
-    "id": "other",
-    "label": "Other",
-    "subLabel": "",
-    "common_names": ["Custom", "Specialized"],
-    "short_description": "Non-standard or specialized foot positioning.",
-    "sort_order": 4,
+    "icon": "",
     "is_active": true
   }
 ]

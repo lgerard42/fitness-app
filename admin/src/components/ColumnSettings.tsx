@@ -22,11 +22,12 @@ export default function ColumnSettings({
 
   useEffect(() => {
     setLocalVisible(new Set(visibleColumns));
-    // Ensure all fields are in the order (merge any missing)
+    // Ensure order only has current fields (filter stale, add missing)
     const allFieldNames = new Set(fields.map((f) => f.name));
-    const orderSet = new Set(columnOrder);
+    const validOrder = columnOrder.filter((n) => allFieldNames.has(n));
+    const orderSet = new Set(validOrder);
     const missing = fields.filter((f) => !orderSet.has(f.name)).map((f) => f.name);
-    const mergedOrder = columnOrder.length > 0 ? [...columnOrder, ...missing] : fields.map((f) => f.name);
+    const mergedOrder = validOrder.length > 0 ? [...validOrder, ...missing] : fields.map((f) => f.name);
     setLocalOrder(mergedOrder);
   }, [visibleColumns, columnOrder, fields]);
 

@@ -1,0 +1,122 @@
+[
+  {
+    "id": "NEUTRAL",
+    "label": "Neutral",
+    "common_names": ["Toes Forward", "Straight Feet", "Standard Angle"],
+    "delta_rules": {},
+    "short_description": "Feet are perfectly parallel and pointing straight ahead. Baseline score.",
+    "sort_order": 0,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "TOES_OUT",
+    "label": "Toes Out",
+    "common_names": ["Duck Stance", "Externally Rotated", "Turned Out"],
+    "delta_rules": {
+      "SQUAT": {
+        "delta": {
+          "THIGHS_INNER": 0.15,
+          "GLUTES": 0.10,
+          "QUAD_OUTER": -0.10
+        },
+        "option_planes": {},
+        "variations": {}
+      },
+      "CALF_RAISE": {
+        "delta": {
+          "CALF_INNER": 0.20,
+          "CALF_OUTER": -0.10
+        },
+        "option_planes": {},
+        "variations": {}
+      }
+    },
+    "short_description": "Toes are angled outward. Opens the hips to engage inner thighs and inner calves.",
+    "sort_order": 1,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "TOES_IN",
+    "label": "Toes In",
+    "common_names": ["Pigeon-Toed", "Internally Rotated", "Turned In"],
+    "delta_rules": {
+      "CALF_RAISE": {
+        "delta": {
+          "CALF_OUTER": 0.20,
+          "CALF_INNER": -0.10
+        },
+        "option_planes": {},
+        "variations": {}
+      },
+      "SQUAT": {
+        "delta": {
+          "QUAD_OUTER": 0.10,
+          "THIGHS_INNER": -0.10
+        },
+        "option_planes": {},
+        "variations": {}
+      }
+    },
+    "short_description": "Toes are angled inward. Shifts focus to the outer sweeping muscles.",
+    "sort_order": 2,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "HEEL_ELEVATED",
+    "label": "Heel Elevated",
+    "common_names": ["Wedges", "Plantarflexed Bias", "Cyclist Stance"],
+    "delta_rules": {
+      "SQUAT": {
+        "delta": {
+          "QUADS": 0.20,
+          "QUAD_MID": 0.15,
+          "GLUTES": -0.10,
+          "HAMSTRINGS": -0.10
+        },
+        "option_planes": {},
+        "variations": {}
+      },
+      "LUNGE": {
+        "delta": {
+          "QUADS": 0.15,
+          "GLUTES": -0.10
+        },
+        "option_planes": {},
+        "variations": {}
+      }
+    },
+    "short_description": "Heels are raised on plates or wedges. Drives knees forward to isolate the Quads.",
+    "sort_order": 3,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "TOES_ELEVATED",
+    "label": "Toes Elevated",
+    "common_names": ["Dorsiflexed Bias", "Reverse Wedges"],
+    "delta_rules": {
+      "HINGE": {
+        "delta": {
+          "HAMSTRINGS": 0.15,
+          "CALVES": 0.10
+        },
+        "option_planes": {},
+        "variations": {}
+      },
+      "CALF_RAISE": {
+        "delta": {
+          "CALVES": 0.20
+        },
+        "option_planes": {},
+        "variations": {}
+      }
+    },
+    "short_description": "Toes are raised on plates. Deepens the stretch in the calves and hamstrings.",
+    "sort_order": 4,
+    "icon": "",
+    "is_active": true
+  }
+]

@@ -1,47 +1,162 @@
 [
   {
-    "id": "extra_narrow",
+    "id": "EXTRA_NARROW",
     "label": "Extra Narrow",
-    "subLabel": "",
-    "common_names": ["Feet Together"],
-    "short_description": "Feet touching or nearly touching.",
+    "common_names": ["Feet Together", "Close Stance", "Touching Feet"],
+    "delta_rules": {
+      "SQUAT": {
+        "delta": {
+          "QUAD_OUTER": 0.20,
+          "THIGHS_INNER": -0.20
+        },
+        "option_planes": {},
+        "variations": {}
+      },
+      "HINGE": {
+        "delta": {
+          "HAMSTRING_OUTER": 0.15,
+          "GLUTES": -0.10
+        },
+        "option_planes": {},
+        "variations": {}
+      }
+    },
+    "short_description": "Feet are touching or extremely close. Maximizes outer quad sweep.",
     "sort_order": 0,
+    "icon": "",
     "is_active": true
   },
   {
-    "id": "narrow",
+    "id": "NARROW",
     "label": "Narrow",
-    "subLabel": "",
-    "common_names": ["Inside Hip", "Close"],
-    "short_description": "Feet positioned inside hip width.",
+    "common_names": ["Inside Hip-Width", "Narrow Stance"],
+    "delta_rules": {
+      "SQUAT": {
+        "delta": {
+          "QUAD_OUTER": 0.10,
+          "THIGHS_INNER": -0.10
+        },
+        "option_planes": {},
+        "variations": {}
+      },
+      "HINGE": {
+        "delta": {
+          "HAMSTRING_OUTER": 0.10,
+          "GLUTES": -0.05
+        },
+        "option_planes": {},
+        "variations": {}
+      }
+    },
+    "short_description": "Feet positioned slightly closer than hip-width.",
     "sort_order": 1,
+    "icon": "",
     "is_active": true
   },
   {
-    "id": "shoulder_width",
-    "label": "Shoulder Width",
-    "subLabel": "",
-    "common_names": ["Standard", "Hip Width"],
-    "short_description": "Feet aligned with shoulders.",
+    "id": "HIP_WIDTH",
+    "label": "Hip-Width",
+    "common_names": ["Standard Hinge Stance", "Neutral Width"],
+    "delta_rules": {
+      "SQUAT": {
+        "delta": {
+          "QUAD_OUTER": 0.05,
+          "THIGHS_INNER": -0.05
+        },
+        "option_planes": {},
+        "variations": {}
+      },
+      "HINGE": {
+        "delta": {},
+        "option_planes": {},
+        "variations": {}
+      }
+    },
+    "short_description": "Feet directly under the hips. This acts as the baseline for Hinge movements (Deadlifts).",
     "sort_order": 2,
+    "icon": "",
     "is_active": true
   },
   {
-    "id": "wide",
-    "label": "Wide",
-    "subLabel": "",
-    "common_names": ["Outside Shoulder", "Sumo-ish"],
-    "short_description": "Feet positioned wider than shoulders.",
+    "id": "SHOULDER_WIDTH",
+    "label": "Shoulder-Width",
+    "common_names": ["Standard Squat Stance", "Normal Stance"],
+    "delta_rules": {
+      "SQUAT": {
+        "delta": {},
+        "option_planes": {},
+        "variations": {}
+      },
+      "HINGE": {
+        "delta": {
+          "THIGHS_INNER": 0.05,
+          "GLUTES": 0.05
+        },
+        "option_planes": {},
+        "variations": {}
+      }
+    },
+    "short_description": "Feet directly under the shoulders. This acts as the baseline for Squat movements.",
     "sort_order": 3,
+    "icon": "",
     "is_active": true
   },
   {
-    "id": "extra_wide",
-    "label": "Extra Wide",
-    "subLabel": "",
-    "common_names": ["Sumo", "Max Width"],
-    "short_description": "Maximum width stance.",
+    "id": "WIDE",
+    "label": "Wide",
+    "common_names": ["Sumo Stance", "Outside Shoulder Width"],
+    "delta_rules": {
+      "SQUAT": {
+        "delta": {
+          "THIGHS_INNER": 0.15,
+          "GLUTES": 0.10,
+          "QUADS": -0.10
+        },
+        "option_planes": {},
+        "variations": {}
+      },
+      "HINGE": {
+        "delta": {
+          "THIGHS_INNER": 0.20,
+          "GLUTES": 0.10,
+          "BACK_LOWER": -0.10
+        },
+        "option_planes": {},
+        "variations": {}
+      }
+    },
+    "short_description": "Feet positioned wider than shoulders. Recruits the adductors and glutes heavily.",
     "sort_order": 4,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "EXTRA_WIDE",
+    "label": "Extra Wide",
+    "common_names": ["Ultra Sumo", "Maximum Width", "Frog Stance"],
+    "delta_rules": {
+      "SQUAT": {
+        "delta": {
+          "THIGHS_INNER": 0.25,
+          "GLUTES": 0.15,
+          "QUADS": -0.20
+        },
+        "option_planes": {},
+        "variations": {}
+      },
+      "HINGE": {
+        "delta": {
+          "THIGHS_INNER": 0.30,
+          "GLUTES": 0.15,
+          "BACK_LOWER": -0.20
+        },
+        "option_planes": {},
+        "variations": {}
+      }
+    },
+    "short_description": "Feet positioned extremely wide. Minimizes range of motion and maximizes inner thigh/glute leverage.",
+    "sort_order": 5,
+    "icon": "",
     "is_active": true
   }
 ]

@@ -1,178 +1,309 @@
 [
   {
-    "grip_type_id": "GRIP_ROTATING",
     "id": "NEUTRAL_PRO",
-    "label": "Neutral to Pronated",
-    "subLabel": "Rotatio Interna",
-    "common_names": ["Twist Press"],
-    "icon": "",
-    "short_description": "Starts hammer grip, rotates to overhand.",
+    "parent_grip_id": "ROTATING",
+    "label": "Neutral -> Pronated",
+    "common_names": ["Arnold Twist", "Zottman Twist"],
+    "delta_rules": {
+      "PRESS_VERTICAL": {
+        "delta": {
+          "DELTS_SIDE": -0.10,
+          "DELTS_FRONT": 0.10
+        },
+        "option_planes": {},
+        "variations": {}
+      },
+      "CURL": {
+        "delta": {
+          "BICEP_INNER": -0.15,
+          "BRACHIALIS": 0.15
+        },
+        "option_planes": {},
+        "variations": {}
+      }
+    },
+    "short_description": "Start neutral, twist to pronated at the top of the concentric phase.",
     "sort_order": 0,
+    "icon": "",
     "is_active": true
   },
   {
-    "grip_type_id": "GRIP_ROTATING",
     "id": "NEUTRAL_SUP",
-    "label": "Neutral to Supinated",
-    "subLabel": "Rotatio Externa",
-    "common_names": ["Supinating Curl", "Zottman Up"],
-    "icon": "",
-    "short_description": "Starts hammer grip, rotates to underhand.",
+    "parent_grip_id": "ROTATING",
+    "label": "Neutral -> Supinated",
+    "common_names": ["Supinating Twist", "Standard DB Curl Twist"],
+    "delta_rules": {
+      "CURL": {
+        "delta": {
+          "BRACHIALIS": 0.10,
+          "BICEP_INNER": 0.10
+        },
+        "option_planes": {},
+        "variations": {}
+      }
+    },
+    "short_description": "Start neutral, twist to supinated at the top. Maximizes bicep peak contraction.",
     "sort_order": 1,
+    "icon": "",
     "is_active": true
   },
   {
-    "grip_type_id": "GRIP_ROTATING",
     "id": "NEUTRAL_SEMIPRO",
-    "label": "Neutral to Semi-Pro",
-    "subLabel": "Rotatio Partialis Interna",
-    "common_names": ["Partial Twist"],
-    "icon": "",
-    "short_description": "Starts hammer grip, slight inward rotation.",
+    "parent_grip_id": "ROTATING",
+    "label": "Neutral -> Semi-Pro",
+    "common_names": ["Partial Overhand Twist"],
+    "delta_rules": {
+      "CURL": {
+        "delta": {
+          "BICEP_INNER": -0.10,
+          "BRACHIALIS": 0.10
+        },
+        "option_planes": {},
+        "variations": {}
+      }
+    },
+    "short_description": "Start neutral, twist slightly downward.",
     "sort_order": 2,
+    "icon": "",
     "is_active": true
   },
   {
-    "grip_type_id": "GRIP_ROTATING",
     "id": "NEUTRAL_SEMISUP",
-    "label": "Neutral to Semi-Sup",
-    "subLabel": "Rotatio Partialis Externa",
-    "common_names": ["Partial Supination"],
-    "icon": "",
-    "short_description": "Starts hammer grip, slight outward rotation.",
+    "parent_grip_id": "ROTATING",
+    "label": "Neutral -> Semi-Sup",
+    "common_names": ["Partial Underhand Twist"],
+    "delta_rules": {
+      "CURL": {
+        "delta": {
+          "BRACHIALIS": 0.05,
+          "BICEP_INNER": 0.05
+        },
+        "option_planes": {},
+        "variations": {}
+      }
+    },
+    "short_description": "Start neutral, twist slightly upward.",
     "sort_order": 3,
+    "icon": "",
     "is_active": true
   },
   {
-    "grip_type_id": "GRIP_ROTATING",
     "id": "PRO_NEUTRAL",
-    "label": "Pronated to Neutral",
-    "subLabel": "Rotatio Externa",
-    "common_names": ["Arnold Press"],
-    "icon": "",
-    "short_description": "Starts overhand, rotates to hammer grip.",
+    "parent_grip_id": "ROTATING",
+    "label": "Pronated -> Neutral",
+    "common_names": ["Hammer Twist Pull"],
+    "delta_rules": {
+      "HORIZONTAL_ROW": {
+        "delta": {},
+        "option_planes": {},
+        "variations": {
+          "ROW_MID": {
+            "delta": {
+              "BACK_UPPER": 0.10,
+              "LATS": -0.10
+            },
+            "option_planes": {}
+          }
+        }
+      }
+    },
+    "short_description": "Start pronated, twist to neutral at peak contraction. Great for lat engagement.",
     "sort_order": 4,
+    "icon": "",
     "is_active": true
   },
   {
-    "grip_type_id": "GRIP_ROTATING",
     "id": "PRO_SUP",
-    "label": "Pronated to Supinated",
-    "subLabel": "Rotatio Completa",
-    "common_names": ["Full Twist"],
-    "icon": "",
-    "short_description": "Starts overhand, rotates completely to underhand.",
+    "parent_grip_id": "ROTATING",
+    "label": "Pronated -> Supinated",
+    "common_names": ["180 Twist", "Full Supination"],
+    "delta_rules": {
+      "CURL": {
+        "delta": {
+          "BICEP_INNER": 0.15,
+          "BRACHIALIS": 0.10,
+          "FOREARM_TOP": 0.10
+        },
+        "option_planes": {},
+        "variations": {}
+      }
+    },
+    "short_description": "Full 180-degree rotation from overhand to underhand.",
     "sort_order": 5,
+    "icon": "",
     "is_active": true
   },
   {
-    "grip_type_id": "GRIP_ROTATING",
     "id": "PRO_SEMISUP",
-    "label": "Pronated to Semi-Sup",
-    "subLabel": "Rotatio Magna",
-    "common_names": ["EZ Twist"],
-    "icon": "",
-    "short_description": "Starts overhand, rotates past neutral.",
+    "parent_grip_id": "ROTATING",
+    "label": "Pronated -> Semi-Sup",
+    "common_names": ["Three-Quarter Twist"],
+    "delta_rules": {
+      "CURL": {
+        "delta": {
+          "BICEP_INNER": 0.10,
+          "BRACHIALIS": 0.05
+        },
+        "option_planes": {},
+        "variations": {}
+      }
+    },
+    "short_description": "Start overhand, twist to an angled underhand.",
     "sort_order": 6,
+    "icon": "",
     "is_active": true
   },
   {
-    "grip_type_id": "GRIP_ROTATING",
     "id": "SUP_NEUTRAL",
-    "label": "Supinated to Neutral",
-    "subLabel": "Rotatio Interna",
-    "common_names": ["Reverse Twist"],
-    "icon": "",
-    "short_description": "Starts underhand, rotates to hammer grip.",
+    "parent_grip_id": "ROTATING",
+    "label": "Supinated -> Neutral",
+    "common_names": ["Reverse Hammer Twist"],
+    "delta_rules": {
+      "VERTICAL_PULL": {
+        "delta": {
+          "BICEP_INNER": 0.10,
+          "LATS": -0.10
+        },
+        "option_planes": {},
+        "variations": {}
+      }
+    },
+    "short_description": "Start underhand, twist to neutral.",
     "sort_order": 7,
+    "icon": "",
     "is_active": true
   },
   {
-    "grip_type_id": "GRIP_ROTATING",
     "id": "SUP_PRO",
-    "label": "Supinated to Pronated",
-    "subLabel": "Rotatio Completa Inversa",
-    "common_names": ["Zottman Down"],
-    "icon": "",
-    "short_description": "Starts underhand, rotates completely to overhand.",
+    "parent_grip_id": "ROTATING",
+    "label": "Supinated -> Pronated",
+    "common_names": ["Arnold Press Twist", "Reverse 180 Twist"],
+    "delta_rules": {
+      "PRESS_VERTICAL": {
+        "delta": {
+          "DELTS_FRONT": 0.15,
+          "DELTS_SIDE": -0.10
+        },
+        "option_planes": {},
+        "variations": {}
+      }
+    },
+    "short_description": "Start underhand, push and twist to overhand (The classic Arnold Press path).",
     "sort_order": 8,
+    "icon": "",
     "is_active": true
   },
   {
-    "grip_type_id": "GRIP_ROTATING",
     "id": "SUP_SEMIPRO",
-    "label": "Supinated to Semi-Pro",
-    "subLabel": "Rotatio Magna Inversa",
-    "common_names": ["Deep Twist"],
-    "icon": "",
-    "short_description": "Starts underhand, rotates past neutral.",
+    "parent_grip_id": "ROTATING",
+    "label": "Supinated -> Semi-Pro",
+    "common_names": ["Partial Arnold Twist"],
+    "delta_rules": {
+      "PRESS_VERTICAL": {
+        "delta": {
+          "DELTS_FRONT": 0.10,
+          "DELTS_SIDE": -0.05
+        },
+        "option_planes": {},
+        "variations": {}
+      }
+    },
+    "short_description": "Start underhand, twist to angled overhand.",
     "sort_order": 9,
+    "icon": "",
     "is_active": true
   },
   {
-    "grip_type_id": "GRIP_ROTATING",
     "id": "SEMIPRO_NEUTRAL",
-    "label": "Semi-Pro to Neutral",
-    "subLabel": "Rotatio Minima Externa",
-    "common_names": ["Micro Twist Out"],
-    "icon": "",
-    "short_description": "Slight rotation from angled overhand to hammer.",
+    "parent_grip_id": "ROTATING",
+    "label": "Semi-Pro -> Neutral",
+    "common_names": ["Slight Neutral Twist"],
+    "delta_rules": {},
+    "short_description": "Start angled overhand, twist to parallel.",
     "sort_order": 10,
+    "icon": "",
     "is_active": true
   },
   {
-    "grip_type_id": "GRIP_ROTATING",
     "id": "SEMIPRO_SUP",
-    "label": "Semi-Pro to Supinated",
-    "subLabel": "Rotatio Magna Externa",
-    "common_names": ["Angled to Underhand"],
-    "icon": "",
-    "short_description": "Rotation from angled overhand to underhand.",
+    "parent_grip_id": "ROTATING",
+    "label": "Semi-Pro -> Supinated",
+    "common_names": ["Angled Supinating Twist"],
+    "delta_rules": {
+      "CURL": {
+        "delta": {
+          "BICEP_INNER": 0.10,
+          "BRACHIALIS": 0.05
+        },
+        "option_planes": {},
+        "variations": {}
+      }
+    },
+    "short_description": "Start angled overhand, finish fully underhand.",
     "sort_order": 11,
+    "icon": "",
     "is_active": true
   },
   {
-    "grip_type_id": "GRIP_ROTATING",
     "id": "SEMIPRO_SEMISUP",
-    "label": "Semi-Pro to Semi-Sup",
-    "subLabel": "Rotatio Media",
-    "common_names": ["EZ Switch"],
-    "icon": "",
-    "short_description": "Rotation from angled overhand to angled underhand.",
+    "parent_grip_id": "ROTATING",
+    "label": "Semi-Pro -> Semi-Sup",
+    "common_names": ["EZ Twist"],
+    "delta_rules": {
+      "CURL": {
+        "delta": {
+          "BICEP_INNER": 0.05,
+          "BRACHIALIS": 0.05
+        },
+        "option_planes": {},
+        "variations": {}
+      }
+    },
+    "short_description": "Moving between the two angled positions.",
     "sort_order": 12,
+    "icon": "",
     "is_active": true
   },
   {
-    "grip_type_id": "GRIP_ROTATING",
     "id": "SEMISUP_NEUTRAL",
-    "label": "Semi-Sup to Neutral",
-    "subLabel": "Rotatio Minima Interna",
-    "common_names": ["Micro Twist In"],
-    "icon": "",
-    "short_description": "Slight rotation from angled underhand to hammer.",
+    "parent_grip_id": "ROTATING",
+    "label": "Semi-Sup -> Neutral",
+    "common_names": ["Angled Hammer Twist"],
+    "delta_rules": {},
+    "short_description": "Start angled underhand, finish parallel.",
     "sort_order": 13,
+    "icon": "",
     "is_active": true
   },
   {
-    "grip_type_id": "GRIP_ROTATING",
     "id": "SEMISUP_PRO",
-    "label": "Semi-Sup to Pronated",
-    "subLabel": "Rotatio Magna Interna",
-    "common_names": ["Angled to Overhand"],
-    "icon": "",
-    "short_description": "Rotation from angled underhand to overhand.",
+    "parent_grip_id": "ROTATING",
+    "label": "Semi-Sup -> Pronated",
+    "common_names": ["Modified Arnold Twist"],
+    "delta_rules": {
+      "PRESS_VERTICAL": {
+        "delta": {
+          "DELTS_FRONT": 0.10,
+          "DELTS_SIDE": -0.05
+        },
+        "option_planes": {},
+        "variations": {}
+      }
+    },
+    "short_description": "Start angled underhand, finish fully overhand.",
     "sort_order": 14,
+    "icon": "",
     "is_active": true
   },
   {
-    "grip_type_id": "GRIP_ROTATING",
     "id": "SEMISUP_SEMIPRO",
-    "label": "Semi-Sup to Semi-Pro",
-    "subLabel": "Rotatio Media Inversa",
-    "common_names": ["EZ Switch Reverse"],
-    "icon": "",
-    "short_description": "Rotation from angled underhand to angled overhand.",
+    "parent_grip_id": "ROTATING",
+    "label": "Semi-Sup -> Semi-Pro",
+    "common_names": ["Reverse EZ Twist"],
+    "delta_rules": {},
+    "short_description": "Moving between the two angled positions in reverse.",
     "sort_order": 15,
+    "icon": "",
     "is_active": true
   }
 ]

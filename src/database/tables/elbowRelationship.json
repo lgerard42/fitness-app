@@ -1,0 +1,89 @@
+[
+  {
+    "id": "NEUTRAL",
+    "label": "Neutral (45 degrees)",
+    "common_names": ["Standard Path", "Natural Path", "Semi-Tucked"],
+    "delta_rules": {},
+    "short_description": "The elbows are at a natural 45-degree angle from the torso. This is the baseline for all pressing and pulling.",
+    "sort_order": 0,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "FLARED",
+    "label": "Flared (90 degrees)",
+    "common_names": ["Wide Elbows", "T-Position", "High Elbows"],
+    "delta_rules": {
+      "PRESS": {
+        "delta": {
+          "CHEST_MID": 0.15,
+          "CHEST_UPPER": 0.10,
+          "DELTS_FRONT": 0.10,
+          "ROTATOR_CUFF": -0.25
+        },
+        "option_planes": {},
+        "variations": {}
+      },
+      "HORIZONTAL_ROW": {
+        "delta": {
+          "BACK_UPPER": 0.20,
+          "DELTS_REAR": 0.15,
+          "LATS": -0.20
+        },
+        "option_planes": {},
+        "variations": {}
+      },
+      "VERTICAL_PULL": {
+        "delta": {
+          "BACK_UPPER": 0.10,
+          "LATS_OUTER": 0.10,
+          "BICEPS": -0.10
+        },
+        "option_planes": {},
+        "variations": {}
+      }
+    },
+    "short_description": "Elbows are driven out wide. Maximizes the stretch on the chest and upper back but increases torque on the shoulder joint.",
+    "sort_order": 1,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "TUCKED",
+    "label": "Tucked (0-15 degrees)",
+    "common_names": ["Tight Elbows", "Sides Braced", "Parallel Path"],
+    "delta_rules": {
+      "PRESS": {
+        "delta": {
+          "TRICEPS": 0.20,
+          "DELTS_FRONT": 0.10,
+          "CHEST": -0.15
+        },
+        "option_planes": {},
+        "variations": {}
+      },
+      "HORIZONTAL_ROW": {
+        "delta": {
+          "LATS": 0.25,
+          "BACK_UPPER": -0.15,
+          "BICEPS": 0.05
+        },
+        "option_planes": {},
+        "variations": {}
+      },
+      "VERTICAL_PULL": {
+        "delta": {
+          "LATS": 0.20,
+          "BICEPS": 0.05,
+          "BACK_UPPER": -0.10
+        },
+        "option_planes": {},
+        "variations": {}
+      }
+    },
+    "short_description": "Elbows are kept tight to the ribs. Shifts load to the triceps and lower lats while offering maximum shoulder protection.",
+    "sort_order": 2,
+    "icon": "",
+    "is_active": true
+  }
+]

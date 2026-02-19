@@ -30,9 +30,10 @@ export interface PrimaryMuscle {
   common_names?: string;
   icon?: string;
   short_description?: string;
-  upper_lower?: string; // JSON array string
-  secondary_muscle_ids?: string; // JSON array string
-  tertiary_muscle_ids?: string; // JSON array string
+  upper_lower?: string;
+  function?: string;
+  location?: string;
+  triggers?: string;
 }
 
 export interface SecondaryMuscle {
@@ -42,8 +43,10 @@ export interface SecondaryMuscle {
   common_names?: string;
   icon?: string;
   short_description?: string;
-  primary_muscle_ids?: string; // JSON array string
-  tertiary_muscle_ids?: string; // JSON array string
+  primary_muscle_ids?: string;
+  function?: string;
+  location?: string;
+  triggers?: string;
 }
 
 export interface TertiaryMuscle {
@@ -53,8 +56,10 @@ export interface TertiaryMuscle {
   common_names?: string;
   icon?: string;
   short_description?: string;
-  secondary_muscle_ids?: string; // JSON array string
-  primary_muscle_ids?: string; // JSON array string
+  secondary_muscle_ids?: string;
+  function?: string;
+  location?: string;
+  triggers?: string;
 }
 
 export interface TrainingFocus {
@@ -100,32 +105,40 @@ export interface CableAttachment {
 export interface GripType {
   id: string;
   label: string;
-  sub_label?: string;
+  grip_category?: string;
   common_names?: string;
   icon?: string;
   short_description?: string;
-  /** IDs from grip_type_variations (grip type variations) */
-  grip_type_variation_ids?: string[];
+  delta_rules?: string;
+  default_variation?: string;
 }
 
 export interface GripWidth {
   id: string;
   label: string;
-  sub_label?: string;
   common_names?: string;
   icon?: string;
   short_description?: string;
+  delta_rules?: string;
 }
 
-export interface RotatingGripVariation {
+export interface GripTypeVariation {
   id: string;
   label: string;
-  /** Which grip type this variation belongs to (e.g. GRIP_ROTATING) */
-  grip_type_id?: string;
-  sub_label?: string;
+  parent_grip_id?: string;
   common_names?: string;
   icon?: string;
   short_description?: string;
+  delta_rules?: string;
+}
+
+export interface DeltaModifier {
+  id: string;
+  label: string;
+  common_names?: string;
+  icon?: string;
+  short_description?: string;
+  delta_rules?: string;
 }
 
 let dbInstance: SQLite.SQLiteDatabase | null = null;
@@ -208,31 +221,17 @@ export async function getSecondaryMuscles(): Promise<SecondaryMuscle[]> {
 
 /**
  * Get secondary muscles by primary muscle ID(s)
- * Uses the denormalized secondary_muscle_ids field on primary_muscles for better performance
+ * Queries secondary_muscles whose primary_muscle_ids contain any of the given primary IDs
  */
 export async function getSecondaryMusclesByPrimary(primaryIds: string[]): Promise<SecondaryMuscle[]> {
   if (primaryIds.length === 0) return [];
-  
+
   const db = await getDatabase();
-  const allSecondaries = new Map<string, SecondaryMuscle>();
-  
-  // Use denormalized field for better performance
-  for (const primaryId of primaryIds) {
-    const primary = await getPrimaryMuscleById(primaryId);
-    if (primary && primary.secondary_muscle_ids) {
-      const secondaryIds = parseJson<string[]>(primary.secondary_muscle_ids, []);
-      for (const secId of secondaryIds) {
-        if (!allSecondaries.has(secId)) {
-          const sec = await getSecondaryMuscleById(secId);
-          if (sec) {
-            allSecondaries.set(sec.id, sec);
-          }
-        }
-      }
-    }
-  }
-  
-  return Array.from(allSecondaries.values()).sort((a, b) => a.label.localeCompare(b.label));
+  const allSecondaries = await db.getAllAsync<SecondaryMuscle>('SELECT * FROM secondary_muscles ORDER BY label');
+  return allSecondaries.filter(sec => {
+    const pids = parseJson<string[]>(sec.primary_muscle_ids || '[]', []);
+    return pids.some(pid => primaryIds.includes(pid));
+  });
 }
 
 /**
@@ -257,31 +256,17 @@ export async function getTertiaryMuscles(): Promise<TertiaryMuscle[]> {
 
 /**
  * Get tertiary muscles by secondary muscle ID(s)
- * Uses the denormalized tertiary_muscle_ids field on secondary_muscles for better performance
+ * Queries tertiary_muscles whose secondary_muscle_ids contain any of the given secondary IDs
  */
 export async function getTertiaryMusclesBySecondary(secondaryIds: string[]): Promise<TertiaryMuscle[]> {
   if (secondaryIds.length === 0) return [];
-  
+
   const db = await getDatabase();
-  const allTertiaries = new Map<string, TertiaryMuscle>();
-  
-  // Use denormalized field for better performance
-  for (const secondaryId of secondaryIds) {
-    const secondary = await getSecondaryMuscleById(secondaryId);
-    if (secondary && secondary.tertiary_muscle_ids) {
-      const tertiaryIds = parseJson<string[]>(secondary.tertiary_muscle_ids, []);
-      for (const tertId of tertiaryIds) {
-        if (!allTertiaries.has(tertId)) {
-          const tert = await getTertiaryMuscleById(tertId);
-          if (tert) {
-            allTertiaries.set(tert.id, tert);
-          }
-        }
-      }
-    }
-  }
-  
-  return Array.from(allTertiaries.values()).sort((a, b) => a.label.localeCompare(b.label));
+  const allTertiaries = await db.getAllAsync<TertiaryMuscle>('SELECT * FROM tertiary_muscles ORDER BY label');
+  return allTertiaries.filter(tert => {
+    const sids = parseJson<string[]>(tert.secondary_muscle_ids || '[]', []);
+    return sids.some(sid => secondaryIds.includes(sid));
+  });
 }
 
 /**
@@ -298,60 +283,43 @@ export async function getTertiaryMuscleById(id: string): Promise<TertiaryMuscle 
 
 /**
  * Get tertiary muscles by primary muscle ID(s)
- * Uses the denormalized tertiary_muscle_ids field on primary_muscles for better performance
+ * Walks the chain: primary → secondary (via primary_muscle_ids) → tertiary (via secondary_muscle_ids)
  */
 export async function getTertiaryMusclesByPrimary(primaryIds: string[]): Promise<TertiaryMuscle[]> {
   if (primaryIds.length === 0) return [];
-  
-  const db = await getDatabase();
-  const allTertiaries = new Map<string, TertiaryMuscle>();
-  
-  // Use denormalized field for better performance
-  for (const primaryId of primaryIds) {
-    const primary = await getPrimaryMuscleById(primaryId);
-    if (primary && primary.tertiary_muscle_ids) {
-      const tertiaryIds = parseJson<string[]>(primary.tertiary_muscle_ids, []);
-      for (const tertId of tertiaryIds) {
-        if (!allTertiaries.has(tertId)) {
-          const tert = await getTertiaryMuscleById(tertId);
-          if (tert) {
-            allTertiaries.set(tert.id, tert);
-          }
-        }
-      }
-    }
-  }
-  
-  return Array.from(allTertiaries.values()).sort((a, b) => a.label.localeCompare(b.label));
+
+  const secondaries = await getSecondaryMusclesByPrimary(primaryIds);
+  const secondaryIds = secondaries.map(s => s.id);
+  return getTertiaryMusclesBySecondary(secondaryIds);
 }
 
 /**
  * Get primary muscles by tertiary muscle ID(s)
- * Uses the denormalized primary_muscle_ids field on tertiary_muscles for better performance
+ * Walks the chain: tertiary → secondary (via secondary_muscle_ids) → primary (via primary_muscle_ids)
  */
 export async function getPrimaryMusclesByTertiary(tertiaryIds: string[]): Promise<PrimaryMuscle[]> {
   if (tertiaryIds.length === 0) return [];
-  
+
   const db = await getDatabase();
-  const allPrimaries = new Map<string, PrimaryMuscle>();
-  
-  // Use denormalized field for better performance
-  for (const tertiaryId of tertiaryIds) {
-    const tertiary = await getTertiaryMuscleById(tertiaryId);
-    if (tertiary && tertiary.primary_muscle_ids) {
-      const primaryIds = parseJson<string[]>(tertiary.primary_muscle_ids, []);
-      for (const priId of primaryIds) {
-        if (!allPrimaries.has(priId)) {
-          const pri = await getPrimaryMuscleById(priId);
-          if (pri) {
-            allPrimaries.set(pri.id, pri);
-          }
-        }
-      }
+  const allTertiaries = await db.getAllAsync<TertiaryMuscle>('SELECT * FROM tertiary_muscles ORDER BY label');
+  const relevantTertiaries = allTertiaries.filter(t => tertiaryIds.includes(t.id));
+  const secondaryIdSet = new Set<string>();
+  for (const t of relevantTertiaries) {
+    const sids = parseJson<string[]>(t.secondary_muscle_ids || '[]', []);
+    sids.forEach(s => secondaryIdSet.add(s));
+  }
+
+  const allSecondaries = await db.getAllAsync<SecondaryMuscle>('SELECT * FROM secondary_muscles ORDER BY label');
+  const primaryIdSet = new Set<string>();
+  for (const s of allSecondaries) {
+    if (secondaryIdSet.has(s.id)) {
+      const pids = parseJson<string[]>(s.primary_muscle_ids || '[]', []);
+      pids.forEach(p => primaryIdSet.add(p));
     }
   }
-  
-  return Array.from(allPrimaries.values()).sort((a, b) => a.label.localeCompare(b.label));
+
+  const allPrimaries = await db.getAllAsync<PrimaryMuscle>('SELECT * FROM primary_muscles ORDER BY label');
+  return allPrimaries.filter(p => primaryIdSet.has(p.id));
 }
 
 /**
@@ -572,33 +540,28 @@ export async function getSingleDoubleEquipmentLabels(): Promise<string[]> {
 
 /**
  * Build PRIMARY_TO_SECONDARY_MAP from database (for backward compatibility)
- * Uses denormalized secondary_muscle_ids field for better performance
+ * Uses secondary_muscles.primary_muscle_ids to compute the reverse mapping
  */
 export async function buildPrimaryToSecondaryMap(): Promise<Record<string, string[]>> {
   const primaries = await getPrimaryMuscles();
   const secondaries = await getSecondaryMuscles();
-  
-  // Build ID -> label map for secondaries
-  const secondaryIdToLabel = new Map<string, string>();
-  secondaries.forEach(sec => {
-    secondaryIdToLabel.set(sec.id, sec.label);
-  });
-  
+
   const map: Record<string, string[]> = {};
-  
+
   primaries.forEach(primary => {
-    // Use denormalized secondary_muscle_ids field
-    const secondaryIds = parseJson<string[]>(primary.secondary_muscle_ids, []);
-    const relatedSecondaries = secondaryIds
-      .map(id => secondaryIdToLabel.get(id))
-      .filter((label): label is string => label !== undefined)
+    const relatedSecondaries = secondaries
+      .filter(sec => {
+        const pids = parseJson<string[]>(sec.primary_muscle_ids || '[]', []);
+        return pids.includes(primary.id);
+      })
+      .map(sec => sec.label)
       .sort();
-    
+
     if (relatedSecondaries.length > 0) {
       map[primary.label] = relatedSecondaries;
     }
   });
-  
+
   return map;
 }
 
@@ -647,11 +610,21 @@ export async function getGripWidthById(id: string): Promise<GripWidth | null> {
 }
 
 /**
- * Get all rotating grip variations
+ * Get all grip type variations
  */
-export async function getRotatingGripVariations(): Promise<RotatingGripVariation[]> {
+export async function getGripTypeVariations(): Promise<GripTypeVariation[]> {
   const db = await getDatabase();
-  return await db.getAllAsync<RotatingGripVariation>(
-    'SELECT * FROM rotating_grip_variations WHERE is_active = 1 ORDER BY sort_order, label'
+  return await db.getAllAsync<GripTypeVariation>(
+    'SELECT * FROM grip_type_variations WHERE is_active = 1 ORDER BY sort_order, label'
+  );
+}
+
+/**
+ * Get all delta modifier records from a given table
+ */
+export async function getDeltaModifiers(table: 'foot_positions' | 'stance_types' | 'stance_widths' | 'torso_angles' | 'support_structures' | 'elbow_relationship' | 'loading_aids'): Promise<DeltaModifier[]> {
+  const db = await getDatabase();
+  return await db.getAllAsync<DeltaModifier>(
+    `SELECT * FROM ${table} WHERE is_active = 1 ORDER BY sort_order, label`
   );
 }
