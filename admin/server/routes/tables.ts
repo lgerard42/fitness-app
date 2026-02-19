@@ -29,6 +29,7 @@ router.get('/', (_req: Request, res: Response) => {
       file: schema.file,
       rowCount,
       lastModified: stats?.mtime ?? null,
+      parentTableKey: schema.parentTableKey,
     };
   });
   res.json(tables);

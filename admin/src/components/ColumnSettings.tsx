@@ -22,8 +22,13 @@ export default function ColumnSettings({
 
   useEffect(() => {
     setLocalVisible(new Set(visibleColumns));
-    setLocalOrder([...columnOrder]);
-  }, [visibleColumns, columnOrder]);
+    // Ensure all fields are in the order (merge any missing)
+    const allFieldNames = new Set(fields.map((f) => f.name));
+    const orderSet = new Set(columnOrder);
+    const missing = fields.filter((f) => !orderSet.has(f.name)).map((f) => f.name);
+    const mergedOrder = columnOrder.length > 0 ? [...columnOrder, ...missing] : fields.map((f) => f.name);
+    setLocalOrder(mergedOrder);
+  }, [visibleColumns, columnOrder, fields]);
 
   const toggleColumn = (fieldName: string) => {
     const newVisible = new Set(localVisible);

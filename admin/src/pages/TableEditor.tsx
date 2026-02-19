@@ -537,6 +537,81 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
     setIsNew(true);
   };
 
+  const handleCopyTable = useCallback(async () => {
+    if (!schema || rows.length === 0) {
+      toast.error('No data to copy');
+      return;
+    }
+
+    try {
+      // Get all fields in order (use columnOrder if available, otherwise schema order)
+      const allFields = schema.fields;
+      const fieldOrder = columnOrder.length > 0 ? columnOrder : allFields.map(f => f.name);
+      const orderedFields = fieldOrder
+        .map(name => allFields.find(f => f.name === name))
+        .filter((f): f is TableField => f !== undefined);
+
+      // Build header row
+      const headers = orderedFields.map(f => f.name);
+
+      // Build data rows
+      const dataRows = rows.map(row => {
+        return orderedFields.map(field => {
+          const val = row[field.name];
+          
+          if (val == null) {
+            return '';
+          }
+
+          // Handle JSON fields - stringify them
+          if (field.type === 'json') {
+            return JSON.stringify(val);
+          }
+
+          // Handle arrays (string[] or fk[])
+          if (field.type === 'string[]' || field.type === 'fk[]') {
+            if (Array.isArray(val)) {
+              return JSON.stringify(val);
+            }
+            return String(val);
+          }
+
+          // Handle boolean
+          if (field.type === 'boolean') {
+            return val ? 'true' : 'false';
+          }
+
+          // Handle FK - try to resolve to label
+          if (field.type === 'fk' && field.refTable && refData[field.refTable]) {
+            const ref = refData[field.refTable].find((r) => r.id === val);
+            if (ref) {
+              return String(ref[field.refLabelField || 'label'] || val);
+            }
+          }
+
+          // Default: convert to string and escape tabs/newlines
+          const str = String(val);
+          // Replace tabs with spaces and newlines with spaces to avoid breaking TSV format
+          return str.replace(/\t/g, ' ').replace(/\n/g, ' ').replace(/\r/g, '');
+        });
+      });
+
+      // Combine headers and rows
+      const tsvLines = [
+        headers.join('\t'),
+        ...dataRows.map(row => row.join('\t'))
+      ];
+      const tsvContent = tsvLines.join('\n');
+
+      // Copy to clipboard
+      await navigator.clipboard.writeText(tsvContent);
+      toast.success(`Copied ${rows.length} rows to clipboard`);
+    } catch (err) {
+      console.error('Failed to copy table:', err);
+      toast.error('Failed to copy table to clipboard');
+    }
+  }, [schema, rows, columnOrder, refData]);
+
   const handleSave = async (row: Record<string, unknown>) => {
     if (!key || !schema) return;
     try {
@@ -682,16 +757,28 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
   // Other rows for reassign dropdown (exclude the one being deleted)
   const otherRows = useMemo(() => rows.filter((r) => r.id !== deleteConfirm), [rows, deleteConfirm]);
 
-  // Column settings data for modal
+  // Column settings data for modal - ensure ALL fields are always included
   const columnSettingsData = useMemo(() => {
     if (!schema) return null;
     const allFields = schema.fields;
-    const defaultOrder = allFields.map((f) => f.name);
+    const allFieldNames = allFields.map((f) => f.name);
+    const defaultOrder = allFieldNames;
     const defaultVisible = defaultOrder.slice(0, 8);
+    
+    // Ensure columnOrder includes ALL fields (merge any missing)
+    let finalOrder: string[];
+    if (columnOrder.length > 0) {
+      const orderSet = new Set(columnOrder);
+      const missing = allFieldNames.filter((n) => !orderSet.has(n));
+      finalOrder = [...columnOrder, ...missing];
+    } else {
+      finalOrder = defaultOrder;
+    }
+    
     return {
       fields: allFields,
       visibleColumns: visibleColumns.length > 0 ? visibleColumns : defaultVisible,
-      columnOrder: columnOrder.length > 0 ? columnOrder : defaultOrder,
+      columnOrder: finalOrder,
     };
   }, [schema, visibleColumns, columnOrder]);
 
@@ -753,6 +840,14 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
           >
             <span>⚙️</span>
             Columns
+          </button>
+          <button
+            onClick={handleCopyTable}
+            className="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 text-sm font-medium flex items-center gap-2"
+            title="Copy table to clipboard (TSV format for Excel)"
+          >
+            <span>📋</span>
+            Copy Table
           </button>
           <button
             onClick={handleAdd}

@@ -51,6 +51,8 @@ export interface TableInfo {
   file: string;
   rowCount: number;
   lastModified: string | null;
+  /** If set, show this table indented under the parent in the sidebar */
+  parentTableKey?: string;
 }
 
 export interface FKRef {

@@ -36,6 +36,8 @@ export interface TableSchema {
   sortField?: string;
   /** True for key-value map tables like equipmentIcons */
   isKeyValueMap?: boolean;
+  /** If set, this table is shown indented under this parent table in the sidebar */
+  parentTableKey?: string;
 }
 
 // ─── Shared field patterns ───────────────────────────────────────────
@@ -143,6 +145,7 @@ export const TABLE_REGISTRY: TableSchema[] = [
     group: 'Muscles',
     idField: 'id',
     labelField: 'label',
+    parentTableKey: 'primaryMuscles',
     fields: standardFields([
       { name: 'primary_muscle_ids', type: 'fk[]', refTable: 'primaryMuscles', refLabelField: 'label' },
       { name: 'tertiary_muscle_ids', type: 'fk[]', refTable: 'tertiaryMuscles', refLabelField: 'label' },
@@ -155,6 +158,7 @@ export const TABLE_REGISTRY: TableSchema[] = [
     group: 'Muscles',
     idField: 'id',
     labelField: 'label',
+    parentTableKey: 'secondaryMuscles',
     fields: standardFields([
       { name: 'secondary_muscle_ids', type: 'fk[]', refTable: 'secondaryMuscles', refLabelField: 'label' },
       { name: 'primary_muscle_ids', type: 'fk[]', refTable: 'primaryMuscles', refLabelField: 'label' },
@@ -227,13 +231,15 @@ export const TABLE_REGISTRY: TableSchema[] = [
     ]),
   },
   {
-    key: 'gripWidths',
-    file: 'gripWidths.json',
-    label: 'Grip Widths',
+    key: 'gripTypeVariations',
+    file: 'gripTypeVariations.json',
+    label: 'Grip Type Variations',
     group: 'Grips & Stance',
     idField: 'id',
     labelField: 'label',
+    parentTableKey: 'gripTypes',
     fields: baseFields([
+      { name: 'grip_type_id', type: 'fk', refTable: 'gripTypes', refLabelField: 'label' },
       { name: 'subLabel', type: 'string' },
       { name: 'common_names', type: 'string[]', defaultValue: [] },
       { name: 'icon', type: 'string', defaultValue: '' },
@@ -241,14 +247,13 @@ export const TABLE_REGISTRY: TableSchema[] = [
     ]),
   },
   {
-    key: 'gripTypeVariations',
-    file: 'gripTypeVariations.json',
-    label: 'Grip Type Variations',
+    key: 'gripWidths',
+    file: 'gripWidths.json',
+    label: 'Grip Widths',
     group: 'Grips & Stance',
     idField: 'id',
     labelField: 'label',
     fields: baseFields([
-      { name: 'grip_type_id', type: 'fk', refTable: 'gripTypes', refLabelField: 'label' },
       { name: 'subLabel', type: 'string' },
       { name: 'common_names', type: 'string[]', defaultValue: [] },
       { name: 'icon', type: 'string', defaultValue: '' },

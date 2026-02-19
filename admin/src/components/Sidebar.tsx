@@ -55,29 +55,40 @@ export default function Sidebar({ tables, groups }: SidebarProps) {
 
         <div className="h-px bg-gray-700 my-2" />
 
-        {groups.map((group) => (
-          <div key={group} className="mb-2">
-            <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-              {groupIcons[group] || '📋'} {group}
+        {groups.map((group) => {
+          const groupTables = tables.filter((t) => t.group === group);
+          const depthOf = (key: string): number => {
+            const t = groupTables.find((x) => x.key === key);
+            if (!t?.parentTableKey) return 0;
+            return 1 + depthOf(t.parentTableKey);
+          };
+          return (
+            <div key={group} className="mb-2">
+              <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                {groupIcons[group] || '📋'} {group}
+              </div>
+              {groupTables.map((t) => {
+                const depth = depthOf(t.key);
+                const paddingLeftPx = 24 + depth * 16;
+                return (
+                  <NavLink
+                    key={t.key}
+                    to={`/table/${t.key}`}
+                    className={({ isActive }) =>
+                      `block px-3 py-1.5 rounded text-sm ${
+                        isActive ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800'
+                      }`
+                    }
+                    style={{ paddingLeft: `${paddingLeftPx}px` }}
+                  >
+                    <span>{t.label}</span>
+                    <span className="ml-auto text-xs text-gray-500 float-right">{t.rowCount}</span>
+                  </NavLink>
+                );
+              })}
             </div>
-            {tables
-              .filter((t) => t.group === group)
-              .map((t) => (
-                <NavLink
-                  key={t.key}
-                  to={`/table/${t.key}`}
-                  className={({ isActive }) =>
-                    `block px-3 py-1.5 pl-6 rounded text-sm ${
-                      isActive ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800'
-                    }`
-                  }
-                >
-                  <span>{t.label}</span>
-                  <span className="ml-auto text-xs text-gray-500 float-right">{t.rowCount}</span>
-                </NavLink>
-              ))}
-          </div>
-        ))}
+          );
+        })}
       </nav>
     </aside>
   );
