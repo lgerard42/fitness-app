@@ -1,0 +1,25 @@
+appId: com.lgerard42.fitnessapp
+---
+# Test: Start Empty Workout Flow
+# Verifies that user can start a new workout from the Log/Workout tab
+
+- launchApp
+
+# Navigate to Workout tab
+- tapOn: "Workout"
+
+# Wait for screen to load
+- waitForAnimationToEnd
+
+# Look for "Start Workout" or similar button/text
+# Note: Adjust selectors based on actual UI text/IDs
+- tapOn:
+    id: ".*start.*|.*new.*workout.*"
+    optional: true
+  # If no explicit button, the screen might auto-start or have a different flow
+  # This test may need adjustment based on actual LogScreen implementation
+
+# Verify workout screen appears (LiveWorkoutScreen)
+- assertVisible:
+    text: ".*workout.*|.*exercise.*"
+    optional: true

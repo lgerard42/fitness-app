@@ -1,0 +1,7 @@
+# Maestro E2E Test Configuration
+# See: https://maestro.mobile.dev/
+
+appId: com.lgerard42.fitnessapp
+name: Workout App E2E Tests
+
+# Test flows are in separate YAML files in this directory
