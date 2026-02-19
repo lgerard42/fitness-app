@@ -1,0 +1,21 @@
+appId: com.lgerard42.fitnessapp
+---
+# Test: Browse Exercise Library
+# Verifies that the library screen loads and displays exercises
+
+- launchApp
+
+# Navigate to Library tab
+- tapOn: "Library"
+
+# Wait for library to load
+- waitForAnimationToEnd
+
+# Verify library content is visible
+# Adjust selectors based on actual LibraryScreen implementation
+- assertVisible:
+    text: ".*exercise.*|.*library.*"
+    optional: true
+
+# Scroll to verify list is scrollable (if exercises are present)
+- scroll

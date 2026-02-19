@@ -1,0 +1,27 @@
+appId: com.lgerard42.fitnessapp
+---
+# Test: Basic Navigation Flow
+# Verifies that all main tabs are accessible and navigation works
+
+- launchApp
+- assertVisible: "Dash"  # History tab
+- assertVisible: "Library"
+- assertVisible: "Workout"
+- assertVisible: "Profile"
+- assertVisible: "More"
+
+# Navigate to Library tab
+- tapOn: "Library"
+- assertVisible: "Library"
+
+# Navigate to Workout tab
+- tapOn: "Workout"
+- assertVisible: "Workout"
+
+# Navigate to Profile tab
+- tapOn: "Profile"
+- assertVisible: "Profile"
+
+# Navigate back to Dash
+- tapOn: "Dash"
+- assertVisible: "Dash"

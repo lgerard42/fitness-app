@@ -37,7 +37,7 @@ const Chip: React.FC<ChipProps> = ({ label, selected, isPrimary, isSpecial, onCl
           </View>
         )}
         {isSelectedSecondary && onMakePrimary && (
-          <TouchableOpacity onPress={(e) => { e.stopPropagation(); onMakePrimary(); }} style={styles.starContainer}>
+          <TouchableOpacity onPress={(e) => { e?.stopPropagation?.(); onMakePrimary(); }} style={styles.starContainer}>
             <Star size={12} color={COLORS.blue[400]} />
           </TouchableOpacity>
         )}
@@ -49,7 +49,7 @@ const Chip: React.FC<ChipProps> = ({ label, selected, isPrimary, isSpecial, onCl
         </Text>
 
         {onRemove && (
-          <TouchableOpacity onPress={(e) => { e.stopPropagation(); onRemove(); }} style={styles.iconContainer}>
+          <TouchableOpacity testID="chip-remove" onPress={(e) => { e?.stopPropagation?.(); onRemove(); }} style={styles.iconContainer}>
             <X size={12} color={COLORS.slate[500]} />
           </TouchableOpacity>
         )}
@@ -57,7 +57,7 @@ const Chip: React.FC<ChipProps> = ({ label, selected, isPrimary, isSpecial, onCl
 
       {selected && onSecondaryPress != null && (
         <TouchableOpacity
-          onPress={(e) => { e.stopPropagation(); onSecondaryPress(); }}
+          onPress={(e) => { e?.stopPropagation?.(); onSecondaryPress(); }}
           style={[
             styles.secondaryButton,
             (hasSecondarySelected || hasTertiarySelected) ? styles.secondaryButtonSelected : styles.secondaryButtonDisabled
