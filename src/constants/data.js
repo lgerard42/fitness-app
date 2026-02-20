@@ -1,6 +1,6 @@
-// Legacy migration: equipment labels from gym equipment table (for migrateExercise when DB not yet loaded)
-const _gymEquipment = require('../database/tables/gymEquipment.json');
-export const LEGACY_EQUIPMENT_LABELS = _gymEquipment.map((r) => r.label);
+// Legacy migration: equipment labels from equipment table (for migrateExercise when DB not yet loaded)
+const _equipment = require('../database/tables/equipment.json');
+export const LEGACY_EQUIPMENT_LABELS = _equipment.filter((r) => !r.is_attachment).map((r) => r.label);
 
 /** Generate option id: remove special chars, replace spaces with _, lowercase */
 export function toId(str) {

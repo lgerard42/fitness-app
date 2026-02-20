@@ -47,44 +47,56 @@ export default function Relationships({
             relationships.push({ label: 'Training Focus', tableKey: 'trainingFocus' });
           }
           
-          // Muscle Groups
+          // Muscles
           if (parsed.muscle_groups && parsed.muscle_groups !== 'forbidden') {
-            relationships.push({ label: 'Muscle Groups', tableKey: 'muscleGroups' });
+            relationships.push({ label: 'Muscles', tableKey: 'muscles' });
           }
         }
       }
     }
     
-    // Muscle Groups: show relationships to Primary, Secondary, and Tertiary Muscles
-    if (tableKey === 'muscleGroups') {
+    // Muscles: self-referencing hierarchy
+    if (tableKey === 'muscles') {
       relationships.push(
-        { label: 'Primary Muscles', tableKey: 'primaryMuscles' },
-        { label: 'Secondary Muscles', tableKey: 'secondaryMuscles' },
-        { label: 'Tertiary Muscles', tableKey: 'tertiaryMuscles' }
+        { label: 'Muscles (self-referencing hierarchy)', tableKey: 'muscles' }
       );
     }
 
-    // Primary Motions: show relationships to Variations and Motion Planes
-    if (tableKey === 'primaryMotions') {
+    // Motions: self-referencing hierarchy + motion planes
+    if (tableKey === 'motions') {
       relationships.push(
-        { label: 'Motion Variations', tableKey: 'primaryMotionVariations' },
+        { label: 'Motions (self-referencing hierarchy)', tableKey: 'motions' },
         { label: 'Motion Planes', tableKey: 'motionPlanes' }
       );
     }
 
-    // Primary Motion Variations: show relationships to Primary Motions and Motion Planes
-    if (tableKey === 'primaryMotionVariations') {
-      relationships.push(
-        { label: 'Primary Motions', tableKey: 'primaryMotions' },
-        { label: 'Motion Planes', tableKey: 'motionPlanes' }
-      );
-    }
-
-    // Motion Planes: show relationships to Primary Motions and Variations
+    // Motion Planes: show relationships to Motions
     if (tableKey === 'motionPlanes') {
       relationships.push(
-        { label: 'Primary Motions', tableKey: 'primaryMotions' },
-        { label: 'Motion Variations', tableKey: 'primaryMotionVariations' }
+        { label: 'Motions', tableKey: 'motions' }
+      );
+    }
+
+    // Equipment Categories: link to equipment
+    if (tableKey === 'equipmentCategories') {
+      relationships.push(
+        { label: 'Equipment Categories (self-referencing hierarchy)', tableKey: 'equipmentCategories' },
+        { label: 'Equipment', tableKey: 'equipment' }
+      );
+    }
+
+    // Equipment: link to equipment categories and grips
+    if (tableKey === 'equipment') {
+      relationships.push(
+        { label: 'Equipment Categories', tableKey: 'equipmentCategories' },
+        { label: 'Grips', tableKey: 'grips' }
+      );
+    }
+
+    // Grips: self-referencing hierarchy
+    if (tableKey === 'grips') {
+      relationships.push(
+        { label: 'Grips (self-referencing hierarchy)', tableKey: 'grips' }
       );
     }
     

@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { api } from '../../api';
 
-type MotionTableKey = 'primaryMotions' | 'primaryMotionVariations';
+type MotionTableKey = 'motions';
 
 interface MotionConfigTreeProps {
   tableKey: MotionTableKey;
@@ -15,19 +15,29 @@ interface MotionConfigTreeProps {
 interface MotionRecord {
   id: string;
   label: string;
-  primary_motion_key?: string;
+  parent_id?: string | null;
   muscle_targets?: Record<string, unknown>;
-  motion_planes?: { default?: string; options?: string[] };
   [key: string]: unknown;
 }
 
 interface MuscleOption { id: string; label: string; }
 
+function parsePids(m: Record<string, unknown>): string[] {
+  const raw = m.parent_ids;
+  if (Array.isArray(raw)) return raw as string[];
+  if (typeof raw === 'string') {
+    try { return JSON.parse(raw); } catch { return []; }
+  }
+  return [];
+}
+
+function getMuscleLabelById(allMuscles: Record<string, unknown>[], id: string): string {
+  return (allMuscles.find(m => m.id === id)?.label as string) || id;
+}
+
 function collectAllScores(
   data: Record<string, unknown>,
-  primaryMuscles: MuscleOption[],
-  secondaryMuscles: Record<string, unknown>[],
-  tertiaryMuscles: Record<string, unknown>[]
+  allMuscles: Record<string, unknown>[]
 ): string {
   const lines: string[] = [];
   const pKeys = Object.keys(data).filter(k => k !== '_score');
@@ -36,7 +46,7 @@ function collectAllScores(
     const pId = pKeys[pIdx];
     const pNode = data[pId] as Record<string, unknown> | undefined;
     if (!pNode || typeof pNode !== 'object') continue;
-    const pLabel = primaryMuscles.find(pm => pm.id === pId)?.label || pId;
+    const pLabel = getMuscleLabelById(allMuscles, pId);
     const pScore = typeof pNode._score === 'number' ? pNode._score : 0;
     const sKeys = Object.keys(pNode).filter(k => k !== '_score');
     const isLastPrimary = pIdx === pKeys.length - 1;
@@ -46,7 +56,7 @@ function collectAllScores(
       const sId = sKeys[sIdx];
       const sNode = pNode[sId] as Record<string, unknown> | undefined;
       if (!sNode || typeof sNode !== 'object') continue;
-      const sLabel = secondaryMuscles.find(s => s.id === sId)?.label as string || sId;
+      const sLabel = getMuscleLabelById(allMuscles, sId);
       const sScore = typeof sNode._score === 'number' ? sNode._score : 0;
       const tKeys = Object.keys(sNode).filter(k => k !== '_score');
       const isLastSecondary = sIdx === sKeys.length - 1;
@@ -62,7 +72,7 @@ function collectAllScores(
       for (let tIdx = 0; tIdx < tKeys.length; tIdx++) {
         const tId = tKeys[tIdx];
         const tNode = sNode[tId] as Record<string, unknown> | undefined;
-        const tLabel = tertiaryMuscles.find(t => t.id === tId)?.label as string || tId;
+        const tLabel = getMuscleLabelById(allMuscles, tId);
         const tScore = typeof tNode?._score === 'number' ? tNode._score : 0;
         const isLastTertiary = tIdx === tKeys.length - 1;
 
@@ -90,9 +100,7 @@ function MuscleTargetsSubtree({
   depth,
   expanded,
   toggleExpanded,
-  primaryMuscles,
-  secondaryMuscles,
-  tertiaryMuscles,
+  allMuscles,
 }: {
   targets: Record<string, unknown>;
   onChange?: (v: Record<string, unknown>) => void;
@@ -100,11 +108,16 @@ function MuscleTargetsSubtree({
   depth: number;
   expanded: Set<string>;
   toggleExpanded: (key: string) => void;
-  primaryMuscles: MuscleOption[];
-  secondaryMuscles: Record<string, unknown>[];
-  tertiaryMuscles: Record<string, unknown>[];
+  allMuscles: Record<string, unknown>[];
 }) {
   const data = targets && typeof targets === 'object' && !Array.isArray(targets) ? targets : {};
+
+  const primaryMuscles = useMemo<MuscleOption[]>(() =>
+    allMuscles
+      .filter(m => parsePids(m).length === 0)
+      .map(m => ({ id: m.id as string, label: m.label as string })),
+    [allMuscles]
+  );
 
   const recomputeParentScores = (nd: Record<string, unknown>) => {
     for (const pId of Object.keys(nd).filter(k => k !== '_score')) {
@@ -188,13 +201,15 @@ function MuscleTargetsSubtree({
     onChange(nd);
   };
 
-  const getSecondariesFor = (pId: string) =>
-    secondaryMuscles.filter(s => { const ids = s.primary_muscle_ids; return Array.isArray(ids) ? ids.includes(pId) : false; })
-      .map(s => ({ id: s.id as string, label: s.label as string }));
+  const getSecondariesFor = (pId: string): MuscleOption[] =>
+    allMuscles
+      .filter(m => parsePids(m).includes(pId))
+      .map(m => ({ id: m.id as string, label: m.label as string }));
 
-  const getTertiariesFor = (sId: string) =>
-    tertiaryMuscles.filter(t => { const ids = t.secondary_muscle_ids; return Array.isArray(ids) ? ids.includes(sId) : false; })
-      .map(t => ({ id: t.id as string, label: t.label as string }));
+  const getTertiariesFor = (sId: string): MuscleOption[] =>
+    allMuscles
+      .filter(m => parsePids(m).includes(sId))
+      .map(m => ({ id: m.id as string, label: m.label as string }));
 
   const prefix = `mt-d${depth}`;
   const activePrimaries = Object.keys(data).filter(k => k !== '_score');
@@ -236,7 +251,7 @@ function MuscleTargetsSubtree({
       {activePrimaries.map(pId => {
         const pNode = data[pId] as Record<string, unknown> | undefined;
         if (!pNode || typeof pNode !== 'object') return null;
-        const pLabel = primaryMuscles.find(pm => pm.id === pId)?.label || pId;
+        const pLabel = getMuscleLabelById(allMuscles, pId);
         const pScore = (pNode._score as number) ?? 0;
         const sKeys = Object.keys(pNode).filter(k => k !== '_score');
         const pKey = `${prefix}-${pId}`;
@@ -261,7 +276,7 @@ function MuscleTargetsSubtree({
                 {sKeys.map(sId => {
                   const sNode = pNode[sId] as Record<string, unknown> | undefined;
                   if (!sNode || typeof sNode !== 'object') return null;
-                  const sLabel = secondaryMuscles.find(s => s.id === sId)?.label as string || sId;
+                  const sLabel = getMuscleLabelById(allMuscles, sId);
                   const sScore = (sNode._score as number) ?? 0;
                   const tKeys = Object.keys(sNode).filter(k => k !== '_score');
                   const sKey = `${prefix}-${pId}.${sId}`;
@@ -291,7 +306,7 @@ function MuscleTargetsSubtree({
                           {tKeys.map(tId => {
                             const tNode = sNode[tId] as Record<string, unknown> | undefined;
                             const tScore = (tNode?._score as number) ?? 0;
-                            const tLabel = tertiaryMuscles.find(t => t.id === tId)?.label as string || tId;
+                            const tLabel = getMuscleLabelById(allMuscles, tId);
                             return (
                               <div key={tId} className="flex items-center gap-1.5 px-2 py-0.5 bg-red-50/60 rounded">
                                 <span className="text-[11px] text-red-800">{tLabel}</span>
@@ -338,19 +353,17 @@ function MuscleTargetsSubtree({
 }
 
 function MuscleTargetsToggle({
-  mtKey, targets, primaryMuscles, secondaryMuscles, tertiaryMuscles, expanded, toggle,
+  mtKey, targets, allMuscles, expanded, toggle,
 }: {
   mtKey: string;
   targets: Record<string, unknown>;
-  primaryMuscles: MuscleOption[];
-  secondaryMuscles: Record<string, unknown>[];
-  tertiaryMuscles: Record<string, unknown>[];
+  allMuscles: Record<string, unknown>[];
   expanded: Set<string>;
   toggle: (key: string) => void;
 }) {
   const isExp = expanded.has(mtKey);
   const data = targets && typeof targets === 'object' && !Array.isArray(targets) ? targets : {};
-  const tooltipText = collectAllScores(data, primaryMuscles, secondaryMuscles, tertiaryMuscles);
+  const tooltipText = collectAllScores(data, allMuscles);
   const [showTooltip, setShowTooltip] = useState(false);
   const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -389,43 +402,20 @@ function MuscleTargetsToggle({
   );
 }
 
-// Extract the muscle data for a specific plane variant from the keyed muscle_targets
-function getPlaneTargets(allTargets: Record<string, unknown>, planeKey: string): Record<string, unknown> {
-  const variant = allTargets[planeKey];
-  if (variant && typeof variant === 'object' && !Array.isArray(variant)) {
-    return variant as Record<string, unknown>;
-  }
-  return {};
-}
-
-function getPlaneVariantKeys(allTargets: Record<string, unknown>): string[] {
-  if (!allTargets || typeof allTargets !== 'object') return [];
-  return Object.keys(allTargets);
-}
-
-export default function MotionConfigTree({ tableKey, currentRecordId, muscleTargets, onFieldsChange }: MotionConfigTreeProps) {
-  const [primaryMotions, setPrimaryMotions] = useState<MotionRecord[]>([]);
-  const [variations, setVariations] = useState<MotionRecord[]>([]);
-  const [primaryMuscles, setPrimaryMuscles] = useState<MuscleOption[]>([]);
-  const [secondaryMuscles, setSecondaryMuscles] = useState<Record<string, unknown>[]>([]);
-  const [tertiaryMuscles, setTertiaryMuscles] = useState<Record<string, unknown>[]>([]);
+export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId, muscleTargets, onFieldsChange }: MotionConfigTreeProps) {
+  const [allMotions, setAllMotions] = useState<MotionRecord[]>([]);
+  const [allMuscles, setAllMuscles] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const loadAll = useCallback(async () => {
     try {
-      const [pm, v, pmMuscles, smMuscles, tmMuscles] = await Promise.all([
-        api.getTable('primaryMotions'),
-        api.getTable('primaryMotionVariations'),
-        api.getTable('primaryMuscles'),
-        api.getTable('secondaryMuscles'),
-        api.getTable('tertiaryMuscles'),
+      const [motions, muscles] = await Promise.all([
+        api.getTable('motions'),
+        api.getTable('muscles'),
       ]);
-      setPrimaryMotions((pm as MotionRecord[]) || []);
-      setVariations((v as MotionRecord[]) || []);
-      setPrimaryMuscles((pmMuscles as MuscleOption[]) || []);
-      setSecondaryMuscles((smMuscles as Record<string, unknown>[]) || []);
-      setTertiaryMuscles((tmMuscles as Record<string, unknown>[]) || []);
+      setAllMotions((motions as MotionRecord[]) || []);
+      setAllMuscles((muscles as Record<string, unknown>[]) || []);
     } catch (err) {
       console.error('Failed to load data:', err);
     } finally {
@@ -435,202 +425,140 @@ export default function MotionConfigTree({ tableKey, currentRecordId, muscleTarg
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
+  const parentMotions = useMemo(() => allMotions.filter(m => !m.parent_id), [allMotions]);
+  const childMotions = useMemo(() => allMotions.filter(m => !!m.parent_id), [allMotions]);
+
   const toggle = useCallback((key: string) => {
     setExpanded(prev => { const n = new Set(prev); if (n.has(key)) n.delete(key); else n.add(key); return n; });
   }, []);
 
-  const syncAfterChange = useCallback(async (updatedVariations: MotionRecord[]) => {
-    try {
-      await api.putTable('primaryMotionVariations', updatedVariations);
-    } catch (err) { console.error('Sync error:', err); }
-    setVariations([...updatedVariations]);
-    if (tableKey === 'primaryMotionVariations') {
-      const cur = updatedVariations.find(r => r.id === currentRecordId);
-      if (cur) onFieldsChange({ primary_motion_key: cur.primary_motion_key || '' });
-    }
-  }, [tableKey, currentRecordId, onFieldsChange]);
-
   const addVariationToPrimary = useCallback(async (primaryId: string, variationId: string) => {
-    const vs = variations.map(v => v.id === variationId ? { ...v, primary_motion_key: primaryId } : { ...v });
-    await syncAfterChange(vs);
-  }, [variations, syncAfterChange]);
+    try {
+      await api.updateRow('motions', variationId, { parent_id: primaryId });
+      await loadAll();
+    } catch (err) { console.error('Failed to link variation:', err); }
+  }, [loadAll]);
 
   const removeVariationFromPrimary = useCallback(async (variationId: string) => {
-    const vs = variations.map(v => v.id === variationId ? { ...v, primary_motion_key: '' } : { ...v });
-    await syncAfterChange(vs);
-  }, [variations, syncAfterChange]);
+    try {
+      await api.updateRow('motions', variationId, { parent_id: null });
+      if (variationId === currentRecordId) {
+        onFieldsChange({ parent_id: null });
+      }
+      await loadAll();
+    } catch (err) { console.error('Failed to unlink variation:', err); }
+  }, [loadAll, currentRecordId, onFieldsChange]);
 
   const setPrimaryForVariation = useCallback(async (variationId: string, primaryId: string) => {
-    const vs = variations.map(v => v.id === variationId ? { ...v, primary_motion_key: primaryId } : { ...v });
-    await syncAfterChange(vs);
-    if (tableKey === 'primaryMotionVariations' && variationId === currentRecordId) {
-      onFieldsChange({ primary_motion_key: primaryId });
-    }
-  }, [variations, syncAfterChange, tableKey, currentRecordId, onFieldsChange]);
-
-  const saveChildMuscleTargets = useCallback(async (tableKeyChild: string, recordId: string, newTargets: Record<string, unknown>) => {
     try {
-      if (tableKeyChild === 'primaryMotionVariations') {
-        const v = variations.find(r => r.id === recordId);
-        if (v) {
-          v.muscle_targets = newTargets;
-          await api.updateRow('primaryMotionVariations', recordId, { ...v, muscle_targets: newTargets });
-          setVariations(prev => prev.map(r => r.id === recordId ? { ...r, muscle_targets: newTargets } : r));
-        }
-      } else if (tableKeyChild === 'primaryMotions') {
-        const p = primaryMotions.find(r => r.id === recordId);
-        if (p) {
-          p.muscle_targets = newTargets;
-          await api.updateRow('primaryMotions', recordId, { ...p, muscle_targets: newTargets });
-          setPrimaryMotions(prev => prev.map(r => r.id === recordId ? { ...r, muscle_targets: newTargets } : r));
-        }
+      await api.updateRow('motions', variationId, { parent_id: primaryId });
+      if (variationId === currentRecordId) {
+        onFieldsChange({ parent_id: primaryId });
       }
+      await loadAll();
+    } catch (err) { console.error('Failed to set parent:', err); }
+  }, [loadAll, currentRecordId, onFieldsChange]);
+
+  const saveChildMuscleTargets = useCallback(async (recordId: string, newTargets: Record<string, unknown>) => {
+    try {
+      await api.updateRow('motions', recordId, { muscle_targets: newTargets });
+      setAllMotions(prev => prev.map(r => r.id === recordId ? { ...r, muscle_targets: newTargets } : r));
     } catch (err) {
       console.error('Failed to save muscle_targets:', err);
     }
-  }, [variations, primaryMotions]);
+  }, []);
 
   const createVariation = useCallback(async (primaryId: string, newData: Record<string, unknown>) => {
     try {
-      await api.addRow('primaryMotionVariations', { ...newData, primary_motion_key: primaryId, muscle_targets: {}, motion_planes: {} });
-      const v = await api.getTable('primaryMotionVariations') as MotionRecord[];
-      setVariations(v);
+      await api.addRow('motions', { ...newData, parent_id: primaryId, muscle_targets: {} });
+      await loadAll();
     } catch (err) { console.error('Failed to create variation:', err); alert('Failed to create variation.'); }
-  }, []);
+  }, [loadAll]);
 
   const mtProps = useMemo(() => ({
-    expanded, toggleExpanded: toggle, primaryMuscles, secondaryMuscles, tertiaryMuscles,
-  }), [expanded, toggle, primaryMuscles, secondaryMuscles, tertiaryMuscles]);
+    expanded, toggleExpanded: toggle, allMuscles,
+  }), [expanded, toggle, allMuscles]);
 
   if (loading) return <div className="text-xs text-gray-400 py-2">Loading...</div>;
 
-  const isCurrent = (type: MotionTableKey, id: string) => type === tableKey && id === currentRecordId;
+  const isCurrent = (id: string) => id === currentRecordId;
 
-  const getTargetsAndOnChange = (type: MotionTableKey, id: string, record: MotionRecord) => {
-    const allTargets = isCurrent(type, id) ? muscleTargets : (record.muscle_targets || {}) as Record<string, unknown>;
+  const getTargetsAndOnChange = (id: string, record: MotionRecord) => {
+    const targets = isCurrent(id) ? muscleTargets : (record.muscle_targets || {}) as Record<string, unknown>;
     return {
-      allTargets,
-      onChange: (planeKey: string) => (newPlaneData: Record<string, unknown>) => {
-        const updated = { ...JSON.parse(JSON.stringify(allTargets)), [planeKey]: newPlaneData };
-        if (isCurrent(type, id)) {
-          onFieldsChange({ muscle_targets: updated });
+      targets,
+      onChange: (newTargets: Record<string, unknown>) => {
+        if (isCurrent(id)) {
+          onFieldsChange({ muscle_targets: newTargets });
         } else {
-          saveChildMuscleTargets(type, id, updated);
+          saveChildMuscleTargets(id, newTargets);
         }
       },
     };
   };
 
-  const renderPlaneVariants = (type: MotionTableKey, id: string, record: MotionRecord, keyPrefix: string) => {
-    const { allTargets, onChange } = getTargetsAndOnChange(type, id, record);
-    const variantKeys = getPlaneVariantKeys(allTargets);
-
-    if (variantKeys.length === 0) {
-      return (
-        <div className="text-[10px] text-gray-400 italic px-2 py-1">No muscle targets configured.</div>
-      );
-    }
-
-    return (
-      <div className="space-y-1">
-        {variantKeys.map(vk => {
-          const vkKey = `${keyPrefix}-plane-${vk}`;
-          const isExp = expanded.has(vkKey);
-          const planeData = getPlaneTargets(allTargets, vk);
-          const tooltipText = collectAllScores(planeData, primaryMuscles, secondaryMuscles, tertiaryMuscles);
-          return (
-            <div key={vk} className="rounded border bg-white overflow-hidden">
-              <div className="flex items-center gap-2 px-2 py-1 bg-indigo-50/60 cursor-pointer" onClick={() => toggle(vkKey)}>
-                <button type="button" className="text-[10px] text-gray-500 w-3 flex-shrink-0">{isExp ? '▼' : '▶'}</button>
-                <span className={`text-[10px] font-bold ${vk === 'STANDARD' ? 'text-indigo-800' : 'text-purple-700'}`}>{vk}</span>
-                {tooltipText !== 'none' && (
-                  <span className="text-[9px] text-gray-400 ml-auto">{Object.keys(planeData).filter(k => k !== '_score').length} groups</span>
-                )}
-              </div>
-              {isExp && (
-                <div className="px-2 py-1 border-t bg-red-100">
-                  <MuscleTargetsSubtree targets={planeData} depth={0} onChange={onChange(vk)} {...mtProps} />
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
-
-  const renderVariation = (v: MotionRecord, pmId: string, keyPrefix: string) => {
-    const vKey = `${keyPrefix}-var-${v.id}`;
-    const isVExp = expanded.has(vKey);
-    const current = isCurrent('primaryMotionVariations', v.id);
-    const { allTargets } = getTargetsAndOnChange('primaryMotionVariations', v.id, v);
-    const standardTargets = getPlaneTargets(allTargets, 'STANDARD');
+  const renderVariation = (v: MotionRecord, keyPrefix: string) => {
+    const current = isCurrent(v.id);
+    const { targets, onChange } = getTargetsAndOnChange(v.id, v);
     const varMtKey = `mt-var-${v.id}`;
 
     return (
       <div key={v.id} className={`rounded border overflow-hidden ${current ? 'ring-2 ring-blue-400' : 'bg-white'}`}>
         <div className={`px-2 py-1.5 border-b flex items-center gap-2 ${current ? 'bg-blue-100' : 'bg-gray-50'}`}>
-          <button type="button" onClick={() => toggle(vKey)} className="text-[10px] text-gray-500 w-3 flex-shrink-0">{isVExp ? '▼' : '▶'}</button>
           <div className="flex items-center gap-2 flex-shrink-0">
             {current ? (
               <span className="text-xs font-bold text-gray-900">{v.label}</span>
             ) : (
-              <Link to="/table/primaryMotionVariations" className="text-xs font-medium text-blue-600 hover:underline">{v.label}</Link>
+              <Link to="/table/motions" className="text-xs font-medium text-blue-600 hover:underline">{v.label}</Link>
             )}
             <span className="text-[10px] text-gray-400">{v.id}</span>
           </div>
-          <MuscleTargetsToggle mtKey={varMtKey} targets={standardTargets} primaryMuscles={primaryMuscles} secondaryMuscles={secondaryMuscles} tertiaryMuscles={tertiaryMuscles} expanded={expanded} toggle={toggle} />
+          <MuscleTargetsToggle mtKey={varMtKey} targets={targets} allMuscles={allMuscles} expanded={expanded} toggle={toggle} />
           <button type="button" onClick={() => removeVariationFromPrimary(v.id)}
             className="ml-auto text-[10px] text-red-500 hover:text-red-700 px-1 flex-shrink-0">Remove</button>
         </div>
         {expanded.has(varMtKey) && (
           <div className="px-2 py-1 border-b bg-red-50">
-            {renderPlaneVariants('primaryMotionVariations', v.id, v, `var-${v.id}`)}
-          </div>
-        )}
-        {isVExp && (
-          <div className="pl-4 pr-2 py-1.5 space-y-1.5">
-            <div className="text-[10px] text-gray-400">
-              {v.motion_planes && typeof v.motion_planes === 'object' && (v.motion_planes as { options?: string[] }).options?.length
-                ? `Planes: ${((v.motion_planes as { default?: string; options?: string[] }).options || []).join(', ')} (default: ${(v.motion_planes as { default?: string }).default || 'STANDARD'})`
-                : 'No motion planes configured'}
-            </div>
+            <MuscleTargetsSubtree targets={targets} depth={0} onChange={onChange} {...mtProps} />
           </div>
         )}
       </div>
     );
   };
 
+  const currentMotion = allMotions.find(m => m.id === currentRecordId);
+  if (!currentMotion) return <div className="text-xs text-gray-400 italic">Record not found.</div>;
+
+  const isCurrentParent = !currentMotion.parent_id;
+
   let rootPrimaries: MotionRecord[] = [];
   let focusVariationId: string | null = null;
   let orphanVariation: MotionRecord | null = null;
 
-  if (tableKey === 'primaryMotions') {
-    const pm = primaryMotions.find(p => p.id === currentRecordId);
-    if (!pm) return <div className="text-xs text-gray-400 italic">Record not found.</div>;
-    rootPrimaries = [pm];
+  if (isCurrentParent) {
+    rootPrimaries = [currentMotion];
   } else {
-    const cur = variations.find(v => v.id === currentRecordId);
-    if (!cur) return <div className="text-xs text-gray-400 italic">Record not found.</div>;
     focusVariationId = currentRecordId;
-    if (cur.primary_motion_key) {
-      const pm = primaryMotions.find(p => p.id === cur.primary_motion_key);
-      if (pm) rootPrimaries = [pm];
-      else orphanVariation = cur;
+    const pm = parentMotions.find(p => p.id === currentMotion.parent_id);
+    if (pm) {
+      rootPrimaries = [pm];
     } else {
-      orphanVariation = cur;
+      orphanVariation = currentMotion;
     }
   }
 
   const renderPrimaryMotionTree = (pm: MotionRecord) => {
     const rootKey = `pm-${pm.id}`;
     const isRootExp = expanded.has(rootKey);
-    const current = isCurrent('primaryMotions', pm.id);
-    const { allTargets } = getTargetsAndOnChange('primaryMotions', pm.id, pm);
-    const standardTargets = getPlaneTargets(allTargets, 'STANDARD');
-    const relVars = variations.filter(v => v.primary_motion_key === pm.id);
+    const current = isCurrent(pm.id);
+    const { targets, onChange } = getTargetsAndOnChange(pm.id, pm);
+    const relVars = childMotions.filter(v => v.parent_id === pm.id);
     const displayVars = focusVariationId ? relVars.filter(v => v.id === focusVariationId) : relVars;
-    const unlinkedVars = variations.filter(v => !v.primary_motion_key);
+    const unlinkedVars = allMotions.filter(v =>
+      !v.parent_id &&
+      v.id !== pm.id &&
+      !allMotions.some(c => c.parent_id === v.id)
+    );
     const pmMtKey = `mt-pm-${pm.id}`;
 
     return (
@@ -641,20 +569,20 @@ export default function MotionConfigTree({ tableKey, currentRecordId, muscleTarg
             {current ? (
               <span className="text-sm font-bold text-gray-900">{pm.label}</span>
             ) : (
-              <Link to="/table/primaryMotions" className="text-sm font-medium text-blue-600 hover:underline">{pm.label}</Link>
+              <Link to="/table/motions" className="text-sm font-medium text-blue-600 hover:underline">{pm.label}</Link>
             )}
             <span className="text-xs text-gray-400">{pm.id}</span>
           </div>
-          <MuscleTargetsToggle mtKey={pmMtKey} targets={standardTargets} primaryMuscles={primaryMuscles} secondaryMuscles={secondaryMuscles} tertiaryMuscles={tertiaryMuscles} expanded={expanded} toggle={toggle} />
+          <MuscleTargetsToggle mtKey={pmMtKey} targets={targets} allMuscles={allMuscles} expanded={expanded} toggle={toggle} />
         </div>
         {expanded.has(pmMtKey) && (
           <div className="px-3 py-1 border-b bg-red-50">
-            {renderPlaneVariants('primaryMotions', pm.id, pm, `pm-${pm.id}`)}
+            <MuscleTargetsSubtree targets={targets} depth={0} onChange={onChange} {...mtProps} />
           </div>
         )}
         {isRootExp && (
           <div className="pl-4 pr-2 py-2 space-y-2">
-            {displayVars.map(v => renderVariation(v, pm.id, `pm-${pm.id}`))}
+            {displayVars.map(v => renderVariation(v, `pm-${pm.id}`))}
             {!focusVariationId && (
               <div className="flex flex-row gap-2 items-stretch">
                 <select value="" onChange={async e => { if (e.target.value) await addVariationToPrimary(pm.id, e.target.value); }}
@@ -676,8 +604,7 @@ export default function MotionConfigTree({ tableKey, currentRecordId, muscleTarg
   const renderOrphanVariation = (v: MotionRecord) => {
     const rootKey = `orphan-var-${v.id}`;
     const isRootExp = expanded.has(rootKey);
-    const { allTargets } = getTargetsAndOnChange('primaryMotionVariations', v.id, v);
-    const standardTargets = getPlaneTargets(allTargets, 'STANDARD');
+    const { targets, onChange } = getTargetsAndOnChange(v.id, v);
     const orphanVarMtKey = `mt-orphan-var-${v.id}`;
 
     return (
@@ -690,11 +617,11 @@ export default function MotionConfigTree({ tableKey, currentRecordId, muscleTarg
             <span className="text-sm font-bold text-gray-900">{v.label}</span>
             <span className="text-xs text-gray-400">{v.id}</span>
           </div>
-          <MuscleTargetsToggle mtKey={orphanVarMtKey} targets={standardTargets} primaryMuscles={primaryMuscles} secondaryMuscles={secondaryMuscles} tertiaryMuscles={tertiaryMuscles} expanded={expanded} toggle={toggle} />
+          <MuscleTargetsToggle mtKey={orphanVarMtKey} targets={targets} allMuscles={allMuscles} expanded={expanded} toggle={toggle} />
         </div>
         {expanded.has(orphanVarMtKey) && (
           <div className="px-3 py-1 border-b bg-red-50">
-            {renderPlaneVariants('primaryMotionVariations', v.id, v, `orphan-var-${v.id}`)}
+            <MuscleTargetsSubtree targets={targets} depth={0} onChange={onChange} {...mtProps} />
           </div>
         )}
         {isRootExp && (
@@ -702,7 +629,7 @@ export default function MotionConfigTree({ tableKey, currentRecordId, muscleTarg
             <select value="" onChange={async e => { if (e.target.value) await setPrimaryForVariation(v.id, e.target.value); }}
               className="px-1 py-0.5 border border-blue-300 rounded text-[10px] text-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none">
               <option value="">Set Parent Motion...</option>
-              {primaryMotions.map(p => <option key={p.id} value={p.id}>{p.label} ({p.id})</option>)}
+              {parentMotions.map(p => <option key={p.id} value={p.id}>{p.label} ({p.id})</option>)}
             </select>
           </div>
         )}
@@ -711,10 +638,7 @@ export default function MotionConfigTree({ tableKey, currentRecordId, muscleTarg
   };
 
   const addToPrimaryOptions = focusVariationId
-    ? primaryMotions.filter(pm => {
-        const cur = variations.find(v => v.id === focusVariationId);
-        return cur && pm.id !== cur.primary_motion_key;
-      })
+    ? parentMotions.filter(pm => pm.id !== currentMotion.parent_id)
     : [];
 
   return (
@@ -764,7 +688,7 @@ function InlineVariationCreator({ onCreate }: { onCreate: (data: Record<string, 
         <button type="button" disabled={!newVar.id || !newVar.label || creating}
           onClick={async () => {
             setCreating(true);
-            await onCreate({ id: newVar.id, label: newVar.label, common_names: [], short_description: newVar.short_description, muscle_targets: {}, motion_planes: {}, sort_order: 0, is_active: true });
+            await onCreate({ id: newVar.id, label: newVar.label, common_names: [], short_description: newVar.short_description, muscle_targets: {}, sort_order: 0, is_active: true });
             setNewVar({ id: '', label: '', short_description: '' }); setShowForm(false); setCreating(false);
           }}
           className="px-2 py-0.5 text-xs bg-blue-600 text-white rounded disabled:opacity-50">{creating ? '...' : 'Create'}</button>

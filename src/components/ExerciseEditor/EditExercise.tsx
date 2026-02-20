@@ -17,8 +17,8 @@ import {
     STANCE_WIDTHS_BY_ID,
     SINGLE_DOUBLE_OPTIONS_BY_ID,
 } from '@/constants/data';
-import { usePrimaryToSecondaryMap, useCableAttachments, useSingleDoubleEquipmentLabels, useTertiaryMuscles, useSecondaryMuscles, useGripTypes, useGripWidths } from '@/database/useExerciseConfig';
-import { getTertiaryMusclesBySecondary } from '@/database/exerciseConfigService';
+import { usePrimaryToSecondaryMap, useAttachments, useSingleDoubleEquipmentLabels, useTertiaryMuscles, useSecondaryMuscles, useGripTypes, useGripWidths } from '@/database/useExerciseConfig';
+import { getMusclesByParent } from '@/database/exerciseConfigService';
 import Chip from './Chip';
 import CustomDropdown from './CustomDropdown';
 import EquipmentPickerModal from './EquipmentPickerModal';
@@ -168,7 +168,7 @@ const SecondaryMusclePickerContent: React.FC<{
             if (selectedSecondaryMuscles.length > 0) {
                 Promise.all(
                     selectedSecondaryMuscles.map(secondaryId =>
-                        getTertiaryMusclesBySecondary([secondaryId]).then(tertiaries => ({
+                        getMusclesByParent(secondaryId).then(tertiaries => ({
                             secondaryId,
                             tertiaries
                         }))
@@ -331,7 +331,7 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
     const PRIMARY_TO_SECONDARY_MAP = usePrimaryToSecondaryMap();
     const allSecondaryMuscles = useSecondaryMuscles();
     const allTertiaryMuscles = useTertiaryMuscles();
-    const CABLE_ATTACHMENTS = useCableAttachments();
+    const CABLE_ATTACHMENTS = useAttachments();
     const CABLE_ATTACHMENTS_BY_ID = useMemo(() => buildCableAttachmentsById(CABLE_ATTACHMENTS), [CABLE_ATTACHMENTS]);
     const SINGLE_DOUBLE_EQUIPMENT = useSingleDoubleEquipmentLabels();
     const GRIP_TYPES = useGripTypes();
@@ -346,12 +346,12 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
 
     useEffect(() => {
         Promise.all([
-            import('@/database/tables/primaryMotions.json').then(m => m.default),
-            import('@/database/tables/primaryMotionVariations.json').then(m => m.default),
+            import('@/database/tables/motions.json').then(m => m.default),
             import('@/database/tables/motionPlanes.json').then(m => m.default),
-        ]).then(([motions, variations, planes]) => {
-            setPrimaryMotions(motions.filter((m: any) => m.is_active));
-            setPrimaryMotionVariations(variations.filter((v: any) => v.is_active));
+        ]).then(([allMotions, planes]) => {
+            const activeMotions = allMotions.filter((m: any) => m.is_active);
+            setPrimaryMotions(activeMotions.filter((m: any) => m.parent_id === null));
+            setPrimaryMotionVariations(activeMotions.filter((m: any) => m.parent_id !== null));
             setMotionPlanes(planes.filter((p: any) => p.is_active));
         });
     }, []);
@@ -507,7 +507,8 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                         .map(label => allSecondaryMuscles.find(s => s.label === label)?.id)
                         .filter((id): id is string => id !== undefined);
                     if (secondariesToRemoveIds.length > 0) {
-                        getTertiaryMusclesBySecondary(secondariesToRemoveIds).then(tertiariesToRemove => {
+                        Promise.all(secondariesToRemoveIds.map(id => getMusclesByParent(id))).then(results => {
+                            const tertiariesToRemove = results.flat();
                             const tertiaryIdsToRemove = tertiariesToRemove.map(t => t.id);
                             setEditState(prevState => ({
                                 ...prevState,
@@ -618,8 +619,8 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
             const t = allTertiaryMuscles.find(x => x.id === tid);
             if (!t) return false;
             try {
-                const secIds: string[] = JSON.parse(t.secondary_muscle_ids || '[]');
-                return secIds.some(id => secondaryIds.includes(id));
+                const parentIds: string[] = JSON.parse(t.parent_ids || '[]');
+                return parentIds.some(id => secondaryIds.includes(id));
             } catch {
                 return false;
             }

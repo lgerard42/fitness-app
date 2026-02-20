@@ -5,7 +5,7 @@
 import * as SQLite from 'expo-sqlite';
 
 const DATABASE_NAME = 'workout.db';
-const DATABASE_VERSION = 17;
+const DATABASE_VERSION = 22;
 
 export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
   const db = await SQLite.openDatabaseAsync(DATABASE_NAME);
@@ -35,7 +35,7 @@ export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
       await seedMotionData(db);
     }
     if (currentVersion < 6) {
-      await reseedSecondaryMuscles(db);
+      // Previously re-seeded secondary_muscles; no longer needed after V19 merge.
     }
     if (currentVersion < 7) {
       await migrateToV7(db);
@@ -70,42 +70,32 @@ export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
     if (currentVersion < 17) {
       await migrateToV17(db);
     }
+    if (currentVersion < 18) {
+      await migrateToV18(db);
+    }
+    if (currentVersion < 19) {
+      await migrateToV19(db);
+    }
+    if (currentVersion < 20) {
+      await migrateToV20(db);
+    }
+    if (currentVersion < 21) {
+      await migrateToV21(db);
+    }
+    if (currentVersion < 22) {
+      await migrateToV22(db);
+    }
     await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
-  }
-
-  // Safety check: ensure new columns exist before seedMuscleData runs
-  try {
-    const priInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(primary_muscles)`);
-    const priCols = priInfo.map(c => c.name);
-    if (!priCols.includes('upper_lower')) await db.execAsync(`ALTER TABLE primary_muscles ADD COLUMN upper_lower TEXT`);
-    if (!priCols.includes('function')) await db.execAsync(`ALTER TABLE primary_muscles ADD COLUMN "function" TEXT`);
-    if (!priCols.includes('location')) await db.execAsync(`ALTER TABLE primary_muscles ADD COLUMN location TEXT`);
-    if (!priCols.includes('triggers')) await db.execAsync(`ALTER TABLE primary_muscles ADD COLUMN triggers TEXT`);
-
-    const secInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(secondary_muscles)`);
-    const secCols = secInfo.map(c => c.name);
-    if (!secCols.includes('function')) await db.execAsync(`ALTER TABLE secondary_muscles ADD COLUMN "function" TEXT`);
-    if (!secCols.includes('location')) await db.execAsync(`ALTER TABLE secondary_muscles ADD COLUMN location TEXT`);
-    if (!secCols.includes('triggers')) await db.execAsync(`ALTER TABLE secondary_muscles ADD COLUMN triggers TEXT`);
-
-    const terInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(tertiary_muscles)`);
-    const terCols = terInfo.map(c => c.name);
-    if (!terCols.includes('function')) await db.execAsync(`ALTER TABLE tertiary_muscles ADD COLUMN "function" TEXT`);
-    if (!terCols.includes('location')) await db.execAsync(`ALTER TABLE tertiary_muscles ADD COLUMN location TEXT`);
-    if (!terCols.includes('triggers')) await db.execAsync(`ALTER TABLE tertiary_muscles ADD COLUMN triggers TEXT`);
-  } catch (error) {
-    console.warn('Safety check for muscle columns failed:', error);
   }
 
   // Re-seed equipment data from JSON on every app load (same idea as motion options
   // being loaded fresh in ExerciseEditor) so gym equipment picker stays in sync.
   await seedEquipmentData(db);
 
-  // Re-seed muscle data (muscle_groups, primary/secondary/tertiary muscles) on every
-  // app load so muscle pickers stay in sync with JSON tables.
+  // Re-seed muscles on every app load
   await seedMuscleData(db);
 
-  // Re-seed grip data (grip_types, grip_widths) on every app load so grip pickers stay in sync.
+  // Re-seed grip data (grips) on every app load so grip pickers stay in sync.
   await seedGripData(db);
 
   return db;
@@ -141,70 +131,21 @@ async function createTables(db: SQLite.SQLiteDatabase) {
     );
   `);
 
-  // MUSCLE_GROUPS table (metadata table)
+  // MUSCLES table (unified hierarchy)
   await db.execAsync(`
-    CREATE TABLE IF NOT EXISTS muscle_groups (
+    CREATE TABLE IF NOT EXISTS muscles (
       id TEXT PRIMARY KEY,
+      parent_ids TEXT DEFAULT '[]',
       label TEXT NOT NULL,
-      values_table TEXT NOT NULL,
       common_names TEXT,
-      icon TEXT,
-      short_description TEXT,
-      sort_order INTEGER DEFAULT 0,
-      is_active INTEGER DEFAULT 1
-    );
-  `);
-
-  // PRIMARY_MUSCLES table
-  await db.execAsync(`
-    CREATE TABLE IF NOT EXISTS primary_muscles (
-      id TEXT PRIMARY KEY,
-      label TEXT NOT NULL,
       technical_name TEXT,
-      common_names TEXT,
-      icon TEXT,
       short_description TEXT,
-      upper_lower TEXT,
       "function" TEXT,
       location TEXT,
       triggers TEXT,
+      upper_lower TEXT DEFAULT '[]',
       sort_order INTEGER DEFAULT 0,
-      is_active INTEGER DEFAULT 1
-    );
-  `);
-
-  // SECONDARY_MUSCLES table
-  await db.execAsync(`
-    CREATE TABLE IF NOT EXISTS secondary_muscles (
-      id TEXT PRIMARY KEY,
-      label TEXT NOT NULL,
-      technical_name TEXT,
-      common_names TEXT,
       icon TEXT,
-      short_description TEXT,
-      primary_muscle_ids TEXT,
-      "function" TEXT,
-      location TEXT,
-      triggers TEXT,
-      sort_order INTEGER DEFAULT 0,
-      is_active INTEGER DEFAULT 1
-    );
-  `);
-
-  // TERTIARY_MUSCLES table
-  await db.execAsync(`
-    CREATE TABLE IF NOT EXISTS tertiary_muscles (
-      id TEXT PRIMARY KEY,
-      label TEXT NOT NULL,
-      technical_name TEXT,
-      common_names TEXT,
-      icon TEXT,
-      short_description TEXT,
-      secondary_muscle_ids TEXT,
-      "function" TEXT,
-      location TEXT,
-      triggers TEXT,
-      sort_order INTEGER DEFAULT 0,
       is_active INTEGER DEFAULT 1
     );
   `);
@@ -223,58 +164,31 @@ async function createTables(db: SQLite.SQLiteDatabase) {
     );
   `);
 
-  // EQUIPMENT_CATEGORIES table
+  // EQUIPMENT_CATEGORIES table (merged hierarchical structure)
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS equipment_categories (
       id TEXT PRIMARY KEY,
+      parent_id TEXT,
       label TEXT NOT NULL,
-      sub_label TEXT,
       common_names TEXT,
-      icon TEXT,
-      short_description TEXT,
-      sub_categories_table TEXT,
-      sort_order INTEGER DEFAULT 0,
-      is_active INTEGER DEFAULT 1
-    );
-  `);
-
-  // SUPPORT_EQUIPMENT_CATEGORIES table
-  await db.execAsync(`
-    CREATE TABLE IF NOT EXISTS support_equipment_categories (
-      id TEXT PRIMARY KEY,
-      label TEXT NOT NULL,
-      sub_label TEXT,
-      common_names TEXT,
-      icon TEXT,
       short_description TEXT,
       sort_order INTEGER DEFAULT 0,
       is_active INTEGER DEFAULT 1
     );
   `);
 
-  // WEIGHTS_EQUIPMENT_CATEGORIES table
+  // EQUIPMENT table (unified gym equipment + cable attachments)
   await db.execAsync(`
-    CREATE TABLE IF NOT EXISTS weights_equipment_categories (
+    CREATE TABLE IF NOT EXISTS equipment (
       id TEXT PRIMARY KEY,
+      category_id TEXT,
       label TEXT NOT NULL,
-      sub_label TEXT,
       common_names TEXT,
-      icon TEXT,
       short_description TEXT,
-      sort_order INTEGER DEFAULT 0,
-      is_active INTEGER DEFAULT 1
-    );
-  `);
-
-  // CABLE_ATTACHMENTS table (exercise equipment)
-  await db.execAsync(`
-    CREATE TABLE IF NOT EXISTS cable_attachments (
-      id TEXT PRIMARY KEY,
-      label TEXT NOT NULL,
-      sub_label TEXT,
-      common_names TEXT,
-      icon TEXT,
-      short_description TEXT,
+      is_attachment INTEGER DEFAULT 0,
+      requires_attachment INTEGER DEFAULT 0,
+      max_instances INTEGER DEFAULT 1,
+      modifier_constraints TEXT DEFAULT '{}',
       sort_order INTEGER DEFAULT 0,
       is_active INTEGER DEFAULT 1
     );
@@ -286,103 +200,45 @@ async function createTables(db: SQLite.SQLiteDatabase) {
       id TEXT PRIMARY KEY,
       label TEXT NOT NULL,
       common_names TEXT,
+      delta_rules TEXT DEFAULT '{}',
       short_description TEXT,
-      icon TEXT,
       sort_order INTEGER DEFAULT 0,
       is_active INTEGER DEFAULT 1
     );
   `);
 
-  // PRIMARY_MOTIONS table
+  // MOTIONS table (unified hierarchy replacing primary_motions + primary_motion_variations)
   await db.execAsync(`
-    CREATE TABLE IF NOT EXISTS primary_motions (
+    CREATE TABLE IF NOT EXISTS motions (
       id TEXT PRIMARY KEY,
-      upper_lower_body TEXT NOT NULL,
+      parent_id TEXT,
       label TEXT NOT NULL,
-      common_names TEXT,
-      short_description TEXT,
-      icon TEXT,
+      upper_lower_body TEXT,
       muscle_targets TEXT DEFAULT '{}',
       motion_planes TEXT DEFAULT '{}',
-      sort_order INTEGER DEFAULT 0,
-      is_active INTEGER DEFAULT 1
-    );
-  `);
-
-  // PRIMARY_MOTION_VARIATIONS table
-  await db.execAsync(`
-    CREATE TABLE IF NOT EXISTS primary_motion_variations (
-      id TEXT PRIMARY KEY,
-      primary_motion_key TEXT NOT NULL,
-      label TEXT NOT NULL,
       common_names TEXT,
       short_description TEXT,
-      icon TEXT,
-      muscle_targets TEXT DEFAULT '{}',
-      motion_planes TEXT DEFAULT '{}',
       sort_order INTEGER DEFAULT 0,
+      icon TEXT,
       is_active INTEGER DEFAULT 1
     );
   `);
 
-  // GYM_EQUIPMENT table
-  await db.execAsync(`
-    CREATE TABLE IF NOT EXISTS gym_equipment (
-      id TEXT PRIMARY KEY,
-      label TEXT NOT NULL,
-      sub_label TEXT,
-      common_names TEXT,
-      icon TEXT,
-      short_description TEXT,
-      equipment_categories TEXT,
-      max_instances INTEGER DEFAULT 1,
-      cable_attachments INTEGER DEFAULT 0,
-      sort_order INTEGER DEFAULT 0,
-      is_active INTEGER DEFAULT 1
-    );
-  `);
 
-  // GRIP_TYPES table
+  // GRIPS table (unified grip types, widths, and rotating variations)
   await db.execAsync(`
-    CREATE TABLE IF NOT EXISTS grip_types (
+    CREATE TABLE IF NOT EXISTS grips (
       id TEXT PRIMARY KEY,
+      parent_id TEXT,
       label TEXT NOT NULL,
+      is_dynamic INTEGER DEFAULT 0,
       grip_category TEXT,
+      rotation_path TEXT,
       common_names TEXT,
-      icon TEXT,
-      short_description TEXT,
       delta_rules TEXT DEFAULT '{}',
-      default_variation TEXT,
-      sort_order INTEGER DEFAULT 0,
-      is_active INTEGER DEFAULT 1
-    );
-  `);
-
-  // GRIP_TYPE_VARIATIONS table
-  await db.execAsync(`
-    CREATE TABLE IF NOT EXISTS grip_type_variations (
-      id TEXT PRIMARY KEY,
-      parent_grip_id TEXT,
-      label TEXT NOT NULL,
-      common_names TEXT,
-      icon TEXT,
       short_description TEXT,
-      delta_rules TEXT DEFAULT '{}',
       sort_order INTEGER DEFAULT 0,
-      is_active INTEGER DEFAULT 1
-    );
-  `);
-
-  // GRIP_WIDTHS table
-  await db.execAsync(`
-    CREATE TABLE IF NOT EXISTS grip_widths (
-      id TEXT PRIMARY KEY,
-      label TEXT NOT NULL,
-      common_names TEXT,
       icon TEXT,
-      short_description TEXT,
-      delta_rules TEXT DEFAULT '{}',
-      sort_order INTEGER DEFAULT 0,
       is_active INTEGER DEFAULT 1
     );
   `);
@@ -500,13 +356,27 @@ async function createTables(db: SQLite.SQLiteDatabase) {
       is_active INTEGER DEFAULT 1
     );
   `);
+
+  // RANGE_OF_MOTION table
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS range_of_motion (
+      id TEXT PRIMARY KEY,
+      label TEXT NOT NULL,
+      common_names TEXT,
+      icon TEXT,
+      short_description TEXT,
+      delta_rules TEXT DEFAULT '{}',
+      sort_order INTEGER DEFAULT 0,
+      is_active INTEGER DEFAULT 1
+    );
+  `);
 }
 
 async function migrateToV4(db: SQLite.SQLiteDatabase) {
   const tables = [
     'exercise_categories', 'cardio_types', 'muscle_groups', 'primary_muscles',
     'secondary_muscles', 'tertiary_muscles', 'training_focus',
-    'equipment_categories', 'support_equipment_categories', 'weights_equipment_categories',
+    'equipment_categories',
     'cable_attachments', 'gym_equipment',
   ];
   for (const table of tables) {
@@ -545,8 +415,15 @@ async function migrateToV8(db: SQLite.SQLiteDatabase) {
 
 async function migrateToV9(db: SQLite.SQLiteDatabase) {
   // V9 adds denormalized FK columns across all muscle tables
-  const secondaryMuscles = require('./tables/secondaryMuscles.json') as Record<string, unknown>[];
-  const tertiaryMuscles = require('./tables/tertiaryMuscles.json') as Record<string, unknown>[];
+  // Old JSON files no longer exist after V19 merge; skip if tables are gone
+  let secondaryMuscles: Record<string, unknown>[];
+  let tertiaryMuscles: Record<string, unknown>[];
+  try {
+    secondaryMuscles = require('./tables/secondaryMuscles.json') as Record<string, unknown>[];
+    tertiaryMuscles = require('./tables/tertiaryMuscles.json') as Record<string, unknown>[];
+  } catch {
+    return;
+  }
 
   try {
     // Add tertiary_muscle_ids to secondary_muscles
@@ -625,7 +502,12 @@ async function migrateToV9(db: SQLite.SQLiteDatabase) {
 
 async function migrateToV10(db: SQLite.SQLiteDatabase) {
   // V10 adds denormalized FK columns across motion tables
-  const primaryMotionVariations = require('./tables/primaryMotionVariations.json') as Record<string, unknown>[];
+  let primaryMotionVariations: Record<string, unknown>[];
+  try {
+    primaryMotionVariations = require('./tables/primaryMotionVariations.json') as Record<string, unknown>[];
+  } catch {
+    return;
+  }
 
   try {
     // Add motion_variation_ids and motion_plane_ids to primary_motions
@@ -855,13 +737,458 @@ async function migrateToV17(db: SQLite.SQLiteDatabase) {
   }
 }
 
+async function migrateToV18(db: SQLite.SQLiteDatabase) {
+  try {
+    // Add parent_id column to equipment_categories if it doesn't exist
+    const addCol = async (table: string, col: string, def = '') => {
+      try {
+        await db.execAsync(`ALTER TABLE ${table} ADD COLUMN ${col} TEXT DEFAULT '${def}'`);
+      } catch { /* column already exists */ }
+    };
+
+    await addCol('equipment_categories', 'parent_id');
+
+    // Migrate data from old tables to new merged structure
+    // First, get all existing data
+    const mainCats = await db.getAllAsync<{ id: string; label: string; common_names: string; short_description: string; sort_order: number; is_active: number }>(
+      'SELECT id, label, common_names, short_description, sort_order, is_active FROM equipment_categories'
+    );
+    const supportCats = await db.getAllAsync<{ id: string; label: string; common_names: string; short_description: string; sort_order: number; is_active: number }>(
+      'SELECT id, label, common_names, short_description, sort_order, is_active FROM support_equipment_categories'
+    );
+    const weightsCats = await db.getAllAsync<{ id: string; label: string; common_names: string; short_description: string; sort_order: number; is_active: number }>(
+      'SELECT id, label, common_names, short_description, sort_order, is_active FROM weights_equipment_categories'
+    );
+
+    // Map old IDs to new IDs
+    const supportIdMapping: Record<string, string> = {
+      'OTHER': 'OTHER_SUPPORT',
+      'GENERAL': 'GENERAL_SUPPORT',
+    };
+    const weightsIdMapping: Record<string, string> = {
+      'OTHER': 'OTHER_WEIGHTS',
+      'BODYWEIGHT': 'BODYWEIGHT_CAT',
+      'CABLE': 'CABLE_CAT',
+    };
+
+    // Clear and rebuild equipment_categories table
+    await db.execAsync('DELETE FROM equipment_categories');
+
+    // Insert top-level categories (SUPPORT and WEIGHTS)
+    for (const cat of mainCats) {
+      await db.runAsync(
+        `INSERT INTO equipment_categories (id, parent_id, label, common_names, short_description, sort_order, is_active)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        cat.id,
+        null,
+        cat.label,
+        cat.common_names || '[]',
+        cat.short_description || '',
+        cat.sort_order || 0,
+        cat.is_active !== 0 ? 1 : 0
+      );
+    }
+
+    // Insert support subcategories
+    for (const cat of supportCats) {
+      const newId = supportIdMapping[cat.id] || cat.id;
+      await db.runAsync(
+        `INSERT INTO equipment_categories (id, parent_id, label, common_names, short_description, sort_order, is_active)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        newId,
+        'SUPPORT',
+        cat.label,
+        cat.common_names || '[]',
+        cat.short_description || '',
+        cat.sort_order || 0,
+        cat.is_active !== 0 ? 1 : 0
+      );
+    }
+
+    // Insert weights subcategories
+    for (const cat of weightsCats) {
+      const newId = weightsIdMapping[cat.id] || cat.id;
+      await db.runAsync(
+        `INSERT INTO equipment_categories (id, parent_id, label, common_names, short_description, sort_order, is_active)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        newId,
+        'WEIGHTS',
+        cat.label,
+        cat.common_names || '[]',
+        cat.short_description || '',
+        cat.sort_order || 0,
+        cat.is_active !== 0 ? 1 : 0
+      );
+    }
+
+    // Drop old tables (they will be recreated empty if needed, but data is migrated)
+    try {
+      await db.execAsync('DROP TABLE IF EXISTS support_equipment_categories');
+      await db.execAsync('DROP TABLE IF EXISTS weights_equipment_categories');
+    } catch (e) {
+      console.warn('migrateToV18: failed to drop old tables', e);
+    }
+  } catch (e) {
+    console.warn('migrateToV18: failed', e);
+  }
+}
+
+async function migrateToV19(db: SQLite.SQLiteDatabase) {
+  try {
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS muscles (
+        id TEXT PRIMARY KEY,
+        parent_ids TEXT DEFAULT '[]',
+        label TEXT NOT NULL,
+        common_names TEXT,
+        technical_name TEXT,
+        short_description TEXT,
+        "function" TEXT,
+        location TEXT,
+        triggers TEXT,
+        upper_lower TEXT DEFAULT '[]',
+        sort_order INTEGER DEFAULT 0,
+        icon TEXT,
+        is_active INTEGER DEFAULT 1
+      );
+    `);
+
+    const str = (v: unknown) => (v == null ? '' : String(v));
+
+    // Migrate primary_muscles (parent_ids = [])
+    try {
+      const primaries = await db.getAllAsync<Record<string, unknown>>('SELECT * FROM primary_muscles');
+      for (const row of primaries) {
+        await db.runAsync(
+          `INSERT OR REPLACE INTO muscles (id, parent_ids, label, common_names, technical_name, short_description, "function", location, triggers, upper_lower, sort_order, icon, is_active)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          str(row.id), '[]', str(row.label), str(row.common_names), str(row.technical_name),
+          str(row.short_description), str(row.function), str(row.location), str(row.triggers),
+          str(row.upper_lower) || '[]', Number(row.sort_order) || 0, str(row.icon),
+          row.is_active !== 0 ? 1 : 0
+        );
+      }
+    } catch { /* table may not exist */ }
+
+    // Migrate secondary_muscles (parent_ids = primary_muscle_ids)
+    try {
+      const secondaries = await db.getAllAsync<Record<string, unknown>>('SELECT * FROM secondary_muscles');
+      for (const row of secondaries) {
+        const parentIds = str(row.primary_muscle_ids) || '[]';
+        await db.runAsync(
+          `INSERT OR REPLACE INTO muscles (id, parent_ids, label, common_names, technical_name, short_description, "function", location, triggers, upper_lower, sort_order, icon, is_active)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          str(row.id), parentIds, str(row.label), str(row.common_names), str(row.technical_name),
+          str(row.short_description), str(row.function), str(row.location), str(row.triggers),
+          '[]', Number(row.sort_order) || 0, str(row.icon),
+          row.is_active !== 0 ? 1 : 0
+        );
+      }
+    } catch { /* table may not exist */ }
+
+    // Migrate tertiary_muscles (parent_ids = secondary_muscle_ids)
+    try {
+      const tertiaries = await db.getAllAsync<Record<string, unknown>>('SELECT * FROM tertiary_muscles');
+      for (const row of tertiaries) {
+        const parentIds = str(row.secondary_muscle_ids) || '[]';
+        await db.runAsync(
+          `INSERT OR REPLACE INTO muscles (id, parent_ids, label, common_names, technical_name, short_description, "function", location, triggers, upper_lower, sort_order, icon, is_active)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          str(row.id), parentIds, str(row.label), str(row.common_names), str(row.technical_name),
+          str(row.short_description), str(row.function), str(row.location), str(row.triggers),
+          '[]', Number(row.sort_order) || 0, str(row.icon),
+          row.is_active !== 0 ? 1 : 0
+        );
+      }
+    } catch { /* table may not exist */ }
+
+    // Drop old tables
+    await db.execAsync('DROP TABLE IF EXISTS muscle_groups');
+    await db.execAsync('DROP TABLE IF EXISTS primary_muscles');
+    await db.execAsync('DROP TABLE IF EXISTS secondary_muscles');
+    await db.execAsync('DROP TABLE IF EXISTS tertiary_muscles');
+  } catch (e) {
+    console.warn('migrateToV19: failed', e);
+  }
+}
+
+async function migrateToV20(db: SQLite.SQLiteDatabase) {
+  try {
+    const str = (v: unknown) => (v == null ? '' : String(v));
+    const num = (v: unknown, def: number) => (v == null ? def : Number(v));
+
+    // Recreate motion_planes with new schema (drop muscle_targets & icon, add delta_rules)
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS motion_planes_new (
+        id TEXT PRIMARY KEY,
+        label TEXT NOT NULL,
+        common_names TEXT,
+        delta_rules TEXT DEFAULT '{}',
+        short_description TEXT,
+        sort_order INTEGER DEFAULT 0,
+        is_active INTEGER DEFAULT 1
+      );
+    `);
+    try {
+      await db.execAsync(`
+        INSERT INTO motion_planes_new (id, label, common_names, delta_rules, short_description, sort_order, is_active)
+        SELECT id, label, common_names, '{}', short_description, sort_order, is_active FROM motion_planes
+      `);
+    } catch { /* old table may not exist */ }
+    await db.execAsync('DROP TABLE IF EXISTS motion_planes');
+    await db.execAsync('ALTER TABLE motion_planes_new RENAME TO motion_planes');
+
+    // Create new motions table
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS motions (
+        id TEXT PRIMARY KEY,
+        parent_id TEXT,
+        label TEXT NOT NULL,
+        upper_lower_body TEXT,
+        muscle_targets TEXT DEFAULT '{}',
+        motion_planes TEXT DEFAULT '{}',
+        common_names TEXT,
+        short_description TEXT,
+        sort_order INTEGER DEFAULT 0,
+        icon TEXT,
+        is_active INTEGER DEFAULT 1
+      );
+    `);
+
+    // Migrate primary_motions rows (parent_id = NULL)
+    try {
+      const primaries = await db.getAllAsync<Record<string, unknown>>('SELECT * FROM primary_motions');
+      for (const row of primaries) {
+        await db.runAsync(
+          `INSERT OR REPLACE INTO motions (id, parent_id, label, upper_lower_body, muscle_targets, motion_planes, common_names, short_description, sort_order, icon, is_active)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          str(row.id), null, str(row.label), '',
+          str(row.muscle_targets) || '{}',
+          '{}',
+          str(row.common_names),
+          str(row.short_description),
+          num(row.sort_order, 0),
+          str(row.icon),
+          row.is_active !== 0 ? 1 : 0
+        );
+      }
+    } catch { /* table may not exist */ }
+
+    // Migrate primary_motion_variations rows (parent_id = primary_motion_key)
+    try {
+      const variations = await db.getAllAsync<Record<string, unknown>>('SELECT * FROM primary_motion_variations');
+      for (const row of variations) {
+        await db.runAsync(
+          `INSERT OR REPLACE INTO motions (id, parent_id, label, upper_lower_body, muscle_targets, motion_planes, common_names, short_description, sort_order, icon, is_active)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          str(row.id), str(row.primary_motion_key), str(row.label), '',
+          str(row.muscle_targets) || '{}',
+          '{}',
+          str(row.common_names),
+          str(row.short_description),
+          num(row.sort_order, 0),
+          str(row.icon),
+          row.is_active !== 0 ? 1 : 0
+        );
+      }
+    } catch { /* table may not exist */ }
+
+    // Drop old tables
+    await db.execAsync('DROP TABLE IF EXISTS primary_motions');
+    await db.execAsync('DROP TABLE IF EXISTS primary_motion_variations');
+
+    // Re-seed from JSON so data is up-to-date with new format
+    await seedMotionData(db);
+  } catch (e) {
+    console.warn('migrateToV20: failed', e);
+  }
+}
+
+async function migrateToV21(db: SQLite.SQLiteDatabase) {
+  try {
+    const str = (v: unknown) => (v == null ? '' : String(v));
+    const num = (v: unknown, def: number) => (v == null ? def : Number(v));
+    const json = (v: unknown, fallback = '{}') => (v != null ? JSON.stringify(v) : fallback);
+
+    // ── Merge grip_types + grip_type_variations + grip_widths → grips ──
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS grips (
+        id TEXT PRIMARY KEY,
+        parent_id TEXT,
+        label TEXT NOT NULL,
+        is_dynamic INTEGER DEFAULT 0,
+        grip_category TEXT,
+        rotation_path TEXT,
+        common_names TEXT,
+        delta_rules TEXT DEFAULT '{}',
+        short_description TEXT,
+        sort_order INTEGER DEFAULT 0,
+        icon TEXT,
+        is_active INTEGER DEFAULT 1
+      );
+    `);
+
+    // Migrate grip_types (parent_id = NULL)
+    try {
+      const gripTypes = await db.getAllAsync<Record<string, unknown>>('SELECT * FROM grip_types');
+      for (const row of gripTypes) {
+        await db.runAsync(
+          `INSERT OR REPLACE INTO grips (id, parent_id, label, is_dynamic, grip_category, rotation_path, common_names, delta_rules, short_description, sort_order, icon, is_active)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          str(row.id), null, str(row.label), 0,
+          str(row.grip_category), null,
+          str(row.common_names), str(row.delta_rules) || '{}',
+          str(row.short_description), num(row.sort_order, 0),
+          str(row.icon), row.is_active !== 0 ? 1 : 0
+        );
+      }
+    } catch { /* table may not exist */ }
+
+    // Migrate grip_type_variations (parent_id = parent_grip_id)
+    try {
+      const variations = await db.getAllAsync<Record<string, unknown>>('SELECT * FROM grip_type_variations');
+      for (const row of variations) {
+        await db.runAsync(
+          `INSERT OR REPLACE INTO grips (id, parent_id, label, is_dynamic, grip_category, rotation_path, common_names, delta_rules, short_description, sort_order, icon, is_active)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          str(row.id), str(row.parent_grip_id), str(row.label), 1,
+          'Dynamic', null,
+          str(row.common_names), str(row.delta_rules) || '{}',
+          str(row.short_description), num(row.sort_order, 0),
+          str(row.icon), row.is_active !== 0 ? 1 : 0
+        );
+      }
+    } catch { /* table may not exist */ }
+
+    // Migrate grip_widths (parent_id = NULL, grip_category = 'Width')
+    try {
+      const widths = await db.getAllAsync<Record<string, unknown>>('SELECT * FROM grip_widths');
+      for (const row of widths) {
+        await db.runAsync(
+          `INSERT OR REPLACE INTO grips (id, parent_id, label, is_dynamic, grip_category, rotation_path, common_names, delta_rules, short_description, sort_order, icon, is_active)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          str(row.id), null, str(row.label), 0,
+          'Width', null,
+          str(row.common_names), str(row.delta_rules) || '{}',
+          str(row.short_description), num(row.sort_order, 0),
+          str(row.icon), row.is_active !== 0 ? 1 : 0
+        );
+      }
+    } catch { /* table may not exist */ }
+
+    // Drop old grip tables
+    await db.execAsync('DROP TABLE IF EXISTS grip_types');
+    await db.execAsync('DROP TABLE IF EXISTS grip_type_variations');
+    await db.execAsync('DROP TABLE IF EXISTS grip_widths');
+
+    // ── Merge gym_equipment + cable_attachments → equipment ──
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS equipment (
+        id TEXT PRIMARY KEY,
+        category_id TEXT,
+        label TEXT NOT NULL,
+        common_names TEXT,
+        short_description TEXT,
+        is_attachment INTEGER DEFAULT 0,
+        requires_attachment INTEGER DEFAULT 0,
+        max_instances INTEGER DEFAULT 1,
+        modifier_constraints TEXT DEFAULT '{}',
+        sort_order INTEGER DEFAULT 0,
+        is_active INTEGER DEFAULT 1
+      );
+    `);
+
+    // Migrate gym_equipment
+    try {
+      const gymEquip = await db.getAllAsync<Record<string, unknown>>('SELECT * FROM gym_equipment');
+      for (const row of gymEquip) {
+        await db.runAsync(
+          `INSERT OR REPLACE INTO equipment (id, category_id, label, common_names, short_description, is_attachment, requires_attachment, max_instances, modifier_constraints, sort_order, is_active)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          str(row.id), null, str(row.label),
+          str(row.common_names), str(row.short_description),
+          0, row.cable_attachments ? 1 : 0,
+          Number(row.max_instances) || 1, '{}',
+          num(row.sort_order, 0), row.is_active !== 0 ? 1 : 0
+        );
+      }
+    } catch { /* table may not exist */ }
+
+    // Migrate cable_attachments
+    try {
+      const cableAtt = await db.getAllAsync<Record<string, unknown>>('SELECT * FROM cable_attachments');
+      for (const row of cableAtt) {
+        await db.runAsync(
+          `INSERT OR REPLACE INTO equipment (id, category_id, label, common_names, short_description, is_attachment, requires_attachment, max_instances, modifier_constraints, sort_order, is_active)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          str(row.id), 'CABLE_ATTACHMENTS', str(row.label),
+          str(row.common_names), str(row.short_description),
+          1, 0, 1, '{}',
+          num(row.sort_order, 0), row.is_active !== 0 ? 1 : 0
+        );
+      }
+    } catch { /* table may not exist */ }
+
+    // Drop old equipment tables
+    await db.execAsync('DROP TABLE IF EXISTS gym_equipment');
+    await db.execAsync('DROP TABLE IF EXISTS cable_attachments');
+
+    // Add CABLE_ATTACHMENTS category if not present
+    await db.runAsync(
+      `INSERT OR IGNORE INTO equipment_categories (id, parent_id, label, common_names, short_description, sort_order, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      'CABLE_ATTACHMENTS', 'WEIGHTS', 'Cable Attachments',
+      '["Attachments", "Cable Accessories"]',
+      'Accessories that attach to cable machines.',
+      7, 1
+    );
+
+    // Re-seed from JSON so data is up-to-date
+    await seedEquipmentData(db);
+    await seedGripData(db);
+  } catch (e) {
+    console.warn('migrateToV21: failed', e);
+  }
+}
+
+async function migrateToV22(db: SQLite.SQLiteDatabase) {
+  try {
+    // Replace default_plane_id with upper_lower_body + motion_planes on motions table
+    const cols = await db.getAllAsync<{ name: string }>('PRAGMA table_info(motions)');
+    const colNames = cols.map(c => c.name);
+
+    if (!colNames.includes('upper_lower_body')) {
+      await db.execAsync(`ALTER TABLE motions ADD COLUMN upper_lower_body TEXT DEFAULT ''`);
+    }
+    if (!colNames.includes('motion_planes')) {
+      await db.execAsync(`ALTER TABLE motions ADD COLUMN motion_planes TEXT DEFAULT '{}'`);
+    }
+
+    // Create range_of_motion table
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS range_of_motion (
+        id TEXT PRIMARY KEY,
+        label TEXT NOT NULL,
+        common_names TEXT,
+        icon TEXT,
+        short_description TEXT,
+        delta_rules TEXT DEFAULT '{}',
+        sort_order INTEGER DEFAULT 0,
+        is_active INTEGER DEFAULT 1
+      );
+    `);
+
+    // Re-seed motions from the updated JSON to populate new columns
+    await seedMotionData(db);
+  } catch (e) {
+    console.warn('migrateToV22: failed', e);
+  }
+}
+
 async function seedData(db: SQLite.SQLiteDatabase) {
   const exerciseCategories = require('./tables/exerciseCategories.json') as Record<string, unknown>[];
   const cardioTypes = require('./tables/cardioTypes.json') as Record<string, unknown>[];
-  const muscleGroups = require('./tables/muscleGroups.json') as Record<string, unknown>[];
-  const primaryMuscles = require('./tables/primaryMuscles.json') as Record<string, unknown>[];
-  const secondaryMuscles = require('./tables/secondaryMuscles.json') as Record<string, unknown>[];
-  const tertiaryMuscles = require('./tables/tertiaryMuscles.json') as Record<string, unknown>[];
+  const muscles = require('./tables/muscles.json') as Record<string, unknown>[];
   const trainingFocus = require('./tables/trainingFocus.json') as Record<string, unknown>[];
 
   const str = (v: unknown) => (v == null ? '' : String(v));
@@ -897,74 +1224,22 @@ async function seedData(db: SQLite.SQLiteDatabase) {
     );
   }
 
-  for (const row of muscleGroups) {
+  for (const row of muscles) {
     await db.runAsync(
-      `INSERT INTO muscle_groups (id, label, values_table, common_names, icon, short_description, sort_order, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO muscles (id, parent_ids, label, common_names, technical_name, short_description, "function", location, triggers, upper_lower, sort_order, icon, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       str(row.id),
+      Array.isArray(row.parent_ids) ? JSON.stringify(row.parent_ids) : '[]',
       str(row.label),
-      str(row.values_table),
       Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
-      str(row.icon),
-      str(row.short_description),
-      num(row.sort_order, 0),
-      row.is_active !== false ? 1 : 0
-    );
-  }
-
-  for (const row of primaryMuscles) {
-    await db.runAsync(
-      `INSERT INTO primary_muscles (id, label, technical_name, common_names, icon, short_description, upper_lower, "function", location, triggers, sort_order, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      str(row.id),
-      str(row.label),
       str(row.technical_name),
-      Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
-      str(row.icon),
       str(row.short_description),
-      Array.isArray(row.upper_lower) ? JSON.stringify(row.upper_lower) : (row.upper_lower != null ? str(row.upper_lower) : '[]'),
       str(row.function),
       str(row.location),
       str(row.triggers),
+      Array.isArray(row.upper_lower) ? JSON.stringify(row.upper_lower) : '[]',
       num(row.sort_order, 0),
-      row.is_active !== false ? 1 : 0
-    );
-  }
-
-  for (const row of secondaryMuscles) {
-    await db.runAsync(
-      `INSERT INTO secondary_muscles (id, label, technical_name, common_names, icon, short_description, primary_muscle_ids, "function", location, triggers, sort_order, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      str(row.id),
-      str(row.label),
-      str(row.technical_name),
-      Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
       str(row.icon),
-      str(row.short_description),
-      Array.isArray(row.primary_muscle_ids) ? JSON.stringify(row.primary_muscle_ids) : '[]',
-      str(row.function),
-      str(row.location),
-      str(row.triggers),
-      num(row.sort_order, 0),
-      row.is_active !== false ? 1 : 0
-    );
-  }
-
-  for (const row of tertiaryMuscles) {
-    await db.runAsync(
-      `INSERT INTO tertiary_muscles (id, label, technical_name, common_names, icon, short_description, secondary_muscle_ids, "function", location, triggers, sort_order, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      str(row.id),
-      str(row.label),
-      str(row.technical_name),
-      Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
-      str(row.icon),
-      str(row.short_description),
-      Array.isArray(row.secondary_muscle_ids) ? JSON.stringify(row.secondary_muscle_ids) : '[]',
-      str(row.function),
-      str(row.location),
-      str(row.triggers),
-      num(row.sort_order, 0),
       row.is_active !== false ? 1 : 0
     );
   }
@@ -990,208 +1265,71 @@ async function seedMuscleData(db: SQLite.SQLiteDatabase) {
   try {
     const str = (v: unknown) => (v == null ? '' : String(v));
     const num = (v: unknown, def: number) => (v == null ? def : Number(v));
-    const muscleGroups = require('./tables/muscleGroups.json') as Record<string, unknown>[];
-    const primaryMuscles = require('./tables/primaryMuscles.json') as Record<string, unknown>[];
-    const secondaryMuscles = require('./tables/secondaryMuscles.json') as Record<string, unknown>[];
-    const tertiaryMuscles = require('./tables/tertiaryMuscles.json') as Record<string, unknown>[];
+    const muscles = require('./tables/muscles.json') as Record<string, unknown>[];
 
-    // Clear tables so rows removed from JSON are removed from DB; then re-insert from JSON.
-    await db.execAsync('DELETE FROM tertiary_muscles');
-    await db.execAsync('DELETE FROM secondary_muscles');
-    await db.execAsync('DELETE FROM primary_muscles');
-    await db.execAsync('DELETE FROM muscle_groups');
+    await db.execAsync('DELETE FROM muscles');
 
-    for (const row of muscleGroups) {
+    for (const row of muscles) {
       await db.runAsync(
-        `INSERT OR REPLACE INTO muscle_groups (id, label, values_table, common_names, icon, short_description, sort_order, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT OR REPLACE INTO muscles (id, parent_ids, label, common_names, technical_name, short_description, "function", location, triggers, upper_lower, sort_order, icon, is_active)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         str(row.id),
+        Array.isArray(row.parent_ids) ? JSON.stringify(row.parent_ids) : '[]',
         str(row.label),
-        str(row.values_table),
         Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
-        str(row.icon),
-        str(row.short_description),
-        num(row.sort_order, 0),
-        row.is_active !== false ? 1 : 0
-      );
-    }
-
-    for (const row of primaryMuscles) {
-      await db.runAsync(
-        `INSERT OR REPLACE INTO primary_muscles (id, label, technical_name, common_names, icon, short_description, upper_lower, "function", location, triggers, sort_order, is_active)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        str(row.id),
-        str(row.label),
         str(row.technical_name),
-        Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
-        str(row.icon),
         str(row.short_description),
-        Array.isArray(row.upper_lower) ? JSON.stringify(row.upper_lower) : (row.upper_lower != null ? str(row.upper_lower) : '[]'),
         str(row.function),
         str(row.location),
         str(row.triggers),
+        Array.isArray(row.upper_lower) ? JSON.stringify(row.upper_lower) : '[]',
         num(row.sort_order, 0),
-        row.is_active !== false ? 1 : 0
-      );
-    }
-
-    for (const row of secondaryMuscles) {
-      await db.runAsync(
-        `INSERT OR REPLACE INTO secondary_muscles (id, label, technical_name, common_names, icon, short_description, primary_muscle_ids, "function", location, triggers, sort_order, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        str(row.id),
-        str(row.label),
-        str(row.technical_name),
-        Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
         str(row.icon),
-        str(row.short_description),
-        Array.isArray(row.primary_muscle_ids) ? JSON.stringify(row.primary_muscle_ids) : '[]',
-        str(row.function),
-        str(row.location),
-        str(row.triggers),
-        num(row.sort_order, 0),
-        row.is_active !== false ? 1 : 0
-      );
-    }
-
-    for (const row of tertiaryMuscles) {
-      await db.runAsync(
-        `INSERT OR REPLACE INTO tertiary_muscles (id, label, technical_name, common_names, icon, short_description, secondary_muscle_ids, "function", location, triggers, sort_order, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        str(row.id),
-        str(row.label),
-        str(row.technical_name),
-        Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
-        str(row.icon),
-        str(row.short_description),
-        Array.isArray(row.secondary_muscle_ids) ? JSON.stringify(row.secondary_muscle_ids) : '[]',
-        str(row.function),
-        str(row.location),
-        str(row.triggers),
-        num(row.sort_order, 0),
         row.is_active !== false ? 1 : 0
       );
     }
   } catch (error) {
     console.error('Failed to seed muscle data:', error);
-    throw error; // Re-throw to prevent silent failures
-  }
-}
-
-/** Re-seed secondary_muscles from JSON (e.g. to remove deprecated rows like "Grip") */
-async function reseedSecondaryMuscles(db: SQLite.SQLiteDatabase) {
-  await db.execAsync('DELETE FROM secondary_muscles');
-  const str = (v: unknown) => (v == null ? '' : String(v));
-  const num = (v: unknown, def: number) => (v == null ? def : Number(v));
-  const secondaryMuscles = require('./tables/secondaryMuscles.json') as Record<string, unknown>[];
-  for (const row of secondaryMuscles) {
-    await db.runAsync(
-      `INSERT INTO secondary_muscles (id, label, technical_name, common_names, icon, short_description, primary_muscle_ids, "function", location, triggers, sort_order, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      str(row.id),
-      str(row.label),
-      str(row.technical_name),
-      Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
-      str(row.icon),
-      str(row.short_description),
-      Array.isArray(row.primary_muscle_ids) ? JSON.stringify(row.primary_muscle_ids) : '[]',
-      str(row.function),
-      str(row.location),
-      str(row.triggers),
-      num(row.sort_order, 0),
-      row.is_active !== false ? 1 : 0
-    );
+    throw error;
   }
 }
 
 async function seedEquipmentData(db: SQLite.SQLiteDatabase) {
   const str = (v: unknown) => (v == null ? '' : String(v));
   const num = (v: unknown, def: number) => (v == null ? def : Number(v));
+  const json = (v: unknown, fallback = '{}') => (v != null ? JSON.stringify(v) : fallback);
   const equipmentCategories = require('./tables/equipmentCategories.json') as Record<string, unknown>[];
-  const supportCategories = require('./tables/supportEquipmentCategories.json') as Record<string, unknown>[];
-  const weightsCategories = require('./tables/weightsEquipmentCategories.json') as Record<string, unknown>[];
-  const cableAttachments = require('./tables/cableAttachments.json') as Record<string, unknown>[];
-  const gymEquipment = require('./tables/gymEquipment.json') as Record<string, unknown>[];
-  const equipmentIcons = require('./tables/equipmentIcons.json') as Record<string, string>;
+  const equipmentItems = require('./tables/equipment.json') as Record<string, unknown>[];
 
+  await db.execAsync('DELETE FROM equipment_categories');
   for (const row of equipmentCategories) {
     await db.runAsync(
-      `INSERT OR REPLACE INTO equipment_categories (id, label, sub_label, common_names, icon, short_description, sub_categories_table, sort_order, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT OR REPLACE INTO equipment_categories (id, parent_id, label, common_names, short_description, sort_order, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
       str(row.id),
+      row.parent_id ? str(row.parent_id) : null,
       str(row.label),
-      str(row.sub_label),
       Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
-      str(row.icon),
-      str(row.short_description),
-      str(row.sub_categories_table),
-      num(row.sort_order, 0),
-      row.is_active !== false ? 1 : 0
-    );
-  }
-
-  for (const row of supportCategories) {
-    await db.runAsync(
-      `INSERT OR REPLACE INTO support_equipment_categories (id, label, sub_label, common_names, icon, short_description, sort_order, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      str(row.id),
-      str(row.label),
-      str(row.sub_label),
-      Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
-      str(row.icon),
       str(row.short_description),
       num(row.sort_order, 0),
       row.is_active !== false ? 1 : 0
     );
   }
 
-  for (const row of weightsCategories) {
+  await db.execAsync('DELETE FROM equipment');
+  for (const row of equipmentItems) {
     await db.runAsync(
-      `INSERT OR REPLACE INTO weights_equipment_categories (id, label, sub_label, common_names, icon, short_description, sort_order, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      str(row.id),
-      str(row.label),
-      str(row.sub_label),
-      Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
-      str(row.icon),
-      str(row.short_description),
-      num(row.sort_order, 0),
-      row.is_active !== false ? 1 : 0
-    );
-  }
-
-  for (const row of cableAttachments) {
-    await db.runAsync(
-      `INSERT OR REPLACE INTO cable_attachments (id, label, sub_label, common_names, icon, short_description, sort_order, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      str(row.id),
-      str(row.label),
-      str(row.sub_label),
-      Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
-      str(row.icon),
-      str(row.short_description),
-      num(row.sort_order, 0),
-      row.is_active !== false ? 1 : 0
-    );
-  }
-
-  for (const row of gymEquipment) {
-    const eqCats = row.equipment_categories;
-    const cableAtt = row.cable_attachments === true || row.cable_attachments === 1;
-    // Icon only from equipmentIcons.json (id -> base64). gymEquipment.json "icon" is legacy filename; display uses table only.
-    const iconBase64 = equipmentIcons[str(row.id)] ?? '';
-    await db.runAsync(
-      `INSERT OR REPLACE INTO gym_equipment (id, label, sub_label, common_names, icon, short_description, equipment_categories, max_instances, cable_attachments, sort_order, is_active)
+      `INSERT OR REPLACE INTO equipment (id, category_id, label, common_names, short_description, is_attachment, requires_attachment, max_instances, modifier_constraints, sort_order, is_active)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       str(row.id),
+      row.category_id ? str(row.category_id) : null,
       str(row.label),
-      str(row.sub_label),
       Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
-      iconBase64,
       str(row.short_description),
-      Array.isArray(eqCats) ? JSON.stringify(eqCats) : (typeof eqCats === 'object' && eqCats !== null ? JSON.stringify(eqCats) : '[]'),
+      row.is_attachment ? 1 : 0,
+      row.requires_attachment ? 1 : 0,
       Number(row.max_instances) || 1,
-      cableAtt ? 1 : 0,
+      json(row.modifier_constraints),
       num(row.sort_order, 0),
       row.is_active !== false ? 1 : 0
     );
@@ -1203,54 +1341,38 @@ async function seedMotionData(db: SQLite.SQLiteDatabase) {
   const num = (v: unknown, def: number) => (v == null ? def : Number(v));
   const json = (v: unknown, fallback = '{}') => (v != null ? JSON.stringify(v) : fallback);
   const motionPlanes = require('./tables/motionPlanes.json') as Record<string, unknown>[];
-  const primaryMotions = require('./tables/primaryMotions.json') as Record<string, unknown>[];
-  const primaryMotionVariations = require('./tables/primaryMotionVariations.json') as Record<string, unknown>[];
+  const motions = require('./tables/motions.json') as Record<string, unknown>[];
 
+  await db.execAsync('DELETE FROM motion_planes');
   for (const row of motionPlanes) {
     await db.runAsync(
-      `INSERT OR REPLACE INTO motion_planes (id, label, common_names, short_description, icon, sort_order, is_active)
+      `INSERT OR REPLACE INTO motion_planes (id, label, common_names, delta_rules, short_description, sort_order, is_active)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
       str(row.id),
       str(row.label),
       Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
+      json(row.delta_rules),
       str(row.short_description),
-      str(row.icon),
       num(row.sort_order, 0),
       row.is_active !== false ? 1 : 0
     );
   }
 
-  for (const row of primaryMotions) {
-    const upperLowerBody = str(row.upperLowerBody ?? row.upper_lower_body);
+  await db.execAsync('DELETE FROM motions');
+  for (const row of motions) {
     await db.runAsync(
-      `INSERT OR REPLACE INTO primary_motions (id, upper_lower_body, label, common_names, short_description, icon, muscle_targets, motion_planes, sort_order, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT OR REPLACE INTO motions (id, parent_id, label, upper_lower_body, muscle_targets, motion_planes, common_names, short_description, sort_order, icon, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       str(row.id),
-      upperLowerBody,
+      row.parent_id ? str(row.parent_id) : null,
       str(row.label),
-      Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
-      str(row.short_description),
-      str(row.icon),
+      str(row.upper_lower_body),
       json(row.muscle_targets),
       json(row.motion_planes),
-      num(row.sort_order, 0),
-      row.is_active !== false ? 1 : 0
-    );
-  }
-
-  for (const row of primaryMotionVariations) {
-    await db.runAsync(
-      `INSERT OR REPLACE INTO primary_motion_variations (id, primary_motion_key, label, common_names, short_description, icon, muscle_targets, motion_planes, sort_order, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      str(row.id),
-      str(row.primary_motion_key),
-      str(row.label),
       Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
       str(row.short_description),
-      str(row.icon),
-      json(row.muscle_targets),
-      json(row.motion_planes),
       num(row.sort_order, 0),
+      str(row.icon),
       row.is_active !== false ? 1 : 0
     );
   }
@@ -1262,9 +1384,7 @@ async function seedGripData(db: SQLite.SQLiteDatabase) {
     const str = (v: unknown) => (v == null ? '' : String(v));
     const num = (v: unknown, def: number) => (v == null ? def : Number(v));
     const json = (v: unknown, fallback = '{}') => (v != null ? JSON.stringify(v) : fallback);
-    const gripTypes = require('./tables/gripTypes.json') as Record<string, unknown>[];
-    const gripWidths = require('./tables/gripWidths.json') as Record<string, unknown>[];
-    const gripTypeVariations = require('./tables/gripTypeVariations.json') as Record<string, unknown>[];
+    const grips = require('./tables/grips.json') as Record<string, unknown>[];
     const footPositions = require('./tables/footPositions.json') as Record<string, unknown>[];
     const stanceTypes = require('./tables/stanceTypes.json') as Record<string, unknown>[];
     const stanceWidths = require('./tables/stanceWidths.json') as Record<string, unknown>[];
@@ -1273,10 +1393,9 @@ async function seedGripData(db: SQLite.SQLiteDatabase) {
     const supportStructures = require('./tables/supportStructures.json') as Record<string, unknown>[];
     const elbowRelationship = require('./tables/elbowRelationship.json') as Record<string, unknown>[];
     const loadingAids = require('./tables/loadingAids.json') as Record<string, unknown>[];
+    const rangeOfMotion = require('./tables/rangeOfMotion.json') as Record<string, unknown>[];
 
-    await db.execAsync('DELETE FROM grip_type_variations');
-    await db.execAsync('DELETE FROM grip_widths');
-    await db.execAsync('DELETE FROM grip_types');
+    await db.execAsync('DELETE FROM grips');
     await db.execAsync('DELETE FROM foot_positions');
     await db.execAsync('DELETE FROM stance_types');
     await db.execAsync('DELETE FROM stance_widths');
@@ -1285,51 +1404,23 @@ async function seedGripData(db: SQLite.SQLiteDatabase) {
     await db.execAsync('DELETE FROM support_structures');
     await db.execAsync('DELETE FROM elbow_relationship');
     await db.execAsync('DELETE FROM loading_aids');
+    await db.execAsync('DELETE FROM range_of_motion');
 
-    for (const row of gripTypes) {
+    for (const row of grips) {
       await db.runAsync(
-        `INSERT OR REPLACE INTO grip_types (id, label, grip_category, common_names, icon, short_description, delta_rules, default_variation, sort_order, is_active)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT OR REPLACE INTO grips (id, parent_id, label, is_dynamic, grip_category, rotation_path, common_names, delta_rules, short_description, sort_order, icon, is_active)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         str(row.id),
+        row.parent_id ? str(row.parent_id) : null,
         str(row.label),
+        row.is_dynamic ? 1 : 0,
         str(row.grip_category),
+        row.rotation_path ? json(row.rotation_path) : null,
         Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
-        str(row.icon),
-        str(row.short_description),
         json(row.delta_rules),
-        str(row.default_variation),
-        num(row.sort_order, 0),
-        row.is_active !== false ? 1 : 0
-      );
-    }
-
-    for (const row of gripWidths) {
-      await db.runAsync(
-        `INSERT OR REPLACE INTO grip_widths (id, label, common_names, icon, short_description, delta_rules, sort_order, is_active)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        str(row.id),
-        str(row.label),
-        Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
-        str(row.icon),
         str(row.short_description),
-        json(row.delta_rules),
         num(row.sort_order, 0),
-        row.is_active !== false ? 1 : 0
-      );
-    }
-
-    for (const row of gripTypeVariations) {
-      await db.runAsync(
-        `INSERT OR REPLACE INTO grip_type_variations (id, parent_grip_id, label, common_names, icon, short_description, delta_rules, sort_order, is_active)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        str(row.id),
-        str(row.parent_grip_id),
-        str(row.label),
-        Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
         str(row.icon),
-        str(row.short_description),
-        json(row.delta_rules),
-        num(row.sort_order, 0),
         row.is_active !== false ? 1 : 0
       );
     }
@@ -1375,6 +1466,7 @@ async function seedGripData(db: SQLite.SQLiteDatabase) {
     await seedDeltaTable('support_structures', supportStructures);
     await seedDeltaTable('elbow_relationship', elbowRelationship);
     await seedDeltaTable('loading_aids', loadingAids);
+    await seedDeltaTable('range_of_motion', rangeOfMotion);
   } catch (error) {
     console.error('Failed to seed grip/delta data:', error);
     throw error;

@@ -1,23 +1,22 @@
 /**
- * Build script: reads icon filenames from gymEquipment.json, loads PNGs from assets/Equipment,
- * and outputs base64 to equipmentIcons.json. The gymEquipment table defines which icon each
- * equipment uses via the "icon" column (e.g. "Barbell.png").
+ * Build script: reads equipment IDs, matches PNGs from assets/Equipment by label,
+ * and outputs base64 to equipmentIcons.json.
  * Run: node scripts/embedEquipmentIcons.js
  */
 const fs = require('fs');
 const path = require('path');
 
 const ASSETS_DIR = path.join(__dirname, '..', 'assets', 'Equipment');
-const GYM_EQUIPMENT_FILE = path.join(__dirname, '..', 'src', 'database', 'tables', 'gymEquipment.json');
+const EQUIPMENT_FILE = path.join(__dirname, '..', 'src', 'database', 'tables', 'equipment.json');
 const OUTPUT_FILE = path.join(__dirname, '..', 'src', 'database', 'tables', 'equipmentIcons.json');
 
-const gymEquipment = JSON.parse(fs.readFileSync(GYM_EQUIPMENT_FILE, 'utf8'));
+const equipment = JSON.parse(fs.readFileSync(EQUIPMENT_FILE, 'utf8'));
 const result = {};
 let hadError = false;
 
-for (const row of gymEquipment) {
-  const icon = row.icon && String(row.icon).trim();
-  if (!icon) continue;
+for (const row of equipment) {
+  const icon = row.label ? row.label.replace(/[^a-zA-Z0-9]/g, '') + '.png' : '';
+  if (!icon || !row.label) continue;
 
   const filePath = path.join(ASSETS_DIR, icon);
   try {

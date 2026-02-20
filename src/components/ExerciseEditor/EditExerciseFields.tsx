@@ -7,7 +7,7 @@ import {
   buildGripTypesById,
   buildGripWidthsById,
 } from '@/constants/data';
-import { useCardioTypesAsStrings, useTrainingFocusAsStrings, usePrimaryMusclesAsStrings, useCableAttachments, useGripTypes, useGripWidths } from '@/database/useExerciseConfig';
+import { useCardioTypesAsStrings, useTrainingFocusAsStrings, usePrimaryMusclesAsStrings, useAttachments, useGripTypes, useGripWidths } from '@/database/useExerciseConfig';
 import { GripImages } from '@/constants/gripImages';
 import { GripWidthImages } from '@/constants/gripWidthImages';
 import Chip from './Chip';
@@ -158,7 +158,7 @@ export const CableAttachmentsField: React.FC<{
   value: string;
   onChange: (v: string) => void;
 }> = ({ value, onChange }) => {
-  const CABLE_ATTACHMENTS = useCableAttachments();
+  const CABLE_ATTACHMENTS = useAttachments();
   return (
     <FieldGroup>
       <Label>{FIELD_LABELS.cableAttachments}</Label>

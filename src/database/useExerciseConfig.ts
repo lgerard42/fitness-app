@@ -10,6 +10,7 @@ import {
   getPrimaryMuscles,
   getSecondaryMuscles,
   getTertiaryMuscles,
+  getAllMuscles,
   getTrainingFocus,
   getCategoriesAsStrings,
   getPrimaryMusclesAsStrings,
@@ -17,8 +18,8 @@ import {
   getTrainingFocusAsStrings,
   buildPrimaryToSecondaryMap,
   getEquipmentPickerSections,
-  getGymEquipmentLabels,
-  getCableAttachments,
+  getEquipmentLabels,
+  getAttachments,
   getSingleDoubleEquipmentLabels,
   getEquipmentIconsByLabel,
   getGripTypes,
@@ -26,33 +27,31 @@ import {
   type EquipmentPickerItem,
   type ExerciseCategory,
   type CardioType,
-  type PrimaryMuscle,
-  type SecondaryMuscle,
-  type TertiaryMuscle,
+  type Muscle,
   type TrainingFocus,
-  type GripType,
-  type GripWidth,
+  type Grip,
 } from './exerciseConfigService';
 
 let dbInstance: SQLite.SQLiteDatabase | null = null;
 let categoriesCache: ExerciseCategory[] | null = null;
 let equipmentSectionsCache: { title: string; data: EquipmentPickerItem[] }[] | null = null;
-let gymEquipmentLabelsCache: string[] | null = null;
-let cableAttachmentsCache: { id: string; label: string }[] | null = null;
-let singleDoubleEquipmentCache: string[] | null = null;
+let equipmentLabelsCache: string[] | null = null;
+let attachmentsCache: { id: string; label: string }[] | null = null;
 let equipmentIconsByLabelCache: Record<string, string> | null = null;
+let singleDoubleEquipmentCache: string[] | null = null;
 let cardioTypesCache: CardioType[] | null = null;
-let primaryMusclesCache: PrimaryMuscle[] | null = null;
-let secondaryMusclesCache: SecondaryMuscle[] | null = null;
-let tertiaryMusclesCache: TertiaryMuscle[] | null = null;
+let allMusclesCache: Muscle[] | null = null;
+let primaryMusclesCache: Muscle[] | null = null;
+let secondaryMusclesCache: Muscle[] | null = null;
+let tertiaryMusclesCache: Muscle[] | null = null;
 let trainingFocusCache: TrainingFocus[] | null = null;
 let categoriesStringsCache: string[] | null = null;
 let primaryMusclesStringsCache: string[] | null = null;
 let cardioTypesStringsCache: string[] | null = null;
 let trainingFocusStringsCache: string[] | null = null;
 let primaryToSecondaryMapCache: Record<string, string[]> | null = null;
-let gripTypesCache: GripType[] | null = null;
-let gripWidthsCache: GripWidth[] | null = null;
+let gripTypesCache: Grip[] | null = null;
+let gripWidthsCache: Grip[] | null = null;
 
 /**
  * Initialize database (call once at app startup)
@@ -149,10 +148,31 @@ export function useCardioTypesAsStrings(): string[] {
 }
 
 /**
+ * Hook to get all muscles
+ */
+export function useAllMuscles(): Muscle[] {
+  const [muscles, setMuscles] = useState<Muscle[]>(allMusclesCache || []);
+
+  useEffect(() => {
+    if (allMusclesCache) {
+      setMuscles(allMusclesCache);
+      return;
+    }
+
+    getAllMuscles().then(data => {
+      allMusclesCache = data;
+      setMuscles(data);
+    });
+  }, []);
+
+  return muscles;
+}
+
+/**
  * Hook to get primary muscles
  */
-export function usePrimaryMuscles(): PrimaryMuscle[] {
-  const [muscles, setMuscles] = useState<PrimaryMuscle[]>(primaryMusclesCache || []);
+export function usePrimaryMuscles(): Muscle[] {
+  const [muscles, setMuscles] = useState<Muscle[]>(primaryMusclesCache || []);
 
   useEffect(() => {
     if (primaryMusclesCache) {
@@ -193,8 +213,8 @@ export function usePrimaryMusclesAsStrings(): string[] {
 /**
  * Hook to get secondary muscles
  */
-export function useSecondaryMuscles(): SecondaryMuscle[] {
-  const [muscles, setMuscles] = useState<SecondaryMuscle[]>(secondaryMusclesCache || []);
+export function useSecondaryMuscles(): Muscle[] {
+  const [muscles, setMuscles] = useState<Muscle[]>(secondaryMusclesCache || []);
 
   useEffect(() => {
     if (secondaryMusclesCache) {
@@ -214,8 +234,8 @@ export function useSecondaryMuscles(): SecondaryMuscle[] {
 /**
  * Hook to get tertiary muscles
  */
-export function useTertiaryMuscles(): TertiaryMuscle[] {
-  const [muscles, setMuscles] = useState<TertiaryMuscle[]>(tertiaryMusclesCache || []);
+export function useTertiaryMuscles(): Muscle[] {
+  const [muscles, setMuscles] = useState<Muscle[]>(tertiaryMusclesCache || []);
 
   useEffect(() => {
     if (tertiaryMusclesCache) {
@@ -317,19 +337,19 @@ export function useEquipmentPickerSections(): { title: string; data: EquipmentPi
 }
 
 /**
- * Hook to get gym equipment labels (flat list)
+ * Hook to get equipment labels (flat list, non-attachments)
  */
-export function useGymEquipmentLabels(): string[] {
-  const [labels, setLabels] = useState<string[]>(gymEquipmentLabelsCache || []);
+export function useEquipmentLabels(): string[] {
+  const [labels, setLabels] = useState<string[]>(equipmentLabelsCache || []);
 
   useEffect(() => {
-    if (gymEquipmentLabelsCache) {
-      setLabels(gymEquipmentLabelsCache);
+    if (equipmentLabelsCache) {
+      setLabels(equipmentLabelsCache);
       return;
     }
 
-    getGymEquipmentLabels().then(data => {
-      gymEquipmentLabelsCache = data;
+    getEquipmentLabels().then(data => {
+      equipmentLabelsCache = data;
       setLabels(data);
     });
   }, []);
@@ -338,19 +358,19 @@ export function useGymEquipmentLabels(): string[] {
 }
 
 /**
- * Hook to get cable attachments
+ * Hook to get cable attachments (equipment items that are attachments)
  */
-export function useCableAttachments(): { id: string; label: string }[] {
-  const [attachments, setAttachments] = useState<{ id: string; label: string }[]>(cableAttachmentsCache || []);
+export function useAttachments(): { id: string; label: string }[] {
+  const [attachments, setAttachments] = useState<{ id: string; label: string }[]>(attachmentsCache || []);
 
   useEffect(() => {
-    if (cableAttachmentsCache) {
-      setAttachments(cableAttachmentsCache);
+    if (attachmentsCache) {
+      setAttachments(attachmentsCache);
       return;
     }
 
-    getCableAttachments().then(data => {
-      cableAttachmentsCache = data;
+    getAttachments().then(data => {
+      attachmentsCache = data;
       setAttachments(data);
     });
   }, []);
@@ -359,7 +379,7 @@ export function useCableAttachments(): { id: string; label: string }[] {
 }
 
 /**
- * Hook to get label -> icon (base64) map for gym equipment
+ * Hook to get label -> icon (base64) map for equipment
  */
 export function useEquipmentIconsByLabel(): Record<string, string> {
   const [map, setMap] = useState<Record<string, string>>(equipmentIconsByLabelCache || {});
@@ -401,10 +421,10 @@ export function useSingleDoubleEquipmentLabels(): string[] {
 }
 
 /**
- * Hook to get grip types
+ * Hook to get grip types (non-width, no parent)
  */
-export function useGripTypes(): GripType[] {
-  const [types, setTypes] = useState<GripType[]>(gripTypesCache || []);
+export function useGripTypes(): Grip[] {
+  const [types, setTypes] = useState<Grip[]>(gripTypesCache || []);
 
   useEffect(() => {
     if (gripTypesCache) {
@@ -424,8 +444,8 @@ export function useGripTypes(): GripType[] {
 /**
  * Hook to get grip widths
  */
-export function useGripWidths(): GripWidth[] {
-  const [widths, setWidths] = useState<GripWidth[]>(gripWidthsCache || []);
+export function useGripWidths(): Grip[] {
+  const [widths, setWidths] = useState<Grip[]>(gripWidthsCache || []);
 
   useEffect(() => {
     if (gripWidthsCache) {

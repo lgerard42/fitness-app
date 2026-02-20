@@ -7,40 +7,62 @@ interface FilterMatrixProps {
   onDataChange: () => void;
 }
 
-type MatrixTab = 'allowed_grip_types' | 'allowed_grip_widths' | 'allowed_stance_types' | 'allowed_stance_widths';
-type SourceTable = 'gymEquipment' | 'cableAttachments';
+type MatrixTab = 'GRIPS' | 'GRIP_WIDTHS' | 'SUPPORT_STRUCTURES' | 'TORSO_ANGLES';
 type ViewMode = 'equipment' | 'option';
+type EquipmentFilter = 'all' | 'equipment' | 'attachments';
 
-const TABS: { key: MatrixTab; label: string; refTable: string }[] = [
-  { key: 'allowed_grip_types', label: 'Grip Types', refTable: 'gripTypes' },
-  { key: 'allowed_grip_widths', label: 'Grip Widths', refTable: 'gripWidths' },
-  { key: 'allowed_stance_types', label: 'Stance Types', refTable: 'stanceTypes' },
-  { key: 'allowed_stance_widths', label: 'Stance Widths', refTable: 'stanceWidths' },
+const TABS: { key: MatrixTab; label: string; refTable: string; filterFn?: (row: Record<string, unknown>) => boolean }[] = [
+  { key: 'GRIPS', label: 'Grips', refTable: 'grips', filterFn: (r) => r.grip_category !== 'Width' && r.parent_id == null },
+  { key: 'GRIP_WIDTHS', label: 'Grip Widths', refTable: 'grips', filterFn: (r) => r.grip_category === 'Width' },
+  { key: 'SUPPORT_STRUCTURES', label: 'Support Structures', refTable: 'supportStructures' },
+  { key: 'TORSO_ANGLES', label: 'Torso Angles', refTable: 'torsoAngles' },
 ];
 
-const ALLOWED_COLS: MatrixTab[] = ['allowed_grip_types', 'allowed_grip_widths', 'allowed_stance_types', 'allowed_stance_widths'];
+function getConstraintArray(row: Record<string, unknown>, key: MatrixTab): string[] | null {
+  const mc = row.modifier_constraints;
+  let parsed: Record<string, unknown>;
+  if (typeof mc === 'string') {
+    try { parsed = JSON.parse(mc); } catch { return null; }
+  } else if (mc && typeof mc === 'object') {
+    parsed = mc as Record<string, unknown>;
+  } else {
+    return null;
+  }
+  const val = parsed[key];
+  if (val === undefined) return null;
+  if (Array.isArray(val)) return val as string[];
+  return null;
+}
+
+function setConstraintArray(row: Record<string, unknown>, key: MatrixTab, value: string[] | null): Record<string, unknown> {
+  let parsed: Record<string, unknown>;
+  const mc = row.modifier_constraints;
+  if (typeof mc === 'string') {
+    try { parsed = JSON.parse(mc); } catch { parsed = {}; }
+  } else if (mc && typeof mc === 'object') {
+    parsed = { ...(mc as Record<string, unknown>) };
+  } else {
+    parsed = {};
+  }
+  if (value === null) {
+    delete parsed[key];
+  } else {
+    parsed[key] = value;
+  }
+  return { ...row, modifier_constraints: parsed };
+}
 
 function rowHasChanges(row: Record<string, unknown>, saved: Record<string, unknown>): boolean {
-  for (const col of ALLOWED_COLS) {
-    const a = row[col];
-    const b = saved[col];
-    if (Array.isArray(a) && Array.isArray(b)) {
-      if (a.length !== b.length) return true;
-      const sa = [...a].sort();
-      const sb = [...b].sort();
-      if (sa.some((v, i) => v !== sb[i])) return true;
-    } else if (a !== b) {
-      return true;
-    }
-  }
-  return false;
+  const a = JSON.stringify(row.modifier_constraints);
+  const b = JSON.stringify(saved.modifier_constraints);
+  return a !== b;
 }
 
 export default function FilterMatrix({ onDataChange }: FilterMatrixProps) {
-  const [sourceTable, setSourceTable] = useState<SourceTable>('gymEquipment');
-  const [activeTab, setActiveTab] = useState<MatrixTab>('allowed_grip_types');
+  const [equipFilter, setEquipFilter] = useState<EquipmentFilter>('all');
+  const [activeTab, setActiveTab] = useState<MatrixTab>('GRIPS');
   const [viewMode, setViewMode] = useState<ViewMode>('equipment');
-  const [rows, setRows] = useState<Record<string, unknown>[]>([]);
+  const [allRows, setAllRows] = useState<Record<string, unknown>[]>([]);
   const [savedRows, setSavedRows] = useState<Record<string, unknown>[]>([]);
   const [colOptions, setColOptions] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,183 +71,157 @@ export default function FilterMatrix({ onDataChange }: FilterMatrixProps) {
 
   const currentTabDef = TABS.find((t) => t.key === activeTab)!;
 
+  const rows = useMemo(() => {
+    if (equipFilter === 'equipment') return allRows.filter(r => !r.is_attachment);
+    if (equipFilter === 'attachments') return allRows.filter(r => r.is_attachment);
+    return allRows;
+  }, [allRows, equipFilter]);
+
   const hasChanges = useMemo(() => {
-    if (rows.length !== savedRows.length) return true;
-    return rows.some((r, i) => {
+    return allRows.some((r) => {
       const saved = savedRows.find((s) => s.id === r.id);
       return !saved || rowHasChanges(r, saved);
     });
-  }, [rows, savedRows]);
+  }, [allRows, savedRows]);
 
   const loadEquip = useCallback(async () => {
     setLoading(true);
     try {
-      const equipData = await api.getTable(sourceTable);
+      const equipData = await api.getTable('equipment');
       const data = Array.isArray(equipData) ? (equipData as Record<string, unknown>[]) : [];
-      setRows(data);
-      setSavedRows(data);
+      const normalized = data.map(r => {
+        if (typeof r.modifier_constraints === 'string') {
+          try { r.modifier_constraints = JSON.parse(r.modifier_constraints as string); } catch { r.modifier_constraints = {}; }
+        }
+        return r;
+      });
+      setAllRows(normalized);
+      setSavedRows(normalized.map(r => ({ ...r, modifier_constraints: { ...(r.modifier_constraints as Record<string, unknown>) } })));
     } catch (err) {
       console.error('Failed to load equipment:', err);
       toast.error('Failed to load data');
     } finally {
       setLoading(false);
     }
-  }, [sourceTable]);
+  }, []);
 
   const loadColOptions = useCallback(async () => {
     try {
       const refData = await api.getTable(currentTabDef.refTable);
-      setColOptions(Array.isArray(refData) ? refData as Record<string, unknown>[] : []);
+      let opts = Array.isArray(refData) ? refData as Record<string, unknown>[] : [];
+      if (currentTabDef.filterFn) {
+        opts = opts.filter(currentTabDef.filterFn);
+      }
+      setColOptions(opts);
     } catch (err) {
       console.error('Failed to load options:', err);
     }
-  }, [currentTabDef.refTable]);
+  }, [currentTabDef.refTable, currentTabDef.filterFn]);
 
-  useEffect(() => {
-    loadEquip();
-  }, [loadEquip]);
-
-  useEffect(() => {
-    loadColOptions();
-  }, [loadColOptions]);
+  useEffect(() => { loadEquip(); }, [loadEquip]);
+  useEffect(() => { loadColOptions(); }, [loadColOptions]);
 
   const handleSave = useCallback(async () => {
     setSaving(true);
     try {
-      const updates: Record<string, Record<string, unknown>> = {};
-      for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
+      for (const row of allRows) {
         const saved = savedRows.find((s) => s.id === row.id);
         if (!saved || rowHasChanges(row, saved)) {
-          updates[row.id as string] = {
-            allowed_grip_types: row.allowed_grip_types,
-            allowed_grip_widths: row.allowed_grip_widths,
-            allowed_stance_types: row.allowed_stance_types,
-            allowed_stance_widths: row.allowed_stance_widths,
-          };
+          await api.updateRow('equipment', String(row.id), { modifier_constraints: row.modifier_constraints });
         }
       }
-      if (Object.keys(updates).length > 0) {
-        await api.bulkUpdateMatrix(sourceTable, updates);
-        setSavedRows([...rows]);
-        toast.success('Changes saved');
-        onDataChange();
-      }
-    } catch (err) {
+      setSavedRows(allRows.map(r => ({ ...r, modifier_constraints: { ...(r.modifier_constraints as Record<string, unknown>) } })));
+      toast.success('Changes saved');
+      onDataChange();
+    } catch {
       toast.error('Failed to save');
     } finally {
       setSaving(false);
     }
-  }, [sourceTable, rows, savedRows, onDataChange]);
+  }, [allRows, savedRows, onDataChange]);
 
   const handleCancel = useCallback(() => {
-    setRows([...savedRows]);
+    setAllRows(savedRows.map(r => ({ ...r, modifier_constraints: { ...(r.modifier_constraints as Record<string, unknown>) } })));
     toast.success('Changes discarded');
   }, [savedRows]);
 
   const isChecked = (row: Record<string, unknown>, colId: string): boolean => {
-    const val = row[activeTab];
-    if (val === null || val === undefined) return false;
-    if (Array.isArray(val)) return val.includes(colId);
-    return false;
+    const arr = getConstraintArray(row, activeTab);
+    return arr !== null && arr.includes(colId);
   };
 
   const isNullField = (row: Record<string, unknown>): boolean => {
-    const val = row[activeTab];
-    return val === null || val === undefined;
+    return getConstraintArray(row, activeTab) === null;
   };
 
   const getCheckedCount = (row: Record<string, unknown>): number => {
-    const val = row[activeTab];
-    if (!Array.isArray(val)) return 0;
-    return val.length;
+    const arr = getConstraintArray(row, activeTab);
+    return arr ? arr.length : 0;
   };
 
   const getEquipmentCountForOption = (optionId: string): number => {
-    return rows.filter((r) => {
-      const val = r[activeTab];
-      return Array.isArray(val) && val.includes(optionId);
+    return rows.filter(r => {
+      const arr = getConstraintArray(r, activeTab);
+      return arr !== null && arr.includes(optionId);
     }).length;
   };
 
-  const toggleCell = (rowIdx: number, colId: string) => {
-    const row = rows[rowIdx];
-    const current = row[activeTab];
-    let newVal: string[] | null;
+  const updateRow = (rowId: string, newRow: Record<string, unknown>) => {
+    setAllRows(prev => prev.map(r => r.id === rowId ? newRow : r));
+  };
 
-    if (current === null || current === undefined) {
+  const toggleCell = (row: Record<string, unknown>, colId: string) => {
+    const current = getConstraintArray(row, activeTab);
+    let newVal: string[];
+    if (current === null) {
       newVal = [colId];
-    } else if (Array.isArray(current)) {
-      if (current.includes(colId)) {
-        newVal = current.filter((v: string) => v !== colId);
-      } else {
-        newVal = [...current, colId];
-      }
+    } else if (current.includes(colId)) {
+      newVal = current.filter(v => v !== colId);
     } else {
-      newVal = [colId];
+      newVal = [...current, colId];
     }
-
-    const updated = [...rows];
-    updated[rowIdx] = { ...updated[rowIdx], [activeTab]: newVal };
-    setRows(updated);
+    updateRow(String(row.id), setConstraintArray(row, activeTab, newVal));
   };
 
-  const toggleNull = (rowIdx: number) => {
-    const row = rows[rowIdx];
-    const current = row[activeTab];
-    const newVal = current === null || current === undefined ? [] : null;
-
-    const updated = [...rows];
-    updated[rowIdx] = { ...updated[rowIdx], [activeTab]: newVal };
-    setRows(updated);
+  const toggleNull = (row: Record<string, unknown>) => {
+    const current = getConstraintArray(row, activeTab);
+    const newVal = current === null ? [] : null;
+    updateRow(String(row.id), setConstraintArray(row, activeTab, newVal));
   };
 
-  const selectAllForRow = (rowIdx: number) => {
-    const allIds = colOptions.map((o) => String(o.id));
-    const updated = [...rows];
-    updated[rowIdx] = { ...updated[rowIdx], [activeTab]: allIds };
-    setRows(updated);
+  const selectAllForRow = (row: Record<string, unknown>) => {
+    const allIds = colOptions.map(o => String(o.id));
+    updateRow(String(row.id), setConstraintArray(row, activeTab, allIds));
   };
 
-  const clearAllForRow = (rowIdx: number) => {
-    const updated = [...rows];
-    updated[rowIdx] = { ...updated[rowIdx], [activeTab]: [] };
-    setRows(updated);
+  const clearAllForRow = (row: Record<string, unknown>) => {
+    updateRow(String(row.id), setConstraintArray(row, activeTab, []));
   };
 
   const selectAllForColumn = (optionId: string) => {
-    const updated = rows.map((row) => {
-      const current = row[activeTab];
-      if (current === null || current === undefined) return row;
-      const arr = Array.isArray(current) ? current : [];
-      if (arr.includes(optionId)) return row;
-      const newVal = [...arr, optionId];
-      return { ...row, [activeTab]: newVal };
-    });
-    setRows(updated);
+    setAllRows(prev => prev.map(row => {
+      const current = getConstraintArray(row, activeTab);
+      if (current === null) return row;
+      if (current.includes(optionId)) return row;
+      return setConstraintArray(row, activeTab, [...current, optionId]);
+    }));
   };
 
   const clearAllForColumn = (optionId: string) => {
-    const updated = rows.map((row) => {
-      const current = row[activeTab];
-      if (!Array.isArray(current) || !current.includes(optionId)) return row;
-      const newVal = current.filter((v: string) => v !== optionId);
-      return { ...row, [activeTab]: newVal };
-    });
-    setRows(updated);
+    setAllRows(prev => prev.map(row => {
+      const current = getConstraintArray(row, activeTab);
+      if (!current || !current.includes(optionId)) return row;
+      return setConstraintArray(row, activeTab, current.filter(v => v !== optionId));
+    }));
   };
 
-  const copyRulesFrom = (sourceId: string, targetIdx: number) => {
-    const sourceRow = rows.find((r) => r.id === sourceId);
+  const copyRulesFrom = (sourceId: string, targetRow: Record<string, unknown>) => {
+    const sourceRow = allRows.find(r => r.id === sourceId);
     if (!sourceRow) return;
-    const newVal = sourceRow[activeTab];
-
-    const updated = [...rows];
-    updated[targetIdx] = { ...updated[targetIdx], [activeTab]: Array.isArray(newVal) ? [...newVal] : newVal };
-    setRows(updated);
+    const val = getConstraintArray(sourceRow, activeTab);
+    updateRow(String(targetRow.id), setConstraintArray(targetRow, activeTab, val ? [...val] : null));
   };
 
-  // Stats for summary bar
   const totalEquipment = rows.length;
   const nullCount = rows.filter(isNullField).length;
   const activeEquipment = totalEquipment - nullCount;
@@ -236,28 +232,22 @@ export default function FilterMatrix({ onDataChange }: FilterMatrixProps) {
     <div className="p-6">
       <h1 className="text-xl font-bold text-gray-800 mb-1">Filter Matrix Editor</h1>
       <p className="text-sm text-gray-500 mb-4">
-        Configure which grip types, grip widths, stance types, and stance widths are allowed for each piece of equipment.
+        Configure modifier constraints for each piece of equipment.
       </p>
 
-      {/* Source table + View mode toggle */}
       <div className="flex flex-wrap gap-3 mb-4 items-center">
         <div className="flex gap-1 bg-gray-100 rounded p-0.5">
-          <button
-            onClick={() => setSourceTable('gymEquipment')}
-            className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-              sourceTable === 'gymEquipment' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-800'
-            }`}
-          >
-            Gym Equipment
-          </button>
-          <button
-            onClick={() => setSourceTable('cableAttachments')}
-            className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-              sourceTable === 'cableAttachments' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-800'
-            }`}
-          >
-            Cable Attachments
-          </button>
+          {(['all', 'equipment', 'attachments'] as EquipmentFilter[]).map(f => (
+            <button
+              key={f}
+              onClick={() => setEquipFilter(f)}
+              className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                equipFilter === f ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              {f === 'all' ? 'All' : f === 'equipment' ? 'Equipment' : 'Attachments'}
+            </button>
+          ))}
         </div>
 
         <div className="h-6 w-px bg-gray-300" />
@@ -281,7 +271,6 @@ export default function FilterMatrix({ onDataChange }: FilterMatrixProps) {
           </button>
         </div>
 
-        {/* Stats */}
         <div className="ml-auto flex gap-3 text-xs text-gray-500">
           <span>{totalEquipment} equipment</span>
           <span>{colOptions.length} options</span>
@@ -292,7 +281,6 @@ export default function FilterMatrix({ onDataChange }: FilterMatrixProps) {
         </div>
       </div>
 
-      {/* Tab selector */}
       <div className="flex gap-1 mb-4 border-b">
         {TABS.map((tab) => (
           <button
@@ -309,22 +297,12 @@ export default function FilterMatrix({ onDataChange }: FilterMatrixProps) {
         ))}
       </div>
 
-      {/* Save / Cancel bar - shown when there are unsaved changes */}
       {hasChanges && !loading && (
         <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between">
           <span className="text-sm font-medium text-amber-800">You have unsaved changes</span>
           <div className="flex gap-2">
-            <button
-              onClick={handleCancel}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+            <button onClick={handleCancel} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50">Cancel</button>
+            <button onClick={handleSave} disabled={saving} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50">
               {saving ? 'Saving...' : 'Save changes'}
             </button>
           </div>
@@ -334,22 +312,15 @@ export default function FilterMatrix({ onDataChange }: FilterMatrixProps) {
       {loading ? (
         <div className="text-gray-400">Loading matrix...</div>
       ) : viewMode === 'equipment' ? (
-        /* ─── Equipment-centric view ────────────────────── */
         <div className="overflow-x-auto border rounded-lg">
           <table className="text-xs">
             <thead className="bg-gray-50 border-b">
               <tr>
-                <th className="px-3 py-2 text-left font-medium text-gray-600 sticky left-0 bg-gray-50 min-w-[180px] z-10">
-                  Equipment
-                </th>
+                <th className="px-3 py-2 text-left font-medium text-gray-600 sticky left-0 bg-gray-50 min-w-[180px] z-10">Equipment</th>
                 <th className="px-2 py-2 text-center font-medium text-gray-400 min-w-[44px]">N/A</th>
                 <th className="px-2 py-2 text-center font-medium text-blue-500 min-w-[50px]">Count</th>
                 {colOptions.map((col) => (
-                  <th
-                    key={String(col.id)}
-                    className="px-2 py-2 text-center font-medium text-gray-600 min-w-[80px] whitespace-nowrap group"
-                    title={String(col.id)}
-                  >
+                  <th key={String(col.id)} className="px-2 py-2 text-center font-medium text-gray-600 min-w-[80px] whitespace-nowrap group" title={String(col.id)}>
                     <div>{String(col.label)}</div>
                     <div className="flex justify-center gap-1 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button onClick={() => selectAllForColumn(String(col.id))} className="text-blue-500 hover:underline">all</button>
@@ -361,7 +332,7 @@ export default function FilterMatrix({ onDataChange }: FilterMatrixProps) {
               </tr>
             </thead>
             <tbody>
-              {rows.map((row, rowIdx) => {
+              {rows.map((row) => {
                 const nulled = isNullField(row);
                 const count = getCheckedCount(row);
                 const total = colOptions.length;
@@ -370,49 +341,30 @@ export default function FilterMatrix({ onDataChange }: FilterMatrixProps) {
                   <tr key={String(row.id)} className="border-b hover:bg-gray-50">
                     <td className="px-3 py-1.5 font-medium text-gray-800 sticky left-0 bg-white whitespace-nowrap z-10">
                       {String(row.label)}
+                      {row.is_attachment && <span className="ml-1 text-xs text-purple-500">(att)</span>}
                     </td>
                     <td className="px-2 py-1.5 text-center">
-                      <input
-                        type="checkbox"
-                        checked={nulled}
-                        onChange={() => toggleNull(rowIdx)}
-                        title="Set as null (not applicable)"
-                        className="rounded text-amber-500"
-                      />
+                      <input type="checkbox" checked={nulled} onChange={() => toggleNull(row)} title="Set as null (not applicable)" className="rounded text-amber-500" />
                     </td>
                     <td className="px-2 py-1.5 text-center">
-                      {nulled ? (
-                        <span className="text-gray-300">--</span>
-                      ) : (
-                        <span className={`font-medium ${pct === 100 ? 'text-green-600' : pct === 0 ? 'text-gray-300' : 'text-blue-600'}`}>
-                          {count}/{total}
-                        </span>
+                      {nulled ? <span className="text-gray-300">--</span> : (
+                        <span className={`font-medium ${pct === 100 ? 'text-green-600' : pct === 0 ? 'text-gray-300' : 'text-blue-600'}`}>{count}/{total}</span>
                       )}
                     </td>
                     {colOptions.map((col) => (
                       <td key={String(col.id)} className="px-2 py-1.5 text-center">
-                        <input
-                          type="checkbox"
-                          checked={isChecked(row, String(col.id))}
-                          onChange={() => toggleCell(rowIdx, String(col.id))}
-                          disabled={nulled}
-                          className={`rounded ${nulled ? 'opacity-20' : 'text-blue-600'}`}
-                        />
+                        <input type="checkbox" checked={isChecked(row, String(col.id))} onChange={() => toggleCell(row, String(col.id))} disabled={nulled} className={`rounded ${nulled ? 'opacity-20' : 'text-blue-600'}`} />
                       </td>
                     ))}
                     <td className="px-2 py-1.5 text-center space-x-1">
-                      <button onClick={() => selectAllForRow(rowIdx)} className="text-blue-500 hover:underline" disabled={nulled}>All</button>
-                      <button onClick={() => clearAllForRow(rowIdx)} className="text-gray-400 hover:underline" disabled={nulled}>None</button>
+                      <button onClick={() => selectAllForRow(row)} className="text-blue-500 hover:underline" disabled={nulled}>All</button>
+                      <button onClick={() => clearAllForRow(row)} className="text-gray-400 hover:underline" disabled={nulled}>None</button>
                       <button
-                        onClick={() => {
-                          if (copySource) copyRulesFrom(copySource, rowIdx);
-                        }}
+                        onClick={() => { if (copySource) copyRulesFrom(copySource, row); }}
                         className={`${copySource ? 'text-green-600 hover:underline' : 'text-gray-300 cursor-default'}`}
                         disabled={!copySource || nulled}
                         title={copySource ? `Paste from ${copySource}` : 'Select a source first'}
-                      >
-                        Paste
-                      </button>
+                      >Paste</button>
                     </td>
                   </tr>
                 );
@@ -421,14 +373,11 @@ export default function FilterMatrix({ onDataChange }: FilterMatrixProps) {
           </table>
         </div>
       ) : (
-        /* ─── Option-centric view ────────────────────── */
         <div className="overflow-x-auto border rounded-lg">
           <table className="text-xs">
             <thead className="bg-gray-50 border-b">
               <tr>
-                <th className="px-3 py-2 text-left font-medium text-gray-600 sticky left-0 bg-gray-50 min-w-[180px] z-10">
-                  {currentTabDef.label}
-                </th>
+                <th className="px-3 py-2 text-left font-medium text-gray-600 sticky left-0 bg-gray-50 min-w-[180px] z-10">{currentTabDef.label}</th>
                 <th className="px-2 py-2 text-center font-medium text-blue-500 min-w-[50px]">Used By</th>
                 {rows.map((row) => (
                   <th key={String(row.id)} className="px-2 py-2 text-center font-medium text-gray-600 min-w-[80px] whitespace-nowrap" title={String(row.id)}>
@@ -452,17 +401,11 @@ export default function FilterMatrix({ onDataChange }: FilterMatrixProps) {
                         {usedBy}/{rows.length}
                       </span>
                     </td>
-                    {rows.map((row, rowIdx) => {
+                    {rows.map((row) => {
                       const nulled = isNullField(row);
                       return (
                         <td key={String(row.id)} className="px-2 py-1.5 text-center">
-                          <input
-                            type="checkbox"
-                            checked={isChecked(row, optId)}
-                            onChange={() => toggleCell(rowIdx, optId)}
-                            disabled={nulled}
-                            className={`rounded ${nulled ? 'opacity-20' : 'text-blue-600'}`}
-                          />
+                          <input type="checkbox" checked={isChecked(row, optId)} onChange={() => toggleCell(row, optId)} disabled={nulled} className={`rounded ${nulled ? 'opacity-20' : 'text-blue-600'}`} />
                         </td>
                       );
                     })}
@@ -474,15 +417,10 @@ export default function FilterMatrix({ onDataChange }: FilterMatrixProps) {
         </div>
       )}
 
-      {/* Copy rules toolbar */}
       <div className="mt-4 p-3 bg-gray-50 border rounded-lg">
         <div className="flex items-center gap-3 text-sm">
           <span className="text-gray-600 font-medium">Copy Rules:</span>
-          <select
-            value={copySource}
-            onChange={(e) => setCopySource(e.target.value)}
-            className="px-2 py-1 border rounded text-xs bg-white"
-          >
+          <select value={copySource} onChange={(e) => setCopySource(e.target.value)} className="px-2 py-1 border rounded text-xs bg-white">
             <option value="">-- Select source equipment --</option>
             {rows.map((r) => (
               <option key={String(r.id)} value={String(r.id)}>{String(r.label)}</option>

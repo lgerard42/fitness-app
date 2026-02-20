@@ -1,0 +1,1097 @@
+[
+  {
+    "id": "SUPPORT_OTHER",
+    "category_id": "OTHER_SUPPORT",
+    "label": "Other",
+    "common_names": [
+      "Other",
+      "Misc"
+    ],
+    "short_description": "Miscellaneous support equipment.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {},
+    "sort_order": 0,
+    "is_active": true
+  },
+  {
+    "id": "TRX",
+    "category_id": "SUSPENSION",
+    "label": "TRX / Suspension Trainer",
+    "common_names": [
+      "TRX / Suspension Trainer",
+      "Straps",
+      "Suspension Straps"
+    ],
+    "short_description": "Adjustable strap system for suspension training.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {},
+    "sort_order": 1,
+    "is_active": true
+  },
+  {
+    "id": "RINGS",
+    "category_id": "SUSPENSION",
+    "label": "Rings",
+    "common_names": [
+      "Rings",
+      "Gymnastic Rings"
+    ],
+    "short_description": "Circular grips suspended by straps for high-level stability.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {},
+    "sort_order": 2,
+    "is_active": true
+  },
+  {
+    "id": "STABILITY_BALL",
+    "category_id": "STABILITY",
+    "label": "Stability Ball",
+    "common_names": [
+      "Stability Ball",
+      "Swiss Ball",
+      "Yoga Ball"
+    ],
+    "short_description": "Large inflatable ball used for core and balance work.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {},
+    "sort_order": 3,
+    "is_active": true
+  },
+  {
+    "id": "BOSU",
+    "category_id": "STABILITY",
+    "label": "BOSU",
+    "common_names": [
+      "BOSU",
+      "Half Ball",
+      "Balance Trainer"
+    ],
+    "short_description": "Both Sides Up ball with a flat platform and a dome.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {},
+    "sort_order": 4,
+    "is_active": true
+  },
+  {
+    "id": "BALANCE_PAD",
+    "category_id": "STABILITY",
+    "label": "Balance Pad",
+    "common_names": [
+      "Balance Pad",
+      "Foam Pad",
+      "Stability Pad"
+    ],
+    "short_description": "Foam pad that creates an unstable surface for feet or knees.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {},
+    "sort_order": 5,
+    "is_active": true
+  },
+  {
+    "id": "SLIDERS",
+    "category_id": "STABILITY",
+    "label": "Sliders",
+    "common_names": [
+      "Sliders",
+      "Core Sliders",
+      "Gliding Discs"
+    ],
+    "short_description": "Discs that slide on floor surfaces to reduce friction.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {},
+    "sort_order": 6,
+    "is_active": true
+  },
+  {
+    "id": "BOX",
+    "category_id": "GENERAL_SUPPORT",
+    "label": "Box",
+    "common_names": [
+      "Box",
+      "Plyo Box",
+      "Jump Box"
+    ],
+    "short_description": "Reinforced box used for jumping or elevated movements.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {},
+    "sort_order": 7,
+    "is_active": true
+  },
+  {
+    "id": "BAR",
+    "category_id": "GENERAL_SUPPORT",
+    "label": "Bar",
+    "common_names": [
+      "Bar",
+      "Pull-up Bar",
+      "Chin-up Bar"
+    ],
+    "short_description": "Fixed horizontal bar for hanging or pulling exercises.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {},
+    "sort_order": 8,
+    "is_active": true
+  },
+  {
+    "id": "BENCH",
+    "category_id": "GENERAL_SUPPORT",
+    "label": "Bench",
+    "common_names": [
+      "Bench",
+      "Weight Bench",
+      "Flat Bench"
+    ],
+    "short_description": "Padded platform for seated or supine exercises.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {
+      "SUPPORT_STRUCTURES": [
+        "TORSO_BRACED",
+        "DOUBLE_LIMB_BRACED",
+        "SINGLE_LIMB_BRACED"
+      ],
+      "TORSO_ANGLES": [
+        "FLAT",
+        "INCLINED",
+        "DECLINED"
+      ]
+    },
+    "sort_order": 9,
+    "is_active": true
+  },
+  {
+    "id": "WALL",
+    "category_id": "GENERAL_SUPPORT",
+    "label": "Wall",
+    "common_names": [
+      "Wall",
+      "Vertical Support"
+    ],
+    "short_description": "Using a vertical wall for bracing or resistance.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {},
+    "sort_order": 10,
+    "is_active": true
+  },
+  {
+    "id": "FLOOR",
+    "category_id": "GENERAL_SUPPORT",
+    "label": "Floor",
+    "common_names": [
+      "Floor",
+      "Ground",
+      "Mat"
+    ],
+    "short_description": "The gym floor or a yoga mat used as a base.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {},
+    "sort_order": 11,
+    "is_active": true
+  },
+  {
+    "id": "BARBELL",
+    "category_id": "BARS",
+    "label": "Barbell",
+    "common_names": [
+      "Barbell",
+      "Straight Bar",
+      "Olympic Bar"
+    ],
+    "short_description": "Standard long bar used with plates for heavy lifts.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {
+      "GRIPS": [
+        "PRONATED",
+        "SUPINATED",
+        "ALTERNATING",
+        "FLAT"
+      ],
+      "GRIP_WIDTHS": [
+        "EXTRA_NARROW",
+        "NARROW",
+        "SHOULDERS",
+        "WIDE",
+        "EXTRA_WIDE"
+      ]
+    },
+    "sort_order": 12,
+    "is_active": true
+  },
+  {
+    "id": "OLYMPIC_BARBELL",
+    "category_id": "BARS",
+    "label": "Olympic Barbell",
+    "common_names": [
+      "Olympic",
+      "Barbell",
+      "Olympic Bar"
+    ],
+    "short_description": "Olympic long bar used with plates for heavy lifts. Typically 44-45lbs.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {
+      "GRIPS": [
+        "PRONATED",
+        "SUPINATED",
+        "ALTERNATING",
+        "FLAT"
+      ],
+      "GRIP_WIDTHS": [
+        "EXTRA_NARROW",
+        "NARROW",
+        "SHOULDERS",
+        "WIDE",
+        "EXTRA_WIDE"
+      ]
+    },
+    "sort_order": 13,
+    "is_active": true
+  },
+  {
+    "id": "EZ_BAR",
+    "category_id": "BARS",
+    "label": "EZ Bar",
+    "common_names": [
+      "EZ Bar",
+      "Curl Bar",
+      "Zig-zag Bar"
+    ],
+    "short_description": "Angled bar designed to reduce wrist strain during curls.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {
+      "GRIPS": [
+        "SEMI_PRONATED",
+        "SEMI_SUPINATED"
+      ],
+      "GRIP_WIDTHS": [
+        "NARROW",
+        "SHOULDERS"
+      ]
+    },
+    "sort_order": 14,
+    "is_active": true
+  },
+  {
+    "id": "TRAP_BAR",
+    "category_id": "BARS",
+    "label": "Trap Bar (Hex Bar)",
+    "common_names": [
+      "Trap Bar",
+      "Hex Bar"
+    ],
+    "short_description": "Hexagonal bar that allows the user to stand inside.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {
+      "GRIPS": [
+        "NEUTRAL"
+      ],
+      "GRIP_WIDTHS": [
+        "SHOULDERS",
+        "WIDE"
+      ]
+    },
+    "sort_order": 15,
+    "is_active": true
+  },
+  {
+    "id": "SAFETY_SQUAT_BAR",
+    "category_id": "BARS",
+    "label": "Safety Squat Bar",
+    "common_names": [
+      "Safety Squat Bar",
+      "SSB"
+    ],
+    "short_description": "Bar with padded yolks to assist with squat mechanics.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {},
+    "sort_order": 16,
+    "is_active": true
+  },
+  {
+    "id": "SWISS__FOOTBALL_BAR",
+    "category_id": "BARS",
+    "label": "Swiss / Football Bar",
+    "common_names": [
+      "Swiss / Football Bar",
+      "Multi-grip Bar"
+    ],
+    "short_description": "Bar with multiple neutral-grip handles.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {
+      "GRIPS": [
+        "NEUTRAL"
+      ],
+      "GRIP_WIDTHS": [
+        "NARROW",
+        "SHOULDERS",
+        "WIDE"
+      ]
+    },
+    "sort_order": 17,
+    "is_active": true
+  },
+  {
+    "id": "CAMBERED_BAR",
+    "category_id": "BARS",
+    "label": "Cambered Bar",
+    "common_names": [
+      "Cambered Bar",
+      "Arch Bar"
+    ],
+    "short_description": "Dropped-center bar that alters the center of gravity.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {},
+    "sort_order": 18,
+    "is_active": true
+  },
+  {
+    "id": "DUMBBELL",
+    "category_id": "FREE_WEIGHTS",
+    "label": "Dumbbell",
+    "common_names": [
+      "Dumbbell",
+      "DBs",
+      "Hand Weights"
+    ],
+    "short_description": "Short bars with fixed or adjustable weights for one hand.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 2,
+    "modifier_constraints": {
+      "GRIPS": [
+        "NEUTRAL",
+        "PRONATED",
+        "SUPINATED",
+        "ROTATING",
+        "SEMI_PRONATED",
+        "SEMI_SUPINATED"
+      ]
+    },
+    "sort_order": 19,
+    "is_active": true
+  },
+  {
+    "id": "KETTLEBELL",
+    "category_id": "FREE_WEIGHTS",
+    "label": "Kettlebell",
+    "common_names": [
+      "Kettlebell",
+      "KBs"
+    ],
+    "short_description": "Cast-iron ball with a handle used for ballistic moves.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 2,
+    "modifier_constraints": {
+      "GRIPS": [
+        "PRONATED",
+        "NEUTRAL",
+        "FLAT"
+      ]
+    },
+    "sort_order": 20,
+    "is_active": true
+  },
+  {
+    "id": "PLATE",
+    "category_id": "FREE_WEIGHTS",
+    "label": "Plate",
+    "common_names": [
+      "Plate",
+      "Weight Plates",
+      "Bumpers"
+    ],
+    "short_description": "Flat discs of weight added to bars or used alone.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 2,
+    "modifier_constraints": {},
+    "sort_order": 21,
+    "is_active": true
+  },
+  {
+    "id": "MEDICINE_BALL",
+    "category_id": "FREE_WEIGHTS",
+    "label": "Medicine Ball",
+    "common_names": [
+      "Medicine Ball",
+      "Med Ball",
+      "Slam Ball"
+    ],
+    "short_description": "Weighted ball used for conditioning and explosive tosses.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {},
+    "sort_order": 22,
+    "is_active": true
+  },
+  {
+    "id": "SANDBAG",
+    "category_id": "FREE_WEIGHTS",
+    "label": "Sandbag",
+    "common_names": [
+      "Sandbag",
+      "Weighted Bag"
+    ],
+    "short_description": "Bag filled with sand to provide shifting resistance.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {},
+    "sort_order": 23,
+    "is_active": true
+  },
+  {
+    "id": "WEIGHTED_VEST",
+    "category_id": "FREE_WEIGHTS",
+    "label": "Weighted Vest",
+    "common_names": [
+      "Weighted Vest",
+      "Body Weight Vest"
+    ],
+    "short_description": "Vest with weight inserts to increase body mass.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {},
+    "sort_order": 24,
+    "is_active": true
+  },
+  {
+    "id": "BODYWEIGHT",
+    "category_id": "BODYWEIGHT_CAT",
+    "label": "Bodyweight",
+    "common_names": [
+      "Bodyweight",
+      "No Equipment"
+    ],
+    "short_description": "The resistance of the user's own body.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {},
+    "sort_order": 25,
+    "is_active": true
+  },
+  {
+    "id": "BAND",
+    "category_id": "FREE_WEIGHTS",
+    "label": "Band",
+    "common_names": [
+      "Band",
+      "Resistance Band",
+      "Booty Band"
+    ],
+    "short_description": "Elastic bands providing variable resistance.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 2,
+    "modifier_constraints": {},
+    "sort_order": 26,
+    "is_active": true
+  },
+  {
+    "id": "CHAINS",
+    "category_id": "FREE_WEIGHTS",
+    "label": "Chains",
+    "common_names": [
+      "Chains",
+      "Lifting Chains"
+    ],
+    "short_description": "Heavy metal links used for accommodating resistance.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 2,
+    "modifier_constraints": {},
+    "sort_order": 27,
+    "is_active": true
+  },
+  {
+    "id": "WRIST_ROLLER",
+    "category_id": "FREE_WEIGHTS",
+    "label": "Wrist Roller",
+    "common_names": [
+      "Wrist Roller",
+      "Forearm Roller"
+    ],
+    "short_description": "Handle with a rope and weight for forearm training.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {},
+    "sort_order": 28,
+    "is_active": true
+  },
+  {
+    "id": "REPS",
+    "category_id": "OTHER_WEIGHTS",
+    "label": "Reps",
+    "common_names": [
+      "Reps",
+      "Volume Only"
+    ],
+    "short_description": "Using repetitions without specific equipment focus.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {},
+    "sort_order": 29,
+    "is_active": true
+  },
+  {
+    "id": "MACHINE",
+    "category_id": "MACHINES",
+    "label": "Machine (Selectorized)",
+    "common_names": [
+      "Machine (Selectorized)",
+      "Selectorized Machine"
+    ],
+    "short_description": "Weight machines with a pin-and-stack system.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {
+      "SUPPORT_STRUCTURES": [
+        "TORSO_BRACED",
+        "LOWER_BODY_LOCKED",
+        "ELBOW_FIXED"
+      ]
+    },
+    "sort_order": 30,
+    "is_active": true
+  },
+  {
+    "id": "PLATE_LOADED",
+    "category_id": "MACHINES",
+    "label": "Plate Loaded (Machine)",
+    "common_names": [
+      "Plate Loaded (Machine)",
+      "Hammer Strength Style"
+    ],
+    "short_description": "Machines that require manual addition of plates.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {},
+    "sort_order": 31,
+    "is_active": true
+  },
+  {
+    "id": "SMITH_MACHINE",
+    "category_id": "MACHINES",
+    "label": "Smith Machine",
+    "common_names": [
+      "Smith Machine",
+      "Guided Barbell"
+    ],
+    "short_description": "Barbell fixed within steel rails for a vertical path.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {
+      "GRIPS": [
+        "PRONATED",
+        "SUPINATED"
+      ],
+      "GRIP_WIDTHS": [
+        "NARROW",
+        "SHOULDERS",
+        "WIDE",
+        "EXTRA_WIDE"
+      ]
+    },
+    "sort_order": 32,
+    "is_active": true
+  },
+  {
+    "id": "ASSISTED_MACHINE",
+    "category_id": "MACHINES",
+    "label": "Assisted Machine",
+    "common_names": [
+      "Assisted Machine",
+      "Dip/Pullup Assist"
+    ],
+    "short_description": "Counter-weighted machine to aid bodyweight moves.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {},
+    "sort_order": 33,
+    "is_active": true
+  },
+  {
+    "id": "CABLE_STACK",
+    "category_id": "CABLE_CAT",
+    "label": "Cable",
+    "common_names": [
+      "Cable",
+      "Cable Stack"
+    ],
+    "short_description": "Pulley-based stack for various attachments.",
+    "is_attachment": false,
+    "requires_attachment": true,
+    "max_instances": 2,
+    "modifier_constraints": {},
+    "sort_order": 34,
+    "is_active": true
+  },
+  {
+    "id": "SLED__PROWLER",
+    "category_id": "FUNCTIONAL",
+    "label": "Sled / Prowler",
+    "common_names": [
+      "Sled / Prowler",
+      "Pushing Sled"
+    ],
+    "short_description": "Weighted sled pushed or pulled across a surface.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {},
+    "sort_order": 35,
+    "is_active": true
+  },
+  {
+    "id": "LOG",
+    "category_id": "FUNCTIONAL",
+    "label": "Log",
+    "common_names": [
+      "Log",
+      "Strongman Log"
+    ],
+    "short_description": "Cylindrical weight with internal handles.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {},
+    "sort_order": 36,
+    "is_active": true
+  },
+  {
+    "id": "YOKE",
+    "category_id": "FUNCTIONAL",
+    "label": "Yoke",
+    "common_names": [
+      "Yoke",
+      "Strongman Yoke"
+    ],
+    "short_description": "Frame carried across the shoulders.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {},
+    "sort_order": 37,
+    "is_active": true
+  },
+  {
+    "id": "TIRE",
+    "category_id": "FUNCTIONAL",
+    "label": "Tire",
+    "common_names": [
+      "Tire",
+      "Flip Tire"
+    ],
+    "short_description": "Large heavy tire used for flipping or hitting.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {},
+    "sort_order": 38,
+    "is_active": true
+  },
+  {
+    "id": "MACE",
+    "category_id": "FUNCTIONAL",
+    "label": "Mace",
+    "common_names": [
+      "Mace",
+      "Steel Mace",
+      "Macebell"
+    ],
+    "short_description": "Long-handled weight used for rotational moves.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 2,
+    "modifier_constraints": {},
+    "sort_order": 39,
+    "is_active": true
+  },
+  {
+    "id": "STEEL__INDIAN_CLUB",
+    "category_id": "FUNCTIONAL",
+    "label": "Steel / Indian Club",
+    "common_names": [
+      "Steel / Indian Club",
+      "Clubs"
+    ],
+    "short_description": "Weighted clubs swung for shoulder mobility.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 2,
+    "modifier_constraints": {},
+    "sort_order": 40,
+    "is_active": true
+  },
+  {
+    "id": "BATTLE_ROPES",
+    "category_id": "FUNCTIONAL",
+    "label": "Battle Ropes",
+    "common_names": [
+      "Battle Ropes",
+      "Heavy Ropes"
+    ],
+    "short_description": "Thick ropes swung to create waves for cardio.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {},
+    "sort_order": 41,
+    "is_active": true
+  },
+  {
+    "id": "WEIGHTS_OTHER",
+    "category_id": "OTHER_WEIGHTS",
+    "label": "Other",
+    "common_names": [
+      "Other",
+      "Misc Resistance"
+    ],
+    "short_description": "Other resistance tools not listed.",
+    "is_attachment": false,
+    "requires_attachment": false,
+    "max_instances": 2,
+    "modifier_constraints": {},
+    "sort_order": 42,
+    "is_active": true
+  },
+  {
+    "id": "ROPE",
+    "category_id": "CABLE_ATTACHMENTS",
+    "label": "Rope",
+    "common_names": [
+      "Rope",
+      "Tricep Rope",
+      "Dual Rope"
+    ],
+    "short_description": "Two-ended rope for flexible grip and range of motion.",
+    "is_attachment": true,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {
+      "GRIPS": [
+        "NEUTRAL",
+        "ROTATING",
+        "PRONATED"
+      ],
+      "GRIP_WIDTHS": [
+        "NARROW",
+        "SHOULDERS"
+      ]
+    },
+    "sort_order": 43,
+    "is_active": true
+  },
+  {
+    "id": "LAT_PULLDOWN_BAR",
+    "category_id": "CABLE_ATTACHMENTS",
+    "label": "Lat Pulldown Bar",
+    "common_names": [
+      "Lat Pulldown Bar",
+      "Wide Bar",
+      "Pull-down Bar"
+    ],
+    "short_description": "Long bar for wide-grip back exercises.",
+    "is_attachment": true,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {
+      "GRIPS": [
+        "PRONATED",
+        "SUPINATED"
+      ],
+      "GRIP_WIDTHS": [
+        "SHOULDERS",
+        "WIDE",
+        "EXTRA_WIDE"
+      ]
+    },
+    "sort_order": 44,
+    "is_active": true
+  },
+  {
+    "id": "STRAIGHT_BAR",
+    "category_id": "CABLE_ATTACHMENTS",
+    "label": "Straight Bar",
+    "common_names": [
+      "Straight Bar",
+      "Short Bar",
+      "Cable Bar"
+    ],
+    "short_description": "Fixed straight bar for curls or pushdowns.",
+    "is_attachment": true,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {},
+    "sort_order": 45,
+    "is_active": true
+  },
+  {
+    "id": "SINGLE_HANDLE",
+    "category_id": "CABLE_ATTACHMENTS",
+    "label": "Single Handle",
+    "common_names": [
+      "Single Handle",
+      "D-Handle",
+      "Single Grip"
+    ],
+    "short_description": "D-shaped stirrup for unilateral (one-arm) work.",
+    "is_attachment": true,
+    "requires_attachment": false,
+    "max_instances": 2,
+    "modifier_constraints": {
+      "GRIPS": [
+        "NEUTRAL",
+        "PRONATED",
+        "SUPINATED",
+        "ROTATING"
+      ],
+      "GRIP_WIDTHS": [
+        "SHOULDERS"
+      ]
+    },
+    "sort_order": 46,
+    "is_active": true
+  },
+  {
+    "id": "V_GRIP",
+    "category_id": "CABLE_ATTACHMENTS",
+    "label": "V-Grip",
+    "common_names": [
+      "V-Grip",
+      "Close-Grip Handle",
+      "Row Handle"
+    ],
+    "short_description": "Narrow V-shaped handle for rows and pulldowns.",
+    "is_attachment": true,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {
+      "GRIPS": [
+        "SEMI_PRONATED",
+        "NEUTRAL"
+      ],
+      "GRIP_WIDTHS": [
+        "EXTRA_NARROW"
+      ]
+    },
+    "sort_order": 47,
+    "is_active": true
+  },
+  {
+    "id": "MAG_GRIP_BAR",
+    "category_id": "CABLE_ATTACHMENTS",
+    "label": "MAG Grip Bar",
+    "common_names": [
+      "MAG Grip Bar",
+      "Maximum Advantage Grip"
+    ],
+    "short_description": "Ergonomic handles designed to reduce grip fatigue.",
+    "is_attachment": true,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {},
+    "sort_order": 48,
+    "is_active": true
+  },
+  {
+    "id": "PRO_STYLE_BAR",
+    "category_id": "CABLE_ATTACHMENTS",
+    "label": "PRO-Style Bar",
+    "common_names": [
+      "PRO-Style Bar",
+      "Lat Bar with Ends"
+    ],
+    "short_description": "Wide bar with neutral-grip handles at the ends.",
+    "is_attachment": true,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {},
+    "sort_order": 49,
+    "is_active": true
+  },
+  {
+    "id": "MULTI_T_BAR_STYLE",
+    "category_id": "CABLE_ATTACHMENTS",
+    "label": "Multi/T-Bar Style",
+    "common_names": [
+      "Multi/T-Bar Style",
+      "T-Bar Row Attachment"
+    ],
+    "short_description": "Heavy-duty handle for landmine or cable rows.",
+    "is_attachment": true,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {},
+    "sort_order": 50,
+    "is_active": true
+  },
+  {
+    "id": "MULTI_ROW",
+    "category_id": "CABLE_ATTACHMENTS",
+    "label": "Multi-Row",
+    "common_names": [
+      "Multi-Row",
+      "Neutral Row Handle"
+    ],
+    "short_description": "Handle offering multiple grip widths for rowing.",
+    "is_attachment": true,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {},
+    "sort_order": 51,
+    "is_active": true
+  },
+  {
+    "id": "EZ_BAR_ATTACHMENT",
+    "category_id": "CABLE_ATTACHMENTS",
+    "label": "EZ Bar (Cable)",
+    "common_names": [
+      "EZ Bar (Cable)",
+      "W-Bar",
+      "Curl Cable Attachment"
+    ],
+    "short_description": "Angled bar for cable curls or tricep work.",
+    "is_attachment": true,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {},
+    "sort_order": 52,
+    "is_active": true
+  },
+  {
+    "id": "V_BAR",
+    "category_id": "CABLE_ATTACHMENTS",
+    "label": "V-Bar",
+    "common_names": [
+      "V-Bar",
+      "Tricep V-Bar"
+    ],
+    "short_description": "Fixed V-shaped bar primarily for tricep pushdowns.",
+    "is_attachment": true,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {
+      "GRIPS": [
+        "SEMI_PRONATED",
+        "PRONATED"
+      ],
+      "GRIP_WIDTHS": [
+        "EXTRA_NARROW"
+      ]
+    },
+    "sort_order": 53,
+    "is_active": true
+  },
+  {
+    "id": "ANKLE_STRAP",
+    "category_id": "CABLE_ATTACHMENTS",
+    "label": "Ankle Strap",
+    "common_names": [
+      "Ankle Strap",
+      "Leg Strap",
+      "Cable Cuff"
+    ],
+    "short_description": "Padded strap for lower body cable movements.",
+    "is_attachment": true,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {},
+    "sort_order": 54,
+    "is_active": true
+  },
+  {
+    "id": "AB_HARNESS",
+    "category_id": "CABLE_ATTACHMENTS",
+    "label": "Ab Harness",
+    "common_names": [
+      "Ab Harness",
+      "Crunch Strap"
+    ],
+    "short_description": "Padded harness worn over shoulders for cable crunches.",
+    "is_attachment": true,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {},
+    "sort_order": 55,
+    "is_active": true
+  },
+  {
+    "id": "LANDMINE",
+    "category_id": "CABLE_ATTACHMENTS",
+    "label": "Landmine",
+    "common_names": [
+      "Landmine",
+      "Barbell Pivot"
+    ],
+    "short_description": "Floor-based pivot for rotational barbell work.",
+    "is_attachment": true,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {},
+    "sort_order": 56,
+    "is_active": true
+  },
+  {
+    "id": "OTHER_ATTACHMENT",
+    "category_id": "CABLE_ATTACHMENTS",
+    "label": "Other",
+    "common_names": [
+      "Other",
+      "Misc Attachment"
+    ],
+    "short_description": "Specialized or custom cable accessories.",
+    "is_attachment": true,
+    "requires_attachment": false,
+    "max_instances": 1,
+    "modifier_constraints": {},
+    "sort_order": 57,
+    "is_active": true
+  }
+]

@@ -2,10 +2,8 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api';
 
-type MuscleTableKey = 'primaryMuscles' | 'secondaryMuscles' | 'tertiaryMuscles';
-
 interface MuscleHierarchyFieldProps {
-  tableKey: MuscleTableKey;
+  tableKey: 'muscles';
   currentRecordId: string;
   onFieldsChange: (fields: Record<string, string[]>) => void;
 }
@@ -13,40 +11,40 @@ interface MuscleHierarchyFieldProps {
 interface MuscleRecord {
   id: string;
   label: string;
-  primary_muscle_ids?: string[];
-  secondary_muscle_ids?: string[];
+  parent_ids?: string[];
   [key: string]: unknown;
 }
 
-function getCurrentRecordFields(tableKey: MuscleTableKey, record: MuscleRecord): Record<string, string[]> {
-  if (tableKey === 'secondaryMuscles') {
-    return { primary_muscle_ids: record.primary_muscle_ids || [] };
-  } else {
-    return { secondary_muscle_ids: record.secondary_muscle_ids || [] };
+type MuscleTier = 'primary' | 'secondary' | 'tertiary';
+
+function parseParentIds(record: MuscleRecord): string[] {
+  if (Array.isArray(record.parent_ids)) return record.parent_ids;
+  if (typeof record.parent_ids === 'string') {
+    try { return JSON.parse(record.parent_ids); } catch { return []; }
   }
+  return [];
 }
 
-// ---------------------------------------------------------------------------
-// Main component
-// ---------------------------------------------------------------------------
+function classifyMuscle(record: MuscleRecord, allMuscles: MuscleRecord[]): MuscleTier {
+  const pids = parseParentIds(record);
+  if (pids.length === 0) return 'primary';
+  const anyParentIsPrimary = pids.some(pid => {
+    const parent = allMuscles.find(m => m.id === pid);
+    return parent && parseParentIds(parent).length === 0;
+  });
+  if (anyParentIsPrimary) return 'secondary';
+  return 'tertiary';
+}
 
 export default function MuscleHierarchyField({ tableKey, currentRecordId, onFieldsChange }: MuscleHierarchyFieldProps) {
-  const [primaryMuscles, setPrimaryMuscles] = useState<MuscleRecord[]>([]);
-  const [secondaryMuscles, setSecondaryMuscles] = useState<MuscleRecord[]>([]);
-  const [tertiaryMuscles, setTertiaryMuscles] = useState<MuscleRecord[]>([]);
+  const [allMuscles, setAllMuscles] = useState<MuscleRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const loadAllData = useCallback(async () => {
     try {
-      const [p, s, t] = await Promise.all([
-        api.getTable('primaryMuscles'),
-        api.getTable('secondaryMuscles'),
-        api.getTable('tertiaryMuscles'),
-      ]);
-      setPrimaryMuscles((p as MuscleRecord[]) || []);
-      setSecondaryMuscles((s as MuscleRecord[]) || []);
-      setTertiaryMuscles((t as MuscleRecord[]) || []);
+      const data = await api.getTable('muscles');
+      setAllMuscles((data as MuscleRecord[]) || []);
     } catch (err) {
       console.error('Failed to load muscle data:', err);
     } finally {
@@ -65,191 +63,149 @@ export default function MuscleHierarchyField({ tableKey, currentRecordId, onFiel
     });
   };
 
-  // -------------------------------------------------------------------------
-  // Sync: after a canonical FK change, recompute everything and save other tables
-  // -------------------------------------------------------------------------
-  const syncAfterChange = useCallback(async (
-    updatedPrimaries: MuscleRecord[],
-    updatedSecondaries: MuscleRecord[],
-    updatedTertiaries: MuscleRecord[]
-  ) => {
-    // Save changed tables (only the ones with canonical FK changes)
+  const { primaries, secondaries, tertiaries } = useMemo(() => {
+    const p: MuscleRecord[] = [];
+    const s: MuscleRecord[] = [];
+    const t: MuscleRecord[] = [];
+    for (const m of allMuscles) {
+      const tier = classifyMuscle(m, allMuscles);
+      if (tier === 'primary') p.push(m);
+      else if (tier === 'secondary') s.push(m);
+      else t.push(m);
+    }
+    return { primaries: p, secondaries: s, tertiaries: t };
+  }, [allMuscles]);
+
+  const currentRecord = useMemo(() => allMuscles.find(m => m.id === currentRecordId), [allMuscles, currentRecordId]);
+  const currentTier = useMemo(() => currentRecord ? classifyMuscle(currentRecord, allMuscles) : 'primary', [currentRecord, allMuscles]);
+
+  // After any mutation, update the current record's parent_ids via the callback
+  const notifyFieldsChange = useCallback((updatedMuscles: MuscleRecord[]) => {
+    const current = updatedMuscles.find(r => r.id === currentRecordId);
+    if (current) {
+      onFieldsChange({ parent_ids: parseParentIds(current) });
+    }
+  }, [currentRecordId, onFieldsChange]);
+
+  // Link: add parentId to child's parent_ids
+  const linkParent = useCallback(async (childId: string, parentId: string) => {
+    const child = allMuscles.find(m => m.id === childId);
+    if (!child) return;
+    const currentParents = parseParentIds(child);
+    if (currentParents.includes(parentId)) return;
+    const newParentIds = [...currentParents, parentId];
     try {
-      const saves: Promise<unknown>[] = [];
-      if (tableKey === 'primaryMuscles' || tableKey === 'secondaryMuscles') {
-        saves.push(api.putTable('secondaryMuscles', updatedSecondaries));
-      }
-      if (tableKey === 'primaryMuscles' || tableKey === 'secondaryMuscles' || tableKey === 'tertiaryMuscles') {
-        saves.push(api.putTable('tertiaryMuscles', updatedTertiaries));
-      }
-      await Promise.all(saves);
+      await api.updateRow('muscles', childId, { parent_ids: newParentIds });
+      const updated = allMuscles.map(m => m.id === childId ? { ...m, parent_ids: newParentIds } : m);
+      setAllMuscles(updated);
+      notifyFieldsChange(updated);
     } catch (err) {
-      console.error('Failed to sync muscle hierarchy:', err);
+      console.error('Failed to link parent:', err);
     }
+  }, [allMuscles, notifyFieldsChange]);
 
-    setPrimaryMuscles([...updatedPrimaries]);
-    setSecondaryMuscles([...updatedSecondaries]);
-    setTertiaryMuscles([...updatedTertiaries]);
-
-    // Update the current record's fields via callback (primaryMuscles has no FK fields to update)
-    if (tableKey === 'secondaryMuscles') {
-      const current = updatedSecondaries.find(r => r.id === currentRecordId);
-      if (current) onFieldsChange(getCurrentRecordFields(tableKey, current));
-    } else if (tableKey === 'tertiaryMuscles') {
-      const current = updatedTertiaries.find(r => r.id === currentRecordId);
-      if (current) onFieldsChange(getCurrentRecordFields(tableKey, current));
-    }
-  }, [tableKey, currentRecordId, onFieldsChange]);
-
-  // -------------------------------------------------------------------------
-  // Link / unlink operations
-  // -------------------------------------------------------------------------
-
-  const addSecondaryToPrimary = useCallback(async (primaryId: string, secondaryId: string) => {
-    const secs = secondaryMuscles.map(s =>
-      s.id === secondaryId ? { ...s, primary_muscle_ids: [...(s.primary_muscle_ids || []), primaryId] } : { ...s }
-    );
-    await syncAfterChange(primaryMuscles.map(p => ({ ...p })), secs, tertiaryMuscles.map(t => ({ ...t })));
-  }, [primaryMuscles, secondaryMuscles, tertiaryMuscles, syncAfterChange]);
-
-  const removeSecondaryFromPrimary = useCallback(async (primaryId: string, secondaryId: string) => {
-    const secs = secondaryMuscles.map(s =>
-      s.id === secondaryId ? { ...s, primary_muscle_ids: (s.primary_muscle_ids || []).filter(id => id !== primaryId) } : { ...s }
-    );
-    await syncAfterChange(primaryMuscles.map(p => ({ ...p })), secs, tertiaryMuscles.map(t => ({ ...t })));
-  }, [primaryMuscles, secondaryMuscles, tertiaryMuscles, syncAfterChange]);
-
-  const addPrimaryToSecondary = useCallback(async (secondaryId: string, primaryId: string) => {
-    const secs = secondaryMuscles.map(s =>
-      s.id === secondaryId ? { ...s, primary_muscle_ids: [...(s.primary_muscle_ids || []), primaryId] } : { ...s }
-    );
-    await syncAfterChange(primaryMuscles.map(p => ({ ...p })), secs, tertiaryMuscles.map(t => ({ ...t })));
-  }, [primaryMuscles, secondaryMuscles, tertiaryMuscles, syncAfterChange]);
-
-  const removePrimaryFromSecondary = useCallback(async (secondaryId: string, primaryId: string) => {
-    const secs = secondaryMuscles.map(s =>
-      s.id === secondaryId ? { ...s, primary_muscle_ids: (s.primary_muscle_ids || []).filter(id => id !== primaryId) } : { ...s }
-    );
-    await syncAfterChange(primaryMuscles.map(p => ({ ...p })), secs, tertiaryMuscles.map(t => ({ ...t })));
-  }, [primaryMuscles, secondaryMuscles, tertiaryMuscles, syncAfterChange]);
-
-  const addSecondaryToTertiary = useCallback(async (tertiaryId: string, secondaryId: string) => {
-    const ters = tertiaryMuscles.map(t =>
-      t.id === tertiaryId ? { ...t, secondary_muscle_ids: [...(t.secondary_muscle_ids || []), secondaryId] } : { ...t }
-    );
-    await syncAfterChange(primaryMuscles.map(p => ({ ...p })), secondaryMuscles.map(s => ({ ...s })), ters);
-  }, [primaryMuscles, secondaryMuscles, tertiaryMuscles, syncAfterChange]);
-
-  const removeSecondaryFromTertiary = useCallback(async (tertiaryId: string, secondaryId: string) => {
-    const ters = tertiaryMuscles.map(t =>
-      t.id === tertiaryId ? { ...t, secondary_muscle_ids: (t.secondary_muscle_ids || []).filter(id => id !== secondaryId) } : { ...t }
-    );
-    await syncAfterChange(primaryMuscles.map(p => ({ ...p })), secondaryMuscles.map(s => ({ ...s })), ters);
-  }, [primaryMuscles, secondaryMuscles, tertiaryMuscles, syncAfterChange]);
-
-  const addTertiaryToSecondary = useCallback(async (secondaryId: string, tertiaryId: string) => {
-    const ters = tertiaryMuscles.map(t =>
-      t.id === tertiaryId ? { ...t, secondary_muscle_ids: [...(t.secondary_muscle_ids || []), secondaryId] } : { ...t }
-    );
-    await syncAfterChange(primaryMuscles.map(p => ({ ...p })), secondaryMuscles.map(s => ({ ...s })), ters);
-  }, [primaryMuscles, secondaryMuscles, tertiaryMuscles, syncAfterChange]);
-
-  const createTertiaryForSecondary = useCallback(async (secondaryId: string, newData: Record<string, unknown>) => {
+  // Unlink: remove parentId from child's parent_ids
+  const unlinkParent = useCallback(async (childId: string, parentId: string) => {
+    const child = allMuscles.find(m => m.id === childId);
+    if (!child) return;
+    const newParentIds = parseParentIds(child).filter(id => id !== parentId);
     try {
-      await api.addRow('tertiaryMuscles', { ...newData, secondary_muscle_ids: [secondaryId] });
-      // Reload and recompute
-      const [p, s, t] = await Promise.all([
-        api.getTable('primaryMuscles') as Promise<MuscleRecord[]>,
-        api.getTable('secondaryMuscles') as Promise<MuscleRecord[]>,
-        api.getTable('tertiaryMuscles') as Promise<MuscleRecord[]>,
-      ]);
-      await syncAfterChange(p, s, t);
+      await api.updateRow('muscles', childId, { parent_ids: newParentIds });
+      const updated = allMuscles.map(m => m.id === childId ? { ...m, parent_ids: newParentIds } : m);
+      setAllMuscles(updated);
+      notifyFieldsChange(updated);
     } catch (err) {
-      console.error('Failed to create tertiary muscle:', err);
-      alert('Failed to create tertiary muscle. Please try again.');
+      console.error('Failed to unlink parent:', err);
     }
-  }, [syncAfterChange]);
+  }, [allMuscles, notifyFieldsChange]);
 
-  // -------------------------------------------------------------------------
+  // Create a new child muscle under a given parent
+  const createChild = useCallback(async (parentId: string, newData: Record<string, unknown>) => {
+    try {
+      await api.addRow('muscles', { ...newData, parent_ids: [parentId] });
+      const data = await api.getTable('muscles');
+      const updated = (data as MuscleRecord[]) || [];
+      setAllMuscles(updated);
+      notifyFieldsChange(updated);
+    } catch (err) {
+      console.error('Failed to create child muscle:', err);
+      alert('Failed to create child muscle. Please try again.');
+    }
+  }, [notifyFieldsChange]);
+
   // Build hierarchy items for display
-  // -------------------------------------------------------------------------
-
   const hierarchyItems = useMemo(() => {
-    if (loading) return [];
+    if (loading || !currentRecord) return [];
 
-    if (tableKey === 'primaryMuscles') {
-      const current = primaryMuscles.find(p => p.id === currentRecordId);
-      if (!current) return [];
-      const relatedSecs = secondaryMuscles.filter(s => s.primary_muscle_ids?.includes(currentRecordId));
-      return relatedSecs.map(sec => ({
+    if (currentTier === 'primary') {
+      // Show children (secondaries) with their tertiaries
+      const children = secondaries.filter(s => parseParentIds(s).includes(currentRecordId));
+      return children.map(sec => ({
         type: 'primary-view' as const,
         secondary: sec,
-        tertiaries: tertiaryMuscles.filter(t => t.secondary_muscle_ids?.includes(sec.id)),
+        tertiaries: tertiaries.filter(t => parseParentIds(t).includes(sec.id)),
       }));
     }
 
-    if (tableKey === 'secondaryMuscles') {
-      const current = secondaryMuscles.find(s => s.id === currentRecordId);
-      if (!current) return [];
-      return (current.primary_muscle_ids || []).map(pid => {
-        const primary = primaryMuscles.find(p => p.id === pid);
+    if (currentTier === 'secondary') {
+      // Show parents (primaries) with current secondary and its tertiaries
+      const parentIds = parseParentIds(currentRecord);
+      const myTertiaries = tertiaries.filter(t => parseParentIds(t).includes(currentRecordId));
+      return parentIds.map(pid => {
+        const primary = primaries.find(p => p.id === pid);
         if (!primary) return null;
         return {
           type: 'secondary-view' as const,
           primary,
-          secondary: current,
-          tertiaries: tertiaryMuscles.filter(t => t.secondary_muscle_ids?.includes(currentRecordId)),
+          secondary: currentRecord,
+          tertiaries: myTertiaries,
         };
       }).filter((x): x is NonNullable<typeof x> => x !== null);
     }
 
-    // tertiaryMuscles
-    const current = tertiaryMuscles.find(t => t.id === currentRecordId);
-    if (!current) return [];
-    return (current.secondary_muscle_ids || []).map(sid => {
-      const sec = secondaryMuscles.find(s => s.id === sid);
+    // Tertiary: show parent chain
+    const parentIds = parseParentIds(currentRecord);
+    return parentIds.map(sid => {
+      const sec = secondaries.find(s => s.id === sid);
       if (!sec) return null;
-      const primaries = (sec.primary_muscle_ids || []).map(pid => primaryMuscles.find(p => p.id === pid)).filter(Boolean) as MuscleRecord[];
+      const secParents = parseParentIds(sec);
+      const pris = secParents.map(pid => primaries.find(p => p.id === pid)).filter(Boolean) as MuscleRecord[];
       return {
         type: 'tertiary-view' as const,
         secondary: sec,
-        primaries,
-        tertiary: current,
+        primaries: pris,
+        tertiary: currentRecord,
       };
     }).filter((x): x is NonNullable<typeof x> => x !== null);
-  }, [tableKey, currentRecordId, primaryMuscles, secondaryMuscles, tertiaryMuscles, loading]);
+  }, [currentTier, currentRecord, currentRecordId, primaries, secondaries, tertiaries, loading]);
 
   // Available items for "Add" dropdowns
   const availableAddOptions = useMemo(() => {
-    if (tableKey === 'primaryMuscles') {
-      const linkedSecIds = secondaryMuscles.filter(s => s.primary_muscle_ids?.includes(currentRecordId)).map(s => s.id);
-      return secondaryMuscles.filter(s => !linkedSecIds.includes(s.id));
+    if (!currentRecord) return [];
+
+    if (currentTier === 'primary') {
+      const linkedChildIds = secondaries.filter(s => parseParentIds(s).includes(currentRecordId)).map(s => s.id);
+      return secondaries.filter(s => !linkedChildIds.includes(s.id));
     }
-    if (tableKey === 'secondaryMuscles') {
-      const current = secondaryMuscles.find(s => s.id === currentRecordId);
-      const linkedPriIds = current?.primary_muscle_ids || [];
-      return primaryMuscles.filter(p => !linkedPriIds.includes(p.id));
+    if (currentTier === 'secondary') {
+      const linkedParentIds = parseParentIds(currentRecord);
+      return primaries.filter(p => !linkedParentIds.includes(p.id));
     }
-    // tertiary
-    const current = tertiaryMuscles.find(t => t.id === currentRecordId);
-    const linkedSecIds = current?.secondary_muscle_ids || [];
-    return secondaryMuscles.filter(s => !linkedSecIds.includes(s.id));
-  }, [tableKey, currentRecordId, primaryMuscles, secondaryMuscles, tertiaryMuscles]);
+    // Tertiary: can add secondary parents
+    const linkedParentIds = parseParentIds(currentRecord);
+    return secondaries.filter(s => !linkedParentIds.includes(s.id));
+  }, [currentTier, currentRecord, currentRecordId, primaries, secondaries]);
 
   if (loading) {
     return <div className="text-xs text-gray-400 py-2">Loading muscle data...</div>;
   }
 
-  // -------------------------------------------------------------------------
-  // Render
-  // -------------------------------------------------------------------------
-
   return (
     <div className="space-y-3">
-      {/* Primary table: list of secondaries with nested tertiaries */}
-      {tableKey === 'primaryMuscles' && hierarchyItems.map((item) => {
+      {/* Primary: list of secondaries with nested tertiaries */}
+      {currentTier === 'primary' && hierarchyItems.map((item) => {
         if (item.type !== 'primary-view') return null;
-        const { secondary, tertiaries } = item;
+        const { secondary, tertiaries: terts } = item;
         const key = `sec-${secondary.id}`;
         const isExp = expanded.has(key);
         return (
@@ -259,30 +215,30 @@ export default function MuscleHierarchyField({ tableKey, currentRecordId, onFiel
                 <button type="button" onClick={() => toggleExpand(key)} className="text-xs text-gray-500 w-4 flex-shrink-0 hover:text-gray-700">
                   {isExp ? '▼' : '▶'}
                 </button>
-                <Link to={`/table/secondaryMuscles`} className="text-sm font-medium text-blue-600 hover:underline">{secondary.label}</Link>
+                <Link to="/table/muscles" className="text-sm font-medium text-blue-600 hover:underline">{secondary.label}</Link>
                 <span className="text-xs text-gray-400">{secondary.id}</span>
-                {tertiaries.length > 0 && <span className="text-xs text-gray-400 ml-auto">({tertiaries.length} tertiary)</span>}
+                {terts.length > 0 && <span className="text-xs text-gray-400 ml-auto">({terts.length} tertiary)</span>}
               </div>
-              <button type="button" onClick={() => removeSecondaryFromPrimary(currentRecordId, secondary.id)}
+              <button type="button" onClick={() => unlinkParent(secondary.id, currentRecordId)}
                 className="text-xs text-red-600 hover:text-red-800 px-2 py-1 hover:bg-red-50 rounded ml-2">Remove</button>
             </div>
             {isExp && (
               <div className="border-t bg-gray-50">
-                {tertiaries.map(t => (
+                {terts.map(t => (
                   <div key={t.id} className="px-3 py-1.5 pl-8">
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-gray-500">•</span>
-                      <Link to={`/table/tertiaryMuscles`} className="text-sm text-blue-600 hover:underline">{t.label}</Link>
+                      <Link to="/table/muscles" className="text-sm text-blue-600 hover:underline">{t.label}</Link>
                       <span className="text-xs text-gray-400">{t.id}</span>
                     </div>
                   </div>
                 ))}
-                <TertiaryMuscleAdder
-                  currentSecondaryId={secondary.id}
-                  existingTertiaryIds={tertiaries.map(t => t.id)}
-                  allTertiaryMuscles={tertiaryMuscles}
-                  onAdd={(tertiaryId) => addTertiaryToSecondary(secondary.id, tertiaryId)}
-                  onCreate={(data) => createTertiaryForSecondary(secondary.id, data)}
+                <ChildMuscleAdder
+                  currentParentId={secondary.id}
+                  existingChildIds={terts.map(t => t.id)}
+                  allChildMuscles={tertiaries}
+                  onAdd={(childId) => linkParent(childId, secondary.id)}
+                  onCreate={(data) => createChild(secondary.id, data)}
                 />
               </div>
             )}
@@ -290,10 +246,10 @@ export default function MuscleHierarchyField({ tableKey, currentRecordId, onFiel
         );
       })}
 
-      {/* Secondary table: list of primaries with current secondary and nested tertiaries */}
-      {tableKey === 'secondaryMuscles' && hierarchyItems.map((item) => {
+      {/* Secondary: list of primaries with current secondary and nested tertiaries */}
+      {currentTier === 'secondary' && hierarchyItems.map((item) => {
         if (item.type !== 'secondary-view') return null;
-        const { primary, secondary, tertiaries } = item;
+        const { primary, secondary, tertiaries: terts } = item;
         const key = `sec-${secondary.id}-pri-${primary.id}`;
         const isExp = expanded.has(key);
         return (
@@ -303,33 +259,33 @@ export default function MuscleHierarchyField({ tableKey, currentRecordId, onFiel
                 <button type="button" onClick={() => toggleExpand(key)} className="text-xs text-gray-500 w-4 flex-shrink-0 hover:text-gray-700">
                   {isExp ? '▼' : '▶'}
                 </button>
-                <Link to={`/table/primaryMuscles`} className="text-sm font-medium text-blue-600 hover:underline">{primary.label}</Link>
+                <Link to="/table/muscles" className="text-sm font-medium text-blue-600 hover:underline">{primary.label}</Link>
                 <span className="text-xs text-gray-400">{primary.id}</span>
                 <span className="text-xs text-gray-400">→</span>
                 <span className="text-sm font-medium text-gray-700">{secondary.label}</span>
                 <span className="text-xs text-gray-400">{secondary.id}</span>
-                {tertiaries.length > 0 && <span className="text-xs text-gray-400 ml-auto">({tertiaries.length} tertiary)</span>}
+                {terts.length > 0 && <span className="text-xs text-gray-400 ml-auto">({terts.length} tertiary)</span>}
               </div>
-              <button type="button" onClick={() => removePrimaryFromSecondary(currentRecordId, primary.id)}
+              <button type="button" onClick={() => unlinkParent(currentRecordId, primary.id)}
                 className="text-xs text-red-600 hover:text-red-800 px-2 py-1 hover:bg-red-50 rounded ml-2">Remove</button>
             </div>
             {isExp && (
               <div className="border-t bg-gray-50">
-                {tertiaries.map(t => (
+                {terts.map(t => (
                   <div key={t.id} className="px-3 py-1.5 pl-8">
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-gray-500">•</span>
-                      <Link to={`/table/tertiaryMuscles`} className="text-sm text-blue-600 hover:underline">{t.label}</Link>
+                      <Link to="/table/muscles" className="text-sm text-blue-600 hover:underline">{t.label}</Link>
                       <span className="text-xs text-gray-400">{t.id}</span>
                     </div>
                   </div>
                 ))}
-                <TertiaryMuscleAdder
-                  currentSecondaryId={secondary.id}
-                  existingTertiaryIds={tertiaries.map(t => t.id)}
-                  allTertiaryMuscles={tertiaryMuscles}
-                  onAdd={(tertiaryId) => addTertiaryToSecondary(secondary.id, tertiaryId)}
-                  onCreate={(data) => createTertiaryForSecondary(secondary.id, data)}
+                <ChildMuscleAdder
+                  currentParentId={secondary.id}
+                  existingChildIds={terts.map(t => t.id)}
+                  allChildMuscles={tertiaries}
+                  onAdd={(childId) => linkParent(childId, secondary.id)}
+                  onCreate={(data) => createChild(secondary.id, data)}
                 />
               </div>
             )}
@@ -337,31 +293,31 @@ export default function MuscleHierarchyField({ tableKey, currentRecordId, onFiel
         );
       })}
 
-      {/* Tertiary table: list of secondary parents with their primaries */}
-      {tableKey === 'tertiaryMuscles' && hierarchyItems.map((item) => {
+      {/* Tertiary: list of secondary parents with their primaries */}
+      {currentTier === 'tertiary' && hierarchyItems.map((item) => {
         if (item.type !== 'tertiary-view') return null;
-        const { secondary, primaries, tertiary } = item;
+        const { secondary, primaries: pris, tertiary } = item;
         return (
           <div key={secondary.id} className="bg-white border rounded-lg">
             <div className="px-3 py-2 bg-gray-50 border-b flex items-center justify-between">
               <div className="flex items-center gap-2 flex-1 flex-wrap">
-                {primaries.length > 0 ? (
-                  primaries.map((p, i) => (
+                {pris.length > 0 ? (
+                  pris.map((p, i) => (
                     <React.Fragment key={p.id}>
                       {i > 0 && <span className="text-xs text-gray-400">,</span>}
-                      <Link to={`/table/primaryMuscles`} className="text-sm font-medium text-blue-600 hover:underline">{p.label}</Link>
+                      <Link to="/table/muscles" className="text-sm font-medium text-blue-600 hover:underline">{p.label}</Link>
                     </React.Fragment>
                   ))
                 ) : (
                   <span className="text-xs text-gray-400 italic">No primary</span>
                 )}
                 <span className="text-xs text-gray-400">→</span>
-                <Link to={`/table/secondaryMuscles`} className="text-sm font-medium text-blue-600 hover:underline">{secondary.label}</Link>
+                <Link to="/table/muscles" className="text-sm font-medium text-blue-600 hover:underline">{secondary.label}</Link>
                 <span className="text-xs text-gray-400">→</span>
                 <span className="text-sm font-medium text-gray-700">{tertiary.label}</span>
                 <span className="text-xs text-gray-400">{tertiary.id}</span>
               </div>
-              <button type="button" onClick={() => removeSecondaryFromTertiary(currentRecordId, secondary.id)}
+              <button type="button" onClick={() => unlinkParent(currentRecordId, secondary.id)}
                 className="text-xs text-red-600 hover:text-red-800 px-2 py-1 hover:bg-red-50 rounded ml-2">Remove</button>
             </div>
           </div>
@@ -376,20 +332,20 @@ export default function MuscleHierarchyField({ tableKey, currentRecordId, onFiel
             onChange={async (e) => {
               if (!e.target.value) return;
               const selectedId = e.target.value;
-              if (tableKey === 'primaryMuscles') {
-                await addSecondaryToPrimary(currentRecordId, selectedId);
-              } else if (tableKey === 'secondaryMuscles') {
-                await addPrimaryToSecondary(currentRecordId, selectedId);
+              if (currentTier === 'primary') {
+                await linkParent(selectedId, currentRecordId);
+              } else if (currentTier === 'secondary') {
+                await linkParent(currentRecordId, selectedId);
               } else {
-                await addSecondaryToTertiary(currentRecordId, selectedId);
+                await linkParent(currentRecordId, selectedId);
               }
             }}
             className="w-full px-3 py-2 border rounded text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
           >
             <option value="">
-              {tableKey === 'primaryMuscles' ? 'Add Secondary Muscle...'
-                : tableKey === 'secondaryMuscles' ? 'Add Primary Muscle...'
-                : 'Add Secondary Muscle...'}
+              {currentTier === 'primary' ? 'Add Child Muscle...'
+                : currentTier === 'secondary' ? 'Add Parent Muscle...'
+                : 'Add Parent Muscle...'}
             </option>
             {availableAddOptions.map(opt => (
               <option key={opt.id} value={opt.id}>{opt.label} ({opt.id})</option>
@@ -408,64 +364,64 @@ export default function MuscleHierarchyField({ tableKey, currentRecordId, onFiel
 }
 
 // ---------------------------------------------------------------------------
-// TertiaryMuscleAdder sub-component
+// ChildMuscleAdder sub-component (replaces TertiaryMuscleAdder)
 // ---------------------------------------------------------------------------
 
-interface TertiaryMuscleAdderProps {
-  currentSecondaryId: string;
-  existingTertiaryIds: string[];
-  allTertiaryMuscles: MuscleRecord[];
-  onAdd: (tertiaryId: string) => Promise<void>;
+interface ChildMuscleAdderProps {
+  currentParentId: string;
+  existingChildIds: string[];
+  allChildMuscles: MuscleRecord[];
+  onAdd: (childId: string) => Promise<void>;
   onCreate: (data: Record<string, unknown>) => Promise<void>;
 }
 
-function TertiaryMuscleAdder({ currentSecondaryId, existingTertiaryIds, allTertiaryMuscles, onAdd, onCreate }: TertiaryMuscleAdderProps) {
-  const [selectedTertiaryId, setSelectedTertiaryId] = useState('');
+function ChildMuscleAdder({ currentParentId, existingChildIds, allChildMuscles, onAdd, onCreate }: ChildMuscleAdderProps) {
+  const [selectedChildId, setSelectedChildId] = useState('');
   const [adding, setAdding] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [newTertiary, setNewTertiary] = useState({ id: '', label: '', technical_name: '', short_description: '' });
+  const [newChild, setNewChild] = useState({ id: '', label: '', technical_name: '', short_description: '' });
   const [creating, setCreating] = useState(false);
 
-  const availableTertiaries = useMemo(() => {
-    return allTertiaryMuscles.filter(t => !existingTertiaryIds.includes(t.id));
-  }, [allTertiaryMuscles, existingTertiaryIds]);
+  const availableChildren = useMemo(() => {
+    return allChildMuscles.filter(t => !existingChildIds.includes(t.id));
+  }, [allChildMuscles, existingChildIds]);
 
   const handleAdd = async () => {
-    if (!selectedTertiaryId) return;
+    if (!selectedChildId) return;
     setAdding(true);
     try {
-      await onAdd(selectedTertiaryId);
-      setSelectedTertiaryId('');
+      await onAdd(selectedChildId);
+      setSelectedChildId('');
     } catch (err) {
-      console.error('Failed to add tertiary:', err);
-      alert('Failed to add tertiary muscle.');
+      console.error('Failed to add child:', err);
+      alert('Failed to add child muscle.');
     } finally {
       setAdding(false);
     }
   };
 
   const handleCreate = async () => {
-    if (!newTertiary.id || !newTertiary.label) {
+    if (!newChild.id || !newChild.label) {
       alert('ID and Label are required.');
       return;
     }
     setCreating(true);
     try {
       await onCreate({
-        id: newTertiary.id,
-        label: newTertiary.label,
-        technical_name: newTertiary.technical_name,
+        id: newChild.id,
+        label: newChild.label,
+        technical_name: newChild.technical_name,
         common_names: [],
         icon: '',
-        short_description: newTertiary.short_description,
+        short_description: newChild.short_description,
         sort_order: 0,
         is_active: true,
       });
-      setNewTertiary({ id: '', label: '', technical_name: '', short_description: '' });
+      setNewChild({ id: '', label: '', technical_name: '', short_description: '' });
       setShowCreateForm(false);
     } catch (err) {
-      console.error('Failed to create tertiary:', err);
-      alert('Failed to create tertiary muscle.');
+      console.error('Failed to create child:', err);
+      alert('Failed to create child muscle.');
     } finally {
       setCreating(false);
     }
@@ -477,17 +433,17 @@ function TertiaryMuscleAdder({ currentSecondaryId, existingTertiaryIds, allTerti
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-500">+</span>
           <select
-            value={selectedTertiaryId}
-            onChange={e => setSelectedTertiaryId(e.target.value)}
+            value={selectedChildId}
+            onChange={e => setSelectedChildId(e.target.value)}
             disabled={adding}
             className="flex-1 px-2 py-1 border rounded text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-gray-100"
           >
-            <option value="">Add Tertiary Muscle...</option>
-            {availableTertiaries.map(t => (
+            <option value="">Add Child Muscle...</option>
+            {availableChildren.map(t => (
               <option key={t.id} value={t.id}>{t.label} ({t.id})</option>
             ))}
           </select>
-          <button type="button" onClick={handleAdd} disabled={!selectedTertiaryId || adding}
+          <button type="button" onClick={handleAdd} disabled={!selectedChildId || adding}
             className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
             {adding ? 'Adding...' : 'Add'}
           </button>
@@ -498,27 +454,27 @@ function TertiaryMuscleAdder({ currentSecondaryId, existingTertiaryIds, allTerti
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-500">New:</span>
-            <input type="text" placeholder="ID (required)" value={newTertiary.id}
-              onChange={e => setNewTertiary({ ...newTertiary, id: e.target.value })}
+            <input type="text" placeholder="ID (required)" value={newChild.id}
+              onChange={e => setNewChild({ ...newChild, id: e.target.value })}
               className="flex-1 px-2 py-1 border rounded text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-            <input type="text" placeholder="Label (required)" value={newTertiary.label}
-              onChange={e => setNewTertiary({ ...newTertiary, label: e.target.value })}
-              className="flex-1 px-2 py-1 border rounded text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-          </div>
-          <div className="flex items-center gap-2">
-            <input type="text" placeholder="Technical Name (optional)" value={newTertiary.technical_name}
-              onChange={e => setNewTertiary({ ...newTertiary, technical_name: e.target.value })}
-              className="flex-1 px-2 py-1 border rounded text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-            <input type="text" placeholder="Short Description (optional)" value={newTertiary.short_description}
-              onChange={e => setNewTertiary({ ...newTertiary, short_description: e.target.value })}
+            <input type="text" placeholder="Label (required)" value={newChild.label}
+              onChange={e => setNewChild({ ...newChild, label: e.target.value })}
               className="flex-1 px-2 py-1 border rounded text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none" />
           </div>
           <div className="flex items-center gap-2">
-            <button type="button" onClick={handleCreate} disabled={!newTertiary.id || !newTertiary.label || creating}
+            <input type="text" placeholder="Technical Name (optional)" value={newChild.technical_name}
+              onChange={e => setNewChild({ ...newChild, technical_name: e.target.value })}
+              className="flex-1 px-2 py-1 border rounded text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+            <input type="text" placeholder="Short Description (optional)" value={newChild.short_description}
+              onChange={e => setNewChild({ ...newChild, short_description: e.target.value })}
+              className="flex-1 px-2 py-1 border rounded text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+          </div>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={handleCreate} disabled={!newChild.id || !newChild.label || creating}
               className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed">
               {creating ? 'Creating...' : 'Create'}
             </button>
-            <button type="button" onClick={() => { setShowCreateForm(false); setNewTertiary({ id: '', label: '', technical_name: '', short_description: '' }); }}
+            <button type="button" onClick={() => { setShowCreateForm(false); setNewChild({ id: '', label: '', technical_name: '', short_description: '' }); }}
               className="px-3 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300">Cancel</button>
           </div>
         </div>

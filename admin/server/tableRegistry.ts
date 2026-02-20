@@ -12,7 +12,7 @@ export interface TableField {
   /** For FK / FK[] fields: which field on the referenced table to display (default "label") */
   refLabelField?: string;
   /** For json fields: hint about the shape for specialized editors */
-  jsonShape?: 'muscle_targets' | 'delta_rules' | 'equipment_category_map' | 'allowed_rules' | 'exercise_input_permissions' | 'motion_planes_config' | 'free';
+  jsonShape?: 'muscle_targets' | 'delta_rules' | 'allowed_rules' | 'exercise_input_permissions' | 'motion_planes' | 'free';
   /** Default value for new rows */
   defaultValue?: unknown;
 }
@@ -25,7 +25,7 @@ export interface TableSchema {
   /** Human-readable name */
   label: string;
   /** Group for sidebar organization */
-  group: 'Exercise Setup' | 'Muscles' | 'Equipment' | 'Motions' | 'Grips & Stance';
+  group: 'Exercise Setup' | 'Muscles' | 'Equipment' | 'Motions' | 'Score Modifiers';
   /** Primary key field (always "id") */
   idField: string;
   /** Field used for display labels in dropdowns */
@@ -112,96 +112,41 @@ export const TABLE_REGISTRY: TableSchema[] = [
 
   // ── Muscles ─────────────────────────────────────────────────────
   {
-    key: 'muscleGroups',
-    file: 'muscleGroups.json',
-    label: 'Muscle Groups',
+    key: 'muscles',
+    file: 'muscles.json',
+    label: 'Muscles',
     group: 'Muscles',
     idField: 'id',
     labelField: 'label',
     fields: baseFields([
-      { name: 'values_table', type: 'string', required: true },
+      { name: 'parent_ids', type: 'fk[]', refTable: 'muscles', refLabelField: 'label' },
       { name: 'common_names', type: 'string[]', defaultValue: [] },
-      { name: 'icon', type: 'string', defaultValue: '' },
+      { name: 'technical_name', type: 'string' },
       { name: 'short_description', type: 'string' },
-    ]),
-  },
-  {
-    key: 'primaryMuscles',
-    file: 'primaryMuscles.json',
-    label: 'Primary Muscles',
-    group: 'Muscles',
-    idField: 'id',
-    labelField: 'label',
-    fields: standardFields([
+      { name: 'function', type: 'string' },
+      { name: 'location', type: 'string' },
+      { name: 'triggers', type: 'string' },
       { name: 'upper_lower', type: 'string[]', defaultValue: [] },
-      { name: 'function', type: 'string' },
-      { name: 'location', type: 'string' },
-      { name: 'triggers', type: 'string' },
-    ]),
-  },
-  {
-    key: 'secondaryMuscles',
-    file: 'secondaryMuscles.json',
-    label: 'Secondary Muscles',
-    group: 'Muscles',
-    idField: 'id',
-    labelField: 'label',
-    parentTableKey: 'primaryMuscles',
-    fields: standardFields([
-      { name: 'primary_muscle_ids', type: 'fk[]', refTable: 'primaryMuscles', refLabelField: 'label' },
-      { name: 'function', type: 'string' },
-      { name: 'location', type: 'string' },
-      { name: 'triggers', type: 'string' },
-    ]),
-  },
-  {
-    key: 'tertiaryMuscles',
-    file: 'tertiaryMuscles.json',
-    label: 'Tertiary Muscles',
-    group: 'Muscles',
-    idField: 'id',
-    labelField: 'label',
-    parentTableKey: 'secondaryMuscles',
-    fields: standardFields([
-      { name: 'secondary_muscle_ids', type: 'fk[]', refTable: 'secondaryMuscles', refLabelField: 'label' },
-      { name: 'function', type: 'string' },
-      { name: 'location', type: 'string' },
-      { name: 'triggers', type: 'string' },
+      { name: 'icon', type: 'string', defaultValue: '' },
     ]),
   },
 
   // ── Motions ─────────────────────────────────────────────────────
   {
-    key: 'primaryMotions',
-    file: 'primaryMotions.json',
+    key: 'motions',
+    file: 'motions.json',
     label: 'Motions',
     group: 'Motions',
     idField: 'id',
     labelField: 'label',
     fields: baseFields([
-      { name: 'upperLowerBody', type: 'string' },
+      { name: 'parent_id', type: 'fk', refTable: 'motions', refLabelField: 'label' },
+      { name: 'upper_lower_body', type: 'string' },
+      { name: 'muscle_targets', type: 'json', jsonShape: 'muscle_targets' },
+      { name: 'motion_planes', type: 'json', jsonShape: 'motion_planes' },
       { name: 'common_names', type: 'string[]', defaultValue: [] },
       { name: 'short_description', type: 'string' },
       { name: 'icon', type: 'string', defaultValue: '' },
-      { name: 'muscle_targets', type: 'json', jsonShape: 'muscle_targets' },
-      { name: 'motion_planes', type: 'json', jsonShape: 'motion_planes_config' },
-    ]),
-  },
-  {
-    key: 'primaryMotionVariations',
-    file: 'primaryMotionVariations.json',
-    label: 'Motion Variations',
-    group: 'Motions',
-    idField: 'id',
-    labelField: 'label',
-    parentTableKey: 'primaryMotions',
-    fields: baseFields([
-      { name: 'primary_motion_key', type: 'fk', required: true, refTable: 'primaryMotions', refLabelField: 'label' },
-      { name: 'common_names', type: 'string[]', defaultValue: [] },
-      { name: 'short_description', type: 'string' },
-      { name: 'icon', type: 'string', defaultValue: '' },
-      { name: 'muscle_targets', type: 'json', jsonShape: 'muscle_targets' },
-      { name: 'motion_planes', type: 'json', jsonShape: 'motion_planes_config' },
     ]),
   },
   {
@@ -213,63 +158,35 @@ export const TABLE_REGISTRY: TableSchema[] = [
     labelField: 'label',
     fields: baseFields([
       { name: 'common_names', type: 'string[]', defaultValue: [] },
+      { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
       { name: 'short_description', type: 'string' },
-      { name: 'icon', type: 'string', defaultValue: '' },
     ]),
   },
 
-  // ── Grips & Stance ──────────────────────────────────────────────
+  // ── Score Modifiers ──────────────────────────────────────────────
   {
-    key: 'gripTypes',
-    file: 'gripTypes.json',
-    label: 'Grip Types',
-    group: 'Grips & Stance',
+    key: 'grips',
+    file: 'grips.json',
+    label: 'Grips',
+    group: 'Score Modifiers',
     idField: 'id',
     labelField: 'label',
     fields: baseFields([
+      { name: 'parent_id', type: 'fk', refTable: 'grips', refLabelField: 'label' },
+      { name: 'is_dynamic', type: 'boolean', defaultValue: false },
       { name: 'grip_category', type: 'string' },
+      { name: 'rotation_path', type: 'json', jsonShape: 'free' },
       { name: 'common_names', type: 'string[]', defaultValue: [] },
-      { name: 'icon', type: 'string', defaultValue: '' },
-      { name: 'short_description', type: 'string' },
       { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
-      { name: 'default_variation', type: 'string', defaultValue: '' },
-    ]),
-  },
-  {
-    key: 'gripTypeVariations',
-    file: 'gripTypeVariations.json',
-    label: 'Grip Type Variations',
-    group: 'Grips & Stance',
-    idField: 'id',
-    labelField: 'label',
-    parentTableKey: 'gripTypes',
-    fields: baseFields([
-      { name: 'parent_grip_id', type: 'fk', refTable: 'gripTypes', refLabelField: 'label' },
-      { name: 'common_names', type: 'string[]', defaultValue: [] },
-      { name: 'icon', type: 'string', defaultValue: '' },
       { name: 'short_description', type: 'string' },
-      { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
-    ]),
-  },
-  {
-    key: 'gripWidths',
-    file: 'gripWidths.json',
-    label: 'Grip Widths',
-    group: 'Grips & Stance',
-    idField: 'id',
-    labelField: 'label',
-    fields: baseFields([
-      { name: 'common_names', type: 'string[]', defaultValue: [] },
       { name: 'icon', type: 'string', defaultValue: '' },
-      { name: 'short_description', type: 'string' },
-      { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
     ]),
   },
   {
     key: 'footPositions',
     file: 'footPositions.json',
     label: 'Foot Positions',
-    group: 'Grips & Stance',
+    group: 'Score Modifiers',
     idField: 'id',
     labelField: 'label',
     fields: baseFields([
@@ -283,7 +200,7 @@ export const TABLE_REGISTRY: TableSchema[] = [
     key: 'stanceTypes',
     file: 'stanceTypes.json',
     label: 'Stance Types',
-    group: 'Grips & Stance',
+    group: 'Score Modifiers',
     idField: 'id',
     labelField: 'label',
     fields: baseFields([
@@ -297,7 +214,7 @@ export const TABLE_REGISTRY: TableSchema[] = [
     key: 'stanceWidths',
     file: 'stanceWidths.json',
     label: 'Stance Widths',
-    group: 'Grips & Stance',
+    group: 'Score Modifiers',
     idField: 'id',
     labelField: 'label',
     fields: baseFields([
@@ -311,7 +228,7 @@ export const TABLE_REGISTRY: TableSchema[] = [
     key: 'torsoAngles',
     file: 'torsoAngles.json',
     label: 'Torso Angles',
-    group: 'Grips & Stance',
+    group: 'Score Modifiers',
     idField: 'id',
     labelField: 'label',
     fields: baseFields([
@@ -327,7 +244,7 @@ export const TABLE_REGISTRY: TableSchema[] = [
     key: 'torsoOrientations',
     file: 'torsoOrientations.json',
     label: 'Torso Orientations',
-    group: 'Grips & Stance',
+    group: 'Score Modifiers',
     idField: 'id',
     labelField: 'label',
     parentTableKey: 'torsoAngles',
@@ -342,7 +259,7 @@ export const TABLE_REGISTRY: TableSchema[] = [
     key: 'supportStructures',
     file: 'supportStructures.json',
     label: 'Support Structures',
-    group: 'Grips & Stance',
+    group: 'Score Modifiers',
     idField: 'id',
     labelField: 'label',
     fields: baseFields([
@@ -356,7 +273,7 @@ export const TABLE_REGISTRY: TableSchema[] = [
     key: 'elbowRelationship',
     file: 'elbowRelationship.json',
     label: 'Elbow Relationship',
-    group: 'Grips & Stance',
+    group: 'Score Modifiers',
     idField: 'id',
     labelField: 'label',
     fields: baseFields([
@@ -370,7 +287,22 @@ export const TABLE_REGISTRY: TableSchema[] = [
     key: 'loadingAids',
     file: 'loadingAids.json',
     label: 'Loading Aids',
-    group: 'Grips & Stance',
+    group: 'Score Modifiers',
+    idField: 'id',
+    labelField: 'label',
+    fields: baseFields([
+      { name: 'common_names', type: 'string[]', defaultValue: [] },
+      { name: 'icon', type: 'string', defaultValue: '' },
+      { name: 'short_description', type: 'string' },
+      { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
+    ]),
+  },
+
+  {
+    key: 'rangeOfMotion',
+    file: 'rangeOfMotion.json',
+    label: 'Range of Motion',
+    group: 'Score Modifiers',
     idField: 'id',
     labelField: 'label',
     fields: baseFields([
@@ -389,61 +321,27 @@ export const TABLE_REGISTRY: TableSchema[] = [
     group: 'Equipment',
     idField: 'id',
     labelField: 'label',
-    fields: subLabelFields([
-      { name: 'sub_categories_table', type: 'string' },
+    fields: baseFields([
+      { name: 'parent_id', type: 'fk', refTable: 'equipmentCategories', refLabelField: 'label' },
+      { name: 'common_names', type: 'string[]', defaultValue: [] },
+      { name: 'short_description', type: 'string' },
     ]),
   },
   {
-    key: 'supportEquipmentCategories',
-    file: 'supportEquipmentCategories.json',
-    label: 'Support Equipment Categories',
-    group: 'Equipment',
-    idField: 'id',
-    labelField: 'label',
-    fields: subLabelFields(),
-  },
-  {
-    key: 'weightsEquipmentCategories',
-    file: 'weightsEquipmentCategories.json',
-    label: 'Weights Equipment Categories',
-    group: 'Equipment',
-    idField: 'id',
-    labelField: 'label',
-    fields: subLabelFields(),
-  },
-  {
-    key: 'gymEquipment',
-    file: 'gymEquipment.json',
-    label: 'Gym Equipment',
+    key: 'equipment',
+    file: 'equipment.json',
+    label: 'Equipment',
     group: 'Equipment',
     idField: 'id',
     labelField: 'label',
     fields: baseFields([
-      { name: 'sub_label', type: 'string' },
+      { name: 'category_id', type: 'fk', refTable: 'equipmentCategories', refLabelField: 'label' },
       { name: 'common_names', type: 'string[]', defaultValue: [] },
-      { name: 'icon', type: 'string', defaultValue: '' },
       { name: 'short_description', type: 'string' },
-      { name: 'equipment_categories', type: 'json', jsonShape: 'equipment_category_map' },
+      { name: 'is_attachment', type: 'boolean', defaultValue: false },
+      { name: 'requires_attachment', type: 'boolean', defaultValue: false },
       { name: 'max_instances', type: 'number', defaultValue: 1 },
-      { name: 'cable_attachments', type: 'boolean', defaultValue: false },
-      { name: 'allowed_grip_types', type: 'fk[]', refTable: 'gripTypes', refLabelField: 'label' },
-      { name: 'allowed_grip_widths', type: 'fk[]', refTable: 'gripWidths', refLabelField: 'label' },
-      { name: 'allowed_stance_types', type: 'fk[]', refTable: 'stanceTypes', refLabelField: 'label' },
-      { name: 'allowed_stance_widths', type: 'fk[]', refTable: 'stanceWidths', refLabelField: 'label' },
-    ]),
-  },
-  {
-    key: 'cableAttachments',
-    file: 'cableAttachments.json',
-    label: 'Cable Attachments',
-    group: 'Equipment',
-    idField: 'id',
-    labelField: 'label',
-    fields: subLabelFields([
-      { name: 'allowed_grip_types', type: 'fk[]', refTable: 'gripTypes', refLabelField: 'label' },
-      { name: 'allowed_grip_widths', type: 'fk[]', refTable: 'gripWidths', refLabelField: 'label' },
-      { name: 'allowed_stance_types', type: 'fk[]', refTable: 'stanceTypes', refLabelField: 'label' },
-      { name: 'allowed_stance_widths', type: 'fk[]', refTable: 'stanceWidths', refLabelField: 'label' },
+      { name: 'modifier_constraints', type: 'json', jsonShape: 'free' },
     ]),
   },
   {

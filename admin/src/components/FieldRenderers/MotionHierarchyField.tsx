@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api';
 
-type MotionTableKey = 'primaryMotions' | 'primaryMotionVariations';
+type MotionTableKey = 'motions';
 
 interface MotionHierarchyFieldProps {
   tableKey: MotionTableKey;
@@ -13,30 +13,18 @@ interface MotionHierarchyFieldProps {
 interface MotionRecord {
   id: string;
   label: string;
-  primary_motion_key?: string;
+  parent_id?: string | null;
   [key: string]: unknown;
 }
 
-function getCurrentRecordFields(tableKey: MotionTableKey, record: MotionRecord): Record<string, unknown> {
-  if (tableKey === 'primaryMotionVariations') {
-    return { primary_motion_key: record.primary_motion_key || '' };
-  }
-  return {};
-}
-
-export default function MotionHierarchyField({ tableKey, currentRecordId, onFieldsChange }: MotionHierarchyFieldProps) {
-  const [primaryMotions, setPrimaryMotions] = useState<MotionRecord[]>([]);
-  const [variations, setVariations] = useState<MotionRecord[]>([]);
+export default function MotionHierarchyField({ tableKey: _tableKey, currentRecordId, onFieldsChange }: MotionHierarchyFieldProps) {
+  const [allMotions, setAllMotions] = useState<MotionRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadAllData = useCallback(async () => {
     try {
-      const [p, v] = await Promise.all([
-        api.getTable('primaryMotions'),
-        api.getTable('primaryMotionVariations'),
-      ]);
-      setPrimaryMotions((p as MotionRecord[]) || []);
-      setVariations((v as MotionRecord[]) || []);
+      const motions = await api.getTable('motions');
+      setAllMotions((motions as MotionRecord[]) || []);
     } catch (err) {
       console.error('Failed to load motion data:', err);
     } finally {
@@ -46,93 +34,104 @@ export default function MotionHierarchyField({ tableKey, currentRecordId, onFiel
 
   useEffect(() => { loadAllData(); }, [loadAllData]);
 
-  const syncAfterChange = useCallback(async (
-    updatedVariations: MotionRecord[]
-  ) => {
-    try {
-      await api.putTable('primaryMotionVariations', updatedVariations);
-    } catch (err) {
-      console.error('Failed to sync motion hierarchy:', err);
-    }
+  const parentMotions = useMemo(() => allMotions.filter(m => !m.parent_id), [allMotions]);
+  const childMotions = useMemo(() => allMotions.filter(m => !!m.parent_id), [allMotions]);
 
-    setVariations([...updatedVariations]);
-
-    if (tableKey === 'primaryMotionVariations') {
-      const current = updatedVariations.find(r => r.id === currentRecordId);
-      if (current) onFieldsChange(getCurrentRecordFields(tableKey, current));
-    }
-  }, [tableKey, currentRecordId, onFieldsChange]);
+  const currentMotion = useMemo(() => allMotions.find(m => m.id === currentRecordId), [allMotions, currentRecordId]);
+  const isCurrentParent = !currentMotion?.parent_id;
 
   const addVariationToPrimary = useCallback(async (_primaryId: string, variationId: string) => {
-    const vars = variations.map(v =>
-      v.id === variationId ? { ...v, primary_motion_key: _primaryId } : { ...v }
-    );
-    await syncAfterChange(vars);
-  }, [variations, syncAfterChange]);
+    try {
+      await api.updateRow('motions', variationId, { parent_id: _primaryId });
+      await loadAllData();
+    } catch (err) {
+      console.error('Failed to link variation:', err);
+    }
+  }, [loadAllData]);
 
   const removeVariationFromPrimary = useCallback(async (_primaryId: string, variationId: string) => {
-    const vars = variations.map(v =>
-      v.id === variationId ? { ...v, primary_motion_key: '' } : { ...v }
-    );
-    await syncAfterChange(vars);
-  }, [variations, syncAfterChange]);
+    try {
+      await api.updateRow('motions', variationId, { parent_id: null });
+      if (variationId === currentRecordId) {
+        onFieldsChange({ parent_id: null });
+      }
+      await loadAllData();
+    } catch (err) {
+      console.error('Failed to unlink variation:', err);
+    }
+  }, [loadAllData, currentRecordId, onFieldsChange]);
 
   const setPrimaryForVariation = useCallback(async (variationId: string, primaryId: string) => {
-    const vars = variations.map(v =>
-      v.id === variationId ? { ...v, primary_motion_key: primaryId } : { ...v }
-    );
-    await syncAfterChange(vars);
-  }, [variations, syncAfterChange]);
+    try {
+      await api.updateRow('motions', variationId, { parent_id: primaryId });
+      if (variationId === currentRecordId) {
+        onFieldsChange({ parent_id: primaryId });
+      }
+      await loadAllData();
+    } catch (err) {
+      console.error('Failed to set parent:', err);
+    }
+  }, [loadAllData, currentRecordId, onFieldsChange]);
 
   const removePrimaryFromVariation = useCallback(async (variationId: string) => {
-    const vars = variations.map(v =>
-      v.id === variationId ? { ...v, primary_motion_key: '' } : { ...v }
-    );
-    await syncAfterChange(vars);
-  }, [variations, syncAfterChange]);
+    try {
+      await api.updateRow('motions', variationId, { parent_id: null });
+      if (variationId === currentRecordId) {
+        onFieldsChange({ parent_id: null });
+      }
+      await loadAllData();
+    } catch (err) {
+      console.error('Failed to remove parent:', err);
+    }
+  }, [loadAllData, currentRecordId, onFieldsChange]);
 
   const createVariationForPrimary = useCallback(async (primaryId: string, newData: Record<string, unknown>) => {
     try {
-      await api.addRow('primaryMotionVariations', { ...newData, primary_motion_key: primaryId });
-      const v = await api.getTable('primaryMotionVariations') as MotionRecord[];
-      setVariations(v);
+      await api.addRow('motions', { ...newData, parent_id: primaryId });
+      await loadAllData();
     } catch (err) {
       console.error('Failed to create variation:', err);
       alert('Failed to create variation. Please try again.');
     }
-  }, []);
+  }, [loadAllData]);
 
   const hierarchyItems = useMemo(() => {
-    if (loading) return [];
+    if (loading || !currentMotion) return [];
 
-    if (tableKey === 'primaryMotions') {
-      const relatedVars = variations.filter(v => v.primary_motion_key === currentRecordId);
+    if (isCurrentParent) {
+      const relatedVars = childMotions.filter(v => v.parent_id === currentRecordId);
       return relatedVars.map(v => ({
         type: 'primary-view' as const,
         variation: v,
       }));
     }
 
-    const current = variations.find(v => v.id === currentRecordId);
-    if (!current) return [];
-    const primary = current.primary_motion_key
-      ? primaryMotions.find(p => p.id === current.primary_motion_key)
+    const primary = currentMotion.parent_id
+      ? parentMotions.find(p => p.id === currentMotion.parent_id)
       : null;
     return [{
       type: 'variation-view' as const,
       primary: primary || null,
-      variation: current,
+      variation: currentMotion,
     }];
-  }, [tableKey, currentRecordId, primaryMotions, variations, loading]);
+  }, [isCurrentParent, currentRecordId, parentMotions, childMotions, currentMotion, loading]);
 
   const availableAddOptions = useMemo(() => {
-    if (tableKey === 'primaryMotions') {
-      const linkedVarIds = variations.filter(v => v.primary_motion_key === currentRecordId).map(v => v.id);
-      return { type: 'variations' as const, items: variations.filter(v => !linkedVarIds.includes(v.id) && !v.primary_motion_key) };
+    if (!currentMotion) return { type: 'variations' as const, items: [] as MotionRecord[] };
+
+    if (isCurrentParent) {
+      const linkedVarIds = childMotions.filter(v => v.parent_id === currentRecordId).map(v => v.id);
+      const unlinked = allMotions.filter(m =>
+        !m.parent_id &&
+        m.id !== currentRecordId &&
+        !linkedVarIds.includes(m.id) &&
+        !allMotions.some(c => c.parent_id === m.id)
+      );
+      return { type: 'variations' as const, items: unlinked };
     }
-    const current = variations.find(v => v.id === currentRecordId);
-    return { type: 'primaries' as const, items: primaryMotions.filter(p => p.id !== current?.primary_motion_key) };
-  }, [tableKey, currentRecordId, primaryMotions, variations]);
+
+    return { type: 'primaries' as const, items: parentMotions.filter(p => p.id !== currentMotion?.parent_id) };
+  }, [isCurrentParent, currentRecordId, parentMotions, childMotions, allMotions, currentMotion]);
 
   if (loading) {
     return <div className="text-xs text-gray-400 py-2">Loading motion data...</div>;
@@ -140,14 +139,14 @@ export default function MotionHierarchyField({ tableKey, currentRecordId, onFiel
 
   return (
     <div className="space-y-3">
-      {tableKey === 'primaryMotions' && hierarchyItems.map((item) => {
+      {isCurrentParent && hierarchyItems.map((item) => {
         if (item.type !== 'primary-view') return null;
         const { variation } = item;
         return (
           <div key={variation.id} className="bg-white border rounded-lg">
             <div className="px-3 py-2 bg-gray-50 border-b flex items-center justify-between">
               <div className="flex items-center gap-2 flex-1">
-                <Link to={`/table/primaryMotionVariations`} className="text-sm font-medium text-blue-600 hover:underline">{variation.label}</Link>
+                <Link to="/table/motions" className="text-sm font-medium text-blue-600 hover:underline">{variation.label}</Link>
                 <span className="text-xs text-gray-400">{variation.id}</span>
               </div>
               <button type="button" onClick={() => removeVariationFromPrimary(currentRecordId, variation.id)}
@@ -157,7 +156,7 @@ export default function MotionHierarchyField({ tableKey, currentRecordId, onFiel
         );
       })}
 
-      {tableKey === 'primaryMotionVariations' && hierarchyItems.map((item) => {
+      {!isCurrentParent && hierarchyItems.map((item) => {
         if (item.type !== 'variation-view') return null;
         const { primary, variation } = item;
         return (
@@ -165,7 +164,7 @@ export default function MotionHierarchyField({ tableKey, currentRecordId, onFiel
             <div className="px-3 py-2 bg-gray-50 border-b flex items-center justify-between">
               <div className="flex items-center gap-2 flex-1">
                 {primary ? (
-                  <Link to={`/table/primaryMotions`} className="text-sm font-medium text-blue-600 hover:underline">{primary.label}</Link>
+                  <Link to="/table/motions" className="text-sm font-medium text-blue-600 hover:underline">{primary.label}</Link>
                 ) : (
                   <span className="text-xs text-gray-400 italic">No parent motion</span>
                 )}
@@ -183,7 +182,7 @@ export default function MotionHierarchyField({ tableKey, currentRecordId, onFiel
         );
       })}
 
-      {tableKey === 'primaryMotions' && (
+      {isCurrentParent && (
         <div className="flex flex-row gap-2 items-stretch">
           <select
             value=""
@@ -206,7 +205,7 @@ export default function MotionHierarchyField({ tableKey, currentRecordId, onFiel
         </div>
       )}
 
-      {tableKey === 'primaryMotionVariations' && !variations.find(v => v.id === currentRecordId)?.primary_motion_key && (
+      {!isCurrentParent && !currentMotion?.parent_id && (
         <select
           value=""
           onChange={async (e) => {
@@ -253,7 +252,6 @@ function VariationCreator({ onCreateVariation }: VariationCreatorProps) {
         common_names: [],
         short_description: newVar.short_description,
         muscle_targets: {},
-        motion_planes: {},
         sort_order: 0,
         is_active: true,
       });

@@ -163,6 +163,7 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
   const [draggedRowId, setDraggedRowId] = useState<string | null>(null);
   const [isDraggingRow, setIsDraggingRow] = useState(false);
   const [rowDragHandleActive, setRowDragHandleActive] = useState(false);
+  const [muscleTierFilter, setMuscleTierFilter] = useState<'ALL' | 'PRIMARY' | 'SECONDARY' | 'TERTIARY'>('ALL');
   const tableScrollRef = React.useRef<HTMLDivElement>(null);
 
   const [refData, setRefData] = useState<Record<string, Record<string, unknown>[]>>({});
@@ -273,6 +274,7 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
     setSortCol('sort_order');
     setSortDir('asc');
     setDeleteConfirm(null);
+    setMuscleTierFilter('ALL');
     loadData();
     loadRefData();
     loadColumnSettings();
@@ -332,8 +334,27 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
     }
   };
 
+  const computeMuscleTier = useCallback((row: Record<string, unknown>, allRows: Record<string, unknown>[]): 'PRIMARY' | 'SECONDARY' | 'TERTIARY' => {
+    const raw = row.parent_ids;
+    const pids: string[] = Array.isArray(raw) ? raw as string[] : typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return []; } })() : [];
+    if (pids.length === 0) return 'PRIMARY';
+    const parent = allRows.find(r => r.id === pids[0]);
+    if (!parent) return 'SECONDARY';
+    const parentPids: string[] = Array.isArray(parent.parent_ids) ? parent.parent_ids as string[] : typeof parent.parent_ids === 'string' ? (() => { try { return JSON.parse(parent.parent_ids as string); } catch { return []; } })() : [];
+    return parentPids.length === 0 ? 'SECONDARY' : 'TERTIARY';
+  }, []);
+
   const filtered = useMemo(() => {
     let result = rows;
+
+    // For the muscles table, compute and attach _muscle_tier
+    const isMusclesTable = key === 'muscles';
+    if (isMusclesTable) {
+      result = result.map(r => ({ ...r, _muscle_tier: computeMuscleTier(r, rows) }));
+      if (muscleTierFilter !== 'ALL') {
+        result = result.filter(r => r._muscle_tier === muscleTierFilter);
+      }
+    }
 
     // Apply text search
     if (search) {
@@ -362,7 +383,7 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
       return sortDir === 'asc' ? cmp : -cmp;
     });
     return result;
-  }, [rows, search, filters, sortCol, sortDir, schema]);
+  }, [rows, search, filters, sortCol, sortDir, schema, key, muscleTierFilter, computeMuscleTier]);
 
   const visibleCols = useMemo(() => {
     if (!schema) return [];
@@ -878,10 +899,9 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
         const keys = Object.keys(val as Record<string, unknown>);
         return keys.length === 0 ? <span className="text-gray-300">—</span> : <span className="text-xs">{keys.length} rule(s)</span>;
       }
-      if (field.jsonShape === 'motion_planes_config' && val && typeof val === 'object' && !Array.isArray(val)) {
-        const cfg = val as { default?: string; options?: string[] };
-        if (!cfg.default && (!cfg.options || cfg.options.length === 0)) return <span className="text-gray-300">—</span>;
-        return <span className="text-xs">{cfg.options?.length || 0} plane(s)</span>;
+      if (field.jsonShape === 'free' && val && typeof val === 'object' && !Array.isArray(val)) {
+        const keys = Object.keys(val as Record<string, unknown>);
+        return keys.length === 0 ? <span className="text-gray-300">—</span> : <span className="text-xs">{'{...}'} ({keys.length})</span>;
       }
       return <span className="text-xs text-gray-400">{'{...}'}</span>;
     }
@@ -949,6 +969,18 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
             onChange={(e) => setSearch(e.target.value)}
             className="flex-1 max-w-md px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
+          {key === 'muscles' && (
+            <select
+              value={muscleTierFilter}
+              onChange={(e) => setMuscleTierFilter(e.target.value as typeof muscleTierFilter)}
+              className="px-3 py-2 text-sm border rounded bg-white border-gray-300 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="ALL">All Tiers</option>
+              <option value="PRIMARY">Primary</option>
+              <option value="SECONDARY">Secondary</option>
+              <option value="TERTIARY">Tertiary</option>
+            </select>
+          )}
           {schema && (
             <button
               type="button"
@@ -1072,6 +1104,16 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
                     </th>
                   );
                 })}
+                {key === 'muscles' && (
+                  <th
+                    className="px-3 py-2 text-left font-medium text-gray-600 cursor-pointer hover:bg-gray-100 select-none whitespace-nowrap"
+                    style={{ width: '90px', minWidth: '90px' }}
+                    onClick={() => handleSort('_muscle_tier')}
+                  >
+                    Tier
+                    {sortCol === '_muscle_tier' && <span className="ml-1">{sortDir === 'asc' ? '↑' : '↓'}</span>}
+                  </th>
+                )}
                 <th className="px-3 py-2 text-right font-medium text-gray-600 w-28 sticky right-0 z-10 bg-gray-50">
                   Actions
                 </th>
@@ -1148,6 +1190,19 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
                         </td>
                       );
                     })}
+                    {key === 'muscles' && (
+                      <td className="px-3 py-2" style={{ width: '90px', minWidth: '90px' }}>
+                        {(() => {
+                          const tier = row._muscle_tier as string;
+                          const cls = tier === 'PRIMARY'
+                            ? 'bg-blue-100 text-blue-700'
+                            : tier === 'SECONDARY'
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-purple-100 text-purple-700';
+                          return <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${cls}`}>{tier}</span>;
+                        })()}
+                      </td>
+                    )}
                     <td className="px-3 py-2 text-right whitespace-nowrap space-x-1 sticky right-0 z-10 bg-white group-hover:bg-blue-50 border-l border-gray-200">
                       <button onClick={(e) => { e.stopPropagation(); handleDeleteClick(row.id as string); }} className="text-red-400 hover:text-red-600 text-xs">Delete</button>
                     </td>
@@ -1156,7 +1211,7 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={visibleCols.length + 1} className="px-3 py-8 text-center text-gray-400">
+                  <td colSpan={visibleCols.length + (key === 'muscles' ? 2 : 1)} className="px-3 py-8 text-center text-gray-400">
                     {search ? 'No matching rows' : 'No data'}
                   </td>
                 </tr>

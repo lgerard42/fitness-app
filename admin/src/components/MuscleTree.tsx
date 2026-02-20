@@ -3,35 +3,47 @@ import { Link } from 'react-router-dom';
 import { api } from '../api';
 
 interface MuscleTreeProps {
-  tableKey: 'primaryMuscles' | 'secondaryMuscles' | 'tertiaryMuscles';
+  tableKey: 'muscles';
   currentRecordId: string;
 }
 
 interface MuscleRecord {
   id: string;
   label: string;
-  primary_muscle_ids?: string[];
-  secondary_muscle_ids?: string[];
+  parent_ids?: string[];
+}
+
+type MuscleTier = 'primary' | 'secondary' | 'tertiary';
+
+function parseParentIds(record: MuscleRecord): string[] {
+  if (Array.isArray(record.parent_ids)) return record.parent_ids;
+  if (typeof record.parent_ids === 'string') {
+    try { return JSON.parse(record.parent_ids); } catch { return []; }
+  }
+  return [];
+}
+
+function classifyMuscle(record: MuscleRecord, allMuscles: MuscleRecord[]): MuscleTier {
+  const pids = parseParentIds(record);
+  if (pids.length === 0) return 'primary';
+  const anyParentIsPrimary = pids.some(pid => {
+    const parent = allMuscles.find(m => m.id === pid);
+    return parent && parseParentIds(parent).length === 0;
+  });
+  if (anyParentIsPrimary) return 'secondary';
+  return 'tertiary';
 }
 
 export default function MuscleTree({ tableKey, currentRecordId }: MuscleTreeProps) {
-  const [primaryMuscles, setPrimaryMuscles] = useState<MuscleRecord[]>([]);
-  const [secondaryMuscles, setSecondaryMuscles] = useState<MuscleRecord[]>([]);
-  const [tertiaryMuscles, setTertiaryMuscles] = useState<MuscleRecord[]>([]);
+  const [allMuscles, setAllMuscles] = useState<MuscleRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [primaries, secondaries, tertiaries] = await Promise.all([
-          api.getTable('primaryMuscles'),
-          api.getTable('secondaryMuscles'),
-          api.getTable('tertiaryMuscles'),
-        ]);
-        setPrimaryMuscles((primaries as MuscleRecord[]) || []);
-        setSecondaryMuscles((secondaries as MuscleRecord[]) || []);
-        setTertiaryMuscles((tertiaries as MuscleRecord[]) || []);
+        const data = await api.getTable('muscles');
+        setAllMuscles((data as MuscleRecord[]) || []);
       } catch (err) {
         console.error('Failed to load muscle data:', err);
       } finally {
@@ -41,76 +53,76 @@ export default function MuscleTree({ tableKey, currentRecordId }: MuscleTreeProp
     loadData();
   }, []);
 
-  // Build tree structure based on table type
+  const { primaries, secondaries, tertiaries } = useMemo(() => {
+    const p: MuscleRecord[] = [];
+    const s: MuscleRecord[] = [];
+    const t: MuscleRecord[] = [];
+    for (const m of allMuscles) {
+      const tier = classifyMuscle(m, allMuscles);
+      if (tier === 'primary') p.push(m);
+      else if (tier === 'secondary') s.push(m);
+      else t.push(m);
+    }
+    return { primaries: p, secondaries: s, tertiaries: t };
+  }, [allMuscles]);
+
+  const currentRecord = useMemo(() => allMuscles.find(m => m.id === currentRecordId), [allMuscles, currentRecordId]);
+  const currentTier = useMemo(() => currentRecord ? classifyMuscle(currentRecord, allMuscles) : 'primary', [currentRecord, allMuscles]);
+
   const treeData = useMemo(() => {
-    if (loading) return [];
+    if (loading || !currentRecord) return [];
 
-    if (tableKey === 'primaryMuscles') {
-      // Primary -> Secondary -> Tertiary (all secondaries collapsible)
-      const currentPrimary = primaryMuscles.find((p) => p.id === currentRecordId);
-      if (!currentPrimary) return [];
-
-      const relatedSecondaries = secondaryMuscles.filter((s) =>
-        s.primary_muscle_ids?.includes(currentRecordId)
+    if (currentTier === 'primary') {
+      const relatedSecondaries = secondaries.filter(s =>
+        parseParentIds(s).includes(currentRecordId)
       );
+      return relatedSecondaries.map(secondary => ({
+        primary: currentRecord,
+        secondary,
+        tertiaries: tertiaries.filter(t =>
+          parseParentIds(t).includes(secondary.id)
+        ),
+      }));
+    }
 
-      return relatedSecondaries.map((secondary) => {
-        const relatedTertiaries = tertiaryMuscles.filter((t) =>
-          t.secondary_muscle_ids?.includes(secondary.id)
-        );
-        return {
-          primary: currentPrimary,
-          secondary,
-          tertiaries: relatedTertiaries,
-        };
-      });
-    } else if (tableKey === 'secondaryMuscles') {
-      // Primary -> Secondary -> Tertiary (show primary on same row as secondary)
-      // Handle multiple primary muscles if secondary is connected to more than one
-      const currentSecondary = secondaryMuscles.find((s) => s.id === currentRecordId);
-      if (!currentSecondary || !currentSecondary.primary_muscle_ids?.length) return [];
-
-      const relatedTertiaries = tertiaryMuscles.filter((t) =>
-        t.secondary_muscle_ids?.includes(currentRecordId)
+    if (currentTier === 'secondary') {
+      const parentIds = parseParentIds(currentRecord);
+      const relatedTertiaries = tertiaries.filter(t =>
+        parseParentIds(t).includes(currentRecordId)
       );
-
-      // Create a tree entry for each primary muscle this secondary belongs to
-      return currentSecondary.primary_muscle_ids
-        .map((primaryId) => {
-          const primary = primaryMuscles.find((p) => p.id === primaryId);
+      return parentIds
+        .map(primaryId => {
+          const primary = primaries.find(p => p.id === primaryId);
           if (!primary) return null;
           return {
             primary,
-            secondary: currentSecondary,
+            secondary: currentRecord,
             tertiaries: relatedTertiaries,
           };
         })
         .filter((item): item is NonNullable<typeof item> => item !== null);
-    } else {
-      // Tertiary: Primary -> Secondary -> Tertiary (show primary->secondary on same line, tertiary disabled)
-      const currentTertiary = tertiaryMuscles.find((t) => t.id === currentRecordId);
-      if (!currentTertiary || !currentTertiary.secondary_muscle_ids?.length) return [];
-
-      const secondaryId = currentTertiary.secondary_muscle_ids[0];
-      const secondary = secondaryMuscles.find((s) => s.id === secondaryId);
-      if (!secondary || !secondary.primary_muscle_ids?.length) return [];
-
-      const primaryId = secondary.primary_muscle_ids[0];
-      const primary = primaryMuscles.find((p) => p.id === primaryId);
-      if (!primary) return [];
-
-      return [
-        {
-          primary,
-          secondary,
-          tertiaries: [currentTertiary],
-        },
-      ];
     }
-  }, [tableKey, currentRecordId, primaryMuscles, secondaryMuscles, tertiaryMuscles, loading]);
+
+    // Tertiary
+    const parentIds = parseParentIds(currentRecord);
+    const secondaryId = parentIds[0];
+    const secondary = secondaries.find(s => s.id === secondaryId);
+    if (!secondary) return [];
+
+    const secParentIds = parseParentIds(secondary);
+    const primaryId = secParentIds[0];
+    const primary = primaries.find(p => p.id === primaryId);
+    if (!primary) return [];
+
+    return [{
+      primary,
+      secondary,
+      tertiaries: [currentRecord],
+    }];
+  }, [currentTier, currentRecord, currentRecordId, primaries, secondaries, tertiaries, loading]);
 
   const toggleExpand = (key: string) => {
-    setExpanded((prev) => {
+    setExpanded(prev => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
@@ -136,10 +148,9 @@ export default function MuscleTree({ tableKey, currentRecordId }: MuscleTreeProp
 
         return (
           <div key={idx} className="bg-white border rounded">
-            {/* Secondary row (with Primary for secondary/tertiary tables) */}
             <div className="px-3 py-2">
               <div className="flex items-center gap-2">
-                {tableKey === 'primaryMuscles' ? (
+                {currentTier === 'primary' ? (
                   <>
                     <button
                       type="button"
@@ -150,7 +161,7 @@ export default function MuscleTree({ tableKey, currentRecordId }: MuscleTreeProp
                       {item.tertiaries.length > 0 ? (isExpanded ? '▼' : '▶') : '•'}
                     </button>
                     <Link
-                      to={`/table/secondaryMuscles`}
+                      to="/table/muscles"
                       className="text-sm text-blue-600 hover:underline font-medium"
                     >
                       {item.secondary.label}
@@ -162,10 +173,10 @@ export default function MuscleTree({ tableKey, currentRecordId }: MuscleTreeProp
                       </span>
                     )}
                   </>
-                ) : tableKey === 'secondaryMuscles' ? (
+                ) : currentTier === 'secondary' ? (
                   <>
                     <Link
-                      to={`/table/primaryMuscles`}
+                      to="/table/muscles"
                       className="text-sm text-blue-600 hover:underline"
                     >
                       {item.primary.label}
@@ -193,14 +204,14 @@ export default function MuscleTree({ tableKey, currentRecordId }: MuscleTreeProp
                 ) : (
                   <>
                     <Link
-                      to={`/table/primaryMuscles`}
+                      to="/table/muscles"
                       className="text-sm text-blue-600 hover:underline"
                     >
                       {item.primary.label}
                     </Link>
                     <span className="text-xs text-gray-400">→</span>
                     <Link
-                      to={`/table/secondaryMuscles`}
+                      to="/table/muscles"
                       className="text-sm text-blue-600 hover:underline"
                     >
                       {item.secondary.label}
@@ -215,13 +226,12 @@ export default function MuscleTree({ tableKey, currentRecordId }: MuscleTreeProp
               </div>
             </div>
 
-            {/* Tertiary muscles (indented, collapsible) */}
             {item.tertiaries.length > 0 && isExpanded && (
               <div className="border-t bg-gray-50">
-                {item.tertiaries.map((tertiary) => (
+                {item.tertiaries.map(tertiary => (
                   <div key={tertiary.id} className="px-3 py-1.5 pl-8">
                     <div className="flex items-center gap-2">
-                      {tableKey === 'tertiaryMuscles' ? (
+                      {currentTier === 'tertiary' ? (
                         <>
                           <span className="text-xs text-gray-500">•</span>
                           <span className="text-sm text-gray-500 font-medium">
@@ -233,7 +243,7 @@ export default function MuscleTree({ tableKey, currentRecordId }: MuscleTreeProp
                         <>
                           <span className="text-xs text-gray-500">•</span>
                           <Link
-                            to={`/table/tertiaryMuscles`}
+                            to="/table/muscles"
                             className="text-sm text-blue-600 hover:underline"
                           >
                             {tertiary.label}

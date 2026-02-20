@@ -1,83 +1,184 @@
 [
   {
-    "id": "HIGH_HIGH",
-    "label": "High -> High",
-    "common_names": ["Face Level", "High Horizontal", "Upper Alignment"],
-    "short_description": "Resistance moves horizontally at head or eye height.",
+    "id": "MID_MID",
+    "label": "Standard (Level)",
+    "common_names": [
+      "Horizontal",
+      "Neutral Plane",
+      "Standard"
+    ],
+    "delta_rules": {},
+    "short_description": "The resistance moves perfectly parallel to the floor or the primary axis. No modification to the base score.",
     "sort_order": 0,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "MID_HIGH",
-    "label": "Mid-Height -> High",
-    "common_names": ["Incline Path", "Upward Press", "High Diagonal"],
-    "short_description": "Resistance moves diagonally from chest height up toward the face.",
-    "sort_order": 1,
-    "icon": "",
     "is_active": true
   },
   {
     "id": "LOW_HIGH",
-    "label": "Low -> High",
-    "common_names": ["Low-to-High", "Scoop Path", "Upward Sweep", "Ascending Plane"],
-    "short_description": "Resistance moves diagonally from the floor up toward the chest or face.",
-    "sort_order": 2,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "HIGH_MID",
-    "label": "High -> Mid-Height",
-    "common_names": ["Decline Path", "High-to-Mid", "Downward Diagonal"],
-    "short_description": "Resistance moves diagonally from above the head down toward the chest.",
-    "sort_order": 3,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "MID_MID",
-    "label": "Mid-Height -> Mid-Height",
-    "common_names": ["Flat Path", "Standard Horizontal", "Chest Level", "Parallel Path"],
-    "short_description": "Resistance moves horizontally at chest or torso height.",
-    "sort_order": 4,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "LOW_MID",
-    "label": "Low -> Mid-Height",
-    "common_names": ["Upward Path", "Shallow Scoop", "Low Diagonal"],
-    "short_description": "Resistance moves diagonally from the floor up toward the stomach/chest.",
-    "sort_order": 5,
-    "icon": "",
+    "label": "Low to High",
+    "common_names": [
+      "Slight Incline",
+      "Scooping",
+      "Upward Path"
+    ],
+    "delta_rules": {
+      "PRESS": {
+        "delta": {
+          "CHEST_UPPER": 0.15,
+          "CHEST_LOWER": -0.1
+        }
+      },
+      "CURL": {
+        "delta": {
+          "BICEP_OUTER": 0.05
+        }
+      },
+      "RAISE": {
+        "delta": {
+          "DELTS_FRONT": 0.1
+        }
+      }
+    },
+    "short_description": "Starting low and moving upward. Biases the upper fibers of the target muscle.",
+    "sort_order": 1,
     "is_active": true
   },
   {
     "id": "HIGH_LOW",
-    "label": "High -> Low",
-    "common_names": ["Downward Cross", "High-to-Low", "Descending Plane", "Chop Path"],
-    "short_description": "Resistance moves diagonally from above the head down toward the waist.",
-    "sort_order": 6,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "MID_LOW",
-    "label": "Mid-Height -> Low",
-    "common_names": ["Decline Pressdown", "Mid-to-Low", "Shallow Decline"],
-    "short_description": "Resistance moves diagonally from chest height down toward the hips.",
-    "sort_order": 7,
-    "icon": "",
+    "label": "High to Low",
+    "common_names": [
+      "Slight Decline",
+      "Pressdown Path",
+      "Downward Path"
+    ],
+    "delta_rules": {
+      "PRESS": {
+        "delta": {
+          "CHEST_LOWER": 0.15,
+          "CHEST_UPPER": -0.1
+        }
+      },
+      "VERTICAL_PULL": {
+        "delta": {
+          "LATS_LOWER": 0.1
+        }
+      },
+      "RAISE": {
+        "delta": {
+          "DELTS_REAR": 0.05
+        }
+      }
+    },
+    "short_description": "Starting high and moving downward. Biases the lower fibers or posterior segments.",
+    "sort_order": 2,
     "is_active": true
   },
   {
     "id": "LOW_LOW",
-    "label": "Low -> Low",
-    "common_names": ["Hip Level", "Low Horizontal", "Waist Level", "Floor Parallel"],
-    "short_description": "Resistance moves horizontally at waist or hip height.",
+    "label": "Low",
+    "common_names": [
+      "Bottom Range",
+      "Ankle Level"
+    ],
+    "delta_rules": {
+      "HORIZONTAL_ROW": {
+        "delta": {
+          "TRAPS_UPPER": 0.1,
+          "LATS": -0.05
+        }
+      }
+    },
+    "short_description": "Entire movement occurs at a low height relative to the torso.",
+    "sort_order": 3,
+    "is_active": true
+  },
+  {
+    "id": "HIGH_HIGH",
+    "label": "High",
+    "common_names": [
+      "Overhead",
+      "Top Range"
+    ],
+    "delta_rules": {
+      "HORIZONTAL_ROW": {
+        "delta": {
+          "DELTS_REAR": 0.15,
+          "BACK_UPPER": 0.1,
+          "LATS": -0.15
+        }
+      }
+    },
+    "short_description": "Entire movement occurs at a high height (e.g., Face Pulls).",
+    "sort_order": 4,
+    "is_active": true
+  },
+  {
+    "id": "MID_LOW",
+    "label": "Mid to Low",
+    "common_names": [
+      "Diagonal Down",
+      "Descending"
+    ],
+    "delta_rules": {
+      "PRESS": {
+        "delta": {
+          "CHEST_LOWER": 0.1
+        }
+      }
+    },
+    "short_description": "Starting at chest height and moving toward the hips.",
+    "sort_order": 5,
+    "is_active": true
+  },
+  {
+    "id": "MID_HIGH",
+    "label": "Mid to High",
+    "common_names": [
+      "Diagonal Up",
+      "Ascending"
+    ],
+    "delta_rules": {
+      "PRESS": {
+        "delta": {
+          "CHEST_UPPER": 0.1
+        }
+      }
+    },
+    "short_description": "Starting at chest height and moving toward the face.",
+    "sort_order": 6,
+    "is_active": true
+  },
+  {
+    "id": "HIGH_MID",
+    "label": "High to Mid",
+    "common_names": [
+      "Slight Pull Down"
+    ],
+    "delta_rules": {
+      "HORIZONTAL_ROW": {
+        "delta": {
+          "LATS": 0.1
+        }
+      }
+    },
+    "short_description": "Starting high and finishing at chest level.",
+    "sort_order": 7,
+    "is_active": true
+  },
+  {
+    "id": "LOW_MID",
+    "label": "Low to Mid",
+    "common_names": [
+      "Slight Pull Up"
+    ],
+    "delta_rules": {
+      "HORIZONTAL_ROW": {
+        "delta": {
+          "BACK_UPPER": 0.1
+        }
+      }
+    },
+    "short_description": "Starting low and finishing at chest level.",
     "sort_order": 8,
-    "icon": "",
     "is_active": true
   }
 ]

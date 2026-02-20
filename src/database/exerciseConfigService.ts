@@ -23,43 +23,19 @@ export interface CardioType {
   short_description?: string;
 }
 
-export interface PrimaryMuscle {
+export interface Muscle {
   id: string;
+  parent_ids?: string; // JSON array string
   label: string;
-  technical_name?: string;
   common_names?: string;
-  icon?: string;
+  technical_name?: string;
   short_description?: string;
-  upper_lower?: string;
   function?: string;
   location?: string;
   triggers?: string;
-}
-
-export interface SecondaryMuscle {
-  id: string;
-  label: string;
-  technical_name?: string;
-  common_names?: string;
+  upper_lower?: string; // JSON array string
   icon?: string;
-  short_description?: string;
-  primary_muscle_ids?: string;
-  function?: string;
-  location?: string;
-  triggers?: string;
-}
-
-export interface TertiaryMuscle {
-  id: string;
-  label: string;
-  technical_name?: string;
-  common_names?: string;
-  icon?: string;
-  short_description?: string;
-  secondary_muscle_ids?: string;
-  function?: string;
-  location?: string;
-  triggers?: string;
+  sort_order?: number;
 }
 
 export interface TrainingFocus {
@@ -73,63 +49,38 @@ export interface TrainingFocus {
 
 export interface EquipmentCategory {
   id: string;
+  parent_id?: string;
   label: string;
-  sub_label?: string;
   common_names?: string;
-  icon?: string;
   short_description?: string;
-  sub_categories_table?: string;
+  sort_order?: number;
 }
 
-export interface GymEquipment {
+export interface Equipment {
   id: string;
+  category_id?: string;
   label: string;
-  sub_label?: string;
   common_names?: string;
-  icon?: string;
   short_description?: string;
-  equipment_categories?: string; // JSON string
+  is_attachment: number;
+  requires_attachment: number;
   max_instances: number;
-  cable_attachments: number;
+  modifier_constraints?: string; // JSON string
+  sort_order?: number;
 }
 
-export interface CableAttachment {
+export interface Grip {
   id: string;
+  parent_id?: string;
   label: string;
-  sub_label?: string;
-  common_names?: string;
-  icon?: string;
-  short_description?: string;
-}
-
-export interface GripType {
-  id: string;
-  label: string;
+  is_dynamic: number;
   grip_category?: string;
+  rotation_path?: string; // JSON string
   common_names?: string;
-  icon?: string;
+  delta_rules?: string; // JSON string
   short_description?: string;
-  delta_rules?: string;
-  default_variation?: string;
-}
-
-export interface GripWidth {
-  id: string;
-  label: string;
-  common_names?: string;
+  sort_order?: number;
   icon?: string;
-  short_description?: string;
-  delta_rules?: string;
-}
-
-export interface GripTypeVariation {
-  id: string;
-  label: string;
-  parent_grip_id?: string;
-  common_names?: string;
-  icon?: string;
-  short_description?: string;
-  delta_rules?: string;
 }
 
 export interface DeltaModifier {
@@ -197,134 +148,99 @@ export async function getCardioTypeById(id: string): Promise<CardioType | null> 
 }
 
 /**
- * Get all primary muscles
+ * Get all muscles from the unified muscles table
  */
-export async function getPrimaryMuscles(): Promise<PrimaryMuscle[]> {
+export async function getAllMuscles(): Promise<Muscle[]> {
   const db = await getDatabase();
-  return await db.getAllAsync<PrimaryMuscle>('SELECT * FROM primary_muscles ORDER BY label');
+  return await db.getAllAsync<Muscle>('SELECT * FROM muscles ORDER BY sort_order, label');
 }
 
 /**
- * Get primary muscle by ID
+ * Get a single muscle by ID
  */
-export async function getPrimaryMuscleById(id: string): Promise<PrimaryMuscle | null> {
+export async function getMuscleById(id: string): Promise<Muscle | null> {
   const db = await getDatabase();
-  const result = await db.getFirstAsync<PrimaryMuscle>(
-    'SELECT * FROM primary_muscles WHERE id = ?',
+  const result = await db.getFirstAsync<Muscle>(
+    'SELECT * FROM muscles WHERE id = ?',
     [id]
   );
   return result || null;
 }
 
 /**
- * Get all secondary muscles
+ * Get muscles whose parent_ids contain the given parent ID
  */
-export async function getSecondaryMuscles(): Promise<SecondaryMuscle[]> {
-  const db = await getDatabase();
-  return await db.getAllAsync<SecondaryMuscle>('SELECT * FROM secondary_muscles ORDER BY label');
-}
-
-/**
- * Get secondary muscles by primary muscle ID(s)
- * Queries secondary_muscles whose primary_muscle_ids contain any of the given primary IDs
- */
-export async function getSecondaryMusclesByPrimary(primaryIds: string[]): Promise<SecondaryMuscle[]> {
-  if (primaryIds.length === 0) return [];
-
-  const db = await getDatabase();
-  const allSecondaries = await db.getAllAsync<SecondaryMuscle>('SELECT * FROM secondary_muscles ORDER BY label');
-  return allSecondaries.filter(sec => {
-    const pids = parseJson<string[]>(sec.primary_muscle_ids || '[]', []);
-    return pids.some(pid => primaryIds.includes(pid));
+export async function getMusclesByParent(parentId: string): Promise<Muscle[]> {
+  const allMuscles = await getAllMuscles();
+  return allMuscles.filter(m => {
+    const parents = parseJson<string[]>(m.parent_ids || '[]', []);
+    return parents.includes(parentId);
   });
 }
 
 /**
- * Get secondary muscle by ID
+ * Get muscles by tier, computed from the parent chain:
+ *   PRIMARY   – parent_ids is empty/null/[]
+ *   SECONDARY – parents are PRIMARY (parents have no parents)
+ *   TERTIARY  – parents are SECONDARY (parents have parents)
  */
-export async function getSecondaryMuscleById(id: string): Promise<SecondaryMuscle | null> {
-  const db = await getDatabase();
-  const result = await db.getFirstAsync<SecondaryMuscle>(
-    'SELECT * FROM secondary_muscles WHERE id = ?',
-    [id]
-  );
-  return result || null;
+export async function getMusclesByTier(tier: 'PRIMARY' | 'SECONDARY' | 'TERTIARY'): Promise<Muscle[]> {
+  switch (tier) {
+    case 'PRIMARY': return getPrimaryMuscles();
+    case 'SECONDARY': return getSecondaryMuscles();
+    case 'TERTIARY': return getTertiaryMuscles();
+  }
 }
 
 /**
- * Get all tertiary muscles
+ * PRIMARY muscles: parent_ids is empty, null, or []
  */
-export async function getTertiaryMuscles(): Promise<TertiaryMuscle[]> {
-  const db = await getDatabase();
-  return await db.getAllAsync<TertiaryMuscle>('SELECT * FROM tertiary_muscles ORDER BY label');
-}
-
-/**
- * Get tertiary muscles by secondary muscle ID(s)
- * Queries tertiary_muscles whose secondary_muscle_ids contain any of the given secondary IDs
- */
-export async function getTertiaryMusclesBySecondary(secondaryIds: string[]): Promise<TertiaryMuscle[]> {
-  if (secondaryIds.length === 0) return [];
-
-  const db = await getDatabase();
-  const allTertiaries = await db.getAllAsync<TertiaryMuscle>('SELECT * FROM tertiary_muscles ORDER BY label');
-  return allTertiaries.filter(tert => {
-    const sids = parseJson<string[]>(tert.secondary_muscle_ids || '[]', []);
-    return sids.some(sid => secondaryIds.includes(sid));
+export async function getPrimaryMuscles(): Promise<Muscle[]> {
+  const allMuscles = await getAllMuscles();
+  return allMuscles.filter(m => {
+    const parents = parseJson<string[]>(m.parent_ids || '[]', []);
+    return parents.length === 0;
   });
 }
 
 /**
- * Get tertiary muscle by ID
+ * SECONDARY muscles: muscles whose parents are PRIMARY (parents have no parents themselves)
  */
-export async function getTertiaryMuscleById(id: string): Promise<TertiaryMuscle | null> {
-  const db = await getDatabase();
-  const result = await db.getFirstAsync<TertiaryMuscle>(
-    'SELECT * FROM tertiary_muscles WHERE id = ?',
-    [id]
+export async function getSecondaryMuscles(): Promise<Muscle[]> {
+  const allMuscles = await getAllMuscles();
+  const primaryIds = new Set(
+    allMuscles
+      .filter(m => parseJson<string[]>(m.parent_ids || '[]', []).length === 0)
+      .map(m => m.id)
   );
-  return result || null;
+  return allMuscles.filter(m => {
+    const parents = parseJson<string[]>(m.parent_ids || '[]', []);
+    return parents.length > 0 && parents.some(pid => primaryIds.has(pid));
+  });
 }
 
 /**
- * Get tertiary muscles by primary muscle ID(s)
- * Walks the chain: primary → secondary (via primary_muscle_ids) → tertiary (via secondary_muscle_ids)
+ * TERTIARY muscles: muscles whose parents are SECONDARY (parents have parents)
  */
-export async function getTertiaryMusclesByPrimary(primaryIds: string[]): Promise<TertiaryMuscle[]> {
-  if (primaryIds.length === 0) return [];
-
-  const secondaries = await getSecondaryMusclesByPrimary(primaryIds);
-  const secondaryIds = secondaries.map(s => s.id);
-  return getTertiaryMusclesBySecondary(secondaryIds);
-}
-
-/**
- * Get primary muscles by tertiary muscle ID(s)
- * Walks the chain: tertiary → secondary (via secondary_muscle_ids) → primary (via primary_muscle_ids)
- */
-export async function getPrimaryMusclesByTertiary(tertiaryIds: string[]): Promise<PrimaryMuscle[]> {
-  if (tertiaryIds.length === 0) return [];
-
-  const db = await getDatabase();
-  const allTertiaries = await db.getAllAsync<TertiaryMuscle>('SELECT * FROM tertiary_muscles ORDER BY label');
-  const relevantTertiaries = allTertiaries.filter(t => tertiaryIds.includes(t.id));
-  const secondaryIdSet = new Set<string>();
-  for (const t of relevantTertiaries) {
-    const sids = parseJson<string[]>(t.secondary_muscle_ids || '[]', []);
-    sids.forEach(s => secondaryIdSet.add(s));
-  }
-
-  const allSecondaries = await db.getAllAsync<SecondaryMuscle>('SELECT * FROM secondary_muscles ORDER BY label');
-  const primaryIdSet = new Set<string>();
-  for (const s of allSecondaries) {
-    if (secondaryIdSet.has(s.id)) {
-      const pids = parseJson<string[]>(s.primary_muscle_ids || '[]', []);
-      pids.forEach(p => primaryIdSet.add(p));
-    }
-  }
-
-  const allPrimaries = await db.getAllAsync<PrimaryMuscle>('SELECT * FROM primary_muscles ORDER BY label');
-  return allPrimaries.filter(p => primaryIdSet.has(p.id));
+export async function getTertiaryMuscles(): Promise<Muscle[]> {
+  const allMuscles = await getAllMuscles();
+  const primaryIds = new Set(
+    allMuscles
+      .filter(m => parseJson<string[]>(m.parent_ids || '[]', []).length === 0)
+      .map(m => m.id)
+  );
+  const secondaryIds = new Set(
+    allMuscles
+      .filter(m => {
+        const parents = parseJson<string[]>(m.parent_ids || '[]', []);
+        return parents.length > 0 && parents.some(pid => primaryIds.has(pid));
+      })
+      .map(m => m.id)
+  );
+  return allMuscles.filter(m => {
+    const parents = parseJson<string[]>(m.parent_ids || '[]', []);
+    return parents.length > 0 && parents.some(pid => secondaryIds.has(pid));
+  });
 }
 
 /**
@@ -464,69 +380,64 @@ export type EquipmentPickerItem = { label: string; icon?: string };
  */
 export async function getEquipmentPickerSections(): Promise<{ title: string; data: EquipmentPickerItem[] }[]> {
   const db = await getDatabase();
-  const eqCategories = await db.getAllAsync<{ id: string; label: string; sub_categories_table: string }>(
-    'SELECT id, label, sub_categories_table FROM equipment_categories ORDER BY id'
+  const subCats = await db.getAllAsync<{ id: string; label: string }>(
+    'SELECT id, label FROM equipment_categories WHERE parent_id IS NOT NULL ORDER BY sort_order, id'
   );
   const sections: { title: string; data: EquipmentPickerItem[] }[] = [];
 
-  const subTableMap: Record<string, string> = {
-    SUPPORT_EQUIPMENT_CATEGORIES: 'support_equipment_categories',
-    WEIGHTS_EQUIPMENT_CATEGORIES: 'weights_equipment_categories',
-  };
-  for (const cat of eqCategories) {
-    const subTable = cat.sub_categories_table;
-    if (!subTable) continue;
-    const subTableSnake = subTableMap[subTable] || subTable.toLowerCase();
-    const subCats = await db.getAllAsync<{ id: string; label: string }>(
-      `SELECT id, label FROM ${subTableSnake} ORDER BY id`
+  for (const sub of subCats) {
+    const equip = await db.getAllAsync<{ label: string }>(
+      `SELECT label FROM equipment WHERE category_id = ? AND is_attachment = 0 ORDER BY sort_order, label`,
+      [sub.id]
     );
-    for (const sub of subCats) {
-      const equip = await db.getAllAsync<{ label: string; icon: string }>(
-        `SELECT label, icon FROM gym_equipment WHERE equipment_categories LIKE '%"${cat.id}":"${sub.id}"%' ORDER BY label`
-      );
-      if (equip.length > 0) {
-        sections.push({
-          title: sub.label,
-          data: equip.map((e) => ({ label: e.label, icon: e.icon || undefined })),
-        });
-      }
+    if (equip.length > 0) {
+      sections.push({
+        title: sub.label,
+        data: equip.map((e) => ({ label: e.label })),
+      });
     }
   }
   return sections;
 }
 
 /**
- * Get label -> icon (base64) map for all gym equipment. Used by EquipmentIcon component.
- * This is the single source for equipment icons in the UI; do not use hard-coded icon maps.
+ * Get label -> icon (base64) map for equipment. Loads from equipmentIcons.json (ID-keyed)
+ * and maps to labels via the equipment table.
  */
 export async function getEquipmentIconsByLabel(): Promise<Record<string, string>> {
   const db = await getDatabase();
-  const rows = await db.getAllAsync<{ label: string; icon: string }>(
-    'SELECT label, icon FROM gym_equipment WHERE icon != "" AND icon IS NOT NULL'
+  const equipmentIcons = require('./tables/equipmentIcons.json') as Record<string, string>;
+  const rows = await db.getAllAsync<{ id: string; label: string }>(
+    'SELECT id, label FROM equipment'
   );
   const map: Record<string, string> = {};
   for (const r of rows) {
-    if (r.icon) map[r.label] = r.icon;
+    const icon = equipmentIcons[r.id];
+    if (icon) map[r.label] = icon;
   }
   return map;
 }
 
 /**
- * Get all gym equipment labels (flat list) for filters and backward compatibility
+ * Get all equipment labels (flat list, non-attachments) for filters and backward compatibility
  */
-export async function getGymEquipmentLabels(): Promise<string[]> {
+export async function getEquipmentLabels(): Promise<string[]> {
   const db = await getDatabase();
-  const rows = await db.getAllAsync<{ label: string }>('SELECT label FROM gym_equipment ORDER BY label');
+  const rows = await db.getAllAsync<{ label: string }>(
+    'SELECT label FROM equipment WHERE is_attachment = 0 ORDER BY sort_order, label'
+  );
   return rows.map((r) => r.label);
 }
 
 /**
- * Get cable attachments as { id, label }[]
+ * Get all equipment items that are cable attachments
  */
-export async function getCableAttachments(): Promise<{ id: string; label: string }[]> {
+export async function getAttachments(): Promise<{ id: string; label: string }[]> {
   const db = await getDatabase();
-  const rows = await db.getAllAsync<CableAttachment>('SELECT id, label FROM cable_attachments ORDER BY label');
-  return rows.map((r) => ({ id: r.id, label: r.label }));
+  const rows = await db.getAllAsync<{ id: string; label: string }>(
+    'SELECT id, label FROM equipment WHERE is_attachment = 1 ORDER BY sort_order, label'
+  );
+  return rows;
 }
 
 /**
@@ -534,10 +445,10 @@ export async function getCableAttachments(): Promise<{ id: string; label: string
  */
 export async function getSingleDoubleEquipmentLabels(): Promise<string[]> {
   const db = await getDatabase();
-  const ids = ['DUMBBELL', 'KETTLEBELL', 'PLATE', 'CHAINS', 'CABLE', 'WEIGHTS_OTHER'];
+  const ids = ['DUMBBELL', 'KETTLEBELL', 'PLATE', 'CHAINS', 'CABLE_STACK', 'WEIGHTS_OTHER'];
   const labels: string[] = [];
   for (const id of ids) {
-    const row = await db.getFirstAsync<{ label: string }>('SELECT label FROM gym_equipment WHERE id = ?', [id]);
+    const row = await db.getFirstAsync<{ label: string }>('SELECT label FROM equipment WHERE id = ?', [id]);
     if (row) labels.push(row.label);
   }
   return labels;
@@ -545,7 +456,7 @@ export async function getSingleDoubleEquipmentLabels(): Promise<string[]> {
 
 /**
  * Build PRIMARY_TO_SECONDARY_MAP from database (for backward compatibility)
- * Uses secondary_muscles.primary_muscle_ids to compute the reverse mapping
+ * Uses the unified muscles table with parent_ids to compute the mapping
  */
 export async function buildPrimaryToSecondaryMap(): Promise<Record<string, string[]>> {
   const primaries = await getPrimaryMuscles();
@@ -556,7 +467,7 @@ export async function buildPrimaryToSecondaryMap(): Promise<Record<string, strin
   primaries.forEach(primary => {
     const relatedSecondaries = secondaries
       .filter(sec => {
-        const pids = parseJson<string[]>(sec.primary_muscle_ids || '[]', []);
+        const pids = parseJson<string[]>(sec.parent_ids || '[]', []);
         return pids.includes(primary.id);
       })
       .map(sec => sec.label)
@@ -571,56 +482,55 @@ export async function buildPrimaryToSecondaryMap(): Promise<Record<string, strin
 }
 
 /**
- * Get all grip types
+ * Get all grips from the unified grips table
  */
-export async function getGripTypes(): Promise<GripType[]> {
+export async function getAllGrips(): Promise<Grip[]> {
   const db = await getDatabase();
-  return await db.getAllAsync<GripType>(
-    'SELECT * FROM grip_types WHERE is_active = 1 ORDER BY sort_order, label'
+  return await db.getAllAsync<Grip>(
+    'SELECT * FROM grips WHERE is_active = 1 ORDER BY sort_order, label'
   );
 }
 
 /**
- * Get grip type by ID
+ * Get grip by ID
  */
-export async function getGripTypeById(id: string): Promise<GripType | null> {
+export async function getGripById(id: string): Promise<Grip | null> {
   const db = await getDatabase();
-  const result = await db.getFirstAsync<GripType>(
-    'SELECT * FROM grip_types WHERE id = ?',
+  const result = await db.getFirstAsync<Grip>(
+    'SELECT * FROM grips WHERE id = ?',
     [id]
   );
   return result || null;
 }
 
 /**
- * Get all grip widths
+ * Get grip types (non-width, no parent) from the unified grips table
  */
-export async function getGripWidths(): Promise<GripWidth[]> {
+export async function getGripTypes(): Promise<Grip[]> {
   const db = await getDatabase();
-  return await db.getAllAsync<GripWidth>(
-    'SELECT * FROM grip_widths WHERE is_active = 1 ORDER BY sort_order, label'
+  return await db.getAllAsync<Grip>(
+    "SELECT * FROM grips WHERE is_active = 1 AND grip_category != 'Width' AND parent_id IS NULL ORDER BY sort_order, label"
   );
 }
 
 /**
- * Get grip width by ID
+ * Get grip widths (grip_category = 'Width') from the unified grips table
  */
-export async function getGripWidthById(id: string): Promise<GripWidth | null> {
+export async function getGripWidths(): Promise<Grip[]> {
   const db = await getDatabase();
-  const result = await db.getFirstAsync<GripWidth>(
-    'SELECT * FROM grip_widths WHERE id = ?',
-    [id]
+  return await db.getAllAsync<Grip>(
+    "SELECT * FROM grips WHERE is_active = 1 AND grip_category = 'Width' ORDER BY sort_order, label"
   );
-  return result || null;
 }
 
 /**
- * Get all grip type variations
+ * Get rotating grip variations (children of a grip) from the unified grips table
  */
-export async function getGripTypeVariations(): Promise<GripTypeVariation[]> {
+export async function getGripVariations(parentId: string): Promise<Grip[]> {
   const db = await getDatabase();
-  return await db.getAllAsync<GripTypeVariation>(
-    'SELECT * FROM grip_type_variations WHERE is_active = 1 ORDER BY sort_order, label'
+  return await db.getAllAsync<Grip>(
+    'SELECT * FROM grips WHERE is_active = 1 AND parent_id = ? ORDER BY sort_order, label',
+    [parentId]
   );
 }
 

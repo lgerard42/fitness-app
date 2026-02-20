@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../../api';
 
 interface MuscleTargetTreeProps {
@@ -11,6 +11,15 @@ interface MuscleOption {
   label: string;
 }
 
+function parsePids(m: Record<string, unknown>): string[] {
+  const raw = m.parent_ids;
+  if (Array.isArray(raw)) return raw as string[];
+  if (typeof raw === 'string') {
+    try { return JSON.parse(raw); } catch { return []; }
+  }
+  return [];
+}
+
 /**
  * Specialized editor for muscle_targets JSON.
  * Renders a collapsible tree:
@@ -20,22 +29,27 @@ interface MuscleOption {
  *   Each node has a _score number input.
  */
 export default function MuscleTargetTree({ value, onChange }: MuscleTargetTreeProps) {
-  const [primaryMuscles, setPrimaryMuscles] = useState<MuscleOption[]>([]);
-  const [secondaryMuscles, setSecondaryMuscles] = useState<Record<string, unknown>[]>([]);
-  const [tertiaryMuscles, setTertiaryMuscles] = useState<Record<string, unknown>[]>([]);
+  const [allMuscles, setAllMuscles] = useState<Record<string, unknown>[]>([]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    Promise.all([
-      api.getTable('primaryMuscles'),
-      api.getTable('secondaryMuscles'),
-      api.getTable('tertiaryMuscles'),
-    ]).then(([pm, sm, tm]) => {
-      setPrimaryMuscles((pm as MuscleOption[]) || []);
-      setSecondaryMuscles((sm as Record<string, unknown>[]) || []);
-      setTertiaryMuscles((tm as Record<string, unknown>[]) || []);
+    api.getTable('muscles').then((data) => {
+      setAllMuscles((data as Record<string, unknown>[]) || []);
     }).catch(console.error);
   }, []);
+
+  const muscleMap = useMemo(() => {
+    const map = new Map<string, Record<string, unknown>>();
+    for (const m of allMuscles) map.set(m.id as string, m);
+    return map;
+  }, [allMuscles]);
+
+  const primaryMuscles = useMemo<MuscleOption[]>(() =>
+    allMuscles
+      .filter(m => parsePids(m).length === 0)
+      .map(m => ({ id: m.id as string, label: m.label as string })),
+    [allMuscles]
+  );
 
   const toggleExpanded = (key: string) => {
     setExpanded((prev) => {
@@ -78,17 +92,15 @@ export default function MuscleTargetTree({ value, onChange }: MuscleTargetTreePr
   };
 
   const setScore = (path: string[], score: number) => {
-    if (isNaN(score)) return; // Don't set NaN values
+    if (isNaN(score)) return;
     const newData = JSON.parse(JSON.stringify(data));
     let node = newData;
-    // Navigate to the parent node (path doesn't include '_score')
     for (let i = 0; i < path.length; i++) {
       if (!node[path[i]] || typeof node[path[i]] !== 'object') {
         node[path[i]] = { _score: 0 };
       }
       node = node[path[i]];
     }
-    // Set _score on the final node
     if (typeof node === 'object' && node !== null) {
       node._score = score;
     }
@@ -136,22 +148,18 @@ export default function MuscleTargetTree({ value, onChange }: MuscleTargetTreePr
   };
 
   const getSecondariesForPrimary = (primaryId: string): MuscleOption[] => {
-    return secondaryMuscles
-      .filter((sm) => {
-        const ids = sm.primary_muscle_ids;
-        return Array.isArray(ids) ? ids.includes(primaryId) : false;
-      })
-      .map((sm) => ({ id: sm.id as string, label: sm.label as string }));
+    return allMuscles
+      .filter((m) => parsePids(m).includes(primaryId))
+      .map((m) => ({ id: m.id as string, label: m.label as string }));
   };
 
   const getTertiariesForSecondary = (secondaryId: string): MuscleOption[] => {
-    return tertiaryMuscles
-      .filter((tm) => {
-        const ids = tm.secondary_muscle_ids;
-        return Array.isArray(ids) ? ids.includes(secondaryId) : false;
-      })
-      .map((tm) => ({ id: tm.id as string, label: tm.label as string }));
+    return allMuscles
+      .filter((m) => parsePids(m).includes(secondaryId))
+      .map((m) => ({ id: m.id as string, label: m.label as string }));
   };
+
+  const getLabel = (id: string): string => (muscleMap.get(id)?.label as string) || id;
 
   const ScoreInput = ({ path, currentScore, computed }: { path: string[]; currentScore: number; computed?: boolean }) => {
     const [localValue, setLocalValue] = useState<string>(String(currentScore));
@@ -199,7 +207,6 @@ export default function MuscleTargetTree({ value, onChange }: MuscleTargetTreePr
     );
   };
 
-  // List of active primary keys in the data
   const activePrimaries = Object.keys(data).filter((k) => k !== '_score');
   const unusedPrimaries = primaryMuscles.filter((pm) => !activePrimaries.includes(pm.id));
 
@@ -208,7 +215,7 @@ export default function MuscleTargetTree({ value, onChange }: MuscleTargetTreePr
       {activePrimaries.map((primaryId) => {
         const primaryNode = data[primaryId] as Record<string, unknown> | undefined;
         if (!primaryNode || typeof primaryNode !== 'object') return null;
-        const primaryLabel = primaryMuscles.find((pm) => pm.id === primaryId)?.label || primaryId;
+        const primaryLabel = getLabel(primaryId);
         const primaryScore = (primaryNode._score as number) ?? 0;
         const secondaryKeys = Object.keys(primaryNode).filter((k) => k !== '_score');
         const isExpanded = expanded.has(primaryId);
@@ -243,8 +250,7 @@ export default function MuscleTargetTree({ value, onChange }: MuscleTargetTreePr
                 {secondaryKeys.map((secondaryId) => {
                   const secondaryNode = primaryNode[secondaryId] as Record<string, unknown> | undefined;
                   if (!secondaryNode || typeof secondaryNode !== 'object') return null;
-                  const secondaryLabel =
-                    secondaryMuscles.find((sm) => sm.id === secondaryId)?.label as string || secondaryId;
+                  const secondaryLabel = getLabel(secondaryId);
                   const secondaryScore = (secondaryNode._score as number) ?? 0;
                   const tertiaryKeys = Object.keys(secondaryNode).filter((k) => k !== '_score');
                   const subKey = `${primaryId}.${secondaryId}`;
@@ -286,8 +292,7 @@ export default function MuscleTargetTree({ value, onChange }: MuscleTargetTreePr
                           {tertiaryKeys.map((tertiaryId) => {
                             const tertiaryNode = secondaryNode[tertiaryId] as Record<string, unknown> | undefined;
                             const tertiaryScore = (tertiaryNode?._score as number) ?? 0;
-                            const tertiaryLabel =
-                              tertiaryMuscles.find((tm) => tm.id === tertiaryId)?.label as string || tertiaryId;
+                            const tertiaryLabel = getLabel(tertiaryId);
 
                             return (
                               <div key={tertiaryId} className="flex items-center gap-2 px-2 py-1 bg-red-50 rounded">

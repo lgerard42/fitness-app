@@ -14,26 +14,22 @@ import MuscleHierarchyField from './FieldRenderers/MuscleHierarchyField';
 import MotionConfigTree from './FieldRenderers/MotionConfigTree';
 import Relationships from './Relationships';
 
-const MATRIX_FIELDS = ['allowed_grip_types', 'allowed_grip_widths', 'allowed_stance_types', 'allowed_stance_widths'];
+const MATRIX_FIELDS: string[] = [];
 
-const MUSCLE_TABLES = ['primaryMuscles', 'secondaryMuscles', 'tertiaryMuscles'];
+const MUSCLE_TABLES = ['muscles'];
 const MUSCLE_HIERARCHY_FIELDS: Record<string, string[]> = {
-  secondaryMuscles: ['primary_muscle_ids'],
-  tertiaryMuscles: ['secondary_muscle_ids'],
+  muscles: ['parent_ids'],
 };
 const MUSCLE_HIERARCHY_ANCHOR: Record<string, string> = {
-  secondaryMuscles: 'primary_muscle_ids',
-  tertiaryMuscles: 'secondary_muscle_ids',
+  muscles: 'parent_ids',
 };
 
-const MOTION_TABLES = ['primaryMotions', 'primaryMotionVariations'];
+const MOTION_TABLES = ['motions'];
 const MOTION_HIERARCHY_FIELDS: Record<string, string[]> = {
-  primaryMotions: ['muscle_targets', 'motion_planes'],
-  primaryMotionVariations: ['primary_motion_key', 'muscle_targets', 'motion_planes'],
+  motions: ['parent_id', 'muscle_targets'],
 };
 const MOTION_HIERARCHY_ANCHOR: Record<string, string> = {
-  primaryMotions: 'muscle_targets',
-  primaryMotionVariations: 'primary_motion_key',
+  motions: 'parent_id',
 };
 
 interface RowEditorProps {
@@ -239,7 +235,7 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
                           <div key={field.name}>
                             {motionConfigLabel}
                             <MotionConfigTree
-                              tableKey={schema.key as 'primaryMotions' | 'primaryMotionVariations' | 'motionPlanes'}
+                              tableKey={schema.key as 'motions'}
                               currentRecordId={recordId}
                               muscleTargets={(data.muscle_targets as Record<string, unknown>) || {}}
                               onFieldsChange={(fields) => {
@@ -276,7 +272,7 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
                           <div key={field.name}>
                             {muscleHierarchyLabel}
                             <MuscleHierarchyField
-                              tableKey={schema.key as 'primaryMuscles' | 'secondaryMuscles' | 'tertiaryMuscles'}
+                              tableKey="muscles"
                               currentRecordId={recordId}
                               onFieldsChange={(fields) => {
                                 updateMultiple(fields);
@@ -298,7 +294,7 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
                           <div key={field.name}>
                             {motionConfigLabel}
                             <MotionConfigTree
-                              tableKey={schema.key as 'primaryMotions' | 'primaryMotionVariations' | 'motionPlanes'}
+                              tableKey={schema.key as 'motions'}
                               currentRecordId={recordId}
                               muscleTargets={(data.muscle_targets as Record<string, unknown>) || {}}
                               onFieldsChange={(fields) => {
@@ -383,15 +379,15 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
                   }
                 })}
 
-              {/* Muscle Hierarchy for primaryMuscles (no FK anchor, rendered standalone) */}
-              {!isNew && recordId && schema.key === 'primaryMuscles' && (
+              {/* Muscle Hierarchy for muscles table (standalone view when not already rendered via anchor field) */}
+              {!isNew && recordId && schema.key === 'muscles' && !hierarchyAnchor && (
                 <div className="pt-4 border-t">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Muscle Hierarchy
-                    <span className="text-xs text-gray-400 ml-2">Secondary & Tertiary muscles linked to this primary</span>
+                    <span className="text-xs text-gray-400 ml-2">Parent & child muscles linked to this muscle</span>
                   </label>
                   <MuscleHierarchyField
-                    tableKey="primaryMuscles"
+                    tableKey="muscles"
                     currentRecordId={recordId}
                     onFieldsChange={() => {}}
                   />
