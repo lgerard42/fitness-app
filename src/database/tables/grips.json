@@ -13,30 +13,18 @@
     ],
     "delta_rules": {
       "PRESS": {
-        "delta": {
-          "CHEST_MID": -0.2,
-          "TRICEPS": 0.15,
-          "DELTS_FRONT": 0.05
-        },
-        "option_planes": {},
-        "variations": {
-          "PRESS_INCLINE": {
-            "delta": {
-              "CHEST_UPPER": -0.2,
-              "TRICEPS": 0.15,
-              "DELTS_FRONT": 0.05
-            },
-            "option_planes": {}
-          }
-        }
+        "CHEST_MID": -0.2,
+        "TRICEPS": 0.15,
+        "DELTS_FRONT": 0.05
+      },
+      "PRESS_INCLINE": {
+        "CHEST_UPPER": -0.2,
+        "TRICEPS": 0.15,
+        "DELTS_FRONT": 0.05
       },
       "VERTICAL_PULL": {
-        "delta": {
-          "BICEP_INNER": -0.1,
-          "LATS": 0.1
-        },
-        "option_planes": {},
-        "variations": {}
+        "BICEP_INNER": -0.1,
+        "LATS": 0.1
       }
     },
     "short_description": "Palms facing each other. Highly joint-friendly.",
@@ -58,22 +46,14 @@
     ],
     "delta_rules": {
       "CURL": {
-        "delta": {
-          "BICEP_INNER": -0.3,
-          "BICEP_OUTER": -0.2,
-          "BRACHIALIS": 0.3,
-          "FOREARM_TOP": 0.2
-        },
-        "option_planes": {},
-        "variations": {}
+        "BICEP_INNER": -0.3,
+        "BICEP_OUTER": -0.2,
+        "BRACHIALIS": 0.3,
+        "FOREARM_TOP": 0.2
       },
       "HORIZONTAL_ROW": {
-        "delta": {
-          "LATS": -0.15,
-          "BACK_UPPER": 0.15
-        },
-        "option_planes": {},
-        "variations": {}
+        "LATS": -0.15,
+        "BACK_UPPER": 0.15
       }
     },
     "short_description": "Palms facing away from you (or down).",
@@ -95,22 +75,14 @@
     ],
     "delta_rules": {
       "PRESS": {
-        "delta": {
-          "CHEST_MID": -0.3,
-          "CHEST_UPPER": 0.2,
-          "TRICEPS": 0.1
-        },
-        "option_planes": {},
-        "variations": {}
+        "CHEST_MID": -0.3,
+        "CHEST_UPPER": 0.2,
+        "TRICEPS": 0.1
       },
       "HORIZONTAL_ROW": {
-        "delta": {
-          "BACK_UPPER": -0.2,
-          "LATS": 0.1,
-          "BICEP_INNER": 0.1
-        },
-        "option_planes": {},
-        "variations": {}
+        "BACK_UPPER": -0.2,
+        "LATS": 0.1,
+        "BICEP_INNER": 0.1
       }
     },
     "short_description": "Palms facing toward you (or up). Maximizes bicep engagement.",
@@ -132,14 +104,10 @@
     ],
     "delta_rules": {
       "CURL": {
-        "delta": {
-          "BICEP_INNER": -0.15,
-          "BICEP_OUTER": -0.1,
-          "BRACHIALIS": 0.15,
-          "FOREARM_TOP": 0.1
-        },
-        "option_planes": {},
-        "variations": {}
+        "BICEP_INNER": -0.15,
+        "BICEP_OUTER": -0.1,
+        "BRACHIALIS": 0.15,
+        "FOREARM_TOP": 0.1
       }
     },
     "short_description": "Slightly angled inward from pronated. Reduces wrist strain.",
@@ -161,12 +129,8 @@
     ],
     "delta_rules": {
       "CURL": {
-        "delta": {
-          "BICEP_INNER": 0.05,
-          "BRACHIALIS": -0.05
-        },
-        "option_planes": {},
-        "variations": {}
+        "BICEP_INNER": 0.05,
+        "BRACHIALIS": -0.05
       }
     },
     "short_description": "Slightly angled inward from supinated. The standard EZ-bar grip.",
@@ -188,20 +152,12 @@
     ],
     "delta_rules": {
       "CURL": {
-        "delta": {
-          "BICEP_INNER": 0.1,
-          "BRACHIALIS": 0.1
-        },
-        "option_planes": {},
-        "variations": {}
+        "BICEP_INNER": 0.1,
+        "BRACHIALIS": 0.1
       },
       "PRESS_VERTICAL": {
-        "delta": {
-          "DELTS_FRONT": 0.1,
-          "DELTS_SIDE": -0.05
-        },
-        "option_planes": {},
-        "variations": {}
+        "DELTS_FRONT": 0.1,
+        "DELTS_SIDE": -0.05
       }
     },
     "short_description": "Hand position rotates during the movement.",
@@ -221,18 +177,9 @@
       "Over/Under Grip"
     ],
     "delta_rules": {
-      "HINGE": {
-        "delta": {},
-        "option_planes": {},
-        "variations": {
-          "HINGE_STD": {
-            "delta": {
-              "FOREARMS": -0.2,
-              "BACK_LOWER": 0.05
-            },
-            "option_planes": {}
-          }
-        }
+      "HINGE_STD": {
+        "FOREARMS": -0.2,
+        "BACK_LOWER": 0.05
       }
     },
     "short_description": "One palm faces you, one faces away. Prevents bar rolling.",
@@ -253,18 +200,9 @@
       "Zercher Grip"
     ],
     "delta_rules": {
-      "SQUAT": {
-        "delta": {},
-        "option_planes": {},
-        "variations": {
-          "SQUAT_REGULAR": {
-            "delta": {
-              "FOREARMS": -0.2,
-              "SHOULDERS": 0.1
-            },
-            "option_planes": {}
-          }
-        }
+      "SQUAT_REGULAR": {
+        "FOREARMS": -0.2,
+        "SHOULDERS": 0.1
       }
     },
     "short_description": "Weight rests on the palms or arms without wrapping the fingers.",
@@ -305,20 +243,12 @@
     ],
     "delta_rules": {
       "PRESS_VERTICAL": {
-        "delta": {
-          "DELTS_SIDE": -0.1,
-          "DELTS_FRONT": 0.1
-        },
-        "option_planes": {},
-        "variations": {}
+        "DELTS_SIDE": -0.1,
+        "DELTS_FRONT": 0.1
       },
       "CURL": {
-        "delta": {
-          "BICEP_INNER": -0.15,
-          "BRACHIALIS": 0.15
-        },
-        "option_planes": {},
-        "variations": {}
+        "BICEP_INNER": -0.15,
+        "BRACHIALIS": 0.15
       }
     },
     "short_description": "Start neutral, twist to pronated at the top of the concentric phase.",
@@ -342,12 +272,8 @@
     ],
     "delta_rules": {
       "CURL": {
-        "delta": {
-          "BRACHIALIS": 0.1,
-          "BICEP_INNER": 0.1
-        },
-        "option_planes": {},
-        "variations": {}
+        "BRACHIALIS": 0.1,
+        "BICEP_INNER": 0.1
       }
     },
     "short_description": "Start neutral, twist to supinated at the top. Maximizes bicep peak contraction.",
@@ -367,12 +293,8 @@
     ],
     "delta_rules": {
       "CURL": {
-        "delta": {
-          "BICEP_INNER": -0.1,
-          "BRACHIALIS": 0.1
-        },
-        "option_planes": {},
-        "variations": {}
+        "BICEP_INNER": -0.1,
+        "BRACHIALIS": 0.1
       }
     },
     "short_description": "Start neutral, twist slightly downward.",
@@ -392,12 +314,8 @@
     ],
     "delta_rules": {
       "CURL": {
-        "delta": {
-          "BRACHIALIS": 0.05,
-          "BICEP_INNER": 0.05
-        },
-        "option_planes": {},
-        "variations": {}
+        "BRACHIALIS": 0.05,
+        "BICEP_INNER": 0.05
       }
     },
     "short_description": "Start neutral, twist slightly upward.",
@@ -419,18 +337,9 @@
       "Hammer Twist Pull"
     ],
     "delta_rules": {
-      "HORIZONTAL_ROW": {
-        "delta": {},
-        "option_planes": {},
-        "variations": {
-          "ROW_MID": {
-            "delta": {
-              "BACK_UPPER": 0.1,
-              "LATS": -0.1
-            },
-            "option_planes": {}
-          }
-        }
+      "ROW_MID": {
+        "BACK_UPPER": 0.1,
+        "LATS": -0.1
       }
     },
     "short_description": "Start pronated, twist to neutral at peak contraction. Great for lat engagement.",
@@ -454,13 +363,9 @@
     ],
     "delta_rules": {
       "CURL": {
-        "delta": {
-          "BICEP_INNER": 0.15,
-          "BRACHIALIS": 0.1,
-          "FOREARM_TOP": 0.1
-        },
-        "option_planes": {},
-        "variations": {}
+        "BICEP_INNER": 0.15,
+        "BRACHIALIS": 0.1,
+        "FOREARM_TOP": 0.1
       }
     },
     "short_description": "Full 180-degree rotation from overhand to underhand.",
@@ -480,12 +385,8 @@
     ],
     "delta_rules": {
       "CURL": {
-        "delta": {
-          "BICEP_INNER": 0.1,
-          "BRACHIALIS": 0.05
-        },
-        "option_planes": {},
-        "variations": {}
+        "BICEP_INNER": 0.1,
+        "BRACHIALIS": 0.05
       }
     },
     "short_description": "Start overhand, twist to an angled underhand.",
@@ -508,12 +409,8 @@
     ],
     "delta_rules": {
       "VERTICAL_PULL": {
-        "delta": {
-          "BICEP_INNER": 0.1,
-          "LATS": -0.1
-        },
-        "option_planes": {},
-        "variations": {}
+        "BICEP_INNER": 0.1,
+        "LATS": -0.1
       }
     },
     "short_description": "Start underhand, twist to neutral.",
@@ -537,12 +434,8 @@
     ],
     "delta_rules": {
       "PRESS_VERTICAL": {
-        "delta": {
-          "DELTS_FRONT": 0.15,
-          "DELTS_SIDE": -0.1
-        },
-        "option_planes": {},
-        "variations": {}
+        "DELTS_FRONT": 0.15,
+        "DELTS_SIDE": -0.1
       }
     },
     "short_description": "Start underhand, push and twist to overhand (The classic Arnold Press path).",
@@ -562,12 +455,8 @@
     ],
     "delta_rules": {
       "PRESS_VERTICAL": {
-        "delta": {
-          "DELTS_FRONT": 0.1,
-          "DELTS_SIDE": -0.05
-        },
-        "option_planes": {},
-        "variations": {}
+        "DELTS_FRONT": 0.1,
+        "DELTS_SIDE": -0.05
       }
     },
     "short_description": "Start underhand, twist to angled overhand.",
@@ -603,12 +492,8 @@
     ],
     "delta_rules": {
       "CURL": {
-        "delta": {
-          "BICEP_INNER": 0.1,
-          "BRACHIALIS": 0.05
-        },
-        "option_planes": {},
-        "variations": {}
+        "BICEP_INNER": 0.1,
+        "BRACHIALIS": 0.05
       }
     },
     "short_description": "Start angled overhand, finish fully underhand.",
@@ -628,12 +513,8 @@
     ],
     "delta_rules": {
       "CURL": {
-        "delta": {
-          "BICEP_INNER": 0.05,
-          "BRACHIALIS": 0.05
-        },
-        "option_planes": {},
-        "variations": {}
+        "BICEP_INNER": 0.05,
+        "BRACHIALIS": 0.05
       }
     },
     "short_description": "Moving between the two angled positions.",
@@ -669,12 +550,8 @@
     ],
     "delta_rules": {
       "PRESS_VERTICAL": {
-        "delta": {
-          "DELTS_FRONT": 0.1,
-          "DELTS_SIDE": -0.05
-        },
-        "option_planes": {},
-        "variations": {}
+        "DELTS_FRONT": 0.1,
+        "DELTS_SIDE": -0.05
       }
     },
     "short_description": "Start angled underhand, finish fully overhand.",
@@ -712,33 +589,21 @@
     ],
     "delta_rules": {
       "PRESS": {
-        "delta": {
-          "CHEST_MID": -0.2,
-          "CHEST_INNER": 0.15,
-          "TRICEPS": 0.25,
-          "DELTS_FRONT": -0.1
-        },
-        "option_planes": {},
-        "variations": {}
+        "CHEST_MID": -0.2,
+        "CHEST_INNER": 0.15,
+        "TRICEPS": 0.25,
+        "DELTS_FRONT": -0.1
       },
       "VERTICAL_PULL": {
-        "delta": {
-          "LATS": -0.15,
-          "BACK_UPPER": -0.1,
-          "BICEPS": 0.2,
-          "FOREARMS": 0.1
-        },
-        "option_planes": {},
-        "variations": {}
+        "LATS": -0.15,
+        "BACK_UPPER": -0.1,
+        "BICEPS": 0.2,
+        "FOREARMS": 0.1
       },
       "HORIZONTAL_ROW": {
-        "delta": {
-          "BACK_MID": -0.2,
-          "LATS": 0.15,
-          "BICEPS": 0.15
-        },
-        "option_planes": {},
-        "variations": {}
+        "BACK_MID": -0.2,
+        "LATS": 0.15,
+        "BICEPS": 0.15
       }
     },
     "short_description": "Hands positioned very close together, often touching. Maximizes arm involvement.",
@@ -759,30 +624,18 @@
     ],
     "delta_rules": {
       "PRESS": {
-        "delta": {
-          "CHEST_MID": -0.1,
-          "CHEST_INNER": 0.05,
-          "TRICEPS": 0.15,
-          "DELTS_FRONT": -0.05
-        },
-        "option_planes": {},
-        "variations": {}
+        "CHEST_MID": -0.1,
+        "CHEST_INNER": 0.05,
+        "TRICEPS": 0.15,
+        "DELTS_FRONT": -0.05
       },
       "VERTICAL_PULL": {
-        "delta": {
-          "LATS": -0.05,
-          "BICEPS": 0.1
-        },
-        "option_planes": {},
-        "variations": {}
+        "LATS": -0.05,
+        "BICEPS": 0.1
       },
       "HORIZONTAL_ROW": {
-        "delta": {
-          "BACK_MID": -0.1,
-          "LATS": 0.1
-        },
-        "option_planes": {},
-        "variations": {}
+        "BACK_MID": -0.1,
+        "LATS": 0.1
       }
     },
     "short_description": "Hands positioned just inside the shoulders.",
@@ -820,32 +673,20 @@
     ],
     "delta_rules": {
       "PRESS": {
-        "delta": {
-          "CHEST_MID": -0.1,
-          "CHEST_OUTER": 0.15,
-          "TRICEPS": -0.15,
-          "DELTS_FRONT": 0.1
-        },
-        "option_planes": {},
-        "variations": {}
+        "CHEST_MID": -0.1,
+        "CHEST_OUTER": 0.15,
+        "TRICEPS": -0.15,
+        "DELTS_FRONT": 0.1
       },
       "VERTICAL_PULL": {
-        "delta": {
-          "LATS": 0.15,
-          "BACK_UPPER": 0.1,
-          "BICEPS": -0.15
-        },
-        "option_planes": {},
-        "variations": {}
+        "LATS": 0.15,
+        "BACK_UPPER": 0.1,
+        "BICEPS": -0.15
       },
       "HORIZONTAL_ROW": {
-        "delta": {
-          "BACK_MID": 0.15,
-          "LATS": -0.1,
-          "BICEPS": -0.1
-        },
-        "option_planes": {},
-        "variations": {}
+        "BACK_MID": 0.15,
+        "LATS": -0.1,
+        "BICEPS": -0.1
       }
     },
     "short_description": "Hands positioned roughly one hand-width outside the shoulders.",
@@ -867,40 +708,24 @@
     ],
     "delta_rules": {
       "PRESS": {
-        "delta": {
-          "CHEST_MID": -0.25,
-          "CHEST_OUTER": 0.25,
-          "TRICEPS": -0.25,
-          "DELTS_FRONT": 0.15
-        },
-        "option_planes": {},
-        "variations": {}
+        "CHEST_MID": -0.25,
+        "CHEST_OUTER": 0.25,
+        "TRICEPS": -0.25,
+        "DELTS_FRONT": 0.15
       },
       "VERTICAL_PULL": {
-        "delta": {
-          "LATS": 0.2,
-          "BACK_UPPER": 0.2,
-          "BICEPS": -0.25
-        },
-        "option_planes": {},
-        "variations": {}
+        "LATS": 0.2,
+        "BACK_UPPER": 0.2,
+        "BICEPS": -0.25
       },
       "HORIZONTAL_ROW": {
-        "delta": {
-          "BACK_MID": 0.25,
-          "LATS": -0.2,
-          "BICEPS": -0.15
-        },
-        "option_planes": {},
-        "variations": {
-          "ROW_HIGH": {
-            "delta": {
-              "BACK_UPPER": 0.2,
-              "DELTS_REAR": 0.15
-            },
-            "option_planes": {}
-          }
-        }
+        "BACK_MID": 0.25,
+        "LATS": -0.2,
+        "BICEPS": -0.15
+      },
+      "ROW_HIGH": {
+        "BACK_UPPER": 0.2,
+        "DELTS_REAR": 0.15
       }
     },
     "short_description": "Hands positioned extremely wide. Maximizes torso stretch but heavily limits range of motion and arm involvement.",

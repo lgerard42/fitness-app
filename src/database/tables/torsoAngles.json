@@ -2,10 +2,19 @@
   {
     "id": "FLAT",
     "label": "Flat",
-    "common_names": ["0 Degrees", "Horizontal", "Level"],
+    "common_names": [
+      "0 Degrees",
+      "Horizontal",
+      "Level"
+    ],
     "delta_rules": {},
     "short_description": "Torso is perfectly horizontal. Baseline for most floor and bench work.",
-    "angle_range": {"min": 0, "max": 0, "step": 0, "default": 0},
+    "angle_range": {
+      "min": 0,
+      "max": 0,
+      "step": 0,
+      "default": 0
+    },
     "allow_torso_orientations": true,
     "sort_order": 0,
     "icon": "",
@@ -14,35 +23,32 @@
   {
     "id": "INCLINED",
     "label": "Inclined",
-    "common_names": ["Angled Up", "Reclined", "Positive Slope"],
+    "common_names": [
+      "Angled Up",
+      "Reclined",
+      "Positive Slope"
+    ],
     "delta_rules": {
       "PRESS": {
-        "delta": {
-          "CHEST_UPPER": 0.20,
-          "DELTS_FRONT": 0.10,
-          "CHEST_MID": -0.15
-        },
-        "option_planes": {},
-        "variations": {}
+        "CHEST_UPPER": 0.2,
+        "DELTS_FRONT": 0.1,
+        "CHEST_MID": -0.15
       },
       "CURL": {
-        "delta": {
-          "BICEP_OUTER": 0.20,
-          "BICEP_INNER": -0.10
-        },
-        "option_planes": {},
-        "variations": {}
+        "BICEP_OUTER": 0.2,
+        "BICEP_INNER": -0.1
       },
       "RAISE": {
-        "delta": {
-          "DELTS_SIDE": 0.15
-        },
-        "option_planes": {},
-        "variations": {}
+        "DELTS_SIDE": 0.15
       }
     },
     "short_description": "Torso is tilted backward. Shifts load to the upper chest, front delts, and long-head of the biceps.",
-    "angle_range": {"min": 5, "max": 85, "step": 5, "default": 45},
+    "angle_range": {
+      "min": 5,
+      "max": 85,
+      "step": 5,
+      "default": 45
+    },
     "allow_torso_orientations": true,
     "sort_order": 1,
     "icon": "",
@@ -51,26 +57,27 @@
   {
     "id": "DECLINED",
     "label": "Declined",
-    "common_names": ["Angled Down", "Head Down", "Negative Slope"],
+    "common_names": [
+      "Angled Down",
+      "Head Down",
+      "Negative Slope"
+    ],
     "delta_rules": {
       "PRESS": {
-        "delta": {
-          "CHEST_LOWER": 0.20,
-          "CHEST_MID": -0.10
-        },
-        "option_planes": {},
-        "variations": {}
+        "CHEST_LOWER": 0.2,
+        "CHEST_MID": -0.1
       },
       "AB_CRUNCH": {
-        "delta": {
-          "ABS_UPPER": 0.20
-        },
-        "option_planes": {},
-        "variations": {}
+        "ABS_UPPER": 0.2
       }
     },
     "short_description": "Torso is tilted downward. Shifts load to the lower chest and increases abdominal tension.",
-    "angle_range": {"min": -5, "max": -60, "step": 5, "default": -15},
+    "angle_range": {
+      "min": -5,
+      "max": -60,
+      "step": 5,
+      "default": -15
+    },
     "allow_torso_orientations": true,
     "sort_order": 2,
     "icon": "",
@@ -79,26 +86,27 @@
   {
     "id": "UPRIGHT",
     "label": "Upright",
-    "common_names": ["Seated", "Vertical", "90 Degrees"],
+    "common_names": [
+      "Seated",
+      "Vertical",
+      "90 Degrees"
+    ],
     "delta_rules": {
       "LEG_CURL": {
-        "delta": {
-          "HAMSTRINGS": 0.20,
-          "HAMSTRING_INNER": 0.10
-        },
-        "option_planes": {},
-        "variations": {}
+        "HAMSTRINGS": 0.2,
+        "HAMSTRING_INNER": 0.1
       },
       "AB_CRUNCH": {
-        "delta": {
-          "ABS_LOWER": 0.15
-        },
-        "option_planes": {},
-        "variations": {}
+        "ABS_LOWER": 0.15
       }
     },
     "short_description": "Torso is perfectly vertical. Maximizes hamstring stretch in leg curls and lower-ab recruitment in core work.",
-    "angle_range": {"min": 90, "max": 90, "step": 0, "default": 90},
+    "angle_range": {
+      "min": 90,
+      "max": 90,
+      "step": 0,
+      "default": 90
+    },
     "allow_torso_orientations": false,
     "sort_order": 3,
     "icon": "",

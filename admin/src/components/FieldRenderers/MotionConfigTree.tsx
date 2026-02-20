@@ -25,9 +25,6 @@ interface MuscleOption { id: string; label: string; }
 function parsePids(m: Record<string, unknown>): string[] {
   const raw = m.parent_ids;
   if (Array.isArray(raw)) return raw as string[];
-  if (typeof raw === 'string') {
-    try { return JSON.parse(raw); } catch { return []; }
-  }
   return [];
 }
 
@@ -402,20 +399,199 @@ function MuscleTargetsToggle({
   );
 }
 
+interface MotionPlaneRecord {
+  id: string;
+  label: string;
+  delta_rules?: Record<string, Record<string, number>>;
+  [key: string]: unknown;
+}
+
+interface MotionPlanesValue {
+  default: string;
+  options: string[];
+}
+
+function normalizeMotionPlanes(raw: unknown): MotionPlanesValue {
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+    const obj = raw as Record<string, unknown>;
+    return {
+      default: typeof obj.default === 'string' ? obj.default : '',
+      options: Array.isArray(obj.options) ? (obj.options as string[]) : [],
+    };
+  }
+  return { default: '', options: [] };
+}
+
+function MotionPlanesSection({
+  motionId,
+  parentMotionId,
+  motionPlanes,
+  allMotionPlanes,
+  allMuscles,
+  expanded,
+  toggle,
+  onSaveDelta,
+}: {
+  motionId: string;
+  parentMotionId?: string | null;
+  motionPlanes: MotionPlanesValue;
+  allMotionPlanes: MotionPlaneRecord[];
+  allMuscles: Record<string, unknown>[];
+  expanded: Set<string>;
+  toggle: (key: string) => void;
+  onSaveDelta: (planeId: string, motionId: string, delta: Record<string, number> | null) => Promise<void>;
+}) {
+  if (motionPlanes.options.length === 0) return null;
+
+  const selectedPlanes = motionPlanes.options
+    .map(id => allMotionPlanes.find(p => p.id === id))
+    .filter((p): p is MotionPlaneRecord => p != null);
+
+  if (selectedPlanes.length === 0) return null;
+
+  const resolveDeltaKey = (plane: MotionPlaneRecord): string => {
+    if (plane.delta_rules?.[motionId]) return motionId;
+    if (parentMotionId && plane.delta_rules?.[parentMotionId]) return parentMotionId;
+    return motionId;
+  };
+
+  return (
+    <div className="space-y-3">
+      {selectedPlanes.map(plane => {
+        const effectiveMotionKey = resolveDeltaKey(plane);
+        const deltaKey = `delta-${motionId}-${plane.id}`;
+        const isExp = expanded.has(deltaKey);
+        const motionDelta = plane.delta_rules?.[effectiveMotionKey] || {};
+        const deltaCount = Object.keys(motionDelta).length;
+        const isDefault = motionPlanes.default === plane.id;
+
+        return (
+          <div key={plane.id} className="bg-white border rounded-lg">
+            <div className="px-3 py-2 bg-gray-50 border-b flex items-center justify-between">
+              <div className="flex items-center gap-2 flex-1">
+                <button
+                  type="button"
+                  onClick={() => toggle(deltaKey)}
+                  className="text-xs text-gray-500 w-4 flex-shrink-0 hover:text-gray-700"
+                >
+                  {isExp ? '▼' : '▶'}
+                </button>
+                <span className="text-sm font-medium text-gray-700">{plane.label}</span>
+                <span className="text-xs text-gray-400">{plane.id}</span>
+                {isDefault && (
+                  <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded font-medium">Default</span>
+                )}
+                {deltaCount > 0 && (
+                  <span className="text-xs text-gray-400 ml-auto">
+                    {deltaCount} {deltaCount === 1 ? 'modification' : 'modifications'}
+                  </span>
+                )}
+              </div>
+            </div>
+            {isExp && (
+              <div className="px-3 py-1 border-b bg-red-50">
+                {Object.keys(motionDelta).length === 0 ? (
+                  <div className="px-2 py-2 text-xs text-gray-400 italic text-center">
+                    No muscle modifications for this motion plane
+                  </div>
+                ) : (
+                  <div className="space-y-0.5">
+                    {Object.entries(motionDelta).map(([muscleId, score]) => {
+                      const muscleLabel = (allMuscles.find(m => m.id === muscleId)?.label as string) || muscleId;
+                      return (
+                        <div key={muscleId} className="flex items-center gap-1.5 px-2 py-0.5 bg-red-50/60 rounded">
+                          <span className="text-xs text-red-800 flex-1">{muscleLabel}</span>
+                          <DeltaScoreInput value={score} onChange={async (v) => {
+                            const newDelta = { ...motionDelta, [muscleId]: v };
+                            await onSaveDelta(plane.id, effectiveMotionKey, newDelta);
+                          }} />
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const newDelta = { ...motionDelta };
+                              delete newDelta[muscleId];
+                              await onSaveDelta(plane.id, effectiveMotionKey, Object.keys(newDelta).length > 0 ? newDelta : null);
+                            }}
+                            className="ml-auto text-[10px] text-red-400 hover:text-red-600"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {(() => {
+                  const allMuscleOptions = allMuscles.map(m => ({ id: m.id as string, label: m.label as string }));
+                  const unusedMuscles = allMuscleOptions.filter(m => !motionDelta[m.id]);
+                  return unusedMuscles.length > 0 ? (
+                    <select
+                      onChange={async e => {
+                        if (e.target.value) {
+                          const newDelta = { ...motionDelta, [e.target.value]: 0 };
+                          await onSaveDelta(plane.id, effectiveMotionKey, newDelta);
+                        }
+                        e.target.value = '';
+                      }}
+                      className="text-[10px] px-1 py-0.5 border border-red-300 rounded text-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 mt-1 w-full"
+                      defaultValue=""
+                    >
+                      <option value="">+ muscle modifier...</option>
+                      {unusedMuscles.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+                    </select>
+                  ) : null;
+                })()}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function DeltaScoreInput({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const [local, setLocal] = useState(String(value));
+  const [focused, setFocused] = useState(false);
+
+  useEffect(() => {
+    if (!focused) setLocal(String(value));
+  }, [value, focused]);
+
+  return (
+    <input
+      type="number" step="0.1" value={local}
+      onFocus={() => setFocused(true)}
+      onChange={e => setLocal(e.target.value)}
+      onBlur={e => {
+        setFocused(false);
+        const num = parseFloat(e.target.value);
+        if (isNaN(num) || e.target.value === '') setLocal(String(value));
+        else onChange(num);
+      }}
+      onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+      className="w-14 px-1 py-0.5 border rounded text-xs text-center focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+    />
+  );
+}
+
 export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId, muscleTargets, onFieldsChange }: MotionConfigTreeProps) {
   const [allMotions, setAllMotions] = useState<MotionRecord[]>([]);
   const [allMuscles, setAllMuscles] = useState<Record<string, unknown>[]>([]);
+  const [allMotionPlanes, setAllMotionPlanes] = useState<MotionPlaneRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const loadAll = useCallback(async () => {
     try {
-      const [motions, muscles] = await Promise.all([
+      const [motions, muscles, planes] = await Promise.all([
         api.getTable('motions'),
         api.getTable('muscles'),
+        api.getTable('motionPlanes'),
       ]);
       setAllMotions((motions as MotionRecord[]) || []);
       setAllMuscles((muscles as Record<string, unknown>[]) || []);
+      setAllMotionPlanes((planes as MotionPlaneRecord[]) || []);
     } catch (err) {
       console.error('Failed to load data:', err);
     } finally {
@@ -475,6 +651,23 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
     } catch (err) { console.error('Failed to create variation:', err); alert('Failed to create variation.'); }
   }, [loadAll]);
 
+  const saveDeltaRules = useCallback(async (planeId: string, motionId: string, delta: Record<string, number> | null) => {
+    const plane = allMotionPlanes.find(p => p.id === planeId);
+    if (!plane) return;
+    const newDeltaRules = { ...(plane.delta_rules || {}) };
+    if (delta && Object.keys(delta).length > 0) {
+      newDeltaRules[motionId] = delta;
+    } else {
+      delete newDeltaRules[motionId];
+    }
+    try {
+      await api.updateRow('motionPlanes', planeId, { delta_rules: newDeltaRules });
+      setAllMotionPlanes(prev => prev.map(p => p.id === planeId ? { ...p, delta_rules: newDeltaRules } : p));
+    } catch (err) {
+      console.error('Failed to save delta_rules:', err);
+    }
+  }, [allMotionPlanes]);
+
   const mtProps = useMemo(() => ({
     expanded, toggleExpanded: toggle, allMuscles,
   }), [expanded, toggle, allMuscles]);
@@ -497,14 +690,15 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
     };
   };
 
-  const renderVariation = (v: MotionRecord, keyPrefix: string) => {
+  const renderVariation = (v: MotionRecord, _keyPrefix: string) => {
     const current = isCurrent(v.id);
     const { targets, onChange } = getTargetsAndOnChange(v.id, v);
     const varMtKey = `mt-var-${v.id}`;
+    const vPlanes = normalizeMotionPlanes(v.motion_planes);
 
     return (
       <div key={v.id} className={`rounded border overflow-hidden ${current ? 'ring-2 ring-blue-400' : 'bg-white'}`}>
-        <div className={`px-2 py-1.5 border-b flex items-center gap-2 ${current ? 'bg-blue-100' : 'bg-gray-50'}`}>
+        <div className={`px-2 py-1.5 border-b flex items-center gap-2 flex-wrap ${current ? 'bg-blue-100' : 'bg-gray-50'}`}>
           <div className="flex items-center gap-2 flex-shrink-0">
             {current ? (
               <span className="text-xs font-bold text-gray-900">{v.label}</span>
@@ -520,6 +714,20 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
         {expanded.has(varMtKey) && (
           <div className="px-2 py-1 border-b bg-red-50">
             <MuscleTargetsSubtree targets={targets} depth={0} onChange={onChange} {...mtProps} />
+          </div>
+        )}
+        {vPlanes.options.length > 0 && (
+          <div className="px-2 py-1 border-t">
+            <MotionPlanesSection
+              motionId={v.id}
+              parentMotionId={v.parent_id}
+              motionPlanes={vPlanes}
+              allMotionPlanes={allMotionPlanes}
+              allMuscles={allMuscles}
+              expanded={expanded}
+              toggle={toggle}
+              onSaveDelta={saveDeltaRules}
+            />
           </div>
         )}
       </div>
@@ -560,10 +768,11 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
       !allMotions.some(c => c.parent_id === v.id)
     );
     const pmMtKey = `mt-pm-${pm.id}`;
+    const pmPlanes = normalizeMotionPlanes(pm.motion_planes);
 
     return (
       <div key={pm.id} className="border rounded-lg bg-gray-50 overflow-hidden">
-        <div className={`px-3 py-2 border-b flex items-center gap-2 ${current ? 'bg-indigo-100' : 'bg-indigo-50'}`}>
+        <div className={`px-3 py-2 border-b flex items-center gap-2 flex-wrap ${current ? 'bg-indigo-100' : 'bg-indigo-50'}`}>
           <button type="button" onClick={() => toggle(rootKey)} className="text-xs text-gray-500 w-4 flex-shrink-0">{isRootExp ? '▼' : '▶'}</button>
           <div className="flex items-center gap-2 flex-shrink-0">
             {current ? (
@@ -578,6 +787,19 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
         {expanded.has(pmMtKey) && (
           <div className="px-3 py-1 border-b bg-red-50">
             <MuscleTargetsSubtree targets={targets} depth={0} onChange={onChange} {...mtProps} />
+          </div>
+        )}
+        {pmPlanes.options.length > 0 && (
+          <div className="px-3 py-1 border-b">
+            <MotionPlanesSection
+              motionId={pm.id}
+              motionPlanes={pmPlanes}
+              allMotionPlanes={allMotionPlanes}
+              allMuscles={allMuscles}
+              expanded={expanded}
+              toggle={toggle}
+              onSaveDelta={saveDeltaRules}
+            />
           </div>
         )}
         {isRootExp && (
@@ -606,10 +828,11 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
     const isRootExp = expanded.has(rootKey);
     const { targets, onChange } = getTargetsAndOnChange(v.id, v);
     const orphanVarMtKey = `mt-orphan-var-${v.id}`;
+    const orphanPlanes = normalizeMotionPlanes(v.motion_planes);
 
     return (
       <div className="border rounded-lg bg-gray-50 overflow-hidden">
-        <div className="px-3 py-2 bg-amber-50 border-b flex items-center gap-2">
+        <div className="px-3 py-2 bg-amber-50 border-b flex items-center gap-2 flex-wrap">
           <button type="button" onClick={() => toggle(rootKey)} className="text-xs text-gray-500 w-4 flex-shrink-0">{isRootExp ? '▼' : '▶'}</button>
           <div className="flex items-center gap-2 flex-shrink-0">
             <span className="text-xs text-amber-600 italic">No Parent Motion</span>
@@ -622,6 +845,19 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
         {expanded.has(orphanVarMtKey) && (
           <div className="px-3 py-1 border-b bg-red-50">
             <MuscleTargetsSubtree targets={targets} depth={0} onChange={onChange} {...mtProps} />
+          </div>
+        )}
+        {orphanPlanes.options.length > 0 && (
+          <div className="px-3 py-1 border-b">
+            <MotionPlanesSection
+              motionId={v.id}
+              motionPlanes={orphanPlanes}
+              allMotionPlanes={allMotionPlanes}
+              allMuscles={allMuscles}
+              expanded={expanded}
+              toggle={toggle}
+              onSaveDelta={saveDeltaRules}
+            />
           </div>
         )}
         {isRootExp && (

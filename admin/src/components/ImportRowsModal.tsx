@@ -82,6 +82,25 @@ function parseDelimited(text: string, delimiter: string): string[][] {
 
 /* ───────────────── type coercion helpers ───────────────── */
 
+/**
+ * Try to parse a string that looks like JSON but may have unquoted keys/values.
+ * e.g. {default: MID_MID, options: [HIGH_HIGH, MID_MID]}
+ */
+function parseJsonLike(str: string): object | null {
+  let s = str.trim();
+  if (!s.startsWith('{') && !s.startsWith('[')) return null;
+  // Quote unquoted keys
+  s = s.replace(/([{,[\s])([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":');
+  // Quote unquoted string values
+  s = s.replace(/(:\s*|[,[\s])(?!"[\d-]|true\b|false\b|null\b|\[|\{)([A-Za-z_][A-Za-z0-9_]*)(?=\s*[,\]}):])/g, '$1"$2"');
+  try {
+    const out = JSON.parse(s);
+    return typeof out === 'object' && out !== null ? out : null;
+  } catch {
+    return null;
+  }
+}
+
 function coerceValue(raw: string, field: TableField): unknown {
   if (raw === '' || raw === undefined || raw === null) return undefined;
   switch (field.type) {
@@ -89,113 +108,48 @@ function coerceValue(raw: string, field: TableField): unknown {
       return Number(raw) || 0;
     case 'boolean':
       return ['true', '1', 'yes', 'TRUE'].includes(raw);
-    case 'string[]':
-      // Try parsing as JSON array first
+    case 'string[]': {
+      // Valid JSON array
       try {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          return parsed.filter((item): item is string => typeof item === 'string');
-        }
-      } catch {
-        // Not valid JSON, try comma-separated
+        if (Array.isArray(parsed)) return parsed.filter((item): item is string => typeof item === 'string');
+      } catch { /* not valid JSON */ }
+      // Bracket-wrapped comma-separated: [Name1, Name2]
+      let processed = raw.trim();
+      if (processed.startsWith('[') && processed.endsWith(']')) {
+        processed = processed.slice(1, -1).trim();
       }
-      // If not JSON, treat as comma-separated string
-      if (typeof raw === 'string') {
-        let processed = raw.trim();
-        // Remove brackets if present: [Name1, Name2] -> Name1, Name2
-        if (processed.startsWith('[') && processed.endsWith(']')) {
-          processed = processed.slice(1, -1).trim();
-        }
-        // Also remove quotes if the whole thing is wrapped: "[Name1, Name2]" -> [Name1, Name2]
-        if ((processed.startsWith('"') && processed.endsWith('"')) ||
-            (processed.startsWith("'") && processed.endsWith("'"))) {
-          processed = processed.slice(1, -1).trim();
-          // Check again for brackets after removing quotes
-          if (processed.startsWith('[') && processed.endsWith(']')) {
-            processed = processed.slice(1, -1).trim();
-          }
-        }
-        return processed.split(',').map(s => s.trim()).filter(s => s !== '');
+      // Comma-separated string
+      return processed.split(',').map(s => s.trim()).filter(s => s !== '');
+    }
+    case 'fk[]': {
+      // Valid JSON array
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      } catch { /* not valid JSON */ }
+      // Bracket-wrapped comma-separated: [ID1, ID2]
+      let processed = raw.trim();
+      if (processed.startsWith('[') && processed.endsWith(']')) {
+        processed = processed.slice(1, -1).trim();
       }
-      return raw;
-    case 'json':
-    case 'fk[]':
+      // Comma-separated string
+      return processed.split(',').map(s => s.trim()).filter(s => s !== '');
+    }
+    case 'json': {
       const trimmed = raw.trim();
-      
-      // If empty, return undefined
       if (!trimmed) return undefined;
-      
-      // Try parsing as JSON directly first
+      // Valid JSON
       try {
         const parsed = JSON.parse(trimmed);
-        // If parsing succeeded and returned an object/array, return it
-        if (typeof parsed === 'object' && parsed !== null) {
-          return parsed;
-        }
-        // If parsing returned a string, it might be double-encoded JSON
-        if (typeof parsed === 'string') {
-          try {
-            return JSON.parse(parsed);
-          } catch {
-            return parsed;
-          }
-        }
-        return parsed;
-      } catch {
-        // If direct parse fails, check if it's wrapped in quotes
-        // This handles cases like: "{\"key\": \"value\"}" from spreadsheets
-        if (trimmed.length > 1 && 
-            ((trimmed.startsWith('"') && trimmed.endsWith('"')) ||
-             (trimmed.startsWith("'") && trimmed.endsWith("'")))) {
-          try {
-            // Remove outer quotes and try parsing
-            const unquoted = trimmed.slice(1, -1);
-            const parsed = JSON.parse(unquoted);
-            // If result is still a string, try parsing again (double-encoded)
-            if (typeof parsed === 'string') {
-              try {
-                return JSON.parse(parsed);
-              } catch {
-                return parsed;
-              }
-            }
-            return parsed;
-          } catch {
-            // If unquoted parse fails, it might have unquoted keys
-            // Try fixing unquoted keys in the unquoted string
-            try {
-              const unquoted = trimmed.slice(1, -1);
-              if (unquoted.trim().startsWith('{') || unquoted.trim().startsWith('[')) {
-                const fixed = unquoted.replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":');
-                return JSON.parse(fixed);
-              }
-            } catch {
-              // If all attempts fail, continue to next check
-            }
-          }
-        }
-        
-        // If it looks like JSON (starts with { or [), try parsing even if not quoted
-        // This handles TSV data where JSON objects aren't wrapped in quotes
-        if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
-          try {
-            return JSON.parse(trimmed);
-          } catch {
-            // If parsing fails, it might be malformed JSON (e.g., unquoted keys)
-            // Try to fix unquoted keys: {key: value} -> {"key": value}
-            // This regex matches: { or , followed by whitespace, then an identifier, then :
-            // and adds quotes around the identifier
-            try {
-              const fixed = trimmed.replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":');
-              return JSON.parse(fixed);
-            } catch {
-              // If all attempts fail, return raw value as string
-              // The user can manually fix it if needed
-            }
-          }
-        }
-      }
-      return raw;
+        if (typeof parsed === 'object' && parsed !== null) return parsed;
+      } catch { /* not valid JSON */ }
+      // Unquoted JS-like object: {default: MID_MID, options: [HIGH_HIGH]}
+      const obj = parseJsonLike(trimmed);
+      if (obj) return obj;
+      // Can't parse - return empty object rather than a string
+      return {};
+    }
     default:
       return raw;
   }

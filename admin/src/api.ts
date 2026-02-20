@@ -94,15 +94,23 @@ export const api = {
   listTables: () => request<TableInfo[]>('/tables'),
   getTable: (key: string) => request<unknown[]>(`/tables/${key}`),
   putTable: (key: string, data: unknown[]) => request<{ ok: boolean }>(`/tables/${key}`, { method: 'PUT', body: JSON.stringify(data) }),
-  addRow: (key: string, row: Record<string, unknown>) => request<{ ok: boolean; row: Record<string, unknown> }>(`/tables/${key}/rows`, { method: 'POST', body: JSON.stringify(row) }),
-  updateRow: (key: string, id: string, row: Record<string, unknown>) => request<{ ok: boolean; row: Record<string, unknown> }>(`/tables/${key}/rows/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(row) }),
-  deleteRow: (key: string, id: string, opts?: { breakLinks?: boolean; reassignTo?: string }) => {
+  addRow: (key: string, row: Record<string, unknown>, opts?: { skipSync?: boolean }) => {
+    const qs = opts?.skipSync ? '?skipSync=true' : '';
+    return request<{ ok: boolean; row: Record<string, unknown> }>(`/tables/${key}/rows${qs}`, { method: 'POST', body: JSON.stringify(row) });
+  },
+  updateRow: (key: string, id: string, row: Record<string, unknown>, opts?: { skipSync?: boolean }) => {
+    const qs = opts?.skipSync ? '?skipSync=true' : '';
+    return request<{ ok: boolean; row: Record<string, unknown> }>(`/tables/${key}/rows/${encodeURIComponent(id)}${qs}`, { method: 'PUT', body: JSON.stringify(row) });
+  },
+  deleteRow: (key: string, id: string, opts?: { breakLinks?: boolean; reassignTo?: string; skipSync?: boolean }) => {
     const params = new URLSearchParams();
     if (opts?.breakLinks) params.set('breakLinks', 'true');
     if (opts?.reassignTo) params.set('reassignTo', opts.reassignTo);
+    if (opts?.skipSync) params.set('skipSync', 'true');
     const qs = params.toString() ? `?${params.toString()}` : '';
     return request<{ ok: boolean }>(`/tables/${key}/rows/${encodeURIComponent(id)}${qs}`, { method: 'DELETE' });
   },
+  syncTable: (key: string) => request<{ ok: boolean }>(`/tables/${key}/sync`, { method: 'POST' }),
   reorder: (key: string, ids: string[]) => request<{ ok: boolean }>(`/tables/${key}/reorder`, { method: 'POST', body: JSON.stringify({ ids }) }),
 
   // Validate

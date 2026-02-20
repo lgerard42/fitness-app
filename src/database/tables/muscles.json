@@ -21,154 +21,6 @@
     "is_active": true
   },
   {
-    "id": "BACK",
-    "parent_ids": [],
-    "label": "Back",
-    "common_names": [
-      "Back",
-      "Posterior Chain",
-      "Lats and Traps"
-    ],
-    "technical_name": "Dorsum",
-    "short_description": "The large musculature of the posterior torso.",
-    "function": "Pulling, rowing, and stabilizing the spine and scapula.",
-    "location": "Posterior torso, spanning from the base of the neck to the pelvis.",
-    "triggers": "Pulling resistance toward the body; extending the spine.",
-    "upper_lower": [
-      "Upper Body"
-    ],
-    "sort_order": 1,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "CHEST",
-    "parent_ids": [],
-    "label": "Chest",
-    "common_names": [
-      "Chest",
-      "Pecs",
-      "Push Muscles"
-    ],
-    "technical_name": "Musculi Pectorales",
-    "short_description": "The primary pushing muscles of the anterior torso.",
-    "function": "Pushing outward and bringing the arms across the midline of the body (adduction).",
-    "location": "Anterior upper torso, covering the ribcage.",
-    "triggers": "Pushing resistance away from the body; hugging or arcing motions.",
-    "upper_lower": [
-      "Upper Body"
-    ],
-    "sort_order": 2,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "CORE",
-    "parent_ids": [],
-    "label": "Core",
-    "common_names": [
-      "Core",
-      "Midsection",
-      "Abs",
-      "Trunk"
-    ],
-    "technical_name": "Musculi Abdominis",
-    "short_description": "The stabilizing center of the body.",
-    "function": "Spinal flexion, rotation, and maintaining rigid torso stability.",
-    "location": "The midsection, wrapping around the front and sides of the waist.",
-    "triggers": "Planking, crunching, twisting, or bracing against heavy loads.",
-    "upper_lower": [
-      "Upper Body"
-    ],
-    "sort_order": 3,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "LEGS",
-    "parent_ids": [],
-    "label": "Legs",
-    "common_names": [
-      "Legs",
-      "Lower Body",
-      "Quads and Hams"
-    ],
-    "technical_name": "Membrum Inferius",
-    "short_description": "The primary movers of the lower body.",
-    "function": "Squatting, hinging, walking, and jumping.",
-    "location": "The lower limb, from the hip joint down to the ankles.",
-    "triggers": "Pushing against the floor; bending the knees; extending the hips.",
-    "upper_lower": [
-      "Lower Body"
-    ],
-    "sort_order": 4,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "SHOULDERS",
-    "parent_ids": [],
-    "label": "Shoulders",
-    "common_names": [
-      "Shoulders",
-      "Delts",
-      "Shoulder Girdle"
-    ],
-    "technical_name": "Deltoideus",
-    "short_description": "The highly mobile muscles capping the shoulder joint.",
-    "function": "Raising the arms overhead, forward, or to the sides; rotating the arm.",
-    "location": "The top and lateral sides of the upper torso/arm intersection.",
-    "triggers": "Pressing vertically overhead; raising the arms laterally or frontally.",
-    "upper_lower": [
-      "Upper Body"
-    ],
-    "sort_order": 5,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "NECK",
-    "parent_ids": [],
-    "label": "Neck",
-    "common_names": [
-      "Neck",
-      "Cervical Spine"
-    ],
-    "technical_name": "Cervix",
-    "short_description": "The muscles supporting and articulating the head.",
-    "function": "Head flexion, extension, and lateral rotation.",
-    "location": "Cervical spine area, above the collarbone and upper traps.",
-    "triggers": "Nodding the head forward or lifting the head backward.",
-    "upper_lower": [
-      "Upper Body"
-    ],
-    "sort_order": 6,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "FULL_BODY",
-    "parent_ids": [],
-    "label": "Full Body",
-    "common_names": [
-      "Full Body",
-      "Compound",
-      "Total Body"
-    ],
-    "technical_name": "Totum Corpus",
-    "short_description": "Systemic movements engaging the entire muscular system.",
-    "function": "Maximum force production and systemic energy expenditure.",
-    "location": "The entire skeletal musculature.",
-    "triggers": "Olympic lifting, heavily loaded carries, or explosive plyometrics.",
-    "upper_lower": [
-      "Upper Body",
-      "Lower Body"
-    ],
-    "sort_order": 7,
-    "icon": "",
-    "is_active": true
-  },
-  {
     "id": "BICEPS",
     "parent_ids": [
       "ARMS"
@@ -185,491 +37,7 @@
     "location": "Anterior portion of the upper arm.",
     "triggers": "Curling weights upward; underhand pulling.",
     "upper_lower": [],
-    "sort_order": 0,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "FOREARMS",
-    "parent_ids": [
-      "ARMS"
-    ],
-    "label": "Forearms",
-    "common_names": [
-      "Forearms",
-      "Lower Arm",
-      "Grip Muscles"
-    ],
-    "technical_name": "Antebrachium",
-    "short_description": "The muscles controlling the wrist and grip.",
-    "function": "Wrist flexion, extension, and finger gripping.",
-    "location": "The lower arm, between the elbow and the wrist.",
-    "triggers": "Heavy gripping, holding static weight, or wrist curls.",
-    "upper_lower": [],
     "sort_order": 1,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "TRICEPS",
-    "parent_ids": [
-      "ARMS"
-    ],
-    "label": "Triceps",
-    "common_names": [
-      "Triceps",
-      "Back Arm",
-      "Horseshoe"
-    ],
-    "technical_name": "Triceps Brachii",
-    "short_description": "The primary pushing muscles of the upper arm.",
-    "function": "Straightening (extending) the elbow joint.",
-    "location": "Posterior portion of the upper arm.",
-    "triggers": "Pressing weight away; extending the arm downward or overhead.",
-    "upper_lower": [],
-    "sort_order": 2,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "LATS",
-    "parent_ids": [
-      "BACK"
-    ],
-    "label": "Lats",
-    "common_names": [
-      "Lats",
-      "Wings",
-      "V-Taper"
-    ],
-    "technical_name": "Latissimus Dorsi",
-    "short_description": "The widest muscle of the back, creating a V-taper.",
-    "function": "Pulling the arm down toward the pelvis and extending the shoulder.",
-    "location": "Mid-to-lower lateral back, wrapping around the sides.",
-    "triggers": "Vertical pulling (e.g., pull-ups) and horizontal rowing.",
-    "upper_lower": [],
-    "sort_order": 3,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "BACK_LOWER",
-    "parent_ids": [
-      "CORE",
-      "BACK"
-    ],
-    "label": "Lower Back",
-    "common_names": [
-      "Lower Back",
-      "Lumbar",
-      "Spinal Erectors"
-    ],
-    "technical_name": "Erector Spinae",
-    "short_description": "The supportive muscles along the lower spine.",
-    "function": "Extending the spine and maintaining upright posture.",
-    "location": "Lower lumbar region, just above the pelvis.",
-    "triggers": "Deadlifting, hyperextensions, and maintaining a hinged stance.",
-    "upper_lower": [],
-    "sort_order": 4,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "BACK_MID",
-    "parent_ids": [
-      "BACK"
-    ],
-    "label": "Mid Back",
-    "common_names": [
-      "Mid Back",
-      "Back Thickness",
-      "Middle Back"
-    ],
-    "technical_name": "Regio Dorsalis Media",
-    "short_description": "The central muscles responsible for back thickness.",
-    "function": "Retracting the shoulder blades (pulling them together).",
-    "location": "The center of the back, between the shoulder blades.",
-    "triggers": "Horizontal rowing and pulling the elbows far behind the torso.",
-    "upper_lower": [],
-    "sort_order": 5,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "TRAPS",
-    "parent_ids": [
-      "BACK",
-      "SHOULDERS"
-    ],
-    "label": "Traps",
-    "common_names": [
-      "Traps",
-      "Shrug Muscles",
-      "Yoke"
-    ],
-    "technical_name": "Trapezius",
-    "short_description": "The diamond-shaped muscle spanning the neck to the mid-back.",
-    "function": "Elevating, depressing, and retracting the scapula.",
-    "location": "Upper back, extending up to the neck and down to the mid-spine.",
-    "triggers": "Shrugging, upright rowing, and stabilizing overhead presses.",
-    "upper_lower": [],
-    "sort_order": 6,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "BACK_UPPER",
-    "parent_ids": [
-      "BACK"
-    ],
-    "label": "Upper Back",
-    "common_names": [
-      "Upper Back",
-      "Top Back",
-      "Rear Delt Area"
-    ],
-    "technical_name": "Thoracica Superior",
-    "short_description": "The upper structural muscles supporting the rear shoulders.",
-    "function": "Stabilizing the upper spine and supporting rear shoulder movement.",
-    "location": "The upper thoracic region, spanning the upper shoulder blades.",
-    "triggers": "High rows, face pulls, and wide-grip horizontal pulls.",
-    "upper_lower": [],
-    "sort_order": 7,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "CHEST_LOWER",
-    "parent_ids": [
-      "CHEST"
-    ],
-    "label": "Lower Chest",
-    "common_names": [
-      "Lower Chest",
-      "Decline Pecs",
-      "Bottom Chest"
-    ],
-    "technical_name": "Pectoralis Major (Abdominalis)",
-    "short_description": "The lower margin of the pectoral muscle.",
-    "function": "Pressing downward and adduction from a high angle.",
-    "location": "The bottom edge of the pectoral muscles along the lower ribs.",
-    "triggers": "Decline bench presses and high-to-low cable flys.",
-    "upper_lower": [],
-    "sort_order": 8,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "CHEST_MID",
-    "parent_ids": [
-      "CHEST"
-    ],
-    "label": "Mid Chest",
-    "common_names": [
-      "Mid Chest",
-      "Flat Bench",
-      "Inner Chest"
-    ],
-    "technical_name": "Pectoralis Major (Sternocostalis)",
-    "short_description": "The main bulk of the pectoral muscle.",
-    "function": "Straight horizontal pressing and strict adduction.",
-    "location": "The central mass of the chest, connecting to the sternum.",
-    "triggers": "Flat bench presses and mid-level chest flys.",
-    "upper_lower": [],
-    "sort_order": 9,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "CHEST_UPPER",
-    "parent_ids": [
-      "CHEST"
-    ],
-    "label": "Upper Chest",
-    "common_names": [
-      "Upper Chest",
-      "Incline Pecs",
-      "Clavicular Head"
-    ],
-    "technical_name": "Pectoralis Major (Clavicularis)",
-    "short_description": "The upper margin bridging the chest to the front deltoids.",
-    "function": "Pressing upward and lifting the arms across the body.",
-    "location": "The top of the chest, located just below the collarbone.",
-    "triggers": "Incline bench presses and low-to-high scoop flys.",
-    "upper_lower": [],
-    "sort_order": 10,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "ABS",
-    "parent_ids": [
-      "CORE"
-    ],
-    "label": "Abs",
-    "common_names": [
-      "Abs",
-      "Six Pack",
-      "Abdominals"
-    ],
-    "technical_name": "Rectus Abdominis",
-    "short_description": "The segmented muscle responsible for the \"six-pack\" look.",
-    "function": "Flexing the lumbar spine (crunching the torso).",
-    "location": "The center of the stomach, from the ribcage to the pelvis.",
-    "triggers": "Crunches, sit-ups, and leg raises.",
-    "upper_lower": [],
-    "sort_order": 11,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "HIP_FLEXORS",
-    "parent_ids": [
-      "CORE",
-      "LEGS"
-    ],
-    "label": "Hip Flexors",
-    "common_names": [
-      "Hip Flexors",
-      "Psoas",
-      "Hip Fold"
-    ],
-    "technical_name": "Iliopsoas",
-    "short_description": "The deep muscles linking the lower spine to the legs.",
-    "function": "Bringing the knees up toward the chest (hip flexion).",
-    "location": "Deep within the front of the hip and lower abdomen.",
-    "triggers": "Hanging leg raises, high knees, and sit-ups.",
-    "upper_lower": [],
-    "sort_order": 12,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "OBLIQUES",
-    "parent_ids": [
-      "CORE"
-    ],
-    "label": "Obliques",
-    "common_names": [
-      "Obliques",
-      "Side Abs",
-      "Waist"
-    ],
-    "technical_name": "Musculi Obliqui",
-    "short_description": "The diagonal muscles controlling torso rotation.",
-    "function": "Rotating the torso and bending sideways.",
-    "location": "The sides of the waist and lower ribcage.",
-    "triggers": "Russian twists, woodchops, and side bends.",
-    "upper_lower": [],
-    "sort_order": 13,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "CALVES",
-    "parent_ids": [
-      "LEGS"
-    ],
-    "label": "Calves",
-    "common_names": [
-      "Calves",
-      "Lower Leg",
-      "Gastrocs"
-    ],
-    "technical_name": "Triceps Surae",
-    "short_description": "The muscles on the back of the lower leg.",
-    "function": "Plantarflexion (pointing the toes/lifting the heels).",
-    "location": "The posterior portion of the lower leg.",
-    "triggers": "Standing or seated heel raises; jumping.",
-    "upper_lower": [],
-    "sort_order": 14,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "SHINS",
-    "parent_ids": [
-      "LEGS"
-    ],
-    "label": "Shins",
-    "common_names": [
-      "Shins",
-      "Front Calves",
-      "Tibialis"
-    ],
-    "technical_name": "Tibialis Anterior",
-    "short_description": "The muscles on the front of the lower leg.",
-    "function": "Dorsiflexion (pulling the toes up toward the knee).",
-    "location": "The anterior portion of the lower leg, next to the shinbone.",
-    "triggers": "Toe raises, walking backwards, heel walking.",
-    "upper_lower": [],
-    "sort_order": 15,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "GLUTES",
-    "parent_ids": [
-      "LEGS"
-    ],
-    "label": "Glutes",
-    "common_names": [
-      "Glutes",
-      "Butt",
-      "Posterior"
-    ],
-    "technical_name": "Musculi Glutei",
-    "short_description": "The largest, most powerful muscle group in the body.",
-    "function": "Extending the hip, thrusting the pelvis forward, and hip abduction.",
-    "location": "The buttocks.",
-    "triggers": "Hip thrusts, deep squats, and deadlifts.",
-    "upper_lower": [],
-    "sort_order": 16,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "HAMSTRINGS",
-    "parent_ids": [
-      "LEGS"
-    ],
-    "label": "Hamstrings",
-    "common_names": [
-      "Hamstrings",
-      "Hams",
-      "Back of Thigh"
-    ],
-    "technical_name": "Musculi Ischiocrurales",
-    "short_description": "The pulling muscles of the lower body.",
-    "function": "Bending the knee (flexion) and assisting in hip extension.",
-    "location": "The posterior aspect of the thigh.",
-    "triggers": "Leg curls and stiff-legged deadlifts (RDLs).",
-    "upper_lower": [],
-    "sort_order": 17,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "THIGHS_INNER",
-    "parent_ids": [
-      "LEGS"
-    ],
-    "label": "Inner Thighs",
-    "common_names": [
-      "Inner Thighs",
-      "Adductors",
-      "Groin"
-    ],
-    "technical_name": "Musculi Adductores",
-    "short_description": "The muscles pulling the legs together.",
-    "function": "Hip adduction (pulling the femurs toward the midline).",
-    "location": "The medial (inside) portion of the thigh.",
-    "triggers": "Sumo squats, lateral lunges, and adductor machines.",
-    "upper_lower": [],
-    "sort_order": 18,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "THIGHS_OUTER",
-    "parent_ids": [
-      "LEGS"
-    ],
-    "label": "Outer Hips/Thighs",
-    "common_names": [
-      "Outer Hips",
-      "Outer Thigh",
-      "Abductors"
-    ],
-    "technical_name": "Musculi Abductores",
-    "short_description": "The muscles pushing the legs apart.",
-    "function": "Hip abduction (pushing the femurs away from the midline).",
-    "location": "The lateral (outside) portion of the hips and upper thigh.",
-    "triggers": "Abductor machines and lateral banded walks.",
-    "upper_lower": [],
-    "sort_order": 19,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "QUADS",
-    "parent_ids": [
-      "LEGS"
-    ],
-    "label": "Quads",
-    "common_names": [
-      "Quads",
-      "Thighs",
-      "Front of Leg"
-    ],
-    "technical_name": "Quadriceps Femoris",
-    "short_description": "The pushing muscles of the lower body.",
-    "function": "Straightening the knee (extension).",
-    "location": "The anterior (front) aspect of the thigh.",
-    "triggers": "Leg extensions, forward lunges, and front squats.",
-    "upper_lower": [],
-    "sort_order": 20,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "DELTS_FRONT",
-    "parent_ids": [
-      "SHOULDERS"
-    ],
-    "label": "Front Delts",
-    "common_names": [
-      "Front Delts",
-      "Anterior Delts"
-    ],
-    "technical_name": "Deltoideus Anterior",
-    "short_description": "The front segment of the shoulder.",
-    "function": "Raising the arms directly forward and assisting in pressing.",
-    "location": "The front of the shoulder joint, tying into the upper chest.",
-    "triggers": "Front raises and overhead pressing.",
-    "upper_lower": [],
-    "sort_order": 21,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "DELTS_REAR",
-    "parent_ids": [
-      "SHOULDERS"
-    ],
-    "label": "Rear Delts",
-    "common_names": [
-      "Rear Delts",
-      "Posterior Delts"
-    ],
-    "technical_name": "Deltoideus Posterior",
-    "short_description": "The back segment of the shoulder.",
-    "function": "Pulling the arms backward horizontally (transverse abduction).",
-    "location": "The back of the shoulder joint, tying into the upper back.",
-    "triggers": "Reverse flys and face pulls.",
-    "upper_lower": [],
-    "sort_order": 22,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "DELTS_SIDE",
-    "parent_ids": [
-      "SHOULDERS"
-    ],
-    "label": "Side Delts",
-    "common_names": [
-      "Side Delts",
-      "Lateral Delts",
-      "Shoulder Width"
-    ],
-    "technical_name": "Deltoideus Lateralis",
-    "short_description": "The middle segment of the shoulder, creating width.",
-    "function": "Raising the arms straight out to the sides (abduction).",
-    "location": "The outermost, lateral cap of the shoulder joint.",
-    "triggers": "Lateral raises and upright rows.",
-    "upper_lower": [],
-    "sort_order": 23,
     "icon": "",
     "is_active": true
   },
@@ -690,7 +58,49 @@
     "location": "The lateral (outer) side of the anterior upper arm.",
     "triggers": "Curls performed with elbows behind the torso or with a narrow grip.",
     "upper_lower": [],
-    "sort_order": 0,
+    "sort_order": 2,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "BACK",
+    "parent_ids": [],
+    "label": "Back",
+    "common_names": [
+      "Back",
+      "Posterior Chain",
+      "Lats and Traps"
+    ],
+    "technical_name": "Dorsum",
+    "short_description": "The large musculature of the posterior torso.",
+    "function": "Pulling, rowing, and stabilizing the spine and scapula.",
+    "location": "Posterior torso, spanning from the base of the neck to the pelvis.",
+    "triggers": "Pulling resistance toward the body; extending the spine.",
+    "upper_lower": [
+      "Upper Body"
+    ],
+    "sort_order": 3,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "FOREARMS",
+    "parent_ids": [
+      "ARMS"
+    ],
+    "label": "Forearms",
+    "common_names": [
+      "Forearms",
+      "Lower Arm",
+      "Grip Muscles"
+    ],
+    "technical_name": "Antebrachium",
+    "short_description": "The muscles controlling the wrist and grip.",
+    "function": "Wrist flexion, extension, and finger gripping.",
+    "location": "The lower arm, between the elbow and the wrist.",
+    "triggers": "Heavy gripping, holding static weight, or wrist curls.",
+    "upper_lower": [],
+    "sort_order": 4,
     "icon": "",
     "is_active": true
   },
@@ -711,7 +121,49 @@
     "location": "The medial (inner) side of the anterior upper arm.",
     "triggers": "Preacher curls, wide grips, and elbows in front of the torso.",
     "upper_lower": [],
-    "sort_order": 1,
+    "sort_order": 5,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "CHEST",
+    "parent_ids": [],
+    "label": "Chest",
+    "common_names": [
+      "Chest",
+      "Pecs",
+      "Push Muscles"
+    ],
+    "technical_name": "Musculi Pectorales",
+    "short_description": "The primary pushing muscles of the anterior torso.",
+    "function": "Pushing outward and bringing the arms across the midline of the body (adduction).",
+    "location": "Anterior upper torso, covering the ribcage.",
+    "triggers": "Pushing resistance away from the body; hugging or arcing motions.",
+    "upper_lower": [
+      "Upper Body"
+    ],
+    "sort_order": 6,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "TRICEPS",
+    "parent_ids": [
+      "ARMS"
+    ],
+    "label": "Triceps",
+    "common_names": [
+      "Triceps",
+      "Back Arm",
+      "Horseshoe"
+    ],
+    "technical_name": "Triceps Brachii",
+    "short_description": "The primary pushing muscles of the upper arm.",
+    "function": "Straightening (extending) the elbow joint.",
+    "location": "Posterior portion of the upper arm.",
+    "triggers": "Pressing weight away; extending the arm downward or overhead.",
+    "upper_lower": [],
+    "sort_order": 7,
     "icon": "",
     "is_active": true
   },
@@ -733,7 +185,50 @@
     "location": "Deep beneath the lower bicep, bridging to the forearm.",
     "triggers": "Hammer curls and reverse curls.",
     "upper_lower": [],
-    "sort_order": 2,
+    "sort_order": 8,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "CORE",
+    "parent_ids": [],
+    "label": "Core",
+    "common_names": [
+      "Core",
+      "Midsection",
+      "Abs",
+      "Trunk"
+    ],
+    "technical_name": "Musculi Abdominis",
+    "short_description": "The stabilizing center of the body.",
+    "function": "Spinal flexion, rotation, and maintaining rigid torso stability.",
+    "location": "The midsection, wrapping around the front and sides of the waist.",
+    "triggers": "Planking, crunching, twisting, or bracing against heavy loads.",
+    "upper_lower": [
+      "Upper Body"
+    ],
+    "sort_order": 9,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "LATS",
+    "parent_ids": [
+      "BACK"
+    ],
+    "label": "Lats",
+    "common_names": [
+      "Lats",
+      "Wings",
+      "V-Taper"
+    ],
+    "technical_name": "Latissimus Dorsi",
+    "short_description": "The widest muscle of the back, creating a V-taper.",
+    "function": "Pulling the arm down toward the pelvis and extending the shoulder.",
+    "location": "Mid-to-lower lateral back, wrapping around the sides.",
+    "triggers": "Vertical pulling (e.g., pull-ups) and horizontal rowing.",
+    "upper_lower": [],
+    "sort_order": 10,
     "icon": "",
     "is_active": true
   },
@@ -754,7 +249,50 @@
     "location": "The posterior, medial side of the upper arm, closest to the body.",
     "triggers": "Overhead extensions or extensions maximizing the stretch.",
     "upper_lower": [],
-    "sort_order": 3,
+    "sort_order": 11,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "LEGS",
+    "parent_ids": [],
+    "label": "Legs",
+    "common_names": [
+      "Legs",
+      "Lower Body",
+      "Quads and Hams"
+    ],
+    "technical_name": "Membrum Inferius",
+    "short_description": "The primary movers of the lower body.",
+    "function": "Squatting, hinging, walking, and jumping.",
+    "location": "The lower limb, from the hip joint down to the ankles.",
+    "triggers": "Pushing against the floor; bending the knees; extending the hips.",
+    "upper_lower": [
+      "Lower Body"
+    ],
+    "sort_order": 12,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "BACK_LOWER",
+    "parent_ids": [
+      "CORE",
+      "BACK"
+    ],
+    "label": "Lower Back",
+    "common_names": [
+      "Lower Back",
+      "Lumbar",
+      "Spinal Erectors"
+    ],
+    "technical_name": "Erector Spinae",
+    "short_description": "The supportive muscles along the lower spine.",
+    "function": "Extending the spine and maintaining upright posture.",
+    "location": "Lower lumbar region, just above the pelvis.",
+    "triggers": "Deadlifting, hyperextensions, and maintaining a hinged stance.",
+    "upper_lower": [],
+    "sort_order": 13,
     "icon": "",
     "is_active": true
   },
@@ -775,7 +313,49 @@
     "location": "The lateral (outer) aspect of the posterior upper arm.",
     "triggers": "Pushdowns or pressing with the arms kept firmly at the sides.",
     "upper_lower": [],
-    "sort_order": 4,
+    "sort_order": 14,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "SHOULDERS",
+    "parent_ids": [],
+    "label": "Shoulders",
+    "common_names": [
+      "Shoulders",
+      "Delts",
+      "Shoulder Girdle"
+    ],
+    "technical_name": "Deltoideus",
+    "short_description": "The highly mobile muscles capping the shoulder joint.",
+    "function": "Raising the arms overhead, forward, or to the sides; rotating the arm.",
+    "location": "The top and lateral sides of the upper torso/arm intersection.",
+    "triggers": "Pressing vertically overhead; raising the arms laterally or frontally.",
+    "upper_lower": [
+      "Upper Body"
+    ],
+    "sort_order": 15,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "BACK_MID",
+    "parent_ids": [
+      "BACK"
+    ],
+    "label": "Mid Back",
+    "common_names": [
+      "Mid Back",
+      "Back Thickness",
+      "Middle Back"
+    ],
+    "technical_name": "Regio Dorsalis Media",
+    "short_description": "The central muscles responsible for back thickness.",
+    "function": "Retracting the shoulder blades (pulling them together).",
+    "location": "The center of the back, between the shoulder blades.",
+    "triggers": "Horizontal rowing and pulling the elbows far behind the torso.",
+    "upper_lower": [],
+    "sort_order": 16,
     "icon": "",
     "is_active": true
   },
@@ -796,7 +376,49 @@
     "location": "Deep to the long and lateral heads, near the elbow.",
     "triggers": "Heavy lockout pressing and strict pushdowns.",
     "upper_lower": [],
-    "sort_order": 5,
+    "sort_order": 17,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "NECK",
+    "parent_ids": [],
+    "label": "Neck",
+    "common_names": [
+      "Neck",
+      "Cervical Spine"
+    ],
+    "technical_name": "Cervix",
+    "short_description": "The muscles supporting and articulating the head.",
+    "function": "Head flexion, extension, and lateral rotation.",
+    "location": "Cervical spine area, above the collarbone and upper traps.",
+    "triggers": "Nodding the head forward or lifting the head backward.",
+    "upper_lower": [
+      "Upper Body"
+    ],
+    "sort_order": 18,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "TRAPS",
+    "parent_ids": [
+      "BACK",
+      "SHOULDERS"
+    ],
+    "label": "Traps",
+    "common_names": [
+      "Traps",
+      "Shrug Muscles",
+      "Yoke"
+    ],
+    "technical_name": "Trapezius",
+    "short_description": "The diamond-shaped muscle spanning the neck to the mid-back.",
+    "function": "Elevating, depressing, and retracting the scapula.",
+    "location": "Upper back, extending up to the neck and down to the mid-spine.",
+    "triggers": "Shrugging, upright rowing, and stabilizing overhead presses.",
+    "upper_lower": [],
+    "sort_order": 19,
     "icon": "",
     "is_active": true
   },
@@ -816,7 +438,50 @@
     "location": "The dorsal (top) side of the lower arm.",
     "triggers": "Reverse curls and wrist extensions.",
     "upper_lower": [],
-    "sort_order": 6,
+    "sort_order": 20,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "FULL_BODY",
+    "parent_ids": [],
+    "label": "Full Body",
+    "common_names": [
+      "Full Body",
+      "Compound",
+      "Total Body"
+    ],
+    "technical_name": "Totum Corpus",
+    "short_description": "Systemic movements engaging the entire muscular system.",
+    "function": "Maximum force production and systemic energy expenditure.",
+    "location": "The entire skeletal musculature.",
+    "triggers": "Olympic lifting, heavily loaded carries, or explosive plyometrics.",
+    "upper_lower": [
+      "Upper Body",
+      "Lower Body"
+    ],
+    "sort_order": 21,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "BACK_UPPER",
+    "parent_ids": [
+      "BACK"
+    ],
+    "label": "Upper Back",
+    "common_names": [
+      "Upper Back",
+      "Top Back",
+      "Rear Delt Area"
+    ],
+    "technical_name": "Thoracica Superior",
+    "short_description": "The upper structural muscles supporting the rear shoulders.",
+    "function": "Stabilizing the upper spine and supporting rear shoulder movement.",
+    "location": "The upper thoracic region, spanning the upper shoulder blades.",
+    "triggers": "High rows, face pulls, and wide-grip horizontal pulls.",
+    "upper_lower": [],
+    "sort_order": 22,
     "icon": "",
     "is_active": true
   },
@@ -837,7 +502,28 @@
     "location": "The palmar (bottom) side of the lower arm.",
     "triggers": "Wrist curls, heavy deadlifts, and farmer's carries.",
     "upper_lower": [],
-    "sort_order": 7,
+    "sort_order": 23,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "CHEST_LOWER",
+    "parent_ids": [
+      "CHEST"
+    ],
+    "label": "Lower Chest",
+    "common_names": [
+      "Lower Chest",
+      "Decline Pecs",
+      "Bottom Chest"
+    ],
+    "technical_name": "Pectoralis Major (Abdominalis)",
+    "short_description": "The lower margin of the pectoral muscle.",
+    "function": "Pressing downward and adduction from a high angle.",
+    "location": "The bottom edge of the pectoral muscles along the lower ribs.",
+    "triggers": "Decline bench presses and high-to-low cable flys.",
+    "upper_lower": [],
+    "sort_order": 24,
     "icon": "",
     "is_active": true
   },
@@ -859,7 +545,28 @@
     "location": "The upper, lateral ridge of the forearm, crossing the elbow.",
     "triggers": "Hammer curls and neutral-grip pull-ups.",
     "upper_lower": [],
-    "sort_order": 8,
+    "sort_order": 25,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "CHEST_MID",
+    "parent_ids": [
+      "CHEST"
+    ],
+    "label": "Mid Chest",
+    "common_names": [
+      "Mid Chest",
+      "Flat Bench",
+      "Inner Chest"
+    ],
+    "technical_name": "Pectoralis Major (Sternocostalis)",
+    "short_description": "The main bulk of the pectoral muscle.",
+    "function": "Straight horizontal pressing and strict adduction.",
+    "location": "The central mass of the chest, connecting to the sternum.",
+    "triggers": "Flat bench presses and mid-level chest flys.",
+    "upper_lower": [],
+    "sort_order": 26,
     "icon": "",
     "is_active": true
   },
@@ -881,7 +588,28 @@
     "location": "Deep to the trapezius, connecting the spine to the scapula.",
     "triggers": "Strict horizontal pulling and reverse flys.",
     "upper_lower": [],
-    "sort_order": 9,
+    "sort_order": 27,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "CHEST_UPPER",
+    "parent_ids": [
+      "CHEST"
+    ],
+    "label": "Upper Chest",
+    "common_names": [
+      "Upper Chest",
+      "Incline Pecs",
+      "Clavicular Head"
+    ],
+    "technical_name": "Pectoralis Major (Clavicularis)",
+    "short_description": "The upper margin bridging the chest to the front deltoids.",
+    "function": "Pressing upward and lifting the arms across the body.",
+    "location": "The top of the chest, located just below the collarbone.",
+    "triggers": "Incline bench presses and low-to-high scoop flys.",
+    "upper_lower": [],
+    "sort_order": 28,
     "icon": "",
     "is_active": true
   },
@@ -902,7 +630,28 @@
     "location": "Sloping from the base of the skull down to the shoulders.",
     "triggers": "Heavy shrugs and farmer's carries.",
     "upper_lower": [],
-    "sort_order": 10,
+    "sort_order": 29,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "ABS",
+    "parent_ids": [
+      "CORE"
+    ],
+    "label": "Abs",
+    "common_names": [
+      "Abs",
+      "Six Pack",
+      "Abdominals"
+    ],
+    "technical_name": "Rectus Abdominis",
+    "short_description": "The segmented muscle responsible for the \"six-pack\" look.",
+    "function": "Flexing the lumbar spine (crunching the torso).",
+    "location": "The center of the stomach, from the ribcage to the pelvis.",
+    "triggers": "Crunches, sit-ups, and leg raises.",
+    "upper_lower": [],
+    "sort_order": 30,
     "icon": "",
     "is_active": true
   },
@@ -924,7 +673,29 @@
     "location": "Between the upper shoulder blades.",
     "triggers": "Wide-grip rows and reverse flys.",
     "upper_lower": [],
-    "sort_order": 11,
+    "sort_order": 31,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "HIP_FLEXORS",
+    "parent_ids": [
+      "CORE",
+      "LEGS"
+    ],
+    "label": "Hip Flexors",
+    "common_names": [
+      "Hip Flexors",
+      "Psoas",
+      "Hip Fold"
+    ],
+    "technical_name": "Iliopsoas",
+    "short_description": "The deep muscles linking the lower spine to the legs.",
+    "function": "Bringing the knees up toward the chest (hip flexion).",
+    "location": "Deep within the front of the hip and lower abdomen.",
+    "triggers": "Hanging leg raises, high knees, and sit-ups.",
+    "upper_lower": [],
+    "sort_order": 32,
     "icon": "",
     "is_active": true
   },
@@ -945,7 +716,28 @@
     "location": "The middle back, running down along the thoracic spine.",
     "triggers": "Y-Raises, reverse decline flys, and strict pulldowns.",
     "upper_lower": [],
-    "sort_order": 12,
+    "sort_order": 33,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "OBLIQUES",
+    "parent_ids": [
+      "CORE"
+    ],
+    "label": "Obliques",
+    "common_names": [
+      "Obliques",
+      "Side Abs",
+      "Waist"
+    ],
+    "technical_name": "Musculi Obliqui",
+    "short_description": "The diagonal muscles controlling torso rotation.",
+    "function": "Rotating the torso and bending sideways.",
+    "location": "The sides of the waist and lower ribcage.",
+    "triggers": "Russian twists, woodchops, and side bends.",
+    "upper_lower": [],
+    "sort_order": 34,
     "icon": "",
     "is_active": true
   },
@@ -967,7 +759,28 @@
     "location": "Just above the lats, sitting under the armpit and rear delt.",
     "triggers": "Wide grip pulldowns and straight-arm pulldowns.",
     "upper_lower": [],
-    "sort_order": 13,
+    "sort_order": 35,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "CALVES",
+    "parent_ids": [
+      "LEGS"
+    ],
+    "label": "Calves",
+    "common_names": [
+      "Calves",
+      "Lower Leg",
+      "Gastrocs"
+    ],
+    "technical_name": "Triceps Surae",
+    "short_description": "The muscles on the back of the lower leg.",
+    "function": "Plantarflexion (pointing the toes/lifting the heels).",
+    "location": "The posterior portion of the lower leg.",
+    "triggers": "Standing or seated heel raises; jumping.",
+    "upper_lower": [],
+    "sort_order": 36,
     "icon": "",
     "is_active": true
   },
@@ -989,7 +802,28 @@
     "location": "Deep beneath the upper pectoralis major.",
     "triggers": "Dips, pullovers, and deep fly stretches.",
     "upper_lower": [],
-    "sort_order": 14,
+    "sort_order": 37,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "SHINS",
+    "parent_ids": [
+      "LEGS"
+    ],
+    "label": "Shins",
+    "common_names": [
+      "Shins",
+      "Front Calves",
+      "Tibialis"
+    ],
+    "technical_name": "Tibialis Anterior",
+    "short_description": "The muscles on the front of the lower leg.",
+    "function": "Dorsiflexion (pulling the toes up toward the knee).",
+    "location": "The anterior portion of the lower leg, next to the shinbone.",
+    "triggers": "Toe raises, walking backwards, heel walking.",
+    "upper_lower": [],
+    "sort_order": 38,
     "icon": "",
     "is_active": true
   },
@@ -1010,7 +844,28 @@
     "location": "The medial (inner) lower portion of the front thigh.",
     "triggers": "Leg extensions with toes pointed slightly outward; cyclist squats.",
     "upper_lower": [],
-    "sort_order": 15,
+    "sort_order": 39,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "GLUTES",
+    "parent_ids": [
+      "LEGS"
+    ],
+    "label": "Glutes",
+    "common_names": [
+      "Glutes",
+      "Butt",
+      "Posterior"
+    ],
+    "technical_name": "Musculi Glutei",
+    "short_description": "The largest, most powerful muscle group in the body.",
+    "function": "Extending the hip, thrusting the pelvis forward, and hip abduction.",
+    "location": "The buttocks.",
+    "triggers": "Hip thrusts, deep squats, and deadlifts.",
+    "upper_lower": [],
+    "sort_order": 40,
     "icon": "",
     "is_active": true
   },
@@ -1031,7 +886,28 @@
     "location": "The lateral (outer) portion of the front thigh.",
     "triggers": "Narrow stance squats, leg press, or extensions with toes pointed inward.",
     "upper_lower": [],
-    "sort_order": 16,
+    "sort_order": 41,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "HAMSTRINGS",
+    "parent_ids": [
+      "LEGS"
+    ],
+    "label": "Hamstrings",
+    "common_names": [
+      "Hamstrings",
+      "Hams",
+      "Back of Thigh"
+    ],
+    "technical_name": "Musculi Ischiocrurales",
+    "short_description": "The pulling muscles of the lower body.",
+    "function": "Bending the knee (flexion) and assisting in hip extension.",
+    "location": "The posterior aspect of the thigh.",
+    "triggers": "Leg curls and stiff-legged deadlifts (RDLs).",
+    "upper_lower": [],
+    "sort_order": 42,
     "icon": "",
     "is_active": true
   },
@@ -1053,7 +929,28 @@
     "location": "The center mass of the front thigh.",
     "triggers": "Sissy squats, standard leg extensions, and high knees.",
     "upper_lower": [],
-    "sort_order": 17,
+    "sort_order": 43,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "THIGHS_INNER",
+    "parent_ids": [
+      "LEGS"
+    ],
+    "label": "Inner Thighs",
+    "common_names": [
+      "Inner Thighs",
+      "Adductors",
+      "Groin"
+    ],
+    "technical_name": "Musculi Adductores",
+    "short_description": "The muscles pulling the legs together.",
+    "function": "Hip adduction (pulling the femurs toward the midline).",
+    "location": "The medial (inside) portion of the thigh.",
+    "triggers": "Sumo squats, lateral lunges, and adductor machines.",
+    "upper_lower": [],
+    "sort_order": 44,
     "icon": "",
     "is_active": true
   },
@@ -1074,7 +971,28 @@
     "location": "Deep beneath the rectus femoris.",
     "triggers": "Any heavy squatting or pressing motion.",
     "upper_lower": [],
-    "sort_order": 18,
+    "sort_order": 45,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "THIGHS_OUTER",
+    "parent_ids": [
+      "LEGS"
+    ],
+    "label": "Outer Hips/Thighs",
+    "common_names": [
+      "Outer Hips",
+      "Outer Thigh",
+      "Abductors"
+    ],
+    "technical_name": "Musculi Abductores",
+    "short_description": "The muscles pushing the legs apart.",
+    "function": "Hip abduction (pushing the femurs away from the midline).",
+    "location": "The lateral (outside) portion of the hips and upper thigh.",
+    "triggers": "Abductor machines and lateral banded walks.",
+    "upper_lower": [],
+    "sort_order": 46,
     "icon": "",
     "is_active": true
   },
@@ -1094,7 +1012,28 @@
     "location": "The outer posterior aspect of the thigh.",
     "triggers": "Leg curls with feet turned slightly outward.",
     "upper_lower": [],
-    "sort_order": 19,
+    "sort_order": 47,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "QUADS",
+    "parent_ids": [
+      "LEGS"
+    ],
+    "label": "Quads",
+    "common_names": [
+      "Quads",
+      "Thighs",
+      "Front of Leg"
+    ],
+    "technical_name": "Quadriceps Femoris",
+    "short_description": "The pushing muscles of the lower body.",
+    "function": "Straightening the knee (extension).",
+    "location": "The anterior (front) aspect of the thigh.",
+    "triggers": "Leg extensions, forward lunges, and front squats.",
+    "upper_lower": [],
+    "sort_order": 48,
     "icon": "",
     "is_active": true
   },
@@ -1114,7 +1053,27 @@
     "location": "The inner posterior aspect of the thigh.",
     "triggers": "Leg curls with feet turned slightly inward.",
     "upper_lower": [],
-    "sort_order": 20,
+    "sort_order": 49,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "DELTS_FRONT",
+    "parent_ids": [
+      "SHOULDERS"
+    ],
+    "label": "Front Delts",
+    "common_names": [
+      "Front Delts",
+      "Anterior Delts"
+    ],
+    "technical_name": "Deltoideus Anterior",
+    "short_description": "The front segment of the shoulder.",
+    "function": "Raising the arms directly forward and assisting in pressing.",
+    "location": "The front of the shoulder joint, tying into the upper chest.",
+    "triggers": "Front raises and overhead pressing.",
+    "upper_lower": [],
+    "sort_order": 50,
     "icon": "",
     "is_active": true
   },
@@ -1135,7 +1094,27 @@
     "location": "The main, visible mass of the buttocks.",
     "triggers": "Heavy hip thrusts and deep back squats.",
     "upper_lower": [],
-    "sort_order": 21,
+    "sort_order": 51,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "DELTS_REAR",
+    "parent_ids": [
+      "SHOULDERS"
+    ],
+    "label": "Rear Delts",
+    "common_names": [
+      "Rear Delts",
+      "Posterior Delts"
+    ],
+    "technical_name": "Deltoideus Posterior",
+    "short_description": "The back segment of the shoulder.",
+    "function": "Pulling the arms backward horizontally (transverse abduction).",
+    "location": "The back of the shoulder joint, tying into the upper back.",
+    "triggers": "Reverse flys and face pulls.",
+    "upper_lower": [],
+    "sort_order": 52,
     "icon": "",
     "is_active": true
   },
@@ -1157,7 +1136,28 @@
     "location": "The upper, lateral portion of the hips.",
     "triggers": "Lateral banded walks, abduction machines, and single-leg squats.",
     "upper_lower": [],
-    "sort_order": 22,
+    "sort_order": 53,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "DELTS_SIDE",
+    "parent_ids": [
+      "SHOULDERS"
+    ],
+    "label": "Side Delts",
+    "common_names": [
+      "Side Delts",
+      "Lateral Delts",
+      "Shoulder Width"
+    ],
+    "technical_name": "Deltoideus Lateralis",
+    "short_description": "The middle segment of the shoulder, creating width.",
+    "function": "Raising the arms straight out to the sides (abduction).",
+    "location": "The outermost, lateral cap of the shoulder joint.",
+    "triggers": "Lateral raises and upright rows.",
+    "upper_lower": [],
+    "sort_order": 54,
     "icon": "",
     "is_active": true
   },
@@ -1178,7 +1178,7 @@
     "location": "Deep beneath the gluteus medius.",
     "triggers": "Seated abduction and internal rotation exercises.",
     "upper_lower": [],
-    "sort_order": 23,
+    "sort_order": 55,
     "icon": "",
     "is_active": true
   },
@@ -1199,7 +1199,7 @@
     "location": "The bulk of the inner thigh.",
     "triggers": "Deep sumo squats and heavy adductor machine work.",
     "upper_lower": [],
-    "sort_order": 24,
+    "sort_order": 56,
     "icon": "",
     "is_active": true
   },
@@ -1220,7 +1220,7 @@
     "location": "The top portion of the stomach, just below the sternum.",
     "triggers": "Standard crunches and cable crunches.",
     "upper_lower": [],
-    "sort_order": 25,
+    "sort_order": 57,
     "icon": "",
     "is_active": true
   },
@@ -1241,7 +1241,7 @@
     "location": "The lower portion of the stomach, above the groin.",
     "triggers": "Hanging leg raises and reverse crunches.",
     "upper_lower": [],
-    "sort_order": 26,
+    "sort_order": 58,
     "icon": "",
     "is_active": true
   },
@@ -1262,7 +1262,7 @@
     "location": "The direct center of the stomach.",
     "triggers": "Isometric holds (planks) and full sit-ups.",
     "upper_lower": [],
-    "sort_order": 27,
+    "sort_order": 59,
     "icon": "",
     "is_active": true
   },
@@ -1283,7 +1283,7 @@
     "location": "The upper sides of the waist, overlying the lower ribs.",
     "triggers": "High-to-low cable woodchops and twisting crunches.",
     "upper_lower": [],
-    "sort_order": 28,
+    "sort_order": 60,
     "icon": "",
     "is_active": true
   },
@@ -1304,7 +1304,7 @@
     "location": "The lower sides of the waist, above the hips.",
     "triggers": "Side bends and low-to-high woodchops.",
     "upper_lower": [],
-    "sort_order": 29,
+    "sort_order": 61,
     "icon": "",
     "is_active": true
   },
@@ -1326,7 +1326,7 @@
     "location": "Wrapping horizontally around the entire midsection.",
     "triggers": "Stomach vacuums and heavy intra-abdominal bracing.",
     "upper_lower": [],
-    "sort_order": 30,
+    "sort_order": 62,
     "icon": "",
     "is_active": true
   },
@@ -1348,7 +1348,7 @@
     "location": "The side of the ribcage, wrapping under the armpit.",
     "triggers": "Push-up plus, ab wheel rollouts, and pullovers.",
     "upper_lower": [],
-    "sort_order": 31,
+    "sort_order": 63,
     "icon": "",
     "is_active": true
   },
@@ -1368,7 +1368,7 @@
     "location": "Top of the shoulder blade, running under the AC joint.",
     "triggers": "Empty can raises and light lateral raise initiations.",
     "upper_lower": [],
-    "sort_order": 32,
+    "sort_order": 64,
     "icon": "",
     "is_active": true
   },
@@ -1389,7 +1389,7 @@
     "location": "The main flat surface of the shoulder blade.",
     "triggers": "Cable external rotations and face pulls.",
     "upper_lower": [],
-    "sort_order": 33,
+    "sort_order": 65,
     "icon": "",
     "is_active": true
   },
@@ -1410,7 +1410,7 @@
     "location": "Just below the infraspinatus on the shoulder blade.",
     "triggers": "Banded external rotations.",
     "upper_lower": [],
-    "sort_order": 34,
+    "sort_order": 66,
     "icon": "",
     "is_active": true
   },
@@ -1431,7 +1431,7 @@
     "location": "Sandwiched between the ribcage and the shoulder blade.",
     "triggers": "Cable internal rotations.",
     "upper_lower": [],
-    "sort_order": 35,
+    "sort_order": 67,
     "icon": "",
     "is_active": true
   },
@@ -1452,7 +1452,7 @@
     "location": "The inside portion of the upper lower leg.",
     "triggers": "Standing calf raises with toes pointed slightly outward.",
     "upper_lower": [],
-    "sort_order": 36,
+    "sort_order": 68,
     "icon": "",
     "is_active": true
   },
@@ -1473,7 +1473,7 @@
     "location": "The outside portion of the upper lower leg.",
     "triggers": "Standing calf raises with toes pointed slightly inward.",
     "upper_lower": [],
-    "sort_order": 37,
+    "sort_order": 69,
     "icon": "",
     "is_active": true
   },
@@ -1494,7 +1494,7 @@
     "location": "The lower half of the calf, down to the Achilles tendon.",
     "triggers": "Seated calf raises or bent-knee standing raises.",
     "upper_lower": [],
-    "sort_order": 38,
+    "sort_order": 70,
     "icon": "",
     "is_active": true
   }

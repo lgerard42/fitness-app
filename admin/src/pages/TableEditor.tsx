@@ -137,6 +137,7 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
   const [error, setError] = useState('');
   const [editRow, setEditRow] = useState<Record<string, unknown> | null>(null);
   const [isNew, setIsNew] = useState(false);
+  const [editRowHistory, setEditRowHistory] = useState<Record<string, unknown>[]>([]);
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState<FilterRule[]>([]);
   const [showFilterForm, setShowFilterForm] = useState(false);
@@ -269,6 +270,7 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
   useEffect(() => {
     setEditRow(null);
     setIsNew(false);
+    setEditRowHistory([]);
     setSearch('');
     setFilters([]);
     setShowFilterForm(false);
@@ -484,7 +486,7 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
     // Don't start drag scroll if clicking on interactive elements
     const target = e.target as HTMLElement;
     
-    // Exclude buttons, inputs, draggable columns, resize handles, drag handles
+    // Exclude buttons, inputs, resize handles, drag handles
     if (
       target.tagName === 'BUTTON' ||
       target.tagName === 'INPUT' ||
@@ -492,7 +494,6 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
       target.closest('button') ||
       target.closest('input') ||
       target.closest('select') ||
-      target.closest('[draggable="true"]') ||
       target.closest('.cursor-col-resize') ||
       target.closest('.row-drag-handle') ||
       resizingColumn ||
@@ -560,7 +561,30 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
     newRow.sort_order = rows.length;
     setEditRow(newRow);
     setIsNew(true);
+    setEditRowHistory([]);
   };
+
+  const handleOpenRow = useCallback((row: Record<string, unknown>) => {
+    setEditRow(prev => {
+      if (prev) {
+        setEditRowHistory(h => [...h, prev]);
+      }
+      return { ...row };
+    });
+    setIsNew(false);
+  }, []);
+
+  const handleClosePanel = useCallback(() => {
+    if (editRowHistory.length > 0) {
+      const prev = editRowHistory[editRowHistory.length - 1];
+      setEditRow({ ...prev });
+      setEditRowHistory(h => h.slice(0, -1));
+      setIsNew(false);
+    } else {
+      setEditRow(null);
+      setIsNew(false);
+    }
+  }, [editRowHistory]);
 
   const handleCopyTable = useCallback(async () => {
     if (!schema || rows.length === 0) {
@@ -579,49 +603,48 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
       // Build header row
       const headers = orderedFields.map(f => f.name);
 
+      // For TSV: any cell containing tab, newline, or double-quote must be wrapped in "
+      // and internal " escaped as "". So pasted data is parsed correctly.
+      const escapeTsvCell = (cell: string): string => {
+        if (cell.includes('\t') || cell.includes('\n') || cell.includes('\r') || cell.includes('"')) {
+          return '"' + cell.replace(/"/g, '""') + '"';
+        }
+        return cell;
+      };
+
       // Build data rows
       const dataRows = rows.map(row => {
         return orderedFields.map(field => {
           const val = row[field.name];
           
-          if (val == null) {
+          if (val == null || val === '' || String(val).toLowerCase() === 'null') {
             return '';
           }
 
-          // Handle JSON fields - stringify them
           if (field.type === 'json') {
+            if (val == null) return '';
             return JSON.stringify(val);
           }
 
-          // Handle arrays (string[] or fk[])
           if (field.type === 'string[]' || field.type === 'fk[]') {
-            if (Array.isArray(val)) {
-              return JSON.stringify(val);
-            }
+            if (Array.isArray(val)) return JSON.stringify(val);
             return String(val);
           }
 
-          // Handle boolean
           if (field.type === 'boolean') {
             return val ? 'true' : 'false';
           }
 
-          // Handle FK - try to resolve to label
-          if (field.type === 'fk' && field.refTable && refData[field.refTable]) {
-            const ref = refData[field.refTable].find((r) => r.id === val);
-            if (ref) {
-              return String(ref[field.refLabelField || 'label'] || val);
-            }
+          if (field.type === 'fk') {
+            return String(val);
           }
 
-          // Default: convert to string and escape tabs/newlines
           const str = String(val);
-          // Replace tabs with spaces and newlines with spaces to avoid breaking TSV format
-          return str.replace(/\t/g, ' ').replace(/\n/g, ' ').replace(/\r/g, '');
+          const escaped = str.replace(/\t/g, ' ').replace(/\n/g, ' ').replace(/\r/g, '');
+          return escapeTsvCell(escaped);
         });
       });
 
-      // Combine headers and rows
       const tsvLines = [
         headers.join('\t'),
         ...dataRows.map(row => row.join('\t'))
@@ -643,6 +666,8 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
   ): Promise<{ inserted: number; updated: number; skipped: number; errors: string[] }> => {
     if (!key || !schema) return { inserted: 0, updated: 0, skipped: 0, errors: ['No table selected'] };
 
+    const needsSync = key === 'motions' || key === 'motionPlanes';
+
     // If replace mode, delete all existing rows first
     if (mode === 'replace') {
       const errors: string[] = [];
@@ -650,7 +675,7 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
         const id = row[schema.idField];
         if (id != null) {
           try {
-            await api.deleteRow(key, String(id), { breakLinks: true });
+            await api.deleteRow(key, String(id), { breakLinks: true, skipSync: needsSync });
           } catch (err) {
             errors.push(`Failed to delete row "${id}": ${err}`);
           }
@@ -677,17 +702,22 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
       }
       try {
         if (mode === 'replace' || !existingById[String(id)]) {
-          await api.addRow(key, row);
+          await api.addRow(key, row, needsSync ? { skipSync: true } : undefined);
           inserted++;
           existingById[String(id)] = true;
         } else {
-          await api.updateRow(key, String(id), row);
+          await api.updateRow(key, String(id), row, needsSync ? { skipSync: true } : undefined);
           updated++;
         }
       } catch (err) {
         errors.push(`Row "${id}": ${err}`);
         skipped++;
       }
+    }
+
+    // Run a single sync after all import operations complete
+    if (needsSync) {
+      try { await api.syncTable(key); } catch { /* ignore */ }
     }
 
     await loadData();
@@ -712,6 +742,7 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
       }
       setEditRow(null);
       setIsNew(false);
+      setEditRowHistory([]);
       await loadData();
       onDataChange();
     } catch (err) {
@@ -874,7 +905,7 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
 
   const cellDisplay = (row: Record<string, unknown>, field: TableField) => {
     const val = row[field.name];
-    if (val == null) return <span className="text-gray-300">null</span>;
+    if (val == null || val === '' || String(val).toLowerCase() === 'null') return <span className="text-gray-300">—</span>;
     if (field.type === 'boolean') {
       return val ? (
         <span className="inline-block w-2 h-2 rounded-full bg-green-500" title="true" />
@@ -909,6 +940,8 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
     if (field.type === 'fk' && field.refTable && refData[field.refTable]) {
       const ref = refData[field.refTable].find((r) => r.id === val);
       if (ref) return String(ref[field.refLabelField || 'label'] || val);
+      // If FK value exists but ref not found, show the ID value
+      return String(val);
     }
     const str = String(val);
     return str.length > 40 ? str.slice(0, 40) + '...' : str;
@@ -1197,6 +1230,7 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
                       }
                       setEditRow({ ...row });
                       setIsNew(false);
+                      setEditRowHistory([]);
                     }}
                   >
                     {visibleCols.map((col, index) => {
@@ -1271,12 +1305,15 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
       {/* Row Editor */}
       {editRow && (
         <RowEditor
+          key={String(editRow[schema?.idField || 'id'] ?? 'new')}
           schema={schema}
           row={editRow}
           isNew={isNew}
           refData={refData}
           onSave={handleSave}
-          onCancel={() => { setEditRow(null); setIsNew(false); }}
+          onCancel={handleClosePanel}
+          onOpenRow={handleOpenRow}
+          hasHistory={editRowHistory.length > 0}
         />
       )}
 

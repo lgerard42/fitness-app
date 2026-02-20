@@ -2,7 +2,11 @@
   {
     "id": "NONE",
     "label": "No Aids",
-    "common_names": ["Raw", "Standard Grip", "No Gear"],
+    "common_names": [
+      "Raw",
+      "Standard Grip",
+      "No Gear"
+    ],
     "delta_rules": {},
     "short_description": "Standard execution without external assistance.",
     "sort_order": 0,
@@ -12,40 +16,28 @@
   {
     "id": "STRAPS",
     "label": "Lifting Straps",
-    "common_names": ["Grip Hooks", "Lasso Straps", "Figure-8s"],
+    "common_names": [
+      "Grip Hooks",
+      "Lasso Straps",
+      "Figure-8s"
+    ],
     "delta_rules": {
       "VERTICAL_PULL": {
-        "delta": {
-          "LATS": 0.12,
-          "FOREARMS": -0.40
-        },
-        "option_planes": {},
-        "variations": {}
+        "LATS": 0.12,
+        "FOREARMS": -0.4
       },
       "HORIZONTAL_ROW": {
-        "delta": {
-          "BACK_MID": 0.12,
-          "FOREARMS": -0.40
-        },
-        "option_planes": {},
-        "variations": {}
+        "BACK_MID": 0.12,
+        "FOREARMS": -0.4
       },
       "HINGE": {
-        "delta": {
-          "GLUTES": 0.05,
-          "HAMSTRINGS": 0.05,
-          "FOREARMS": -0.50
-        },
-        "option_planes": {},
-        "variations": {}
+        "GLUTES": 0.05,
+        "HAMSTRINGS": 0.05,
+        "FOREARMS": -0.5
       },
       "SHRUG": {
-        "delta": {
-          "TRAPS_UPPER": 0.15,
-          "FOREARMS": -0.40
-        },
-        "option_planes": {},
-        "variations": {}
+        "TRAPS_UPPER": 0.15,
+        "FOREARMS": -0.4
       }
     },
     "short_description": "Removes grip as a bottleneck. Increases the load to the target muscle while significantly reducing forearm/grip stimulation.",
@@ -56,30 +48,22 @@
   {
     "id": "BELT",
     "label": "Weight Belt",
-    "common_names": ["Lifting Belt", "Core Support", "Prone Brace"],
+    "common_names": [
+      "Lifting Belt",
+      "Core Support",
+      "Prone Brace"
+    ],
     "delta_rules": {
       "SQUAT": {
-        "delta": {
-          "CORE_DEEP": 0.15,
-          "BACK_LOWER": -0.10
-        },
-        "option_planes": {},
-        "variations": {}
+        "CORE_DEEP": 0.15,
+        "BACK_LOWER": -0.1
       },
       "HINGE": {
-        "delta": {
-          "CORE_DEEP": 0.15,
-          "BACK_LOWER": -0.10
-        },
-        "option_planes": {},
-        "variations": {}
+        "CORE_DEEP": 0.15,
+        "BACK_LOWER": -0.1
       },
       "PRESS_VERTICAL": {
-        "delta": {
-          "CORE_DEEP": 0.10
-        },
-        "option_planes": {},
-        "variations": {}
+        "CORE_DEEP": 0.1
       }
     },
     "short_description": "Increases intra-abdominal pressure. Boosts deep core engagement (bracing) while providing a safety margin for the lower back.",
@@ -90,29 +74,21 @@
   {
     "id": "VARIABLE_RESISTANCE",
     "label": "Chains/Bands",
-    "common_names": ["Accommodating Resistance", "Banded", "Chained"],
+    "common_names": [
+      "Accommodating Resistance",
+      "Banded",
+      "Chained"
+    ],
     "delta_rules": {
       "PRESS": {
-        "delta": {
-          "TRICEPS": 0.15
-        },
-        "option_planes": {},
-        "variations": {}
+        "TRICEPS": 0.15
       },
       "SQUAT": {
-        "delta": {
-          "QUADS": 0.10,
-          "GLUTES": 0.10
-        },
-        "option_planes": {},
-        "variations": {}
+        "QUADS": 0.1,
+        "GLUTES": 0.1
       },
       "HINGE": {
-        "delta": {
-          "GLUTES": 0.15
-        },
-        "option_planes": {},
-        "variations": {}
+        "GLUTES": 0.15
       }
     },
     "short_description": "Adds resistance that increases as the muscle shortens (lockout). Maximizes tension at the strongest point of the lift.",
@@ -123,30 +99,22 @@
   {
     "id": "THICK_GRIP",
     "label": "Fat Grips",
-    "common_names": ["Axle Bar", "Thick Handle", "Globe Grip"],
+    "common_names": [
+      "Axle Bar",
+      "Thick Handle",
+      "Globe Grip"
+    ],
     "delta_rules": {
       "CURL": {
-        "delta": {
-          "FOREARMS": 0.35,
-          "BICEPS": -0.10
-        },
-        "option_planes": {},
-        "variations": {}
+        "FOREARMS": 0.35,
+        "BICEPS": -0.1
       },
       "HORIZONTAL_ROW": {
-        "delta": {
-          "FOREARMS": 0.30
-        },
-        "option_planes": {},
-        "variations": {}
+        "FOREARMS": 0.3
       },
       "VERTICAL_PULL": {
-        "delta": {
-          "FOREARMS": 0.30,
-          "LATS": -0.05
-        },
-        "option_planes": {},
-        "variations": {}
+        "FOREARMS": 0.3,
+        "LATS": -0.05
       }
     },
     "short_description": "Increases the diameter of the handle. Drastically increases the demand on the hand and forearm flexors.",

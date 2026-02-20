@@ -2,7 +2,11 @@
   {
     "id": "BILATERAL",
     "label": "Bilateral",
-    "common_names": ["Standard Stance", "Two-Legged", "Symmetrical"],
+    "common_names": [
+      "Standard Stance",
+      "Two-Legged",
+      "Symmetrical"
+    ],
     "delta_rules": {},
     "short_description": "Standard stance where both legs bear the load equally. Baseline score.",
     "sort_order": 0,
@@ -12,24 +16,20 @@
   {
     "id": "STAGGERED",
     "label": "Staggered",
-    "common_names": ["B-Stance", "Kickstand", "Offset Stance"],
+    "common_names": [
+      "B-Stance",
+      "Kickstand",
+      "Offset Stance"
+    ],
     "delta_rules": {
       "HINGE": {
-        "delta": {
-          "GLUTES": 0.15,
-          "HAMSTRINGS": 0.10,
-          "BACK_LOWER": -0.10
-        },
-        "option_planes": {},
-        "variations": {}
+        "GLUTES": 0.15,
+        "HAMSTRINGS": 0.1,
+        "BACK_LOWER": -0.1
       },
       "SQUAT": {
-        "delta": {
-          "GLUTES": 0.10,
-          "QUADS": 0.05
-        },
-        "option_planes": {},
-        "variations": {}
+        "GLUTES": 0.1,
+        "QUADS": 0.05
       }
     },
     "short_description": "One foot is slightly behind the other for balance, placing ~70-80% of the load on the front leg.",
@@ -40,33 +40,25 @@
   {
     "id": "SINGLE_LEG",
     "label": "Single Leg",
-    "common_names": ["Unilateral", "One-Legged", "Pistol Stance"],
+    "common_names": [
+      "Unilateral",
+      "One-Legged",
+      "Pistol Stance"
+    ],
     "delta_rules": {
       "HINGE": {
-        "delta": {
-          "GLUTE_MEDIUS": 0.30,
-          "GLUTES": 0.15,
-          "CORE": 0.10,
-          "BACK_LOWER": -0.15
-        },
-        "option_planes": {},
-        "variations": {}
+        "GLUTE_MEDIUS": 0.3,
+        "GLUTES": 0.15,
+        "CORE": 0.1,
+        "BACK_LOWER": -0.15
       },
       "SQUAT": {
-        "delta": {
-          "GLUTE_MEDIUS": 0.25,
-          "GLUTES": 0.15,
-          "CORE": 0.10
-        },
-        "option_planes": {},
-        "variations": {}
+        "GLUTE_MEDIUS": 0.25,
+        "GLUTES": 0.15,
+        "CORE": 0.1
       },
       "CALF_RAISE": {
-        "delta": {
-          "CORE": 0.10
-        },
-        "option_planes": {},
-        "variations": {}
+        "CORE": 0.1
       }
     },
     "short_description": "Only one foot is in contact with the ground/platform. Maximizes stability demand.",

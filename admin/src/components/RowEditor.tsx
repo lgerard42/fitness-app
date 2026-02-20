@@ -13,6 +13,7 @@ import ExerciseInputPermissionsField from './FieldRenderers/ExerciseInputPermiss
 import MuscleHierarchyField from './FieldRenderers/MuscleHierarchyField';
 import MotionConfigTree from './FieldRenderers/MotionConfigTree';
 import MotionPlanesField from './FieldRenderers/MotionPlanesField';
+import DeltaRulesField from './FieldRenderers/DeltaRulesField';
 import Relationships from './Relationships';
 
 const MATRIX_FIELDS: string[] = [];
@@ -40,12 +41,18 @@ interface RowEditorProps {
   refData: Record<string, Record<string, unknown>[]>;
   onSave: (row: Record<string, unknown>) => void;
   onCancel: () => void;
+  onOpenRow?: (row: Record<string, unknown>) => void;
+  hasHistory?: boolean;
 }
 
-export default function RowEditor({ schema, row, isNew, refData, onSave, onCancel }: RowEditorProps) {
+export default function RowEditor({ schema, row, isNew, refData, onSave, onCancel, onOpenRow, hasHistory = false }: RowEditorProps) {
   const [data, setData] = useState<Record<string, unknown>>({ ...row });
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setData({ ...row });
+  }, [row]);
 
   const update = (field: string, value: unknown) => {
     setData((prev) => ({ ...prev, [field]: value }));
@@ -68,7 +75,6 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
       ? MOTION_HIERARCHY_ANCHOR[schema.key]
       : '';
 
-  // Check if there are unsaved changes
   const hasUnsavedChanges = useMemo(() => {
     return JSON.stringify(data) !== JSON.stringify(row);
   }, [data, row]);
@@ -124,9 +130,21 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
           <form onSubmit={handleSubmit}>
             {/* Header */}
             <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
-              <h2 className="font-bold text-gray-800">
-                {isNew ? 'Add Row' : `Edit: ${recordLabel}`}
-              </h2>
+              <div className="flex items-center gap-2">
+                {hasHistory && (
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
+                    title="Back to previous"
+                  >
+                    ← Back
+                  </button>
+                )}
+                <h2 className="font-bold text-gray-800">
+                  {isNew ? 'Add Row' : `Edit: ${recordLabel}`}
+                </h2>
+              </div>
               <div className="flex gap-2">
                 <button
                   type="button"
@@ -148,13 +166,10 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
             <div className="p-6 space-y-4">
               {schema.fields
                 .filter((field) => {
-                  // Hide all hierarchy-managed FK fields — they're handled by MuscleHierarchyField
-                  // Keep only the anchor field (it gets replaced with the hierarchy UI)
                   if (hiddenHierarchyFields.includes(field.name) && field.name !== hierarchyAnchor) return false;
                   return true;
                 })
                 .sort((a, b) => {
-                  // Move the hierarchy anchor before sort_order
                   if (a.name === hierarchyAnchor && b.name === 'sort_order') return -1;
                   if (a.name === 'sort_order' && b.name === hierarchyAnchor) return 1;
                   return 0;
@@ -278,6 +293,7 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
                               onFieldsChange={(fields) => {
                                 updateMultiple(fields);
                               }}
+                              onOpenRow={onOpenRow}
                             />
                           </div>
                         );
@@ -370,6 +386,17 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
                           </div>
                         );
                       }
+                      if (field.jsonShape === 'delta_rules') {
+                        return (
+                          <div key={field.name}>
+                            {label}
+                            <DeltaRulesField
+                              value={value as Record<string, Record<string, number>> | null | undefined}
+                              onChange={(v) => update(field.name, v)}
+                            />
+                          </div>
+                        );
+                      }
                       return (
                         <div key={field.name}>
                           {label}
@@ -402,6 +429,7 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
                     tableKey="muscles"
                     currentRecordId={recordId}
                     onFieldsChange={() => {}}
+                    onOpenRow={onOpenRow}
                   />
                 </div>
               )}

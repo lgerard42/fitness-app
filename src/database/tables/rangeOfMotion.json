@@ -2,7 +2,11 @@
   {
     "id": "FULL",
     "label": "Full ROM",
-    "common_names": ["Standard Range", "Full Rep", "Deep"],
+    "common_names": [
+      "Standard Range",
+      "Full Rep",
+      "Deep"
+    ],
     "delta_rules": {},
     "short_description": "The exercise is performed through the entire anatomically safe range of motion. This is the baseline for all scoring.",
     "sort_order": 0,
@@ -12,12 +16,26 @@
   {
     "id": "PARTIAL_STRETCH",
     "label": "Partial (Bottom)",
-    "common_names": ["Long-Length Partials", "Bottom Half", "Stretch Mediate"],
+    "common_names": [
+      "Long-Length Partials",
+      "Bottom Half",
+      "Stretch Mediate"
+    ],
     "delta_rules": {
-      "CURL": { "delta": { "BICEPS": 0.10, "BICEP_OUTER": 0.05 }, "option_planes": {}, "variations": {} },
-      "SQUAT": { "delta": { "GLUTES": 0.15, "QUADS": 0.10 }, "option_planes": {}, "variations": {} },
-      "PRESS": { "delta": { "CHEST": 0.10 }, "option_planes": {}, "variations": {} },
-      "LEG_CURL": { "delta": { "HAMSTRINGS": 0.15 }, "option_planes": {}, "variations": {} }
+      "CURL": {
+        "BICEPS": 0.1,
+        "BICEP_OUTER": 0.05
+      },
+      "SQUAT": {
+        "GLUTES": 0.15,
+        "QUADS": 0.1
+      },
+      "PRESS": {
+        "CHEST": 0.1
+      },
+      "LEG_CURL": {
+        "HAMSTRINGS": 0.15
+      }
     },
     "short_description": "Performing only the portion of the rep where the muscle is under the greatest stretch. Highly effective for hypertrophy.",
     "sort_order": 1,
@@ -27,11 +45,23 @@
   {
     "id": "PARTIAL_CONTRACTED",
     "label": "Partial (Top)",
-    "common_names": ["Lockouts", "Top Half", "Squeeze Reps"],
+    "common_names": [
+      "Lockouts",
+      "Top Half",
+      "Squeeze Reps"
+    ],
     "delta_rules": {
-      "PRESS": { "delta": { "TRICEPS": 0.15, "CHEST": -0.15 }, "option_planes": {}, "variations": {} },
-      "EXT_LEG": { "delta": { "QUAD_INNER": 0.15 }, "option_planes": {}, "variations": {} },
-      "VERTICAL_PULL": { "delta": { "BACK_MID": 0.10, "LATS": -0.05 }, "option_planes": {}, "variations": {} }
+      "PRESS": {
+        "TRICEPS": 0.15,
+        "CHEST": -0.15
+      },
+      "EXT_LEG": {
+        "QUAD_INNER": 0.15
+      },
+      "VERTICAL_PULL": {
+        "BACK_MID": 0.1,
+        "LATS": -0.05
+      }
     },
     "short_description": "Performing only the portion of the rep where the muscle is fully shortened. Focuses on peak tension and lockout strength.",
     "sort_order": 2,
@@ -41,11 +71,24 @@
   {
     "id": "DEFICIT_EXTENDED",
     "label": "Deficit / Extended",
-    "common_names": ["Extra Deep", "Below Platform", "Past Neutral"],
+    "common_names": [
+      "Extra Deep",
+      "Below Platform",
+      "Past Neutral"
+    ],
     "delta_rules": {
-      "HINGE": { "delta": { "HAMSTRINGS": 0.20, "GLUTES": 0.15, "BACK_LOWER": 0.10 }, "option_planes": {}, "variations": {} },
-      "PUSH_UP": { "delta": { "CHEST": 0.15, "SHOULDERS": 0.05 }, "option_planes": {}, "variations": {} },
-      "LUNGE": { "delta": { "GLUTES": 0.15 }, "option_planes": {}, "variations": {} }
+      "HINGE": {
+        "HAMSTRINGS": 0.2,
+        "GLUTES": 0.15,
+        "BACK_LOWER": 0.1
+      },
+      "PUSH_UP": {
+        "CHEST": 0.15,
+        "SHOULDERS": 0.05
+      },
+      "LUNGE": {
+        "GLUTES": 0.15
+      }
     },
     "short_description": "Increasing the ROM beyond the standard floor or neutral position (e.g., standing on a plate). Increases injury risk but maximizes muscle stretch.",
     "sort_order": 3,
@@ -55,10 +98,24 @@
   {
     "id": "LIMITED_INTERNAL",
     "label": "Limited (Internal)",
-    "common_names": ["Floor Press", "Board Press", "Pin Press"],
+    "common_names": [
+      "Floor Press",
+      "Board Press",
+      "Pin Press"
+    ],
     "delta_rules": {
-      "PRESS": { "delta": { "TRICEPS": 0.20, "CHEST": -0.20, "SHOULDERS": -0.10 }, "option_planes": {}, "variations": {} },
-      "SQUAT": { "delta": { "QUADS": 0.10, "GLUTES": -0.15 }, "option_planes": {}, "variations": { "SQUAT_REGULAR": { "delta": { "QUADS": 0.15 }, "option_planes": {} } } }
+      "PRESS": {
+        "TRICEPS": 0.2,
+        "CHEST": -0.2,
+        "SHOULDERS": -0.1
+      },
+      "SQUAT": {
+        "QUADS": 0.1,
+        "GLUTES": -0.15
+      },
+      "SQUAT_REGULAR": {
+        "QUADS": 0.15
+      }
     },
     "short_description": "Intentionally stopping the movement before full depth (usually due to a physical barrier like the floor). Focuses load on the mid-to-top range.",
     "sort_order": 4,

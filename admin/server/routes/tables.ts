@@ -7,6 +7,121 @@ import { readTable, writeTable, tableStats } from '../fileOps.js';
 
 const router = Router();
 
+/* ──────── Motion ↔ Motion Planes bidirectional sync ──────── */
+
+interface MotionPlanesValue { default: string; options: string[] }
+
+function parseMotionPlanes(raw: unknown): MotionPlanesValue {
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+    const obj = raw as Record<string, unknown>;
+    return {
+      default: typeof obj.default === 'string' ? obj.default : '',
+      options: Array.isArray(obj.options) ? (obj.options as string[]) : [],
+    };
+  }
+  return { default: '', options: [] };
+}
+
+/**
+ * After any mutation to the motions table, reconcile motionPlanes delta_rules.
+ * For each plane: its delta_rules keys should exactly match the set of motions
+ * that list that plane in their motion_planes.options.
+ * - Adds empty {} entries for motions that reference the plane but have no delta
+ * - Removes entries for motions that no longer reference the plane
+ */
+function syncMotionPlanesToMatchMotions() {
+  try {
+    const motions = readTable('motions.json') as Record<string, unknown>[];
+    const planes = readTable('motionPlanes.json') as Record<string, unknown>[];
+    if (!Array.isArray(motions) || !Array.isArray(planes)) return;
+
+    const planeToMotions = new Map<string, Set<string>>();
+    for (const p of planes) planeToMotions.set(p.id as string, new Set());
+
+    for (const m of motions) {
+      const mp = parseMotionPlanes(m.motion_planes);
+      for (const pid of mp.options) {
+        planeToMotions.get(pid)?.add(m.id as string);
+      }
+    }
+
+    let changed = false;
+    for (const plane of planes) {
+      const pid = plane.id as string;
+      const expected = planeToMotions.get(pid) || new Set();
+      const rules = (plane.delta_rules && typeof plane.delta_rules === 'object')
+        ? { ...(plane.delta_rules as Record<string, unknown>) } : {};
+
+      let planeChanged = false;
+      // Remove orphan keys
+      for (const key of Object.keys(rules)) {
+        if (!expected.has(key)) { delete rules[key]; planeChanged = true; }
+      }
+      // Add missing keys
+      for (const mid of expected) {
+        if (!(mid in rules)) { rules[mid] = {}; planeChanged = true; }
+      }
+      if (planeChanged) { plane.delta_rules = rules; changed = true; }
+    }
+    if (changed) writeTable('motionPlanes.json', planes);
+  } catch { /* ignore if files don't exist */ }
+}
+
+/**
+ * After any mutation to the motionPlanes table, reconcile motions' motion_planes.
+ * For each motion: its motion_planes.options should exactly match the set of planes
+ * that have that motion in their delta_rules.
+ */
+function syncMotionsToMatchPlanes() {
+  try {
+    const motions = readTable('motions.json') as Record<string, unknown>[];
+    const planes = readTable('motionPlanes.json') as Record<string, unknown>[];
+    if (!Array.isArray(motions) || !Array.isArray(planes)) return;
+
+    const planesSorted = [...planes].sort((a, b) =>
+      ((a.sort_order as number) || 0) - ((b.sort_order as number) || 0)
+    );
+
+    const motionToPlanes = new Map<string, string[]>();
+    for (const plane of planesSorted) {
+      const pid = plane.id as string;
+      const rules = plane.delta_rules as Record<string, unknown> | undefined;
+      if (!rules || typeof rules !== 'object') continue;
+      for (const motionId of Object.keys(rules)) {
+        if (!motionToPlanes.has(motionId)) motionToPlanes.set(motionId, []);
+        motionToPlanes.get(motionId)!.push(pid);
+      }
+    }
+
+    let changed = false;
+    for (const motion of motions) {
+      const mid = motion.id as string;
+      const expectedPlanes = motionToPlanes.get(mid) || [];
+      const current = parseMotionPlanes(motion.motion_planes);
+
+      const expectedSet = new Set(expectedPlanes);
+      const currentSet = new Set(current.options);
+      const same = expectedSet.size === currentSet.size && [...expectedSet].every(p => currentSet.has(p));
+
+      if (!same) {
+        if (expectedPlanes.length > 0) {
+          const def = expectedPlanes.includes(current.default) ? current.default : expectedPlanes[0];
+          motion.motion_planes = { default: def, options: expectedPlanes };
+        } else {
+          delete motion.motion_planes;
+        }
+        changed = true;
+      }
+    }
+    if (changed) writeTable('motions.json', motions);
+  } catch { /* ignore */ }
+}
+
+function postWriteSync(tableKey: string) {
+  if (tableKey === 'motions') syncMotionPlanesToMatchMotions();
+  else if (tableKey === 'motionPlanes') syncMotionsToMatchPlanes();
+}
+
 /** GET /api/tables — list all registered tables with metadata */
 router.get('/', (_req: Request, res: Response) => {
   const tables = TABLE_REGISTRY.map((schema) => {
@@ -59,6 +174,7 @@ router.put('/:key', (req: Request, res: Response) => {
   }
   try {
     writeTable(schema.file, req.body);
+    postWriteSync(schema.key);
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: `Failed to write ${schema.file}: ${err}` });
@@ -103,6 +219,7 @@ router.post('/:key/rows', (req: Request, res: Response) => {
     }
     data.push(newRow);
     writeTable(schema.file, data);
+    if (req.query.skipSync !== 'true') postWriteSync(schema.key);
     res.json({ ok: true, row: newRow });
   } catch (err) {
     res.status(500).json({ error: `Failed to add row: ${err}` });
@@ -139,6 +256,7 @@ router.put('/:key/rows/:id', (req: Request, res: Response) => {
     }
     data[idx] = { ...data[idx], ...req.body };
     writeTable(schema.file, data);
+    if (req.query.skipSync !== 'true') postWriteSync(schema.key);
     res.json({ ok: true, row: data[idx] });
   } catch (err) {
     res.status(500).json({ error: `Failed to update row: ${err}` });
@@ -230,6 +348,7 @@ router.delete('/:key/rows/:id', (req: Request, res: Response) => {
     }
     data.splice(idx, 1);
     writeTable(schema.file, data);
+    if (req.query.skipSync !== 'true') postWriteSync(schema.key);
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: `Failed to delete row: ${err}` });
@@ -297,6 +416,21 @@ router.post('/bulk-matrix', (req: Request, res: Response) => {
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: `Bulk update failed: ${err}` });
+  }
+});
+
+/** POST /api/tables/:key/sync — trigger bidirectional sync for motion/motionPlanes */
+router.post('/:key/sync', (req: Request, res: Response) => {
+  const schema = getSchema(req.params.key);
+  if (!schema) {
+    res.status(404).json({ error: `Table "${req.params.key}" not found in registry` });
+    return;
+  }
+  try {
+    postWriteSync(schema.key);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: `Sync failed: ${err}` });
   }
 });
 

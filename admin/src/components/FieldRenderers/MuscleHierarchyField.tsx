@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Link } from 'react-router-dom';
 import { api } from '../../api';
 
 interface MuscleHierarchyFieldProps {
@@ -19,9 +18,6 @@ type MuscleTier = 'primary' | 'secondary' | 'tertiary';
 
 function parseParentIds(record: MuscleRecord): string[] {
   if (Array.isArray(record.parent_ids)) return record.parent_ids;
-  if (typeof record.parent_ids === 'string') {
-    try { return JSON.parse(record.parent_ids); } catch { return []; }
-  }
   return [];
 }
 
@@ -36,7 +32,7 @@ function classifyMuscle(record: MuscleRecord, allMuscles: MuscleRecord[]): Muscl
   return 'tertiary';
 }
 
-export default function MuscleHierarchyField({ tableKey, currentRecordId, onFieldsChange }: MuscleHierarchyFieldProps) {
+export default function MuscleHierarchyField({ tableKey, currentRecordId, onFieldsChange, onOpenRow }: MuscleHierarchyFieldProps) {
   const [allMuscles, setAllMuscles] = useState<MuscleRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -78,6 +74,25 @@ export default function MuscleHierarchyField({ tableKey, currentRecordId, onFiel
 
   const currentRecord = useMemo(() => allMuscles.find(m => m.id === currentRecordId), [allMuscles, currentRecordId]);
   const currentTier = useMemo(() => currentRecord ? classifyMuscle(currentRecord, allMuscles) : 'primary', [currentRecord, allMuscles]);
+
+  const handleOpenMuscle = useCallback((e: React.MouseEvent, muscleId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!onOpenRow) {
+      console.warn('onOpenRow callback not provided');
+      return;
+    }
+    const muscle = allMuscles.find(m => m.id === muscleId);
+    if (muscle) {
+      try {
+        onOpenRow(muscle);
+      } catch (error) {
+        console.error('Error opening muscle:', error);
+      }
+    } else {
+      console.warn(`Muscle with id ${muscleId} not found`);
+    }
+  }, [onOpenRow, allMuscles]);
 
   // After any mutation, update the current record's parent_ids via the callback
   const notifyFieldsChange = useCallback((updatedMuscles: MuscleRecord[]) => {
@@ -215,7 +230,10 @@ export default function MuscleHierarchyField({ tableKey, currentRecordId, onFiel
                 <button type="button" onClick={() => toggleExpand(key)} className="text-xs text-gray-500 w-4 flex-shrink-0 hover:text-gray-700">
                   {isExp ? '▼' : '▶'}
                 </button>
-                <Link to="/table/muscles" className="text-sm font-medium text-blue-600 hover:underline">{secondary.label}</Link>
+                <span className="text-sm font-medium text-gray-700">{currentRecord.label}</span>
+                <span className="text-xs text-gray-400">{currentRecord.id}</span>
+                <span className="text-xs text-gray-400">→</span>
+                <button type="button" onClick={(e) => handleOpenMuscle(e, secondary.id)} className="text-sm font-medium text-blue-600 hover:underline text-left">{secondary.label}</button>
                 <span className="text-xs text-gray-400">{secondary.id}</span>
                 {terts.length > 0 && <span className="text-xs text-gray-400 ml-auto">({terts.length} tertiary)</span>}
               </div>
@@ -228,7 +246,7 @@ export default function MuscleHierarchyField({ tableKey, currentRecordId, onFiel
                   <div key={t.id} className="px-3 py-1.5 pl-8">
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-gray-500">•</span>
-                      <Link to="/table/muscles" className="text-sm text-blue-600 hover:underline">{t.label}</Link>
+                      <button type="button" onClick={(e) => handleOpenMuscle(e, t.id)} className="text-sm text-blue-600 hover:underline text-left">{t.label}</button>
                       <span className="text-xs text-gray-400">{t.id}</span>
                     </div>
                   </div>
@@ -259,7 +277,7 @@ export default function MuscleHierarchyField({ tableKey, currentRecordId, onFiel
                 <button type="button" onClick={() => toggleExpand(key)} className="text-xs text-gray-500 w-4 flex-shrink-0 hover:text-gray-700">
                   {isExp ? '▼' : '▶'}
                 </button>
-                <Link to="/table/muscles" className="text-sm font-medium text-blue-600 hover:underline">{primary.label}</Link>
+                <button type="button" onClick={(e) => handleOpenMuscle(e, primary.id)} className="text-sm font-medium text-blue-600 hover:underline text-left">{primary.label}</button>
                 <span className="text-xs text-gray-400">{primary.id}</span>
                 <span className="text-xs text-gray-400">→</span>
                 <span className="text-sm font-medium text-gray-700">{secondary.label}</span>
@@ -275,7 +293,7 @@ export default function MuscleHierarchyField({ tableKey, currentRecordId, onFiel
                   <div key={t.id} className="px-3 py-1.5 pl-8">
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-gray-500">•</span>
-                      <Link to="/table/muscles" className="text-sm text-blue-600 hover:underline">{t.label}</Link>
+                      <button type="button" onClick={(e) => handleOpenMuscle(e, t.id)} className="text-sm text-blue-600 hover:underline text-left">{t.label}</button>
                       <span className="text-xs text-gray-400">{t.id}</span>
                     </div>
                   </div>
@@ -305,14 +323,14 @@ export default function MuscleHierarchyField({ tableKey, currentRecordId, onFiel
                   pris.map((p, i) => (
                     <React.Fragment key={p.id}>
                       {i > 0 && <span className="text-xs text-gray-400">,</span>}
-                      <Link to="/table/muscles" className="text-sm font-medium text-blue-600 hover:underline">{p.label}</Link>
+                      <button type="button" onClick={(e) => handleOpenMuscle(e, p.id)} className="text-sm font-medium text-blue-600 hover:underline text-left">{p.label}</button>
                     </React.Fragment>
                   ))
                 ) : (
                   <span className="text-xs text-gray-400 italic">No primary</span>
                 )}
                 <span className="text-xs text-gray-400">→</span>
-                <Link to="/table/muscles" className="text-sm font-medium text-blue-600 hover:underline">{secondary.label}</Link>
+                <button type="button" onClick={(e) => handleOpenMuscle(e, secondary.id)} className="text-sm font-medium text-blue-600 hover:underline text-left">{secondary.label}</button>
                 <span className="text-xs text-gray-400">→</span>
                 <span className="text-sm font-medium text-gray-700">{tertiary.label}</span>
                 <span className="text-xs text-gray-400">{tertiary.id}</span>
