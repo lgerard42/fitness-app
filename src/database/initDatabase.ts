@@ -5,7 +5,7 @@
 import * as SQLite from 'expo-sqlite';
 
 const DATABASE_NAME = 'workout.db';
-const DATABASE_VERSION = 22;
+const DATABASE_VERSION = 24;
 
 export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
   const db = await SQLite.openDatabaseAsync(DATABASE_NAME);
@@ -84,6 +84,12 @@ export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
     }
     if (currentVersion < 22) {
       await migrateToV22(db);
+    }
+    if (currentVersion < 23) {
+      await migrateToV23(db);
+    }
+    if (currentVersion < 24) {
+      await migrateToV24(db);
     }
     await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
   }
@@ -173,6 +179,7 @@ async function createTables(db: SQLite.SQLiteDatabase) {
       common_names TEXT,
       short_description TEXT,
       sort_order INTEGER DEFAULT 0,
+      icon TEXT,
       is_active INTEGER DEFAULT 1
     );
   `);
@@ -190,6 +197,7 @@ async function createTables(db: SQLite.SQLiteDatabase) {
       max_instances INTEGER DEFAULT 1,
       modifier_constraints TEXT DEFAULT '{}',
       sort_order INTEGER DEFAULT 0,
+      icon TEXT,
       is_active INTEGER DEFAULT 1
     );
   `);
@@ -203,6 +211,7 @@ async function createTables(db: SQLite.SQLiteDatabase) {
       delta_rules TEXT DEFAULT '{}',
       short_description TEXT,
       sort_order INTEGER DEFAULT 0,
+      icon TEXT,
       is_active INTEGER DEFAULT 1
     );
   `);
@@ -239,6 +248,20 @@ async function createTables(db: SQLite.SQLiteDatabase) {
       short_description TEXT,
       sort_order INTEGER DEFAULT 0,
       icon TEXT,
+      is_active INTEGER DEFAULT 1
+    );
+  `);
+
+  // GRIP_WIDTHS table
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS grip_widths (
+      id TEXT PRIMARY KEY,
+      label TEXT NOT NULL,
+      common_names TEXT,
+      icon TEXT,
+      short_description TEXT,
+      delta_rules TEXT DEFAULT '{}',
+      sort_order INTEGER DEFAULT 0,
       is_active INTEGER DEFAULT 1
     );
   `);
@@ -777,14 +800,15 @@ async function migrateToV18(db: SQLite.SQLiteDatabase) {
     // Insert top-level categories (SUPPORT and WEIGHTS)
     for (const cat of mainCats) {
       await db.runAsync(
-        `INSERT INTO equipment_categories (id, parent_id, label, common_names, short_description, sort_order, is_active)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO equipment_categories (id, parent_id, label, common_names, short_description, sort_order, icon, is_active)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         cat.id,
         null,
         cat.label,
         cat.common_names || '[]',
         cat.short_description || '',
         cat.sort_order || 0,
+        cat.icon || '',
         cat.is_active !== 0 ? 1 : 0
       );
     }
@@ -793,14 +817,15 @@ async function migrateToV18(db: SQLite.SQLiteDatabase) {
     for (const cat of supportCats) {
       const newId = supportIdMapping[cat.id] || cat.id;
       await db.runAsync(
-        `INSERT INTO equipment_categories (id, parent_id, label, common_names, short_description, sort_order, is_active)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO equipment_categories (id, parent_id, label, common_names, short_description, sort_order, icon, is_active)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         newId,
         'SUPPORT',
         cat.label,
         cat.common_names || '[]',
         cat.short_description || '',
         cat.sort_order || 0,
+        cat.icon || '',
         cat.is_active !== 0 ? 1 : 0
       );
     }
@@ -809,14 +834,15 @@ async function migrateToV18(db: SQLite.SQLiteDatabase) {
     for (const cat of weightsCats) {
       const newId = weightsIdMapping[cat.id] || cat.id;
       await db.runAsync(
-        `INSERT INTO equipment_categories (id, parent_id, label, common_names, short_description, sort_order, is_active)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO equipment_categories (id, parent_id, label, common_names, short_description, sort_order, icon, is_active)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         newId,
         'WEIGHTS',
         cat.label,
         cat.common_names || '[]',
         cat.short_description || '',
         cat.sort_order || 0,
+        cat.icon || '',
         cat.is_active !== 0 ? 1 : 0
       );
     }
@@ -917,7 +943,7 @@ async function migrateToV20(db: SQLite.SQLiteDatabase) {
     const str = (v: unknown) => (v == null ? '' : String(v));
     const num = (v: unknown, def: number) => (v == null ? def : Number(v));
 
-    // Recreate motion_planes with new schema (drop muscle_targets & icon, add delta_rules)
+    // Recreate motion_planes with new schema (drop muscle_targets, add delta_rules and icon)
     await db.execAsync(`
       CREATE TABLE IF NOT EXISTS motion_planes_new (
         id TEXT PRIMARY KEY,
@@ -926,13 +952,14 @@ async function migrateToV20(db: SQLite.SQLiteDatabase) {
         delta_rules TEXT DEFAULT '{}',
         short_description TEXT,
         sort_order INTEGER DEFAULT 0,
+        icon TEXT,
         is_active INTEGER DEFAULT 1
       );
     `);
     try {
       await db.execAsync(`
-        INSERT INTO motion_planes_new (id, label, common_names, delta_rules, short_description, sort_order, is_active)
-        SELECT id, label, common_names, '{}', short_description, sort_order, is_active FROM motion_planes
+        INSERT INTO motion_planes_new (id, label, common_names, delta_rules, short_description, sort_order, icon, is_active)
+        SELECT id, label, common_names, '{}', short_description, sort_order, COALESCE(icon, ''), is_active FROM motion_planes
       `);
     } catch { /* old table may not exist */ }
     await db.execAsync('DROP TABLE IF EXISTS motion_planes');
@@ -1094,6 +1121,7 @@ async function migrateToV21(db: SQLite.SQLiteDatabase) {
         max_instances INTEGER DEFAULT 1,
         modifier_constraints TEXT DEFAULT '{}',
         sort_order INTEGER DEFAULT 0,
+        icon TEXT,
         is_active INTEGER DEFAULT 1
       );
     `);
@@ -1103,13 +1131,13 @@ async function migrateToV21(db: SQLite.SQLiteDatabase) {
       const gymEquip = await db.getAllAsync<Record<string, unknown>>('SELECT * FROM gym_equipment');
       for (const row of gymEquip) {
         await db.runAsync(
-          `INSERT OR REPLACE INTO equipment (id, category_id, label, common_names, short_description, is_attachment, requires_attachment, max_instances, modifier_constraints, sort_order, is_active)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT OR REPLACE INTO equipment (id, category_id, label, common_names, short_description, is_attachment, requires_attachment, max_instances, modifier_constraints, sort_order, icon, is_active)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           str(row.id), null, str(row.label),
           str(row.common_names), str(row.short_description),
           0, row.cable_attachments ? 1 : 0,
           Number(row.max_instances) || 1, '{}',
-          num(row.sort_order, 0), row.is_active !== 0 ? 1 : 0
+          num(row.sort_order, 0), str(row.icon || ''), row.is_active !== 0 ? 1 : 0
         );
       }
     } catch { /* table may not exist */ }
@@ -1119,12 +1147,12 @@ async function migrateToV21(db: SQLite.SQLiteDatabase) {
       const cableAtt = await db.getAllAsync<Record<string, unknown>>('SELECT * FROM cable_attachments');
       for (const row of cableAtt) {
         await db.runAsync(
-          `INSERT OR REPLACE INTO equipment (id, category_id, label, common_names, short_description, is_attachment, requires_attachment, max_instances, modifier_constraints, sort_order, is_active)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT OR REPLACE INTO equipment (id, category_id, label, common_names, short_description, is_attachment, requires_attachment, max_instances, modifier_constraints, sort_order, icon, is_active)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           str(row.id), 'CABLE_ATTACHMENTS', str(row.label),
           str(row.common_names), str(row.short_description),
           1, 0, 1, '{}',
-          num(row.sort_order, 0), row.is_active !== 0 ? 1 : 0
+          num(row.sort_order, 0), str(row.icon || ''), row.is_active !== 0 ? 1 : 0
         );
       }
     } catch { /* table may not exist */ }
@@ -1135,12 +1163,12 @@ async function migrateToV21(db: SQLite.SQLiteDatabase) {
 
     // Add CABLE_ATTACHMENTS category if not present
     await db.runAsync(
-      `INSERT OR IGNORE INTO equipment_categories (id, parent_id, label, common_names, short_description, sort_order, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT OR IGNORE INTO equipment_categories (id, parent_id, label, common_names, short_description, sort_order, icon, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       'CABLE_ATTACHMENTS', 'WEIGHTS', 'Cable Attachments',
       '["Attachments", "Cable Accessories"]',
       'Accessories that attach to cable machines.',
-      7, 1
+      7, '', 1
     );
 
     // Re-seed from JSON so data is up-to-date
@@ -1182,6 +1210,67 @@ async function migrateToV22(db: SQLite.SQLiteDatabase) {
     await seedMotionData(db);
   } catch (e) {
     console.warn('migrateToV22: failed', e);
+  }
+}
+
+async function migrateToV23(db: SQLite.SQLiteDatabase) {
+  try {
+    // Add icon column to tables that don't have it (between sort_order and is_active)
+    const addIconColumn = async (tableName: string) => {
+      const cols = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(${tableName})`);
+      const colNames = cols.map(c => c.name);
+      if (!colNames.includes('icon')) {
+        await db.execAsync(`ALTER TABLE ${tableName} ADD COLUMN icon TEXT DEFAULT ''`);
+      }
+    };
+
+    await addIconColumn('motion_planes');
+    await addIconColumn('equipment_categories');
+    await addIconColumn('equipment');
+  } catch (e) {
+    console.warn('migrateToV23: failed', e);
+  }
+}
+
+async function migrateToV24(db: SQLite.SQLiteDatabase) {
+  try {
+    const str = (v: unknown) => (v == null ? '' : String(v));
+    const num = (v: unknown, def: number) => (v == null ? def : Number(v));
+    const json = (v: unknown, fallback = '{}') => (v != null ? JSON.stringify(v) : fallback);
+
+    // Re-add grip_widths table (was merged into grips in V21, now separate again)
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS grip_widths (
+        id TEXT PRIMARY KEY,
+        label TEXT NOT NULL,
+        common_names TEXT,
+        icon TEXT,
+        short_description TEXT,
+        delta_rules TEXT DEFAULT '{}',
+        sort_order INTEGER DEFAULT 0,
+        is_active INTEGER DEFAULT 1
+      );
+    `);
+
+    // Seed grip_widths from JSON
+    const gripWidths = require('./tables/gripWidths.json') as Record<string, unknown>[];
+    await db.execAsync('DELETE FROM grip_widths');
+    for (const row of gripWidths) {
+      await db.runAsync(
+        `INSERT OR REPLACE INTO grip_widths (id, label, common_names, icon, short_description, delta_rules, sort_order, is_active)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        str(row.id),
+        str(row.label),
+        Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
+        str(row.icon),
+        str(row.short_description),
+        json(row.delta_rules),
+        num(row.sort_order, 0),
+        row.is_active !== false ? 1 : 0
+      );
+    }
+  } catch (e) {
+    console.warn('migrateToV24: failed', e);
   }
 }
 
@@ -1304,14 +1393,15 @@ async function seedEquipmentData(db: SQLite.SQLiteDatabase) {
   await db.execAsync('DELETE FROM equipment_categories');
   for (const row of equipmentCategories) {
     await db.runAsync(
-      `INSERT OR REPLACE INTO equipment_categories (id, parent_id, label, common_names, short_description, sort_order, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT OR REPLACE INTO equipment_categories (id, parent_id, label, common_names, short_description, sort_order, icon, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       str(row.id),
       row.parent_id ? str(row.parent_id) : null,
       str(row.label),
       Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
       str(row.short_description),
       num(row.sort_order, 0),
+      str(row.icon),
       row.is_active !== false ? 1 : 0
     );
   }
@@ -1319,8 +1409,8 @@ async function seedEquipmentData(db: SQLite.SQLiteDatabase) {
   await db.execAsync('DELETE FROM equipment');
   for (const row of equipmentItems) {
     await db.runAsync(
-      `INSERT OR REPLACE INTO equipment (id, category_id, label, common_names, short_description, is_attachment, requires_attachment, max_instances, modifier_constraints, sort_order, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT OR REPLACE INTO equipment (id, category_id, label, common_names, short_description, is_attachment, requires_attachment, max_instances, modifier_constraints, sort_order, icon, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       str(row.id),
       row.category_id ? str(row.category_id) : null,
       str(row.label),
@@ -1331,6 +1421,7 @@ async function seedEquipmentData(db: SQLite.SQLiteDatabase) {
       Number(row.max_instances) || 1,
       json(row.modifier_constraints),
       num(row.sort_order, 0),
+      str(row.icon),
       row.is_active !== false ? 1 : 0
     );
   }
@@ -1346,14 +1437,15 @@ async function seedMotionData(db: SQLite.SQLiteDatabase) {
   await db.execAsync('DELETE FROM motion_planes');
   for (const row of motionPlanes) {
     await db.runAsync(
-      `INSERT OR REPLACE INTO motion_planes (id, label, common_names, delta_rules, short_description, sort_order, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT OR REPLACE INTO motion_planes (id, label, common_names, delta_rules, short_description, sort_order, icon, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       str(row.id),
       str(row.label),
       Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
       json(row.delta_rules),
       str(row.short_description),
       num(row.sort_order, 0),
+      str(row.icon),
       row.is_active !== false ? 1 : 0
     );
   }
@@ -1385,6 +1477,7 @@ async function seedGripData(db: SQLite.SQLiteDatabase) {
     const num = (v: unknown, def: number) => (v == null ? def : Number(v));
     const json = (v: unknown, fallback = '{}') => (v != null ? JSON.stringify(v) : fallback);
     const grips = require('./tables/grips.json') as Record<string, unknown>[];
+    const gripWidths = require('./tables/gripWidths.json') as Record<string, unknown>[];
     const footPositions = require('./tables/footPositions.json') as Record<string, unknown>[];
     const stanceTypes = require('./tables/stanceTypes.json') as Record<string, unknown>[];
     const stanceWidths = require('./tables/stanceWidths.json') as Record<string, unknown>[];
@@ -1396,6 +1489,7 @@ async function seedGripData(db: SQLite.SQLiteDatabase) {
     const rangeOfMotion = require('./tables/rangeOfMotion.json') as Record<string, unknown>[];
 
     await db.execAsync('DELETE FROM grips');
+    await db.execAsync('DELETE FROM grip_widths');
     await db.execAsync('DELETE FROM foot_positions');
     await db.execAsync('DELETE FROM stance_types');
     await db.execAsync('DELETE FROM stance_widths');
@@ -1442,6 +1536,7 @@ async function seedGripData(db: SQLite.SQLiteDatabase) {
       }
     };
 
+    await seedDeltaTable('grip_widths', gripWidths);
     await seedDeltaTable('foot_positions', footPositions);
     await seedDeltaTable('stance_types', stanceTypes);
     await seedDeltaTable('stance_widths', stanceWidths);

@@ -2,6 +2,7 @@
  * Central schema registry for all JSON tables.
  * Drives the admin UI: forms, dropdowns, validation, and relationship resolution.
  */
+import { TABLE_DESCRIPTIONS } from './tableDescriptions.js';
 
 export interface TableField {
   name: string;
@@ -38,6 +39,8 @@ export interface TableSchema {
   isKeyValueMap?: boolean;
   /** If set, this table is shown indented under this parent table in the sidebar */
   parentTableKey?: string;
+  /** Human-readable description for the table (purpose, dependencies, dependents). */
+  description?: string;
 }
 
 // ─── Shared field patterns ───────────────────────────────────────────
@@ -47,6 +50,7 @@ const baseFields = (extra: TableField[] = []): TableField[] => [
   { name: 'label', type: 'string', required: true },
   ...extra,
   { name: 'sort_order', type: 'number', defaultValue: 0 },
+  { name: 'icon', type: 'string', defaultValue: '' },
   { name: 'is_active', type: 'boolean', defaultValue: true },
 ];
 
@@ -54,7 +58,6 @@ const standardFields = (extra: TableField[] = []): TableField[] =>
   baseFields([
     { name: 'technical_name', type: 'string' },
     { name: 'common_names', type: 'string[]', defaultValue: [] },
-    { name: 'icon', type: 'string', defaultValue: '' },
     { name: 'short_description', type: 'string' },
     ...extra,
   ]);
@@ -63,7 +66,6 @@ const subLabelFields = (extra: TableField[] = []): TableField[] =>
   baseFields([
     { name: 'sub_label', type: 'string' },
     { name: 'common_names', type: 'string[]', defaultValue: [] },
-    { name: 'icon', type: 'string', defaultValue: '' },
     { name: 'short_description', type: 'string' },
     ...extra,
   ]);
@@ -78,7 +80,7 @@ const subLabelFieldsNoIcon = (extra: TableField[] = []): TableField[] =>
 
 // ─── Table definitions ───────────────────────────────────────────────
 
-export const TABLE_REGISTRY: TableSchema[] = [
+const TABLE_DEFINITIONS: TableSchema[] = [
   // ── Exercise Setup ──────────────────────────────────────────────
   {
     key: 'exerciseCategories',
@@ -127,7 +129,6 @@ export const TABLE_REGISTRY: TableSchema[] = [
       { name: 'location', type: 'string' },
       { name: 'triggers', type: 'string' },
       { name: 'upper_lower', type: 'string[]', defaultValue: [] },
-      { name: 'icon', type: 'string', defaultValue: '' },
     ]),
   },
 
@@ -146,7 +147,6 @@ export const TABLE_REGISTRY: TableSchema[] = [
       { name: 'motion_planes', type: 'json', jsonShape: 'motion_planes' },
       { name: 'common_names', type: 'string[]', defaultValue: [] },
       { name: 'short_description', type: 'string' },
-      { name: 'icon', type: 'string', defaultValue: '' },
     ]),
   },
   {
@@ -179,7 +179,19 @@ export const TABLE_REGISTRY: TableSchema[] = [
       { name: 'common_names', type: 'string[]', defaultValue: [] },
       { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
       { name: 'short_description', type: 'string' },
-      { name: 'icon', type: 'string', defaultValue: '' },
+    ]),
+  },
+  {
+    key: 'gripWidths',
+    file: 'gripWidths.json',
+    label: 'Grip Widths',
+    group: 'Score Modifiers',
+    idField: 'id',
+    labelField: 'label',
+    fields: baseFields([
+      { name: 'common_names', type: 'string[]', defaultValue: [] },
+      { name: 'short_description', type: 'string' },
+      { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
     ]),
   },
   {
@@ -191,7 +203,6 @@ export const TABLE_REGISTRY: TableSchema[] = [
     labelField: 'label',
     fields: baseFields([
       { name: 'common_names', type: 'string[]', defaultValue: [] },
-      { name: 'icon', type: 'string', defaultValue: '' },
       { name: 'short_description', type: 'string' },
       { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
     ]),
@@ -205,7 +216,6 @@ export const TABLE_REGISTRY: TableSchema[] = [
     labelField: 'label',
     fields: baseFields([
       { name: 'common_names', type: 'string[]', defaultValue: [] },
-      { name: 'icon', type: 'string', defaultValue: '' },
       { name: 'short_description', type: 'string' },
       { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
     ]),
@@ -219,7 +229,6 @@ export const TABLE_REGISTRY: TableSchema[] = [
     labelField: 'label',
     fields: baseFields([
       { name: 'common_names', type: 'string[]', defaultValue: [] },
-      { name: 'icon', type: 'string', defaultValue: '' },
       { name: 'short_description', type: 'string' },
       { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
     ]),
@@ -233,7 +242,6 @@ export const TABLE_REGISTRY: TableSchema[] = [
     labelField: 'label',
     fields: baseFields([
       { name: 'common_names', type: 'string[]', defaultValue: [] },
-      { name: 'icon', type: 'string', defaultValue: '' },
       { name: 'short_description', type: 'string' },
       { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
       { name: 'angle_range', type: 'json', jsonShape: 'free' },
@@ -250,7 +258,6 @@ export const TABLE_REGISTRY: TableSchema[] = [
     parentTableKey: 'torsoAngles',
     fields: baseFields([
       { name: 'common_names', type: 'string[]', defaultValue: [] },
-      { name: 'icon', type: 'string', defaultValue: '' },
       { name: 'short_description', type: 'string' },
       { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
     ]),
@@ -264,7 +271,6 @@ export const TABLE_REGISTRY: TableSchema[] = [
     labelField: 'label',
     fields: baseFields([
       { name: 'common_names', type: 'string[]', defaultValue: [] },
-      { name: 'icon', type: 'string', defaultValue: '' },
       { name: 'short_description', type: 'string' },
       { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
     ]),
@@ -278,7 +284,6 @@ export const TABLE_REGISTRY: TableSchema[] = [
     labelField: 'label',
     fields: baseFields([
       { name: 'common_names', type: 'string[]', defaultValue: [] },
-      { name: 'icon', type: 'string', defaultValue: '' },
       { name: 'short_description', type: 'string' },
       { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
     ]),
@@ -292,7 +297,6 @@ export const TABLE_REGISTRY: TableSchema[] = [
     labelField: 'label',
     fields: baseFields([
       { name: 'common_names', type: 'string[]', defaultValue: [] },
-      { name: 'icon', type: 'string', defaultValue: '' },
       { name: 'short_description', type: 'string' },
       { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
     ]),
@@ -307,7 +311,6 @@ export const TABLE_REGISTRY: TableSchema[] = [
     labelField: 'label',
     fields: baseFields([
       { name: 'common_names', type: 'string[]', defaultValue: [] },
-      { name: 'icon', type: 'string', defaultValue: '' },
       { name: 'short_description', type: 'string' },
       { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
     ]),
@@ -358,6 +361,12 @@ export const TABLE_REGISTRY: TableSchema[] = [
     ],
   },
 ];
+
+/** Registry with descriptions merged in for the admin UI */
+export const TABLE_REGISTRY: TableSchema[] = TABLE_DEFINITIONS.map((t) => ({
+  ...t,
+  description: TABLE_DESCRIPTIONS[t.key],
+}));
 
 /** Lookup a schema by key */
 export function getSchema(key: string): TableSchema | undefined {

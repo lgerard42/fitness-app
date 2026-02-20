@@ -12,6 +12,7 @@ import MuscleTargetTree from './FieldRenderers/MuscleTargetTree';
 import ExerciseInputPermissionsField from './FieldRenderers/ExerciseInputPermissionsField';
 import MuscleHierarchyField from './FieldRenderers/MuscleHierarchyField';
 import MotionConfigTree from './FieldRenderers/MotionConfigTree';
+import MotionPlanesField from './FieldRenderers/MotionPlanesField';
 import Relationships from './Relationships';
 
 const MATRIX_FIELDS: string[] = [];
@@ -353,6 +354,17 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
                             {label}
                             <ExerciseInputPermissionsField
                               value={(value as Record<string, string>) ?? undefined}
+                              onChange={(v) => update(field.name, v)}
+                            />
+                          </div>
+                        );
+                      }
+                      if (field.jsonShape === 'motion_planes') {
+                        return (
+                          <div key={field.name}>
+                            {label}
+                            <MotionPlanesField
+                              value={value as Record<string, unknown> | null | undefined}
                               onChange={(v) => update(field.name, v)}
                             />
                           </div>

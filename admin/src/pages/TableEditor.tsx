@@ -164,6 +164,7 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
   const [isDraggingRow, setIsDraggingRow] = useState(false);
   const [rowDragHandleActive, setRowDragHandleActive] = useState(false);
   const [muscleTierFilter, setMuscleTierFilter] = useState<'ALL' | 'PRIMARY' | 'SECONDARY' | 'TERTIARY'>('ALL');
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const tableScrollRef = React.useRef<HTMLDivElement>(null);
 
   const [refData, setRefData] = useState<Record<string, Record<string, unknown>[]>>({});
@@ -958,6 +959,52 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
           </button>
         </div>
       </div>
+
+      {/* Collapsible table description */}
+      {schema?.description && (
+        <div className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setDescriptionExpanded((e) => !e)}
+            className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 text-left transition-colors"
+          >
+            <span className="text-sm font-medium text-gray-700">
+              {descriptionExpanded ? 'Hide' : 'Show'} table description
+            </span>
+            <span
+              className={`text-gray-500 transition-transform ${descriptionExpanded ? 'rotate-180' : ''}`}
+              aria-hidden
+            >
+              ▼
+            </span>
+          </button>
+          {descriptionExpanded && (
+            <div className="px-4 py-3 bg-white border-t border-gray-200">
+              <div className="text-sm text-gray-700 whitespace-pre-wrap table-description">
+                {schema.description.split(/\n/).map((line, i) => {
+                  const parts: React.ReactNode[] = [];
+                  let rest = line;
+                  let key = 0;
+                  while (rest.length > 0) {
+                    const bold = rest.match(/^\*\*(.+?)\*\*/);
+                    if (bold) {
+                      parts.push(<strong key={key++}>{bold[1]}</strong>);
+                      rest = rest.slice(bold[0].length);
+                    } else {
+                      const next = rest.indexOf('**');
+                      const chunk = next === -1 ? rest : rest.slice(0, next);
+                      parts.push(chunk);
+                      rest = next === -1 ? '' : rest.slice(next);
+                      key++;
+                    }
+                  }
+                  return <p key={i} className="mb-2 last:mb-0">{parts}</p>;
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Search and Filters */}
       <div className="mb-4 space-y-2">

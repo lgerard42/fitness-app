@@ -1,0 +1,68 @@
+[
+  {
+    "id": "EXTRA_NARROW",
+    "label": "Extra Narrow",
+    "common_names": ["Close Grip", "Diamond Grip", "Touching Hands"],
+    "delta_rules": {
+      "PRESS": { "delta": { "CHEST_MID": -0.20, "CHEST_INNER": 0.15, "TRICEPS": 0.25, "DELTS_FRONT": -0.10 }, "option_planes": {}, "variations": {} },
+      "VERTICAL_PULL": { "delta": { "LATS": -0.15, "BACK_UPPER": -0.10, "BICEPS": 0.20, "FOREARMS": 0.10 }, "option_planes": {}, "variations": {} },
+      "HORIZONTAL_ROW": { "delta": { "BACK_MID": -0.20, "LATS": 0.15, "BICEPS": 0.15 }, "option_planes": {}, "variations": {} }
+    },
+    "short_description": "Hands positioned very close together, often touching. Maximizes arm involvement.",
+    "sort_order": 0,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "NARROW",
+    "label": "Narrow",
+    "common_names": ["Inside Shoulder Width", "Slightly Close Grip"],
+    "delta_rules": {
+      "PRESS": { "delta": { "CHEST_MID": -0.10, "CHEST_INNER": 0.05, "TRICEPS": 0.15, "DELTS_FRONT": -0.05 }, "option_planes": {}, "variations": {} },
+      "VERTICAL_PULL": { "delta": { "LATS": -0.05, "BICEPS": 0.10 }, "option_planes": {}, "variations": {} },
+      "HORIZONTAL_ROW": { "delta": { "BACK_MID": -0.10, "LATS": 0.10 }, "option_planes": {}, "variations": {} }
+    },
+    "short_description": "Hands positioned just inside the shoulders.",
+    "sort_order": 1,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "SHOULDER",
+    "label": "Shoulder-Width",
+    "common_names": ["Standard Width", "Normal Grip"],
+    "delta_rules": {},
+    "short_description": "Hands positioned perfectly in line with the shoulders. This is the baseline for all scoring.",
+    "sort_order": 2,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "WIDE",
+    "label": "Wide",
+    "common_names": ["Outside Shoulder Width", "Slightly Wide Grip"],
+    "delta_rules": {
+      "PRESS": { "delta": { "CHEST_MID": -0.10, "CHEST_OUTER": 0.15, "TRICEPS": -0.15, "DELTS_FRONT": 0.10 }, "option_planes": {}, "variations": {} },
+      "VERTICAL_PULL": { "delta": { "LATS": 0.15, "BACK_UPPER": 0.10, "BICEPS": -0.15 }, "option_planes": {}, "variations": {} },
+      "HORIZONTAL_ROW": { "delta": { "BACK_MID": 0.15, "LATS": -0.10, "BICEPS": -0.10 }, "option_planes": {}, "variations": {} }
+    },
+    "short_description": "Hands positioned roughly one hand-width outside the shoulders.",
+    "sort_order": 3,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "EXTRA_WIDE",
+    "label": "Extra Wide",
+    "common_names": ["Snatch Grip", "Maximum Width", "Collar-to-Collar"],
+    "delta_rules": {
+      "PRESS": { "delta": { "CHEST_MID": -0.25, "CHEST_OUTER": 0.25, "TRICEPS": -0.25, "DELTS_FRONT": 0.15 }, "option_planes": {}, "variations": {} },
+      "VERTICAL_PULL": { "delta": { "LATS": 0.20, "BACK_UPPER": 0.20, "BICEPS": -0.25 }, "option_planes": {}, "variations": {} },
+      "HORIZONTAL_ROW": { "delta": { "BACK_MID": 0.25, "LATS": -0.20, "BICEPS": -0.15 }, "option_planes": {}, "variations": { "ROW_HIGH": { "delta": { "BACK_UPPER": 0.20, "DELTS_REAR": 0.15 }, "option_planes": {} } } }
+    },
+    "short_description": "Hands positioned extremely wide. Maximizes torso stretch but heavily limits range of motion and arm involvement.",
+    "sort_order": 4,
+    "icon": "",
+    "is_active": true
+  }
+]

@@ -37,6 +37,8 @@ export interface TableSchema {
   fields: TableField[];
   sortField?: string;
   isKeyValueMap?: boolean;
+  /** Human-readable description (purpose, dependencies, dependents) for the table view. */
+  description?: string;
 }
 
 export interface SchemaResponse {
