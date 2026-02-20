@@ -1,26 +1,12 @@
 [
   {
-    "id": "UPRIGHT",
-    "label": "Upright",
-    "common_names": ["Seated", "Standing Vertical", "90 Degrees"],
-    "delta_rules": {
-      "LEG_CURL": {
-        "delta": {
-          "HAMSTRINGS": 0.15,
-          "HAMSTRING_INNER": 0.10
-        },
-        "option_planes": {},
-        "variations": {}
-      },
-      "AB_CRUNCH": {
-        "delta": {
-          "ABS_LOWER": 0.10
-        },
-        "option_planes": {},
-        "variations": {}
-      }
-    },
-    "short_description": "Torso is vertical. In leg curls, this pre-stretches the hamstrings at the hip for higher activation.",
+    "id": "FLAT",
+    "label": "Flat",
+    "common_names": ["0 Degrees", "Horizontal", "Level"],
+    "delta_rules": {},
+    "short_description": "Torso is perfectly horizontal. Baseline for most floor and bench work.",
+    "angle_range": {"min": 0, "max": 0, "step": 0, "default": 0},
+    "allow_torso_orientations": true,
     "sort_order": 0,
     "icon": "",
     "is_active": true
@@ -28,8 +14,17 @@
   {
     "id": "INCLINED",
     "label": "Inclined",
-    "common_names": ["Angled Up", "45 Degree Incline", "Reclined"],
+    "common_names": ["Angled Up", "Reclined", "Positive Slope"],
     "delta_rules": {
+      "PRESS": {
+        "delta": {
+          "CHEST_UPPER": 0.20,
+          "DELTS_FRONT": 0.10,
+          "CHEST_MID": -0.15
+        },
+        "option_planes": {},
+        "variations": {}
+      },
       "CURL": {
         "delta": {
           "BICEP_OUTER": 0.20,
@@ -40,20 +35,15 @@
       },
       "RAISE": {
         "delta": {
-          "DELTS_SIDE": 0.10
+          "DELTS_SIDE": 0.15
         },
         "option_planes": {},
-        "variations": {
-          "RAISE_LATERAL": {
-            "delta": {
-              "DELTS_SIDE": 0.15
-            },
-            "option_planes": {}
-          }
-        }
+        "variations": {}
       }
     },
-    "short_description": "Torso is angled backward. In curls, this puts the long head (outer) of the bicep in a deep stretch.",
+    "short_description": "Torso is tilted backward. Shifts load to the upper chest, front delts, and long-head of the biceps.",
+    "angle_range": {"min": 5, "max": 85, "step": 5, "default": 45},
+    "allow_torso_orientations": true,
     "sort_order": 1,
     "icon": "",
     "is_active": true
@@ -61,105 +51,56 @@
   {
     "id": "DECLINED",
     "label": "Declined",
-    "common_names": ["Angled Down", "Head Below Hips"],
+    "common_names": ["Angled Down", "Head Down", "Negative Slope"],
     "delta_rules": {
+      "PRESS": {
+        "delta": {
+          "CHEST_LOWER": 0.20,
+          "CHEST_MID": -0.10
+        },
+        "option_planes": {},
+        "variations": {}
+      },
       "AB_CRUNCH": {
         "delta": {
           "ABS_UPPER": 0.20
         },
         "option_planes": {},
         "variations": {}
-      },
-      "PRESS": {
-        "delta": {
-          "CHEST_LOWER": 0.15
-        },
-        "option_planes": {},
-        "variations": {}
       }
     },
-    "short_description": "Torso is angled downward. Increases the demand on the lower chest or upper abs.",
+    "short_description": "Torso is tilted downward. Shifts load to the lower chest and increases abdominal tension.",
+    "angle_range": {"min": -5, "max": -60, "step": 5, "default": -15},
+    "allow_torso_orientations": true,
     "sort_order": 2,
     "icon": "",
     "is_active": true
   },
   {
-    "id": "PRONE",
-    "label": "Prone",
-    "common_names": ["Lying Face Down", "Chest Supported"],
+    "id": "UPRIGHT",
+    "label": "Upright",
+    "common_names": ["Seated", "Vertical", "90 Degrees"],
     "delta_rules": {
-      "HORIZONTAL_ROW": {
-        "delta": {
-          "BACK_MID": 0.15,
-          "CORE": -0.30
-        },
-        "option_planes": {},
-        "variations": {}
-      },
       "LEG_CURL": {
         "delta": {
-          "HAMSTRINGS": -0.10,
-          "CALVES": 0.05
+          "HAMSTRINGS": 0.20,
+          "HAMSTRING_INNER": 0.10
+        },
+        "option_planes": {},
+        "variations": {}
+      },
+      "AB_CRUNCH": {
+        "delta": {
+          "ABS_LOWER": 0.15
         },
         "option_planes": {},
         "variations": {}
       }
     },
-    "short_description": "Lying flat on the stomach. Removes core stability requirements and isolates the target.",
+    "short_description": "Torso is perfectly vertical. Maximizes hamstring stretch in leg curls and lower-ab recruitment in core work.",
+    "angle_range": {"min": 90, "max": 90, "step": 0, "default": 90},
+    "allow_torso_orientations": false,
     "sort_order": 3,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "SUPINE",
-    "label": "Supine",
-    "common_names": ["Lying Face Up", "Flat on Back"],
-    "delta_rules": {
-      "LEG_RAISE": {
-        "delta": {
-          "ABS_LOWER": 0.15,
-          "HIP_FLEXORS": -0.10
-        },
-        "option_planes": {},
-        "variations": {}
-      },
-      "CURL": {
-        "delta": {
-          "BICEP_INNER": 0.10
-        },
-        "option_planes": {},
-        "variations": {}
-      }
-    },
-    "short_description": "Lying flat on the back. Increases stability and changes the resistance arc for core/arms.",
-    "sort_order": 4,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "BENT_OVER",
-    "label": "Bent Over",
-    "common_names": ["Hinged Torso", "Parallel to Floor"],
-    "delta_rules": {
-      "HORIZONTAL_ROW": {
-        "delta": {
-          "BACK_LOWER": 0.25,
-          "CORE": 0.20
-        },
-        "option_planes": {},
-        "variations": {}
-      },
-      "REVERSE_FLY": {
-        "delta": {
-          "DELTS_REAR": 0.20,
-          "BACK_LOWER": 0.15
-        },
-        "option_planes": {},
-        "variations": {}
-      }
-    },
-    "short_description": "Torso is hinged forward, usually parallel to the floor. Greatly increases spinal erector demand.",
-    "sort_order": 5,
     "icon": "",
     "is_active": true
   }

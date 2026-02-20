@@ -141,6 +141,11 @@ export interface DeltaModifier {
   delta_rules?: string;
 }
 
+export interface TorsoAngle extends DeltaModifier {
+  angle_range?: string;
+  allow_torso_orientations?: number;
+}
+
 let dbInstance: SQLite.SQLiteDatabase | null = null;
 
 export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
@@ -622,7 +627,7 @@ export async function getGripTypeVariations(): Promise<GripTypeVariation[]> {
 /**
  * Get all delta modifier records from a given table
  */
-export async function getDeltaModifiers(table: 'foot_positions' | 'stance_types' | 'stance_widths' | 'torso_angles' | 'support_structures' | 'elbow_relationship' | 'loading_aids'): Promise<DeltaModifier[]> {
+export async function getDeltaModifiers(table: 'foot_positions' | 'stance_types' | 'stance_widths' | 'torso_angles' | 'torso_orientations' | 'support_structures' | 'elbow_relationship' | 'loading_aids'): Promise<DeltaModifier[]> {
   const db = await getDatabase();
   return await db.getAllAsync<DeltaModifier>(
     `SELECT * FROM ${table} WHERE is_active = 1 ORDER BY sort_order, label`

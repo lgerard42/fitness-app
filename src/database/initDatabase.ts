@@ -5,7 +5,7 @@
 import * as SQLite from 'expo-sqlite';
 
 const DATABASE_NAME = 'workout.db';
-const DATABASE_VERSION = 16;
+const DATABASE_VERSION = 17;
 
 export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
   const db = await SQLite.openDatabaseAsync(DATABASE_NAME);
@@ -66,6 +66,9 @@ export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
     }
     if (currentVersion < 16) {
       await migrateToV16(db);
+    }
+    if (currentVersion < 17) {
+      await migrateToV17(db);
     }
     await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
   }
@@ -429,6 +432,22 @@ async function createTables(db: SQLite.SQLiteDatabase) {
   // TORSO_ANGLES table
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS torso_angles (
+      id TEXT PRIMARY KEY,
+      label TEXT NOT NULL,
+      common_names TEXT,
+      icon TEXT,
+      short_description TEXT,
+      delta_rules TEXT DEFAULT '{}',
+      angle_range TEXT DEFAULT '{}',
+      allow_torso_orientations INTEGER DEFAULT 0,
+      sort_order INTEGER DEFAULT 0,
+      is_active INTEGER DEFAULT 1
+    );
+  `);
+
+  // TORSO_ORIENTATIONS table
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS torso_orientations (
       id TEXT PRIMARY KEY,
       label TEXT NOT NULL,
       common_names TEXT,
@@ -805,6 +824,34 @@ async function migrateToV16(db: SQLite.SQLiteDatabase) {
     await seedMotionData(db);
   } catch (e) {
     console.warn('migrateToV16: failed', e);
+  }
+}
+
+async function migrateToV17(db: SQLite.SQLiteDatabase) {
+  try {
+    const addCol = async (table: string, col: string, def = '') => {
+      try {
+        await db.execAsync(`ALTER TABLE ${table} ADD COLUMN ${col} TEXT DEFAULT '${def}'`);
+      } catch { /* column already exists */ }
+    };
+
+    await addCol('torso_angles', 'angle_range', '{}');
+    await addCol('torso_angles', 'allow_torso_orientations', '0');
+
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS torso_orientations (
+        id TEXT PRIMARY KEY,
+        label TEXT NOT NULL,
+        common_names TEXT,
+        icon TEXT,
+        short_description TEXT,
+        delta_rules TEXT DEFAULT '{}',
+        sort_order INTEGER DEFAULT 0,
+        is_active INTEGER DEFAULT 1
+      );
+    `);
+  } catch (e) {
+    console.warn('migrateToV17: failed', e);
   }
 }
 
@@ -1222,6 +1269,7 @@ async function seedGripData(db: SQLite.SQLiteDatabase) {
     const stanceTypes = require('./tables/stanceTypes.json') as Record<string, unknown>[];
     const stanceWidths = require('./tables/stanceWidths.json') as Record<string, unknown>[];
     const torsoAngles = require('./tables/torsoAngles.json') as Record<string, unknown>[];
+    const torsoOrientations = require('./tables/torsoOrientations.json') as Record<string, unknown>[];
     const supportStructures = require('./tables/supportStructures.json') as Record<string, unknown>[];
     const elbowRelationship = require('./tables/elbowRelationship.json') as Record<string, unknown>[];
     const loadingAids = require('./tables/loadingAids.json') as Record<string, unknown>[];
@@ -1232,6 +1280,7 @@ async function seedGripData(db: SQLite.SQLiteDatabase) {
     await db.execAsync('DELETE FROM foot_positions');
     await db.execAsync('DELETE FROM stance_types');
     await db.execAsync('DELETE FROM stance_widths');
+    await db.execAsync('DELETE FROM torso_orientations');
     await db.execAsync('DELETE FROM torso_angles');
     await db.execAsync('DELETE FROM support_structures');
     await db.execAsync('DELETE FROM elbow_relationship');
@@ -1305,7 +1354,24 @@ async function seedGripData(db: SQLite.SQLiteDatabase) {
     await seedDeltaTable('foot_positions', footPositions);
     await seedDeltaTable('stance_types', stanceTypes);
     await seedDeltaTable('stance_widths', stanceWidths);
-    await seedDeltaTable('torso_angles', torsoAngles);
+    for (const row of torsoAngles) {
+      await db.runAsync(
+        `INSERT OR REPLACE INTO torso_angles (id, label, common_names, icon, short_description, delta_rules, angle_range, allow_torso_orientations, sort_order, is_active)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        str(row.id),
+        str(row.label),
+        Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
+        str(row.icon),
+        str(row.short_description),
+        json(row.delta_rules),
+        json(row.angle_range),
+        row.allow_torso_orientations ? 1 : 0,
+        num(row.sort_order, 0),
+        row.is_active !== false ? 1 : 0
+      );
+    }
+
+    await seedDeltaTable('torso_orientations', torsoOrientations);
     await seedDeltaTable('support_structures', supportStructures);
     await seedDeltaTable('elbow_relationship', elbowRelationship);
     await seedDeltaTable('loading_aids', loadingAids);

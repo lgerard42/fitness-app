@@ -319,6 +319,23 @@ export const TABLE_REGISTRY: TableSchema[] = [
       { name: 'icon', type: 'string', defaultValue: '' },
       { name: 'short_description', type: 'string' },
       { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
+      { name: 'angle_range', type: 'json', jsonShape: 'free' },
+      { name: 'allow_torso_orientations', type: 'boolean', defaultValue: false },
+    ]),
+  },
+  {
+    key: 'torsoOrientations',
+    file: 'torsoOrientations.json',
+    label: 'Torso Orientations',
+    group: 'Grips & Stance',
+    idField: 'id',
+    labelField: 'label',
+    parentTableKey: 'torsoAngles',
+    fields: baseFields([
+      { name: 'common_names', type: 'string[]', defaultValue: [] },
+      { name: 'icon', type: 'string', defaultValue: '' },
+      { name: 'short_description', type: 'string' },
+      { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
     ]),
   },
   {

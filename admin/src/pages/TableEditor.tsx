@@ -6,6 +6,7 @@ import { api, type TableSchema, type TableField, type FKRef } from '../api';
 import RowEditor from '../components/RowEditor';
 import ColumnSettings from '../components/ColumnSettings';
 import FilterBar, { type FilterRule } from '../components/FilterBar';
+import ImportRowsModal from '../components/ImportRowsModal';
 
 interface TableEditorProps {
   schemas: TableSchema[];
@@ -146,6 +147,7 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
   const [deleteLabel, setDeleteLabel] = useState('');
   const [reassignTarget, setReassignTarget] = useState('');
   const [showColumnSettings, setShowColumnSettings] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [columnOrder, setColumnOrder] = useState<string[]>([]);
   const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
@@ -613,6 +615,69 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
     }
   }, [schema, rows, columnOrder, refData]);
 
+  const handleImportRows = useCallback(async (
+    importRows: Record<string, unknown>[],
+    mode: 'upsert' | 'replace'
+  ): Promise<{ inserted: number; updated: number; skipped: number; errors: string[] }> => {
+    if (!key || !schema) return { inserted: 0, updated: 0, skipped: 0, errors: ['No table selected'] };
+
+    // If replace mode, delete all existing rows first
+    if (mode === 'replace') {
+      const errors: string[] = [];
+      for (const row of rows) {
+        const id = row[schema.idField];
+        if (id != null) {
+          try {
+            await api.deleteRow(key, String(id), { breakLinks: true });
+          } catch (err) {
+            errors.push(`Failed to delete row "${id}": ${err}`);
+          }
+        }
+      }
+      // Reload to get fresh state after deletions
+      await loadData();
+    }
+
+    const existingById: Record<string, boolean> = {};
+    for (const r of rows) {
+      const id = r[schema.idField];
+      if (id != null) existingById[String(id)] = true;
+    }
+
+    let inserted = 0, updated = 0, skipped = 0;
+    const errors: string[] = [];
+
+    for (const row of importRows) {
+      const id = row[schema.idField];
+      if (id == null || String(id) === '') {
+        skipped++;
+        continue;
+      }
+      try {
+        if (mode === 'replace' || !existingById[String(id)]) {
+          await api.addRow(key, row);
+          inserted++;
+          existingById[String(id)] = true;
+        } else {
+          await api.updateRow(key, String(id), row);
+          updated++;
+        }
+      } catch (err) {
+        errors.push(`Row "${id}": ${err}`);
+        skipped++;
+      }
+    }
+
+    await loadData();
+    onDataChange();
+    if (mode === 'replace') {
+      toast.success(`Replace complete: ${inserted} rows imported`);
+    } else {
+      toast.success(`Import complete: ${inserted} added, ${updated} updated`);
+    }
+    return { inserted, updated, skipped, errors };
+  }, [key, schema, rows, loadData, onDataChange]);
+
   const handleSave = async (row: Record<string, unknown>) => {
     if (!key || !schema) return;
     try {
@@ -856,6 +921,14 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
           >
             <span>📋</span>
             Copy Table
+          </button>
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 text-sm font-medium flex items-center gap-2"
+            title="Import rows from CSV or pasted data"
+          >
+            <span>📥</span>
+            Import Rows
           </button>
           <button
             onClick={handleAdd}
@@ -1204,6 +1277,15 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
           columnOrder={columnSettingsData.columnOrder}
           onSave={saveColumnSettings}
           onClose={() => setShowColumnSettings(false)}
+        />
+      )}
+
+      {showImportModal && schema && (
+        <ImportRowsModal
+          schema={schema}
+          existingRows={rows}
+          onImport={handleImportRows}
+          onClose={() => setShowImportModal(false)}
         />
       )}
     </div>

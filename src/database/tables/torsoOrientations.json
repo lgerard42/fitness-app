@@ -1,0 +1,87 @@
+[
+  {
+    "id": "PRONE",
+    "label": "Prone",
+    "common_names": ["Face Down", "Front Facing", "Anterior Brace"],
+    "delta_rules": {
+      "HORIZONTAL_ROW": {
+        "delta": {
+          "BACK_MID": 0.10,
+          "CORE": 0.15
+        },
+        "option_planes": {},
+        "variations": {}
+      },
+      "LEG_CURL": {
+        "delta": {
+          "HAMSTRINGS": -0.05,
+          "CALVES": 0.05
+        },
+        "option_planes": {},
+        "variations": {}
+      }
+    },
+    "short_description": "The front of the body faces the resistance or the floor. Increases engagement of the posterior chain stabilizers.",
+    "sort_order": 0,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "SUPINE",
+    "label": "Supine",
+    "common_names": ["Face Up", "Back Facing", "Posterior Brace"],
+    "delta_rules": {
+      "PRESS": {
+        "delta": {
+          "CHEST": 0.05
+        },
+        "option_planes": {},
+        "variations": {}
+      },
+      "LEG_RAISE": {
+        "delta": {
+          "ABS_LOWER": 0.15,
+          "HIP_FLEXORS": -0.10
+        },
+        "option_planes": {},
+        "variations": {}
+      },
+      "CURL": {
+        "delta": {
+          "BICEP_INNER": 0.10
+        },
+        "option_planes": {},
+        "variations": {}
+      }
+    },
+    "short_description": "The back of the body faces the resistance or the floor. Common for pressing and core-lifting movements.",
+    "sort_order": 1,
+    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "SIDE_LYING",
+    "label": "Side-Lying",
+    "common_names": ["Lateral Facing", "Side On"],
+    "delta_rules": {
+      "HIP_ABDUCTION": {
+        "delta": {
+          "GLUTE_MEDIUS": 0.20
+        },
+        "option_planes": {},
+        "variations": {}
+      },
+      "ROTATION": {
+        "delta": {
+          "OBLIQUES": 0.15
+        },
+        "option_planes": {},
+        "variations": {}
+      }
+    },
+    "short_description": "The side of the body faces the floor or resistance. Isolates lateral stabilizers like the glute medius and obliques.",
+    "sort_order": 2,
+    "icon": "",
+    "is_active": true
+  }
+]

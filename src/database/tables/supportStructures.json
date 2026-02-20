@@ -2,95 +2,130 @@
   {
     "id": "UNSUPPORTED",
     "label": "Unsupported",
-    "common_names": ["Free Standing", "No Brace", "In Space"],
+    "common_names": [
+      "Free Standing",
+      "No Brace",
+      "In Space"
+    ],
     "delta_rules": {
-      "PRESS": {
+      "HORIZONTAL_ROW": {
         "delta": {
           "CORE": 0.25,
-          "CHEST": -0.10
+          "BACK_LOWER": 0.2
         },
         "option_planes": {},
         "variations": {}
       },
-      "HORIZONTAL_ROW": {
+      "PRESS": {
         "delta": {
           "CORE": 0.25,
-          "BACK_LOWER": 0.20
+          "CHEST": -0.1
         },
         "option_planes": {},
         "variations": {}
       }
     },
-    "short_description": "No external bracing. The body must provide all stability internally.",
+    "short_description": "No external bracing. The body must provide all stability internally. Highest core/lower back demand.",
     "sort_order": 0,
-    "icon": "",
     "is_active": true
   },
   {
-    "id": "TORSO_BRACED",
-    "label": "Torso Braced",
-    "common_names": ["Chest Supported", "Back Supported", "Chest on Pad"],
-    "delta_rules": {
-      "HORIZONTAL_ROW": {
-        "delta": {
-          "CORE": -0.30,
-          "BACK_LOWER": -0.25,
-          "BACK_MID": 0.10
-        },
-        "option_planes": {},
-        "variations": {}
-      },
-      "PRESS": {
-        "delta": {
-          "CHEST": 0.10,
-          "TRICEPS": 0.05,
-          "CORE": -0.15
-        },
-        "option_planes": {},
-        "variations": {}
-      }
-    },
-    "short_description": "The torso is fully supported (lying or leaning). Eliminates core and lower back demand to maximize primary target isolation.",
-    "sort_order": 1,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "LIMB_BRACED",
-    "label": "Limb Braced",
-    "common_names": ["One-Hand Support", "Arm Braced", "Leg Braced"],
+    "id": "SINGLE_LIMB_BRACED",
+    "label": "Single-Limb Braced",
+    "common_names": [
+      "3-Point Stance",
+      "One Hand Braced",
+      "One-Arm Support"
+    ],
     "delta_rules": {
       "HORIZONTAL_ROW": {
         "delta": {
           "CORE": -0.15,
-          "BACK_LOWER": -0.10
+          "BACK_LOWER": -0.15
         },
         "option_planes": {},
         "variations": {}
       },
       "CURL": {
         "delta": {
-          "BICEP_INNER": 0.10,
+          "BICEP_INNER": 0.1,
           "SHOULDERS": -0.15
         },
         "option_planes": {},
         "variations": {}
       }
     },
-    "short_description": "An arm or leg is used as a kickstand or brace. Significantly reduces stability demand without fully offloading the torso.",
+    "short_description": "One limb (hand or foot) is used for balance. Reduces spinal load but still requires rotational core stability.",
+    "sort_order": 1,
+    "is_active": true
+  },
+  {
+    "id": "DOUBLE_LIMB_BRACED",
+    "label": "Double-Limb Braced",
+    "common_names": [
+      "4-Point Stance",
+      "Hand and Knee Braced",
+      "Two-Point Support"
+    ],
+    "delta_rules": {
+      "HORIZONTAL_ROW": {
+        "delta": {
+          "CORE": -0.25,
+          "BACK_LOWER": -0.2
+        },
+        "option_planes": {},
+        "variations": {}
+      }
+    },
+    "short_description": "Two limbs are used for bracing (e.g., knee and hand on a bench). Provides high stability and eliminates most rotational demand.",
     "sort_order": 2,
-    "icon": "",
+    "is_active": true
+  },
+  {
+    "id": "TORSO_BRACED",
+    "label": "Torso Braced",
+    "common_names": [
+      "Chest Supported",
+      "Back Supported",
+      "Lying on Bench"
+    ],
+    "delta_rules": {
+      "HORIZONTAL_ROW": {
+        "delta": {
+          "CORE": -0.35,
+          "BACK_LOWER": -0.3,
+          "BACK_MID": 0.1
+        },
+        "option_planes": {},
+        "variations": {}
+      },
+      "PRESS": {
+        "delta": {
+          "CHEST": 0.1,
+          "TRICEPS": 0.05,
+          "CORE": -0.2
+        },
+        "option_planes": {},
+        "variations": {}
+      }
+    },
+    "short_description": "The torso is fully supported by a pad or bench. Maximum isolation of the target muscles; core and lower back are completely offloaded.",
+    "sort_order": 3,
     "is_active": true
   },
   {
     "id": "ELBOW_FIXED",
     "label": "Elbow Fixed",
-    "common_names": ["Preacher Pad", "Elbow Braced", "Arm Blaster"],
+    "common_names": [
+      "Preacher Pad",
+      "Elbow Braced",
+      "Arm Blaster"
+    ],
     "delta_rules": {
       "CURL": {
         "delta": {
           "BICEP_INNER": 0.15,
-          "BRACHIALIS": 0.10,
+          "BRACHIALIS": 0.1,
           "SHOULDERS": -0.25
         },
         "option_planes": {},
@@ -98,7 +133,7 @@
       },
       "EXTENSION_ARM": {
         "delta": {
-          "TRICEPS": 0.10,
+          "TRICEPS": 0.1,
           "SHOULDERS": -0.15
         },
         "option_planes": {},
@@ -106,27 +141,29 @@
       }
     },
     "short_description": "The elbows are pinned against a fixed surface. Eliminates all shoulder cheating and isolates the upper arm.",
-    "sort_order": 3,
-    "icon": "",
+    "sort_order": 4,
     "is_active": true
   },
   {
     "id": "LOWER_BODY_LOCKED",
     "label": "Lower Body Locked",
-    "common_names": ["Leg Pads", "Knee Brace", "Seated with Pads"],
+    "common_names": [
+      "Leg Pads",
+      "Knee Brace",
+      "Seated with Pads"
+    ],
     "delta_rules": {
       "VERTICAL_PULL": {
         "delta": {
           "LATS": 0.15,
-          "CORE": -0.10
+          "CORE": -0.1
         },
         "option_planes": {},
         "variations": {}
       }
     },
     "short_description": "The lower body is mechanically locked down (like pulldown pads). Allows for force production exceeding body weight.",
-    "sort_order": 4,
-    "icon": "",
+    "sort_order": 5,
     "is_active": true
   }
 ]
