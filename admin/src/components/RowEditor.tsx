@@ -382,6 +382,8 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
                             <MotionPlanesField
                               value={value as Record<string, unknown> | null | undefined}
                               onChange={(v) => update(field.name, v)}
+                              motionId={recordId}
+                              onOpenRow={onOpenRow}
                             />
                           </div>
                         );

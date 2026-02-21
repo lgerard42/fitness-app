@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../../api';
+import { sp } from '../../styles/sidePanelStyles';
 
 interface DeltaRulesFieldProps {
   value: Record<string, Record<string, number>> | null | undefined;
@@ -38,7 +39,7 @@ function DeltaScoreInput({ value, onChange }: { value: number; onChange: (v: num
         else onChange(num);
       }}
       onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }}
-      className="w-14 px-1 py-0.5 border rounded text-xs text-center focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+      className={sp.scoreInput.editable}
     />
   );
 }
@@ -103,13 +104,13 @@ export default function DeltaRulesField({ value, onChange }: DeltaRulesFieldProp
   const availableMotions = allMotions.filter(m => !usedMotionIds.has(m.id));
 
   if (loading) {
-    return <div className="text-xs text-gray-400 py-2">Loading motion and muscle data...</div>;
+    return <div className={sp.loading}>Loading motion and muscle data...</div>;
   }
 
   return (
     <div className="space-y-3">
       {motionEntries.length === 0 ? (
-        <div className="px-3 py-4 text-xs text-gray-400 italic text-center border rounded-lg bg-gray-50">
+        <div className={sp.emptyState.box}>
           No motion delta rules configured
         </div>
       ) : (
@@ -120,18 +121,18 @@ export default function DeltaRulesField({ value, onChange }: DeltaRulesFieldProp
           const deltaCount = Object.keys(delta).length;
 
           return (
-            <div key={motionId} className="bg-white border rounded-lg">
-              <div className="px-3 py-2 bg-gray-50 border-b flex items-center justify-between">
+            <div key={motionId} className={sp.card.list}>
+              <div className={sp.header.base}>
                 <div className="flex items-center gap-2 flex-1">
                   <button
                     type="button"
                     onClick={() => toggleExpand(motionId)}
-                    className="text-xs text-gray-500 w-4 flex-shrink-0 hover:text-gray-700"
+                    className={sp.toggle.base}
                   >
                     {isExp ? '▼' : '▶'}
                   </button>
                   <span className="text-sm font-medium text-gray-700">{motionLabel}</span>
-                  <span className="text-xs text-gray-400">{motionId}</span>
+                  <span className={sp.meta.id}>{motionId}</span>
                   {deltaCount > 0 && (
                     <span className="text-xs text-gray-400 ml-auto">
                       {deltaCount} {deltaCount === 1 ? 'modification' : 'modifications'}
@@ -141,15 +142,15 @@ export default function DeltaRulesField({ value, onChange }: DeltaRulesFieldProp
                 <button
                   type="button"
                   onClick={() => removeMotion(motionId)}
-                  className="text-xs text-red-600 hover:text-red-800 px-2 py-1 hover:bg-red-50 rounded"
+                  className={sp.removeBtn.text}
                 >
                   Remove Motion
                 </button>
               </div>
               {isExp && (
-                <div className="px-3 py-1 border-b bg-red-50">
+                <div className={sp.muscleTreeBg.bordered}>
                   {Object.keys(delta).length === 0 ? (
-                    <div className="px-2 py-2 text-xs text-gray-400 italic text-center">
+                    <div className={sp.emptyState.inline}>
                       No muscle modifications for this motion
                     </div>
                   ) : (
@@ -157,8 +158,8 @@ export default function DeltaRulesField({ value, onChange }: DeltaRulesFieldProp
                       {Object.entries(delta).map(([muscleId, score]) => {
                         const muscleLabel = (allMuscles.find(m => m.id === muscleId)?.label as string) || muscleId;
                         return (
-                          <div key={muscleId} className="flex items-center gap-1.5 px-2 py-0.5 bg-red-50/60 rounded">
-                            <span className="text-xs text-red-800 flex-1">{muscleLabel}</span>
+                          <div key={muscleId} className={sp.treeRow.tertiary}>
+                            <span className={`${sp.treeRow.secondaryLabel} flex-1`}>{muscleLabel}</span>
                             <DeltaScoreInput value={score} onChange={(v) => {
                               const newDelta = { ...delta, [muscleId]: v };
                               updateMotionDelta(motionId, newDelta);
@@ -170,7 +171,7 @@ export default function DeltaRulesField({ value, onChange }: DeltaRulesFieldProp
                                 delete newDelta[muscleId];
                                 updateMotionDelta(motionId, newDelta);
                               }}
-                              className="ml-auto text-[10px] text-red-400 hover:text-red-600"
+                              className={sp.removeBtn.small}
                             >
                               ×
                             </button>
@@ -191,7 +192,7 @@ export default function DeltaRulesField({ value, onChange }: DeltaRulesFieldProp
                           }
                           e.target.value = '';
                         }}
-                        className="text-[10px] px-1 py-0.5 border border-red-300 rounded text-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 mt-1 w-full"
+                        className={`${sp.addDropdown.tree} mt-1 w-full`}
                         defaultValue=""
                       >
                         <option value="">+ muscle modifier...</option>
@@ -206,10 +207,10 @@ export default function DeltaRulesField({ value, onChange }: DeltaRulesFieldProp
         })
       )}
       {availableMotions.length > 0 && (
-        <div className="border rounded-lg bg-gray-50 p-3">
+        <div className={sp.card.section}>
           <select
             onChange={e => { if (e.target.value) addMotion(e.target.value); e.target.value = ''; }}
-            className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+            className={sp.addDropdown.blockNeutral}
             defaultValue=""
           >
             <option value="">+ Add motion...</option>

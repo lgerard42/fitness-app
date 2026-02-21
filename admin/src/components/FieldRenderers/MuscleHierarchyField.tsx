@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { api } from '../../api';
+import { sp } from '../../styles/sidePanelStyles';
 
 interface MuscleHierarchyFieldProps {
   tableKey: 'muscles';
   currentRecordId: string;
   onFieldsChange: (fields: Record<string, string[]>) => void;
+  onOpenRow?: (row: Record<string, unknown>) => void;
 }
 
 interface MuscleRecord {
@@ -212,33 +214,33 @@ export default function MuscleHierarchyField({ tableKey, currentRecordId, onFiel
   }, [currentTier, currentRecord, currentRecordId, primaries, secondaries]);
 
   if (loading) {
-    return <div className="text-xs text-gray-400 py-2">Loading muscle data...</div>;
+    return <div className={sp.loading}>Loading muscle data...</div>;
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-1">
       {/* Primary: list of secondaries with nested tertiaries */}
-      {currentTier === 'primary' && hierarchyItems.map((item) => {
+      {currentTier === 'primary' && currentRecord && hierarchyItems.map((item) => {
         if (item.type !== 'primary-view') return null;
         const { secondary, tertiaries: terts } = item;
         const key = `sec-${secondary.id}`;
         const isExp = expanded.has(key);
         return (
-          <div key={secondary.id} className="bg-white border rounded-lg">
-            <div className="px-3 py-2 bg-gray-50 border-b flex items-center justify-between">
+          <div key={secondary.id} className={sp.card.list}>
+            <div className={sp.header.base}>
               <div className="flex items-center gap-2 flex-1">
-                <button type="button" onClick={() => toggleExpand(key)} className="text-xs text-gray-500 w-4 flex-shrink-0 hover:text-gray-700">
+                <button type="button" onClick={() => toggleExpand(key)} className={sp.toggle.base}>
                   {isExp ? '▼' : '▶'}
                 </button>
                 <span className="text-sm font-medium text-gray-700">{currentRecord.label}</span>
-                <span className="text-xs text-gray-400">{currentRecord.id}</span>
-                <span className="text-xs text-gray-400">→</span>
-                <button type="button" onClick={(e) => handleOpenMuscle(e, secondary.id)} className="text-sm font-medium text-blue-600 hover:underline text-left">{secondary.label}</button>
-                <span className="text-xs text-gray-400">{secondary.id}</span>
-                {terts.length > 0 && <span className="text-xs text-gray-400 ml-auto">({terts.length} tertiary)</span>}
+                <span className={sp.meta.id}>{currentRecord.id}</span>
+                <span className={sp.meta.arrow}>→</span>
+                <button type="button" onClick={(e) => handleOpenMuscle(e, secondary.id)} className={sp.link.small}>{secondary.label}</button>
+                <span className={sp.meta.id}>{secondary.id}</span>
+                {terts.length > 0 && <span className={sp.meta.count}>({terts.length} tertiary)</span>}
               </div>
               <button type="button" onClick={() => unlinkParent(secondary.id, currentRecordId)}
-                className="text-xs text-red-600 hover:text-red-800 px-2 py-1 hover:bg-red-50 rounded ml-2">Remove</button>
+                className={sp.removeBtn.textMl}>Remove</button>
             </div>
             {isExp && (
               <div className="border-t bg-gray-50">
@@ -246,8 +248,8 @@ export default function MuscleHierarchyField({ tableKey, currentRecordId, onFiel
                   <div key={t.id} className="px-3 py-1.5 pl-8">
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-gray-500">•</span>
-                      <button type="button" onClick={(e) => handleOpenMuscle(e, t.id)} className="text-sm text-blue-600 hover:underline text-left">{t.label}</button>
-                      <span className="text-xs text-gray-400">{t.id}</span>
+                      <button type="button" onClick={(e) => handleOpenMuscle(e, t.id)} className={sp.link.small}>{t.label}</button>
+                      <span className={sp.meta.id}>{t.id}</span>
                     </div>
                   </div>
                 ))}
@@ -271,21 +273,21 @@ export default function MuscleHierarchyField({ tableKey, currentRecordId, onFiel
         const key = `sec-${secondary.id}-pri-${primary.id}`;
         const isExp = expanded.has(key);
         return (
-          <div key={primary.id} className="bg-white border rounded-lg">
-            <div className="px-3 py-2 bg-gray-50 border-b flex items-center justify-between">
+          <div key={primary.id} className={sp.card.list}>
+            <div className={sp.header.base}>
               <div className="flex items-center gap-2 flex-1">
-                <button type="button" onClick={() => toggleExpand(key)} className="text-xs text-gray-500 w-4 flex-shrink-0 hover:text-gray-700">
+                <button type="button" onClick={() => toggleExpand(key)} className={sp.toggle.base}>
                   {isExp ? '▼' : '▶'}
                 </button>
-                <button type="button" onClick={(e) => handleOpenMuscle(e, primary.id)} className="text-sm font-medium text-blue-600 hover:underline text-left">{primary.label}</button>
-                <span className="text-xs text-gray-400">{primary.id}</span>
-                <span className="text-xs text-gray-400">→</span>
+                <button type="button" onClick={(e) => handleOpenMuscle(e, primary.id)} className={sp.link.small}>{primary.label}</button>
+                <span className={sp.meta.id}>{primary.id}</span>
+                <span className={sp.meta.arrow}>→</span>
                 <span className="text-sm font-medium text-gray-700">{secondary.label}</span>
-                <span className="text-xs text-gray-400">{secondary.id}</span>
-                {terts.length > 0 && <span className="text-xs text-gray-400 ml-auto">({terts.length} tertiary)</span>}
+                <span className={sp.meta.id}>{secondary.id}</span>
+                {terts.length > 0 && <span className={sp.meta.count}>({terts.length} tertiary)</span>}
               </div>
               <button type="button" onClick={() => unlinkParent(currentRecordId, primary.id)}
-                className="text-xs text-red-600 hover:text-red-800 px-2 py-1 hover:bg-red-50 rounded ml-2">Remove</button>
+                className={sp.removeBtn.textMl}>Remove</button>
             </div>
             {isExp && (
               <div className="border-t bg-gray-50">
@@ -293,8 +295,8 @@ export default function MuscleHierarchyField({ tableKey, currentRecordId, onFiel
                   <div key={t.id} className="px-3 py-1.5 pl-8">
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-gray-500">•</span>
-                      <button type="button" onClick={(e) => handleOpenMuscle(e, t.id)} className="text-sm text-blue-600 hover:underline text-left">{t.label}</button>
-                      <span className="text-xs text-gray-400">{t.id}</span>
+                      <button type="button" onClick={(e) => handleOpenMuscle(e, t.id)} className={sp.link.small}>{t.label}</button>
+                      <span className={sp.meta.id}>{t.id}</span>
                     </div>
                   </div>
                 ))}
@@ -316,27 +318,27 @@ export default function MuscleHierarchyField({ tableKey, currentRecordId, onFiel
         if (item.type !== 'tertiary-view') return null;
         const { secondary, primaries: pris, tertiary } = item;
         return (
-          <div key={secondary.id} className="bg-white border rounded-lg">
-            <div className="px-3 py-2 bg-gray-50 border-b flex items-center justify-between">
+          <div key={secondary.id} className={sp.card.list}>
+            <div className={sp.header.base}>
               <div className="flex items-center gap-2 flex-1 flex-wrap">
                 {pris.length > 0 ? (
                   pris.map((p, i) => (
                     <React.Fragment key={p.id}>
-                      {i > 0 && <span className="text-xs text-gray-400">,</span>}
-                      <button type="button" onClick={(e) => handleOpenMuscle(e, p.id)} className="text-sm font-medium text-blue-600 hover:underline text-left">{p.label}</button>
+                      {i > 0 && <span className={sp.meta.id}>,</span>}
+                      <button type="button" onClick={(e) => handleOpenMuscle(e, p.id)} className={sp.link.small}>{p.label}</button>
                     </React.Fragment>
                   ))
                 ) : (
                   <span className="text-xs text-gray-400 italic">No primary</span>
                 )}
-                <span className="text-xs text-gray-400">→</span>
-                <button type="button" onClick={(e) => handleOpenMuscle(e, secondary.id)} className="text-sm font-medium text-blue-600 hover:underline text-left">{secondary.label}</button>
-                <span className="text-xs text-gray-400">→</span>
+                <span className={sp.meta.arrow}>→</span>
+                <button type="button" onClick={(e) => handleOpenMuscle(e, secondary.id)} className={sp.link.small}>{secondary.label}</button>
+                <span className={sp.meta.arrow}>→</span>
                 <span className="text-sm font-medium text-gray-700">{tertiary.label}</span>
-                <span className="text-xs text-gray-400">{tertiary.id}</span>
+                <span className={sp.meta.id}>{tertiary.id}</span>
               </div>
               <button type="button" onClick={() => unlinkParent(currentRecordId, secondary.id)}
-                className="text-xs text-red-600 hover:text-red-800 px-2 py-1 hover:bg-red-50 rounded ml-2">Remove</button>
+                className={sp.removeBtn.textMl}>Remove</button>
             </div>
           </div>
         );
@@ -358,7 +360,7 @@ export default function MuscleHierarchyField({ tableKey, currentRecordId, onFiel
                 await linkParent(currentRecordId, selectedId);
               }
             }}
-            className="w-full px-3 py-2 border rounded text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            className={sp.addDropdown.blockForm}
           >
             <option value="">
               {currentTier === 'primary' ? 'Add Child Muscle...'
@@ -373,7 +375,7 @@ export default function MuscleHierarchyField({ tableKey, currentRecordId, onFiel
       )}
 
       {hierarchyItems.length === 0 && (
-        <div className="text-xs text-gray-400 py-2 italic">
+        <div className={sp.emptyState.text}>
           No muscles linked. Use the dropdown above to add one.
         </div>
       )}

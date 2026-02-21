@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api';
+import { sp } from '../../styles/sidePanelStyles';
 
 type MotionTableKey = 'motions';
 
@@ -134,7 +135,7 @@ export default function MotionHierarchyField({ tableKey: _tableKey, currentRecor
   }, [isCurrentParent, currentRecordId, parentMotions, childMotions, allMotions, currentMotion]);
 
   if (loading) {
-    return <div className="text-xs text-gray-400 py-2">Loading motion data...</div>;
+    return <div className={sp.loading}>Loading motion data...</div>;
   }
 
   return (
@@ -143,14 +144,14 @@ export default function MotionHierarchyField({ tableKey: _tableKey, currentRecor
         if (item.type !== 'primary-view') return null;
         const { variation } = item;
         return (
-          <div key={variation.id} className="bg-white border rounded-lg">
-            <div className="px-3 py-2 bg-gray-50 border-b flex items-center justify-between">
+          <div key={variation.id} className={sp.card.list}>
+            <div className={sp.header.base}>
               <div className="flex items-center gap-2 flex-1">
-                <Link to="/table/motions" className="text-sm font-medium text-blue-600 hover:underline">{variation.label}</Link>
-                <span className="text-xs text-gray-400">{variation.id}</span>
+                <Link to="/table/motions" className={sp.link.primary}>{variation.label}</Link>
+                <span className={sp.meta.id}>{variation.id}</span>
               </div>
               <button type="button" onClick={() => removeVariationFromPrimary(currentRecordId, variation.id)}
-                className="text-xs text-red-600 hover:text-red-800 px-2 py-1 hover:bg-red-50 rounded ml-2">Remove</button>
+                className={sp.removeBtn.textMl}>Remove</button>
             </div>
           </div>
         );
@@ -160,22 +161,22 @@ export default function MotionHierarchyField({ tableKey: _tableKey, currentRecor
         if (item.type !== 'variation-view') return null;
         const { primary, variation } = item;
         return (
-          <div key={primary?.id || 'no-primary'} className="bg-white border rounded-lg">
-            <div className="px-3 py-2 bg-gray-50 border-b flex items-center justify-between">
+          <div key={primary?.id || 'no-primary'} className={sp.card.list}>
+            <div className={sp.header.base}>
               <div className="flex items-center gap-2 flex-1">
                 {primary ? (
-                  <Link to="/table/motions" className="text-sm font-medium text-blue-600 hover:underline">{primary.label}</Link>
+                  <Link to="/table/motions" className={sp.link.primary}>{primary.label}</Link>
                 ) : (
-                  <span className="text-xs text-gray-400 italic">No parent motion</span>
+                  <span className={`${sp.meta.id} italic`}>No parent motion</span>
                 )}
-                {primary && <span className="text-xs text-gray-400">{primary.id}</span>}
-                <span className="text-xs text-gray-400">→</span>
+                {primary && <span className={sp.meta.id}>{primary.id}</span>}
+                <span className={sp.meta.arrow}>→</span>
                 <span className="text-sm font-medium text-gray-700">{variation.label}</span>
-                <span className="text-xs text-gray-400">{variation.id}</span>
+                <span className={sp.meta.id}>{variation.id}</span>
               </div>
               {primary && (
                 <button type="button" onClick={() => removePrimaryFromVariation(currentRecordId)}
-                  className="text-xs text-red-600 hover:text-red-800 px-2 py-1 hover:bg-red-50 rounded ml-2">Remove</button>
+                  className={sp.removeBtn.textMl}>Remove</button>
               )}
             </div>
           </div>
@@ -190,7 +191,7 @@ export default function MotionHierarchyField({ tableKey: _tableKey, currentRecor
               if (!e.target.value) return;
               await addVariationToPrimary(currentRecordId, e.target.value);
             }}
-            className="flex-grow min-w-0 px-3 py-2 border rounded text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            className={`flex-grow min-w-0 ${sp.addDropdown.blockForm}`}
           >
             <option value="">Add Motion Variation...</option>
             {(availableAddOptions.type === 'variations' ? availableAddOptions.items : []).map(opt => (
@@ -212,7 +213,7 @@ export default function MotionHierarchyField({ tableKey: _tableKey, currentRecor
             if (!e.target.value) return;
             await setPrimaryForVariation(currentRecordId, e.target.value);
           }}
-          className="w-full px-3 py-2 border rounded text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+          className={sp.addDropdown.blockForm}
         >
           <option value="">Set Parent Motion...</option>
           {(availableAddOptions.type === 'primaries' ? availableAddOptions.items : []).map(opt => (
@@ -222,7 +223,7 @@ export default function MotionHierarchyField({ tableKey: _tableKey, currentRecor
       )}
 
       {hierarchyItems.length === 0 && (
-        <div className="text-xs text-gray-400 py-2 italic">
+        <div className={sp.emptyState.text}>
           No motion relationships linked. Use the dropdown above to add one.
         </div>
       )}

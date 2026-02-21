@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { api } from '../../api';
+import { sp } from '../../styles/sidePanelStyles';
 
 type MotionTableKey = 'motions';
 
@@ -222,7 +223,7 @@ function MuscleTargetsSubtree({
 
     if (readOnly || computed) {
       return (
-        <span className={`text-xs font-mono px-1 py-0.5 rounded ${computed ? 'bg-gray-100 text-gray-500 italic' : 'text-gray-500'}`}
+        <span className={computed ? sp.scoreInput.computed : sp.scoreInput.readOnly}
           title={computed ? 'Auto-computed from children' : undefined}>{score}</span>
       );
     }
@@ -239,7 +240,7 @@ function MuscleTargetsSubtree({
           else setScore(path, numVal);
         }}
         onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }}
-        className="w-14 px-1 py-0.5 border rounded text-xs text-center focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+        className={sp.scoreInput.editable} />
     );
   };
 
@@ -257,19 +258,19 @@ function MuscleTargetsSubtree({
         const pIsComputed = sKeys.length > 0;
 
         return (
-          <div key={pId} className="rounded border bg-white">
-            <div className="flex items-center gap-1.5 px-2 py-1 bg-red-50/60">
-              <button type="button" onClick={() => toggleExpanded(pKey)} className="text-[10px] text-gray-500 w-3">
+          <div key={pId} className={sp.card.treeItem}>
+            <div className={sp.treeRow.primary}>
+              <button type="button" onClick={() => toggleExpanded(pKey)} className={sp.toggle.small}>
                 {isExp ? '▼' : '▶'}
               </button>
-              <span className="text-xs font-medium text-red-800">{pLabel}</span>
+              <span className={sp.treeRow.primaryLabel}>{pLabel}</span>
               <ScoreInput path={[pId]} score={pScore} computed={pIsComputed} />
               {!readOnly && (
-                <button type="button" onClick={() => removeKey([pId])} className="ml-auto text-[10px] text-red-400 hover:text-red-600">×</button>
+                <button type="button" onClick={() => removeKey([pId])} className={sp.removeBtn.small}>×</button>
               )}
             </div>
             {isExp && (
-              <div className="pl-4 pr-2 py-1 space-y-1">
+              <div className={sp.treeNest.secondaries}>
                 {sKeys.map(sId => {
                   const sNode = pNode[sId] as Record<string, unknown> | undefined;
                   if (!sNode || typeof sNode !== 'object') return null;
@@ -283,40 +284,40 @@ function MuscleTargetsSubtree({
                   const hasTertiaries = tKeys.length > 0;
 
                   return (
-                    <div key={sId} className="rounded border">
-                      <div className="flex items-center gap-1.5 px-2 py-0.5 bg-red-50/60">
+                    <div key={sId} className={sp.card.treeItemFlat}>
+                      <div className={sp.treeRow.secondary}>
                         {hasTertiaries ? (
-                          <button type="button" onClick={() => toggleExpanded(sKey)} className="text-[10px] text-gray-500 w-3">
+                          <button type="button" onClick={() => toggleExpanded(sKey)} className={sp.toggle.small}>
                             {isSExp ? '▼' : '▶'}
                           </button>
                         ) : (
-                          <span className="text-[8px] text-gray-400 w-3 flex items-center justify-center">●</span>
+                          <span className={sp.treeRow.leafBullet}>●</span>
                         )}
-                        <span className="text-xs text-red-800">{sLabel}</span>
+                        <span className={sp.treeRow.secondaryLabel}>{sLabel}</span>
                         <ScoreInput path={[pId, sId]} score={sScore} computed={sIsComputed} />
                         {!readOnly && (
-                          <button type="button" onClick={() => removeKey([pId, sId])} className="ml-auto text-[10px] text-red-400 hover:text-red-600">×</button>
+                          <button type="button" onClick={() => removeKey([pId, sId])} className={sp.removeBtn.small}>×</button>
                         )}
                       </div>
                       {hasTertiaries && isSExp && (
-                        <div className="pl-4 pr-2 py-0.5 space-y-0.5">
+                        <div className={sp.treeNest.tertiaries}>
                           {tKeys.map(tId => {
                             const tNode = sNode[tId] as Record<string, unknown> | undefined;
                             const tScore = (tNode?._score as number) ?? 0;
                             const tLabel = getMuscleLabelById(allMuscles, tId);
                             return (
-                              <div key={tId} className="flex items-center gap-1.5 px-2 py-0.5 bg-red-50/60 rounded">
-                                <span className="text-[11px] text-red-800">{tLabel}</span>
+                              <div key={tId} className={sp.treeRow.tertiary}>
+                                <span className={sp.treeRow.tertiaryLabel}>{tLabel}</span>
                                 <ScoreInput path={[pId, sId, tId]} score={tScore} />
                                 {!readOnly && (
-                                  <button type="button" onClick={() => removeKey([pId, sId, tId])} className="ml-auto text-[10px] text-red-400 hover:text-red-600">×</button>
+                                  <button type="button" onClick={() => removeKey([pId, sId, tId])} className={sp.removeBtn.small}>×</button>
                                 )}
                               </div>
                             );
                           })}
                           {!readOnly && availTer.length > 0 && (
                             <select onChange={e => { if (e.target.value) addTertiary(pId, sId, e.target.value); e.target.value = ''; }}
-                              className="text-[10px] px-1 py-0.5 border border-red-300 rounded text-red-500 focus:outline-none focus:ring-1 focus:ring-red-500" defaultValue="">
+                              className={sp.addDropdown.tree} defaultValue="">
                               <option value="">+ tertiary...</option>
                               {availTer.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
                             </select>
@@ -328,7 +329,7 @@ function MuscleTargetsSubtree({
                 })}
                 {!readOnly && availSec.length > 0 && (
                   <select onChange={e => { if (e.target.value) addSecondary(pId, e.target.value); e.target.value = ''; }}
-                    className="text-[10px] px-1 py-0.5 border border-red-300 rounded text-red-500 focus:outline-none focus:ring-1 focus:ring-red-500" defaultValue="">
+                    className={sp.addDropdown.tree} defaultValue="">
                     <option value="">+ secondary...</option>
                     {availSec.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
                   </select>
@@ -340,7 +341,7 @@ function MuscleTargetsSubtree({
       })}
       {!readOnly && unusedPrimaries.length > 0 && (
         <select onChange={e => { if (e.target.value) addPrimary(e.target.value); e.target.value = ''; }}
-          className="text-[10px] px-1 py-0.5 border border-red-300 rounded text-red-500 focus:outline-none focus:ring-1 focus:ring-red-500" defaultValue="">
+          className={sp.addDropdown.tree} defaultValue="">
           <option value="">+ muscle group...</option>
           {unusedPrimaries.map(pm => <option key={pm.id} value={pm.id}>{pm.label}</option>)}
         </select>
@@ -377,20 +378,20 @@ function MuscleTargetsToggle({
   return (
     <>
       <div ref={wrapperRef}
-        className="flex items-center gap-1 cursor-pointer bg-red-50/60 hover:bg-red-100/80 rounded px-1.5 py-0.5 flex-shrink-0"
+        className={sp.badge.toggle}
         onClick={e => { e.stopPropagation(); toggle(mtKey); }}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={() => setShowTooltip(false)}
       >
-        <span className="text-[10px] text-red-800 font-bold flex-shrink-0">Muscles</span>
-        <button type="button" className="text-[10px] text-red-600/70 w-3 flex-shrink-0">
+        <span className={sp.badge.toggleLabel}>Muscles</span>
+        <button type="button" className={sp.badge.toggleArrow}>
           {isExp ? '▼' : '▶'}
         </button>
       </div>
       {showTooltip && tooltipText !== 'none' && createPortal(
-        <div className="fixed z-[100] bg-gray-900 text-white text-xs rounded px-3 py-2 whitespace-pre-line shadow-xl border border-gray-700 pointer-events-none"
+        <div className={`${sp.tooltip.container} whitespace-pre-line`}
           style={{ top: `${tooltipPosition.top}px`, left: `${tooltipPosition.left}px`, width: '320px' }}>
-          <div className="font-semibold mb-1 text-red-300">Muscle Scores:</div>
+          <div className={`${sp.tooltip.header} text-red-300`}>Muscle Scores:</div>
           <div className="font-mono text-[11px]">{tooltipText}</div>
         </div>,
         document.body
@@ -399,199 +400,21 @@ function MuscleTargetsToggle({
   );
 }
 
-interface MotionPlaneRecord {
-  id: string;
-  label: string;
-  delta_rules?: Record<string, Record<string, number>>;
-  [key: string]: unknown;
-}
-
-interface MotionPlanesValue {
-  default: string;
-  options: string[];
-}
-
-function normalizeMotionPlanes(raw: unknown): MotionPlanesValue {
-  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
-    const obj = raw as Record<string, unknown>;
-    return {
-      default: typeof obj.default === 'string' ? obj.default : '',
-      options: Array.isArray(obj.options) ? (obj.options as string[]) : [],
-    };
-  }
-  return { default: '', options: [] };
-}
-
-function MotionPlanesSection({
-  motionId,
-  parentMotionId,
-  motionPlanes,
-  allMotionPlanes,
-  allMuscles,
-  expanded,
-  toggle,
-  onSaveDelta,
-}: {
-  motionId: string;
-  parentMotionId?: string | null;
-  motionPlanes: MotionPlanesValue;
-  allMotionPlanes: MotionPlaneRecord[];
-  allMuscles: Record<string, unknown>[];
-  expanded: Set<string>;
-  toggle: (key: string) => void;
-  onSaveDelta: (planeId: string, motionId: string, delta: Record<string, number> | null) => Promise<void>;
-}) {
-  if (motionPlanes.options.length === 0) return null;
-
-  const selectedPlanes = motionPlanes.options
-    .map(id => allMotionPlanes.find(p => p.id === id))
-    .filter((p): p is MotionPlaneRecord => p != null);
-
-  if (selectedPlanes.length === 0) return null;
-
-  const resolveDeltaKey = (plane: MotionPlaneRecord): string => {
-    if (plane.delta_rules?.[motionId]) return motionId;
-    if (parentMotionId && plane.delta_rules?.[parentMotionId]) return parentMotionId;
-    return motionId;
-  };
-
-  return (
-    <div className="space-y-3">
-      {selectedPlanes.map(plane => {
-        const effectiveMotionKey = resolveDeltaKey(plane);
-        const deltaKey = `delta-${motionId}-${plane.id}`;
-        const isExp = expanded.has(deltaKey);
-        const motionDelta = plane.delta_rules?.[effectiveMotionKey] || {};
-        const deltaCount = Object.keys(motionDelta).length;
-        const isDefault = motionPlanes.default === plane.id;
-
-        return (
-          <div key={plane.id} className="bg-white border rounded-lg">
-            <div className="px-3 py-2 bg-gray-50 border-b flex items-center justify-between">
-              <div className="flex items-center gap-2 flex-1">
-                <button
-                  type="button"
-                  onClick={() => toggle(deltaKey)}
-                  className="text-xs text-gray-500 w-4 flex-shrink-0 hover:text-gray-700"
-                >
-                  {isExp ? '▼' : '▶'}
-                </button>
-                <span className="text-sm font-medium text-gray-700">{plane.label}</span>
-                <span className="text-xs text-gray-400">{plane.id}</span>
-                {isDefault && (
-                  <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded font-medium">Default</span>
-                )}
-                {deltaCount > 0 && (
-                  <span className="text-xs text-gray-400 ml-auto">
-                    {deltaCount} {deltaCount === 1 ? 'modification' : 'modifications'}
-                  </span>
-                )}
-              </div>
-            </div>
-            {isExp && (
-              <div className="px-3 py-1 border-b bg-red-50">
-                {Object.keys(motionDelta).length === 0 ? (
-                  <div className="px-2 py-2 text-xs text-gray-400 italic text-center">
-                    No muscle modifications for this motion plane
-                  </div>
-                ) : (
-                  <div className="space-y-0.5">
-                    {Object.entries(motionDelta).map(([muscleId, score]) => {
-                      const muscleLabel = (allMuscles.find(m => m.id === muscleId)?.label as string) || muscleId;
-                      return (
-                        <div key={muscleId} className="flex items-center gap-1.5 px-2 py-0.5 bg-red-50/60 rounded">
-                          <span className="text-xs text-red-800 flex-1">{muscleLabel}</span>
-                          <DeltaScoreInput value={score} onChange={async (v) => {
-                            const newDelta = { ...motionDelta, [muscleId]: v };
-                            await onSaveDelta(plane.id, effectiveMotionKey, newDelta);
-                          }} />
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              const newDelta = { ...motionDelta };
-                              delete newDelta[muscleId];
-                              await onSaveDelta(plane.id, effectiveMotionKey, Object.keys(newDelta).length > 0 ? newDelta : null);
-                            }}
-                            className="ml-auto text-[10px] text-red-400 hover:text-red-600"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-                {(() => {
-                  const allMuscleOptions = allMuscles.map(m => ({ id: m.id as string, label: m.label as string }));
-                  const unusedMuscles = allMuscleOptions.filter(m => !motionDelta[m.id]);
-                  return unusedMuscles.length > 0 ? (
-                    <select
-                      onChange={async e => {
-                        if (e.target.value) {
-                          const newDelta = { ...motionDelta, [e.target.value]: 0 };
-                          await onSaveDelta(plane.id, effectiveMotionKey, newDelta);
-                        }
-                        e.target.value = '';
-                      }}
-                      className="text-[10px] px-1 py-0.5 border border-red-300 rounded text-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 mt-1 w-full"
-                      defaultValue=""
-                    >
-                      <option value="">+ muscle modifier...</option>
-                      {unusedMuscles.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
-                    </select>
-                  ) : null;
-                })()}
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function DeltaScoreInput({ value, onChange }: { value: number; onChange: (v: number) => void }) {
-  const [local, setLocal] = useState(String(value));
-  const [focused, setFocused] = useState(false);
-
-  useEffect(() => {
-    if (!focused) setLocal(String(value));
-  }, [value, focused]);
-
-  return (
-    <input
-      type="number" step="0.1" value={local}
-      onFocus={() => setFocused(true)}
-      onChange={e => setLocal(e.target.value)}
-      onBlur={e => {
-        setFocused(false);
-        const num = parseFloat(e.target.value);
-        if (isNaN(num) || e.target.value === '') setLocal(String(value));
-        else onChange(num);
-      }}
-      onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }}
-      className="w-14 px-1 py-0.5 border rounded text-xs text-center focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-    />
-  );
-}
 
 export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId, muscleTargets, onFieldsChange }: MotionConfigTreeProps) {
   const [allMotions, setAllMotions] = useState<MotionRecord[]>([]);
   const [allMuscles, setAllMuscles] = useState<Record<string, unknown>[]>([]);
-  const [allMotionPlanes, setAllMotionPlanes] = useState<MotionPlaneRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const loadAll = useCallback(async () => {
     try {
-      const [motions, muscles, planes] = await Promise.all([
+      const [motions, muscles] = await Promise.all([
         api.getTable('motions'),
         api.getTable('muscles'),
-        api.getTable('motionPlanes'),
       ]);
       setAllMotions((motions as MotionRecord[]) || []);
       setAllMuscles((muscles as Record<string, unknown>[]) || []);
-      setAllMotionPlanes((planes as MotionPlaneRecord[]) || []);
     } catch (err) {
       console.error('Failed to load data:', err);
     } finally {
@@ -651,28 +474,11 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
     } catch (err) { console.error('Failed to create variation:', err); alert('Failed to create variation.'); }
   }, [loadAll]);
 
-  const saveDeltaRules = useCallback(async (planeId: string, motionId: string, delta: Record<string, number> | null) => {
-    const plane = allMotionPlanes.find(p => p.id === planeId);
-    if (!plane) return;
-    const newDeltaRules = { ...(plane.delta_rules || {}) };
-    if (delta && Object.keys(delta).length > 0) {
-      newDeltaRules[motionId] = delta;
-    } else {
-      delete newDeltaRules[motionId];
-    }
-    try {
-      await api.updateRow('motionPlanes', planeId, { delta_rules: newDeltaRules });
-      setAllMotionPlanes(prev => prev.map(p => p.id === planeId ? { ...p, delta_rules: newDeltaRules } : p));
-    } catch (err) {
-      console.error('Failed to save delta_rules:', err);
-    }
-  }, [allMotionPlanes]);
-
   const mtProps = useMemo(() => ({
     expanded, toggleExpanded: toggle, allMuscles,
   }), [expanded, toggle, allMuscles]);
 
-  if (loading) return <div className="text-xs text-gray-400 py-2">Loading...</div>;
+  if (loading) return <div className={sp.loading}>Loading...</div>;
 
   const isCurrent = (id: string) => id === currentRecordId;
 
@@ -694,40 +500,25 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
     const current = isCurrent(v.id);
     const { targets, onChange } = getTargetsAndOnChange(v.id, v);
     const varMtKey = `mt-var-${v.id}`;
-    const vPlanes = normalizeMotionPlanes(v.motion_planes);
 
     return (
-      <div key={v.id} className={`rounded border overflow-hidden ${current ? 'ring-2 ring-blue-400' : 'bg-white'}`}>
-        <div className={`px-2 py-1.5 border-b flex items-center gap-2 flex-wrap ${current ? 'bg-blue-100' : 'bg-gray-50'}`}>
+      <div key={v.id} className={`${sp.card.treeItemFlat} overflow-hidden ${current ? 'ring-2 ring-blue-400' : 'bg-white'}`}>
+        <div className={`px-2 py-1.5 ${sp.header.expanded} flex items-center gap-2 flex-wrap ${current ? sp.header.variationCurrent : sp.header.variation}`}>
           <div className="flex items-center gap-2 flex-shrink-0">
             {current ? (
               <span className="text-xs font-bold text-gray-900">{v.label}</span>
             ) : (
               <Link to="/table/motions" className="text-xs font-medium text-blue-600 hover:underline">{v.label}</Link>
             )}
-            <span className="text-[10px] text-gray-400">{v.id}</span>
+            <span className={sp.meta.id}>{v.id}</span>
           </div>
           <MuscleTargetsToggle mtKey={varMtKey} targets={targets} allMuscles={allMuscles} expanded={expanded} toggle={toggle} />
           <button type="button" onClick={() => removeVariationFromPrimary(v.id)}
             className="ml-auto text-[10px] text-red-500 hover:text-red-700 px-1 flex-shrink-0">Remove</button>
         </div>
         {expanded.has(varMtKey) && (
-          <div className="px-2 py-1 border-b bg-red-50">
+          <div className={sp.muscleTreeBg.bordered}>
             <MuscleTargetsSubtree targets={targets} depth={0} onChange={onChange} {...mtProps} />
-          </div>
-        )}
-        {vPlanes.options.length > 0 && (
-          <div className="px-2 py-1 border-t">
-            <MotionPlanesSection
-              motionId={v.id}
-              parentMotionId={v.parent_id}
-              motionPlanes={vPlanes}
-              allMotionPlanes={allMotionPlanes}
-              allMuscles={allMuscles}
-              expanded={expanded}
-              toggle={toggle}
-              onSaveDelta={saveDeltaRules}
-            />
           </div>
         )}
       </div>
@@ -735,7 +526,7 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
   };
 
   const currentMotion = allMotions.find(m => m.id === currentRecordId);
-  if (!currentMotion) return <div className="text-xs text-gray-400 italic">Record not found.</div>;
+  if (!currentMotion) return <div className={sp.emptyState.text}>Record not found.</div>;
 
   const isCurrentParent = !currentMotion.parent_id;
 
@@ -768,47 +559,33 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
       !allMotions.some(c => c.parent_id === v.id)
     );
     const pmMtKey = `mt-pm-${pm.id}`;
-    const pmPlanes = normalizeMotionPlanes(pm.motion_planes);
 
     return (
-      <div key={pm.id} className="border rounded-lg bg-gray-50 overflow-hidden">
-        <div className={`px-3 py-2 border-b flex items-center gap-2 flex-wrap ${current ? 'bg-indigo-100' : 'bg-indigo-50'}`}>
-          <button type="button" onClick={() => toggle(rootKey)} className="text-xs text-gray-500 w-4 flex-shrink-0">{isRootExp ? '▼' : '▶'}</button>
+      <div key={pm.id} className={`${sp.card.container} bg-gray-50`}>
+        <div className={`${sp.header.flex} ${current ? sp.header.primaryCurrent : sp.header.primary}`}>
+          <button type="button" onClick={() => toggle(rootKey)} className={sp.toggle.base}>{isRootExp ? '▼' : '▶'}</button>
           <div className="flex items-center gap-2 flex-shrink-0">
             {current ? (
               <span className="text-sm font-bold text-gray-900">{pm.label}</span>
             ) : (
-              <Link to="/table/motions" className="text-sm font-medium text-blue-600 hover:underline">{pm.label}</Link>
+              <Link to="/table/motions" className={sp.link.primary}>{pm.label}</Link>
             )}
-            <span className="text-xs text-gray-400">{pm.id}</span>
+            <span className={sp.meta.id}>{pm.id}</span>
           </div>
           <MuscleTargetsToggle mtKey={pmMtKey} targets={targets} allMuscles={allMuscles} expanded={expanded} toggle={toggle} />
         </div>
         {expanded.has(pmMtKey) && (
-          <div className="px-3 py-1 border-b bg-red-50">
+          <div className={sp.muscleTreeBg.bordered}>
             <MuscleTargetsSubtree targets={targets} depth={0} onChange={onChange} {...mtProps} />
           </div>
         )}
-        {pmPlanes.options.length > 0 && (
-          <div className="px-3 py-1 border-b">
-            <MotionPlanesSection
-              motionId={pm.id}
-              motionPlanes={pmPlanes}
-              allMotionPlanes={allMotionPlanes}
-              allMuscles={allMuscles}
-              expanded={expanded}
-              toggle={toggle}
-              onSaveDelta={saveDeltaRules}
-            />
-          </div>
-        )}
         {isRootExp && (
-          <div className="pl-4 pr-2 py-2 space-y-2">
+          <div className={sp.treeNest.variations}>
             {displayVars.map(v => renderVariation(v, `pm-${pm.id}`))}
             {!focusVariationId && (
               <div className="flex flex-row gap-2 items-stretch">
                 <select value="" onChange={async e => { if (e.target.value) await addVariationToPrimary(pm.id, e.target.value); }}
-                  className="px-1 py-0.5 border border-blue-300 rounded text-[10px] text-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none">
+                  className={sp.addDropdown.treeBlue}>
                   <option value="">Add Motion Variation...</option>
                   {unlinkedVars.map(v => <option key={v.id} value={v.id}>{v.label} ({v.id})</option>)}
                 </select>
@@ -828,42 +605,28 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
     const isRootExp = expanded.has(rootKey);
     const { targets, onChange } = getTargetsAndOnChange(v.id, v);
     const orphanVarMtKey = `mt-orphan-var-${v.id}`;
-    const orphanPlanes = normalizeMotionPlanes(v.motion_planes);
 
     return (
-      <div className="border rounded-lg bg-gray-50 overflow-hidden">
-        <div className="px-3 py-2 bg-amber-50 border-b flex items-center gap-2 flex-wrap">
-          <button type="button" onClick={() => toggle(rootKey)} className="text-xs text-gray-500 w-4 flex-shrink-0">{isRootExp ? '▼' : '▶'}</button>
+      <div className={`${sp.card.container} bg-gray-50`}>
+        <div className={`${sp.header.flex} ${sp.header.amber}`}>
+          <button type="button" onClick={() => toggle(rootKey)} className={sp.toggle.base}>{isRootExp ? '▼' : '▶'}</button>
           <div className="flex items-center gap-2 flex-shrink-0">
             <span className="text-xs text-amber-600 italic">No Parent Motion</span>
-            <span className="text-xs text-gray-400">→</span>
+            <span className={sp.meta.arrow}>→</span>
             <span className="text-sm font-bold text-gray-900">{v.label}</span>
-            <span className="text-xs text-gray-400">{v.id}</span>
+            <span className={sp.meta.id}>{v.id}</span>
           </div>
           <MuscleTargetsToggle mtKey={orphanVarMtKey} targets={targets} allMuscles={allMuscles} expanded={expanded} toggle={toggle} />
         </div>
         {expanded.has(orphanVarMtKey) && (
-          <div className="px-3 py-1 border-b bg-red-50">
+          <div className={sp.muscleTreeBg.bordered}>
             <MuscleTargetsSubtree targets={targets} depth={0} onChange={onChange} {...mtProps} />
           </div>
         )}
-        {orphanPlanes.options.length > 0 && (
-          <div className="px-3 py-1 border-b">
-            <MotionPlanesSection
-              motionId={v.id}
-              motionPlanes={orphanPlanes}
-              allMotionPlanes={allMotionPlanes}
-              allMuscles={allMuscles}
-              expanded={expanded}
-              toggle={toggle}
-              onSaveDelta={saveDeltaRules}
-            />
-          </div>
-        )}
         {isRootExp && (
-          <div className="pl-4 pr-2 py-2 space-y-2">
+          <div className={sp.treeNest.variations}>
             <select value="" onChange={async e => { if (e.target.value) await setPrimaryForVariation(v.id, e.target.value); }}
-              className="px-1 py-0.5 border border-blue-300 rounded text-[10px] text-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none">
+              className={sp.addDropdown.treeBlue}>
               <option value="">Set Parent Motion...</option>
               {parentMotions.map(p => <option key={p.id} value={p.id}>{p.label} ({p.id})</option>)}
             </select>
@@ -886,7 +649,7 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
         <select value="" onChange={async e => {
           if (e.target.value) await setPrimaryForVariation(focusVariationId!, e.target.value);
         }}
-          className="px-1 py-0.5 border border-blue-300 rounded text-[10px] text-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none">
+          className={sp.addDropdown.treeBlue}>
           <option value="">{rootPrimaries.length > 0 ? 'Move to another Motion...' : 'Set Parent Motion...'}</option>
           {addToPrimaryOptions.map(p => <option key={p.id} value={p.id}>{p.label} ({p.id})</option>)}
         </select>
