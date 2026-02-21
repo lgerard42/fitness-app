@@ -1,4 +1,5 @@
-/* Motion Plane Container Styles - Named classes for easy identification */
+/* Motion plane named classes moved to src/index.css inside @layer components
+   so Tailwind processes @apply correctly. This file kept for reference only. */
 
 .motion-plane-card {
   @apply border rounded-lg overflow-hidden;
