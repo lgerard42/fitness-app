@@ -685,16 +685,6 @@ export default function MotionPlanesField({ value, onChange, motionId, onOpenRow
         })
       )}
 
-      {availablePlanes.length > 0 && (
-        <select
-          onChange={e => { if (e.target.value) addPlane(e.target.value); e.target.value = ''; }}
-          className={sp.addDropdown.block}
-          defaultValue="">
-          <option value="">+ Add Motion Plane...</option>
-          {availablePlanes.map(p => <option key={p.id} value={p.id}>{p.label} ({p.id})</option>)}
-        </select>
-      )}
-
       {allFamilyPlaneInfo.length > 0 && (
         <div
           ref={familyRef}
