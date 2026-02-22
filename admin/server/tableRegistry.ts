@@ -13,9 +13,11 @@ export interface TableField {
   /** For FK / FK[] fields: which field on the referenced table to display (default "label") */
   refLabelField?: string;
   /** For json fields: hint about the shape for specialized editors */
-  jsonShape?: 'muscle_targets' | 'delta_rules' | 'allowed_rules' | 'exercise_input_permissions' | 'motion_planes' | 'free';
+  jsonShape?: 'muscle_targets' | 'delta_rules' | 'allowed_rules' | 'exercise_input_permissions' | 'motion_planes' | 'default_delta_configs' | 'free';
   /** Default value for new rows */
   defaultValue?: unknown;
+  /** Optional display label (defaults to field name) */
+  label?: string;
 }
 
 export interface TableSchema {
@@ -144,7 +146,7 @@ const TABLE_DEFINITIONS: TableSchema[] = [
       { name: 'parent_id', type: 'fk', refTable: 'motions', refLabelField: 'label' },
       { name: 'upper_lower_body', type: 'string' },
       { name: 'muscle_targets', type: 'json', jsonShape: 'muscle_targets' },
-      { name: 'motion_planes', type: 'json', jsonShape: 'motion_planes' },
+      { name: 'default_delta_configs', type: 'json', jsonShape: 'default_delta_configs', label: 'Motion planes', defaultValue: {} },
       { name: 'common_names', type: 'string[]', defaultValue: [] },
       { name: 'short_description', type: 'string' },
     ]),

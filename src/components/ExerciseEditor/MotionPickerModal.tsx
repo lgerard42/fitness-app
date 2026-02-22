@@ -25,6 +25,8 @@ interface Motion {
   upper_lower_body?: string;
   short_description?: string;
   muscle_targets?: Record<string, any>;
+  default_delta_configs?: { motionPlanes?: string };
+  /** @deprecated Use default_delta_configs.motionPlanes */
   motion_planes?: { default?: string; options?: string[] };
   is_active: boolean;
 }
@@ -445,7 +447,7 @@ const MotionPickerModal: React.FC<MotionPickerModalProps> = ({
     if (selectedPrimary && availableVariations.length === 1 && selectedVariation !== availableVariations[0].id) {
       const variation = availableVariations[0];
       const muscles = extractMuscleSelectionsFromTargets(variation.muscle_targets);
-      const defaultPlane = variation.motion_planes?.default;
+      const defaultPlane = variation.default_delta_configs?.motionPlanes ?? variation.motion_planes?.default;
       onSelect(selectedPrimary, variation.id, defaultPlane, muscles);
     }
   }, [selectedPrimary, availableVariations, selectedVariation, onSelect]);
@@ -476,7 +478,7 @@ const MotionPickerModal: React.FC<MotionPickerModalProps> = ({
       return;
     }
     const variation = primaryMotionVariations.find(v => v.id === variationId);
-    const defaultPlane = variation?.motion_planes?.default;
+    const defaultPlane = variation?.default_delta_configs?.motionPlanes ?? variation?.motion_planes?.default;
 
     const muscles = variation ? extractMuscleSelectionsFromTargets(variation.muscle_targets) : undefined;
     onSelect(selectedPrimary, variationId, defaultPlane, muscles);

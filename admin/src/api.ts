@@ -25,6 +25,8 @@ export interface TableField {
   refLabelField?: string;
   jsonShape?: string;
   defaultValue?: unknown;
+  /** Optional display label (defaults to field name) */
+  label?: string;
 }
 
 export interface TableSchema {

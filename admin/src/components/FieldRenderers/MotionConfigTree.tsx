@@ -99,6 +99,7 @@ function MuscleTargetsSubtree({
   expanded,
   toggleExpanded,
   allMuscles,
+  variationTargets,
 }: {
   targets: Record<string, unknown>;
   onChange?: (v: Record<string, unknown>) => void;
@@ -107,8 +108,61 @@ function MuscleTargetsSubtree({
   expanded: Set<string>;
   toggleExpanded: (key: string) => void;
   allMuscles: Record<string, unknown>[];
+  variationTargets?: Record<string, unknown>;
 }) {
   const data = targets && typeof targets === 'object' && !Array.isArray(targets) ? targets : {};
+
+  // Helper to get score from tree (for comparing parent vs variation)
+  const getScoreFromTree = (id: string, tree: Record<string, unknown>): number | null => {
+    if (!tree || typeof tree !== 'object') return null;
+    for (const [pId, pVal] of Object.entries(tree)) {
+      if (pId === '_score') continue;
+      const pNode = pVal as Record<string, unknown>;
+      if (!pNode || typeof pNode !== 'object') continue;
+      if (pId === id) return typeof pNode._score === 'number' ? pNode._score : 0;
+      for (const [sId, sVal] of Object.entries(pNode)) {
+        if (sId === '_score') continue;
+        const sNode = sVal as Record<string, unknown>;
+        if (!sNode || typeof sNode !== 'object') continue;
+        if (sId === id) return typeof sNode._score === 'number' ? sNode._score : 0;
+        for (const [tId, tVal] of Object.entries(sNode)) {
+          if (tId === '_score') continue;
+          const tNode = tVal as Record<string, unknown>;
+          if (tId === id && tNode && typeof tNode === 'object') {
+            return typeof (tNode as Record<string, unknown>)._score === 'number'
+              ? (tNode as Record<string, unknown>)._score as number : 0;
+          }
+        }
+      }
+    }
+    return null;
+  };
+
+  // Build merged tree for read-only parent scores (to show muscles from variation that aren't in parent)
+  const mergedTree = useMemo(() => {
+    if (!readOnly || !variationTargets || typeof variationTargets !== 'object') return data;
+    const base = JSON.parse(JSON.stringify(data));
+    const variation = variationTargets && typeof variationTargets === 'object' ? variationTargets : {};
+    
+    // Merge variation tree into base, adding missing muscles
+    const mergeTree = (varNode: Record<string, unknown>, baseNode: Record<string, unknown>) => {
+      for (const [key, val] of Object.entries(varNode)) {
+        if (key === '_score') continue;
+        if (!baseNode[key]) {
+          baseNode[key] = { _score: 0 };
+        }
+        const childNode = val as Record<string, unknown>;
+        if (childNode && typeof childNode === 'object') {
+          mergeTree(childNode, baseNode[key] as Record<string, unknown>);
+        }
+      }
+    };
+
+    mergeTree(variation, base);
+    return base;
+  }, [data, readOnly, variationTargets]);
+
+  const displayData = readOnly && variationTargets ? mergedTree : data;
 
   const primaryMuscles = useMemo<MuscleOption[]>(() =>
     allMuscles
@@ -210,10 +264,14 @@ function MuscleTargetsSubtree({
       .map(m => ({ id: m.id as string, label: m.label as string }));
 
   const prefix = `mt-d${depth}`;
-  const activePrimaries = Object.keys(data).filter(k => k !== '_score');
-  const unusedPrimaries = primaryMuscles.filter(pm => !activePrimaries.includes(pm.id));
+  const activePrimariesDisplay = Object.keys(displayData).filter(k => k !== '_score');
+  const unusedPrimariesDisplay = primaryMuscles.filter(pm => !activePrimariesDisplay.includes(pm.id));
+  const availSec = (pId: string) => getSecondariesFor(pId).filter(s => {
+    const pNode = displayData[pId] as Record<string, unknown> | undefined;
+    return pNode && typeof pNode === 'object' && !Object.keys(pNode).filter(k => k !== '_score').includes(s.id);
+  });
 
-  const ScoreInput = ({ path, score, computed }: { path: string[]; score: number; computed?: boolean }) => {
+  const ScoreInput = ({ path, score, computed, muscleId }: { path: string[]; score: number; computed?: boolean; muscleId: string }) => {
     const [localValue, setLocalValue] = useState<string>(String(score));
     const [isFocused, setIsFocused] = useState(false);
 
@@ -222,6 +280,28 @@ function MuscleTargetsSubtree({
     }, [score, isFocused]);
 
     if (readOnly || computed) {
+      // For read-only parent scores with variation comparison
+      if (readOnly && variationTargets && !computed) {
+        const baseScore = getScoreFromTree(muscleId, targets && typeof targets === 'object' ? targets : {});
+        const variationScore = getScoreFromTree(muscleId, variationTargets && typeof variationTargets === 'object' ? variationTargets : {});
+        const isNew = baseScore === null && variationScore !== null;
+        const isChanged = baseScore !== null && variationScore !== null && baseScore !== variationScore;
+
+        if (isNew) {
+          return <span className={sp.deltaRules.addBadge}>Add</span>;
+        } else if (isChanged) {
+          return (
+            <>
+              <span className={sp.scoreInput.readOnly}>{baseScore}</span>
+              <span className={sp.deltaRules.arrowSeparator}>→</span>
+              <span className={sp.scoreInput.changed}>{variationScore}</span>
+            </>
+          );
+        } else {
+          return <span className={sp.scoreInput.readOnly}>{baseScore ?? score}</span>;
+        }
+      }
+
       return (
         <span className={computed ? sp.scoreInput.computed : sp.scoreInput.readOnly}
           title={computed ? 'Auto-computed from children' : undefined}>{score}</span>
@@ -245,105 +325,88 @@ function MuscleTargetsSubtree({
   };
 
   return (
-    <div className="space-y-1">
-      {activePrimaries.map(pId => {
-        const pNode = data[pId] as Record<string, unknown> | undefined;
+    <div className={sp.motionConfig.muscleTreeContainer}>
+      {activePrimariesDisplay.map(pId => {
+        const pNode = displayData[pId] as Record<string, unknown> | undefined;
         if (!pNode || typeof pNode !== 'object') return null;
         const pLabel = getMuscleLabelById(allMuscles, pId);
         const pScore = (pNode._score as number) ?? 0;
         const sKeys = Object.keys(pNode).filter(k => k !== '_score');
-        const pKey = `${prefix}-${pId}`;
-        const isExp = expanded.has(pKey);
         const availSec = getSecondariesFor(pId).filter(s => !sKeys.includes(s.id));
         const pIsComputed = sKeys.length > 0;
 
         return (
           <div key={pId} className={sp.card.treeItem}>
             <div className={sp.treeRow.primary}>
-              <button type="button" onClick={() => toggleExpanded(pKey)} className={sp.toggle.small}>
-                {isExp ? '▼' : '▶'}
-              </button>
               <span className={sp.treeRow.primaryLabel}>{pLabel}</span>
-              <ScoreInput path={[pId]} score={pScore} computed={pIsComputed} />
+              <ScoreInput path={[pId]} score={pScore} computed={pIsComputed} muscleId={pId} />
               {!readOnly && (
                 <button type="button" onClick={() => removeKey([pId])} className={sp.removeBtn.small}>×</button>
               )}
             </div>
-            {isExp && (
-              <div className={sp.treeNest.secondaries}>
-                {sKeys.map(sId => {
-                  const sNode = pNode[sId] as Record<string, unknown> | undefined;
-                  if (!sNode || typeof sNode !== 'object') return null;
-                  const sLabel = getMuscleLabelById(allMuscles, sId);
-                  const sScore = (sNode._score as number) ?? 0;
-                  const tKeys = Object.keys(sNode).filter(k => k !== '_score');
-                  const sKey = `${prefix}-${pId}.${sId}`;
-                  const isSExp = expanded.has(sKey);
-                  const availTer = getTertiariesFor(sId).filter(t => !tKeys.includes(t.id));
-                  const sIsComputed = tKeys.length > 0;
-                  const hasTertiaries = tKeys.length > 0;
+            <div className={sp.treeNest.secondaries}>
+              {sKeys.map(sId => {
+                const sNode = pNode[sId] as Record<string, unknown> | undefined;
+                if (!sNode || typeof sNode !== 'object') return null;
+                const sLabel = getMuscleLabelById(allMuscles, sId);
+                const sScore = (sNode._score as number) ?? 0;
+                const tKeys = Object.keys(sNode).filter(k => k !== '_score');
+                const availTer = getTertiariesFor(sId).filter(t => !tKeys.includes(t.id));
+                const sIsComputed = tKeys.length > 0;
 
-                  return (
-                    <div key={sId} className={sp.card.treeItemFlat}>
-                      <div className={sp.treeRow.secondary}>
-                        {hasTertiaries ? (
-                          <button type="button" onClick={() => toggleExpanded(sKey)} className={sp.toggle.small}>
-                            {isSExp ? '▼' : '▶'}
-                          </button>
-                        ) : (
-                          <span className={sp.treeRow.leafBullet}>●</span>
-                        )}
-                        <span className={sp.treeRow.secondaryLabel}>{sLabel}</span>
-                        <ScoreInput path={[pId, sId]} score={sScore} computed={sIsComputed} />
-                        {!readOnly && (
-                          <button type="button" onClick={() => removeKey([pId, sId])} className={sp.removeBtn.small}>×</button>
-                        )}
-                      </div>
-                      {hasTertiaries && isSExp && (
-                        <div className={sp.treeNest.tertiaries}>
-                          {tKeys.map(tId => {
-                            const tNode = sNode[tId] as Record<string, unknown> | undefined;
-                            const tScore = (tNode?._score as number) ?? 0;
-                            const tLabel = getMuscleLabelById(allMuscles, tId);
-                            return (
-                              <div key={tId} className={sp.treeRow.tertiary}>
-                                <span className={sp.treeRow.tertiaryLabel}>{tLabel}</span>
-                                <ScoreInput path={[pId, sId, tId]} score={tScore} />
-                                {!readOnly && (
-                                  <button type="button" onClick={() => removeKey([pId, sId, tId])} className={sp.removeBtn.small}>×</button>
-                                )}
-                              </div>
-                            );
-                          })}
-                          {!readOnly && availTer.length > 0 && (
-                            <select onChange={e => { if (e.target.value) addTertiary(pId, sId, e.target.value); e.target.value = ''; }}
-                              className={sp.addDropdown.tree} defaultValue="">
-                              <option value="">+ tertiary...</option>
-                              {availTer.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
-                            </select>
-                          )}
-                        </div>
+                return (
+                  <div key={sId} className={sp.card.treeItemFlat}>
+                    <div className={sp.treeRow.secondary}>
+                      <span className={sp.treeRow.secondaryLabel}>{sLabel}</span>
+                      <ScoreInput path={[pId, sId]} score={sScore} computed={sIsComputed} muscleId={sId} />
+                      {!readOnly && (
+                        <button type="button" onClick={() => removeKey([pId, sId])} className={sp.removeBtn.small}>×</button>
                       )}
                     </div>
-                  );
-                })}
-                {!readOnly && availSec.length > 0 && (
-                  <select onChange={e => { if (e.target.value) addSecondary(pId, e.target.value); e.target.value = ''; }}
-                    className={sp.addDropdown.tree} defaultValue="">
-                    <option value="">+ secondary...</option>
-                    {availSec.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
-                  </select>
-                )}
-              </div>
-            )}
+                    {(tKeys.length > 0 || availTer.length > 0) && (
+                      <div className={sp.treeNest.tertiaries}>
+                        {tKeys.map(tId => {
+                          const tNode = sNode[tId] as Record<string, unknown> | undefined;
+                          const tScore = (tNode?._score as number) ?? 0;
+                          const tLabel = getMuscleLabelById(allMuscles, tId);
+                          return (
+                            <div key={tId} className={sp.treeRow.tertiary}>
+                              <span className={sp.treeRow.tertiaryLabel}>{tLabel}</span>
+                              <ScoreInput path={[pId, sId, tId]} score={tScore} muscleId={tId} />
+                              {!readOnly && (
+                                <button type="button" onClick={() => removeKey([pId, sId, tId])} className={sp.removeBtn.small}>×</button>
+                              )}
+                            </div>
+                          );
+                        })}
+                        {!readOnly && availTer.length > 0 && (
+                          <select onChange={e => { if (e.target.value) addTertiary(pId, sId, e.target.value); e.target.value = ''; }}
+                            className={sp.addDropdown.tree} defaultValue="">
+                            <option value="">+ tertiary...</option>
+                            {availTer.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+                          </select>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {!readOnly && availSec.length > 0 && (
+                <select onChange={e => { if (e.target.value) addSecondary(pId, e.target.value); e.target.value = ''; }}
+                  className={sp.addDropdown.tree} defaultValue="">
+                  <option value="">+ secondary...</option>
+                  {availSec.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                </select>
+              )}
+            </div>
           </div>
         );
       })}
-      {!readOnly && unusedPrimaries.length > 0 && (
+      {!readOnly && unusedPrimariesDisplay.length > 0 && (
         <select onChange={e => { if (e.target.value) addPrimary(e.target.value); e.target.value = ''; }}
           className={sp.addDropdown.tree} defaultValue="">
           <option value="">+ muscle group...</option>
-          {unusedPrimaries.map(pm => <option key={pm.id} value={pm.id}>{pm.label}</option>)}
+          {unusedPrimariesDisplay.map(pm => <option key={pm.id} value={pm.id}>{pm.label}</option>)}
         </select>
       )}
     </div>
@@ -378,21 +441,17 @@ function MuscleTargetsToggle({
   return (
     <>
       <div ref={wrapperRef}
-        className={sp.badge.toggle}
-        onClick={e => { e.stopPropagation(); toggle(mtKey); }}
+        className={sp.motionConfig.muscleToggleBadge}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={() => setShowTooltip(false)}
       >
-        <span className={sp.badge.toggleLabel}>Muscles</span>
-        <button type="button" className={sp.badge.toggleArrow}>
-          {isExp ? '▼' : '▶'}
-        </button>
+        <span className={sp.motionConfig.muscleToggleLabel}>Muscles</span>
       </div>
       {showTooltip && tooltipText !== 'none' && createPortal(
-        <div className={`${sp.tooltip.container} whitespace-pre-line`}
+        <div className={`${sp.tooltip.container} ${sp.motionConfig.tooltipContainerPreLine}`}
           style={{ top: `${tooltipPosition.top}px`, left: `${tooltipPosition.left}px`, width: '320px' }}>
-          <div className={`${sp.tooltip.header} text-red-300`}>Muscle Scores:</div>
-          <div className="font-mono text-[11px]">{tooltipText}</div>
+          <div className={`${sp.tooltip.header} ${sp.motionConfig.tooltipHeaderRed}`}>Muscle Scores:</div>
+          <div className={sp.motionConfig.tooltipText}>{tooltipText}</div>
         </div>,
         document.body
       )}
@@ -478,7 +537,7 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
     expanded, toggleExpanded: toggle, allMuscles,
   }), [expanded, toggle, allMuscles]);
 
-  if (loading) return <div className={sp.loading}>Loading...</div>;
+  if (loading) return <div className={sp.motionConfig.loading}>Loading...</div>;
 
   const isCurrent = (id: string) => id === currentRecordId;
 
@@ -496,29 +555,41 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
     };
   };
 
-  const renderVariation = (v: MotionRecord, _keyPrefix: string) => {
+  const renderVariation = (v: MotionRecord, _keyPrefix: string, parentTargets?: Record<string, unknown>) => {
     const current = isCurrent(v.id);
     const { targets, onChange } = getTargetsAndOnChange(v.id, v);
     const varMtKey = `mt-var-${v.id}`;
 
     return (
-      <div key={v.id} className={`${sp.card.treeItemFlat} overflow-hidden ${current ? 'ring-2 ring-blue-400' : 'bg-white'}`}>
-        <div className={`px-2 py-1.5 ${sp.header.expanded} flex items-center gap-2 flex-wrap ${current ? sp.header.variationCurrent : sp.header.variation}`}>
-          <div className="flex items-center gap-2 flex-shrink-0">
+      <div key={v.id} className={`${sp.motionConfig.variationCard} ${current ? sp.motionConfig.variationCardCurrent : ''}`}>
+        <div className={`${sp.motionConfig.variationHeader} ${current ? sp.motionConfig.variationHeaderCurrent : ''}`}>
+          <button type="button" onClick={() => toggle(varMtKey)} className={sp.toggle.base}>{expanded.has(varMtKey) ? '▼' : '▶'}</button>
+          <div className={sp.motionConfig.variationLabelContainer}>
             {current ? (
-              <span className="text-xs font-bold text-gray-900">{v.label}</span>
+              <span className={sp.motionConfig.variationLabelCurrent}>{v.label}</span>
             ) : (
-              <Link to="/table/motions" className="text-xs font-medium text-blue-600 hover:underline">{v.label}</Link>
+              <Link to="/table/motions" className={sp.motionConfig.variationLabel}>{v.label}</Link>
             )}
             <span className={sp.meta.id}>{v.id}</span>
           </div>
           <MuscleTargetsToggle mtKey={varMtKey} targets={targets} allMuscles={allMuscles} expanded={expanded} toggle={toggle} />
           <button type="button" onClick={() => removeVariationFromPrimary(v.id)}
-            className="ml-auto text-[10px] text-red-500 hover:text-red-700 px-1 flex-shrink-0">Remove</button>
+            className={sp.motionConfig.removeVariationBtn}>Remove</button>
         </div>
         {expanded.has(varMtKey) && (
           <div className={sp.muscleTreeBg.bordered}>
-            <MuscleTargetsSubtree targets={targets} depth={0} onChange={onChange} {...mtProps} />
+            <div className={sp.motionConfig.scoresRow}>
+              <div className={sp.motionConfig.scoresColumnEditable}>
+                <div className={sp.motionConfig.sectionLabel}>Variation Scores</div>
+                <MuscleTargetsSubtree targets={targets} depth={0} onChange={onChange} {...mtProps} />
+              </div>
+              {parentTargets && Object.keys(parentTargets).filter(k => k !== '_score').length > 0 && (
+                <div className={sp.motionConfig.scoresColumnReadOnly}>
+                  <div className={sp.motionConfig.sectionLabel}>Parent Scores</div>
+                  <MuscleTargetsSubtree targets={parentTargets} depth={0} readOnly variationTargets={targets} {...mtProps} />
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -526,7 +597,7 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
   };
 
   const currentMotion = allMotions.find(m => m.id === currentRecordId);
-  if (!currentMotion) return <div className={sp.emptyState.text}>Record not found.</div>;
+  if (!currentMotion) return <div className={sp.motionConfig.emptyState}>Record not found.</div>;
 
   const isCurrentParent = !currentMotion.parent_id;
 
@@ -560,13 +631,62 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
     );
     const pmMtKey = `mt-pm-${pm.id}`;
 
+    // If viewing a variation, show parent → variation on same row
+    if (focusVariationId && displayVars.length === 1) {
+      const variation = displayVars[0];
+      const varMtKey = `mt-var-${variation.id}`;
+      return (
+        <div key={pm.id} className={sp.motionConfig.primaryCard}>
+          <div className={`${sp.motionConfig.primaryHeader} ${isCurrent(variation.id) ? sp.motionConfig.primaryHeaderCurrent : ''}`}>
+            <button type="button" onClick={() => toggle(varMtKey)} className={sp.toggle.base}>{expanded.has(varMtKey) ? '▼' : '▶'}</button>
+            <div className={sp.motionConfig.parentVariationRow}>
+              {current ? (
+                <span className={sp.motionConfig.primaryLabelCurrent}>{pm.label}</span>
+              ) : (
+                <Link to="/table/motions" className={sp.link.primary}>{pm.label}</Link>
+              )}
+              <span className={sp.meta.id}>{pm.id}</span>
+              <span className={sp.meta.arrow}>→</span>
+              {isCurrent(variation.id) ? (
+                <span className={sp.motionConfig.primaryLabelCurrent}>{variation.label}</span>
+              ) : (
+                <Link to="/table/motions" className={sp.link.primary}>{variation.label}</Link>
+              )}
+              <span className={sp.meta.id}>{variation.id}</span>
+            </div>
+            <MuscleTargetsToggle mtKey={varMtKey} targets={getTargetsAndOnChange(variation.id, variation).targets} allMuscles={allMuscles} expanded={expanded} toggle={toggle} />
+            <button type="button" onClick={() => removeVariationFromPrimary(variation.id)}
+              className={sp.motionConfig.removeVariationBtn}>Remove</button>
+          </div>
+          {expanded.has(`mt-var-${variation.id}`) && (
+            <div className={sp.muscleTreeBg.bordered}>
+              <div className={sp.motionConfig.scoresRow}>
+                <div className={sp.motionConfig.scoresColumnEditable}>
+                  <div className={sp.motionConfig.sectionLabel}>Variation Scores</div>
+                  <MuscleTargetsSubtree targets={getTargetsAndOnChange(variation.id, variation).targets} depth={0} onChange={getTargetsAndOnChange(variation.id, variation).onChange} {...mtProps} />
+                </div>
+                {Object.keys(targets).filter(k => k !== '_score').length > 0 && (
+                  <div className={sp.motionConfig.scoresColumnReadOnly}>
+                    <div className={sp.motionConfig.sectionLabel}>Parent Scores</div>
+                    <MuscleTargetsSubtree targets={targets} depth={0} readOnly variationTargets={getTargetsAndOnChange(variation.id, variation).targets} {...mtProps} />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // Normal parent view (when not viewing a variation)
     return (
-      <div key={pm.id} className={`${sp.card.container} bg-gray-50`}>
-        <div className={`${sp.header.flex} ${current ? sp.header.primaryCurrent : sp.header.primary}`}>
+      <div key={pm.id} className={sp.motionConfig.primaryCard}>
+        <div className={`${sp.motionConfig.primaryHeader} ${current ? sp.motionConfig.primaryHeaderCurrent : ''}`}>
+          <button type="button" onClick={() => toggle(pmMtKey)} className={sp.toggle.base}>{expanded.has(pmMtKey) ? '▼' : '▶'}</button>
           <button type="button" onClick={() => toggle(rootKey)} className={sp.toggle.base}>{isRootExp ? '▼' : '▶'}</button>
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className={sp.motionConfig.primaryLabelContainer}>
             {current ? (
-              <span className="text-sm font-bold text-gray-900">{pm.label}</span>
+              <span className={sp.motionConfig.primaryLabelCurrent}>{pm.label}</span>
             ) : (
               <Link to="/table/motions" className={sp.link.primary}>{pm.label}</Link>
             )}
@@ -580,16 +700,16 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
           </div>
         )}
         {isRootExp && (
-          <div className={sp.treeNest.variations}>
-            {displayVars.map(v => renderVariation(v, `pm-${pm.id}`))}
+          <div className={sp.motionConfig.variationsNest}>
+            {displayVars.map(v => renderVariation(v, `pm-${pm.id}`, targets))}
             {!focusVariationId && (
-              <div className="flex flex-row gap-2 items-stretch">
+              <div className={sp.motionConfig.addVariationSection}>
                 <select value="" onChange={async e => { if (e.target.value) await addVariationToPrimary(pm.id, e.target.value); }}
-                  className={sp.addDropdown.treeBlue}>
+                  className={sp.motionConfig.addVariationDropdown}>
                   <option value="">Add Motion Variation...</option>
                   {unlinkedVars.map(v => <option key={v.id} value={v.id}>{v.label} ({v.id})</option>)}
                 </select>
-                <div className="flex-shrink-0 min-w-fit">
+                <div className={sp.motionConfig.inlineCreatorButtonWrapper}>
                   <InlineVariationCreator onCreate={data => createVariation(pm.id, data)} />
                 </div>
               </div>
@@ -607,13 +727,14 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
     const orphanVarMtKey = `mt-orphan-var-${v.id}`;
 
     return (
-      <div className={`${sp.card.container} bg-gray-50`}>
-        <div className={`${sp.header.flex} ${sp.header.amber}`}>
+      <div className={sp.motionConfig.orphanCard}>
+        <div className={sp.motionConfig.orphanHeader}>
+          <button type="button" onClick={() => toggle(orphanVarMtKey)} className={sp.toggle.base}>{expanded.has(orphanVarMtKey) ? '▼' : '▶'}</button>
           <button type="button" onClick={() => toggle(rootKey)} className={sp.toggle.base}>{isRootExp ? '▼' : '▶'}</button>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <span className="text-xs text-amber-600 italic">No Parent Motion</span>
+          <div className={sp.motionConfig.orphanLabelContainer}>
+            <span className={sp.motionConfig.orphanLabel}>No Parent Motion</span>
             <span className={sp.meta.arrow}>→</span>
-            <span className="text-sm font-bold text-gray-900">{v.label}</span>
+            <span className={sp.motionConfig.orphanLabelCurrent}>{v.label}</span>
             <span className={sp.meta.id}>{v.id}</span>
           </div>
           <MuscleTargetsToggle mtKey={orphanVarMtKey} targets={targets} allMuscles={allMuscles} expanded={expanded} toggle={toggle} />
@@ -624,9 +745,9 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
           </div>
         )}
         {isRootExp && (
-          <div className={sp.treeNest.variations}>
+          <div className={sp.motionConfig.variationsNest}>
             <select value="" onChange={async e => { if (e.target.value) await setPrimaryForVariation(v.id, e.target.value); }}
-              className={sp.addDropdown.treeBlue}>
+              className={sp.motionConfig.setParentDropdown}>
               <option value="">Set Parent Motion...</option>
               {parentMotions.map(p => <option key={p.id} value={p.id}>{p.label} ({p.id})</option>)}
             </select>
@@ -641,7 +762,7 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
     : [];
 
   return (
-    <div className="space-y-2">
+    <div className={sp.motionConfig.container}>
       {rootPrimaries.map(pm => renderPrimaryMotionTree(pm))}
       {orphanVariation && renderOrphanVariation(orphanVariation)}
 
@@ -649,7 +770,7 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
         <select value="" onChange={async e => {
           if (e.target.value) await setPrimaryForVariation(focusVariationId!, e.target.value);
         }}
-          className={sp.addDropdown.treeBlue}>
+          className={sp.motionConfig.setParentDropdown}>
           <option value="">{rootPrimaries.length > 0 ? 'Move to another Motion...' : 'Set Parent Motion...'}</option>
           {addToPrimaryOptions.map(p => <option key={p.id} value={p.id}>{p.label} ({p.id})</option>)}
         </select>
@@ -666,32 +787,32 @@ function InlineVariationCreator({ onCreate }: { onCreate: (data: Record<string, 
   if (!showForm) {
     return (
       <button type="button" onClick={() => setShowForm(true)}
-        className="whitespace-nowrap h-full px-3 py-1.5 text-[10px] bg-blue-50 text-blue-700 rounded border border-blue-200 hover:bg-blue-100">
+        className={sp.motionConfig.inlineCreatorButton}>
         + Create New Variation
       </button>
     );
   }
 
   return (
-    <div className="border rounded p-2 space-y-1.5 bg-blue-50">
-      <div className="flex gap-1.5">
+    <div className={sp.motionConfig.inlineCreatorForm}>
+      <div className={sp.motionConfig.inlineCreatorRow}>
         <input type="text" placeholder="ID" value={newVar.id} onChange={e => setNewVar({ ...newVar, id: e.target.value })}
-          className="flex-1 px-1.5 py-0.5 border rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
+          className={`${sp.motionConfig.inlineCreatorInput} ${sp.motionConfig.inlineCreatorInputFlex1}`} />
         <input type="text" placeholder="Label" value={newVar.label} onChange={e => setNewVar({ ...newVar, label: e.target.value })}
-          className="flex-1 px-1.5 py-0.5 border rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
+          className={`${sp.motionConfig.inlineCreatorInput} ${sp.motionConfig.inlineCreatorInputFlex1}`} />
       </div>
       <input type="text" placeholder="Short Description" value={newVar.short_description}
         onChange={e => setNewVar({ ...newVar, short_description: e.target.value })}
-        className="w-full px-1.5 py-0.5 border rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
-      <div className="flex gap-1.5">
+        className={`${sp.motionConfig.inlineCreatorInput} ${sp.motionConfig.inlineCreatorInputFull}`} />
+      <div className={sp.motionConfig.inlineCreatorRow}>
         <button type="button" disabled={!newVar.id || !newVar.label || creating}
           onClick={async () => {
             setCreating(true);
             await onCreate({ id: newVar.id, label: newVar.label, common_names: [], short_description: newVar.short_description, muscle_targets: {}, sort_order: 0, is_active: true });
             setNewVar({ id: '', label: '', short_description: '' }); setShowForm(false); setCreating(false);
           }}
-          className="px-2 py-0.5 text-xs bg-blue-600 text-white rounded disabled:opacity-50">{creating ? '...' : 'Create'}</button>
-        <button type="button" onClick={() => setShowForm(false)} className="px-2 py-0.5 text-xs bg-gray-200 rounded">Cancel</button>
+          className={sp.motionConfig.inlineCreatorCreateBtn}>{creating ? '...' : 'Create'}</button>
+        <button type="button" onClick={() => setShowForm(false)} className={sp.motionConfig.inlineCreatorCancelBtn}>Cancel</button>
       </div>
     </div>
   );

@@ -927,9 +927,38 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
       if (field.jsonShape === 'muscle_targets' && val && typeof val === 'object') {
         return <MuscleTargetBar targets={val as Record<string, unknown>} />;
       }
+      if (field.jsonShape === 'default_delta_configs' && val && typeof val === 'object' && !Array.isArray(val)) {
+        const ddc = val as { motionPlanes?: string };
+        const def = ddc.motionPlanes ?? '—';
+        const summary = def === '—' ? 'No default plane' : `Default plane: ${def}\n(Plane options are defined on the Motion Planes table.)`;
+        return (
+          <span className="text-xs cursor-help" title={summary}>
+            {def === '—' ? '—' : `motionPlanes: ${def}`}
+          </span>
+        );
+      }
       if (field.jsonShape === 'delta_rules' && val && typeof val === 'object' && !Array.isArray(val)) {
-        const keys = Object.keys(val as Record<string, unknown>);
-        return keys.length === 0 ? <span className="text-gray-300">—</span> : <span className="text-xs">{keys.length} rule(s)</span>;
+        const rules = val as Record<string, Record<string, number>>;
+        const keys = Object.keys(rules);
+        const summary = keys.length === 0
+          ? 'No rules'
+          : keys
+              .map((motionId) => {
+                const muscles = rules[motionId];
+                if (!muscles || typeof muscles !== 'object') return `${motionId}: —`;
+                const parts = Object.entries(muscles)
+                  .map(([muscleId, delta]) => `${muscleId} ${delta >= 0 ? '+' : ''}${delta}`)
+                  .join(', ');
+                return `${motionId}: ${parts || '—'}`;
+              })
+              .join('\n');
+        return keys.length === 0 ? (
+          <span className="text-gray-300">—</span>
+        ) : (
+          <span className="text-xs cursor-help" title={summary}>
+            {keys.length} rule(s)
+          </span>
+        );
       }
       if (field.jsonShape === 'free' && val && typeof val === 'object' && !Array.isArray(val)) {
         const keys = Object.keys(val as Record<string, unknown>);

@@ -176,9 +176,10 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
                 })
                 .map((field) => {
                   const value = data[field.name];
+                  const displayLabel = field.label ?? field.name;
                   const label = (
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {field.name}
+                      {displayLabel}
                       {field.required && <span className="text-red-500 ml-0.5">*</span>}
                       <span className="text-xs text-gray-400 ml-2">{field.type}</span>
                       {field.refTable && <span className="text-xs text-blue-400 ml-1">&rarr; {field.refTable}</span>}
@@ -375,7 +376,7 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
                           </div>
                         );
                       }
-                      if (field.jsonShape === 'motion_planes') {
+                      if (field.jsonShape === 'default_delta_configs') {
                         return (
                           <div key={field.name}>
                             {label}

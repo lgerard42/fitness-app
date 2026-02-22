@@ -75,6 +75,8 @@ export const scoreInput = {
   computed: 'text-xs font-mono px-1 py-0.5 rounded bg-gray-100 text-gray-500 italic',
   /** Read-only score — no background. */
   readOnly: 'text-xs font-mono px-1 py-0.5 rounded text-gray-500',
+  /** Changed "after" score — bold, computed style. */
+  changed: 'text-xs font-mono px-1 py-0.5 rounded bg-gray-100 text-gray-500 italic font-bold',
 };
 
 /* ── Remove (×) buttons ──────────────────────────────────── */
@@ -171,7 +173,7 @@ export const treeNest = {
 /* ── Expanded muscle tree content areas ──────────────────── */
 export const muscleTreeBg = {
   /** Background for expanded muscle targets (with border-b). */
-  bordered: 'px-3 py-1 border-b bg-red-50',
+  bordered: 'px-0 py-0 border-b bg-red-50',
   /** Background for expanded delta/muscle content (no border-b). */
   flat: 'px-3 py-2 bg-red-50',
 };
@@ -202,9 +204,9 @@ export const loading = 'text-xs text-gray-400 py-2';
 /* ── Link styles ─────────────────────────────────────────── */
 export const link = {
   /** Standard blue link. */
-  primary: 'text-sm font-medium text-blue-600 hover:underline',
+  primary: 'text-xs font-medium text-blue-600 hover:underline',
   /** Small link. */
-  small: 'text-sm text-blue-600 hover:underline text-left',
+  small: 'text-xs text-blue-600 hover:underline text-left',
 };
 
 /* ── Motion plane card components ─────────────────────────── */
@@ -276,6 +278,254 @@ export const motionPlane = {
   familyReassign: 'motion-plane-family-reassign',
 };
 
+/* ── Delta rules configurator components ────────────────────── */
+export const deltaRules = {
+  /** Outer container that holds all delta_rules cards and add-motion section. */
+  container: 'delta-rules-container',
+  /** Empty state when no motion rules are configured. */
+  emptyState: 'delta-rules-empty-state',
+  /** Empty state when a motion has no muscle modifications (inside expanded card). */
+  emptyStateInline: 'delta-rules-empty-state-inline',
+  /** Motion card container - base styles. */
+  card: 'delta-rules-card',
+  /** Motion card header - base styles. */
+  header: 'delta-rules-header',
+  /** Motion card header — expanded state (shows border-b). */
+  headerExpanded: 'delta-rules-header-expanded',
+  /** Motion card container — normal state colors. */
+  cardNormal: 'delta-rules-card-normal',
+  /** Motion card container — alert state (no deltas). */
+  cardAlert: 'delta-rules-card-alert',
+  /** Motion card header — normal state colors. */
+  headerNormal: 'delta-rules-header-normal',
+  /** Motion card header — alert state colors. */
+  headerAlert: 'delta-rules-header-alert',
+  /** Motion card label text. */
+  label: 'delta-rules-label',
+  /** Motion card label — normal state color. */
+  labelNormal: 'delta-rules-label-normal',
+  /** Motion card label — alert state color. */
+  labelAlert: 'delta-rules-label-alert',
+  /** Toggle button for expand/collapse. */
+  toggle: 'delta-rules-toggle',
+  /** Motion ID metadata text. */
+  motionId: 'delta-rules-motion-id',
+  /** DeltaBadge outer wrapper. */
+  deltaBadge: 'delta-rules-delta-badge',
+  /** DeltaBadge — alert colors (no deltas). */
+  deltaBadgeAlert: 'delta-rules-delta-badge-alert',
+  /** DeltaBadge — normal colors. */
+  deltaBadgeNormal: 'delta-rules-delta-badge-normal',
+  /** DeltaBadge label text. */
+  deltaBadgeLabel: 'delta-rules-delta-badge-label',
+  /** DeltaBadge arrow indicator. */
+  deltaBadgeArrow: 'delta-rules-delta-badge-arrow',
+  /** Remove motion button (×). */
+  removeBtn: 'delta-rules-remove-btn',
+  /** Expanded content area (muscle modifiers). */
+  expandedContent: 'delta-rules-expanded-content',
+  /** Wrapper for the list of muscle modifier rows. */
+  muscleList: 'delta-rules-muscle-list',
+  /** Muscle modifier row. */
+  muscleRow: 'delta-rules-muscle-row',
+  /** Muscle label text. */
+  muscleLabel: 'delta-rules-muscle-label',
+  /** Remove (×) button on a muscle row. */
+  muscleRemoveBtn: 'delta-rules-muscle-remove-btn',
+  /** Add muscle dropdown. */
+  addMuscleDropdown: 'delta-rules-add-muscle-dropdown',
+  /** Add motion section container. */
+  addMotionSection: 'delta-rules-add-motion-section',
+  /** Add motion dropdown. */
+  addMotionDropdown: 'delta-rules-add-motion-dropdown',
+  /** Add motion optgroup (section header). */
+  addMotionOptgroup: 'delta-rules-add-motion-optgroup',
+  /** Add motion option (individual motion). */
+  addMotionOption: 'delta-rules-add-motion-option',
+  /** Loading state text. */
+  loading: 'delta-rules-loading',
+  /** Empty state for ReadOnlyMuscleTree (no muscle targets). */
+  emptyStateTree: 'delta-rules-empty-state-tree',
+  /** Container for muscle tree (space-y-1). */
+  treeContainer: 'delta-rules-tree-container',
+  /** "Add" badge for new muscles. */
+  addBadge: 'delta-rules-add-badge',
+  /** Arrow separator (→). */
+  arrowSeparator: 'delta-rules-arrow-separator',
+  /** Header flex container (flex items-center gap-2 flex-1 min-w-0). */
+  headerFlex: 'delta-rules-header-flex',
+  /** Side-by-side flex container (flex gap-3). */
+  scoresRow: 'delta-rules-scores-row',
+  /** Side-by-side column (flex-1 min-w-0) - base/default style. */
+  scoresColumn: 'delta-rules-scores-column',
+  /** Side-by-side column (flex-1 min-w-0) - editable/delta modifiers. */
+  scoresColumnEditable: 'delta-rules-scores-column-editable',
+  /** Side-by-side column (flex-1 min-w-0) - read-only/base scores. */
+  scoresColumnReadOnly: 'delta-rules-scores-column-read-only',
+  /** Section label (e.g. "Delta Modifiers", "Base Muscle Scores"). */
+  sectionLabel: 'delta-rules-section-label',
+  /** Tooltip empty state text. */
+  tooltipEmpty: 'delta-rules-tooltip-empty',
+  /** Tooltip entries container. */
+  tooltipEntries: 'delta-rules-tooltip-entries',
+  /** Tooltip entry row. */
+  tooltipEntryRow: 'delta-rules-tooltip-entry-row',
+  /** Tooltip score (font-mono). */
+  tooltipScore: 'delta-rules-tooltip-score',
+};
+
+/* ── Muscle hierarchy configurator components ───────────────── */
+export const muscleHierarchy = {
+  /** Outer container that holds all hierarchy cards. */
+  container: 'muscle-hierarchy-container',
+  /** Loading state text. */
+  loading: 'muscle-hierarchy-loading',
+  /** Hierarchy relationship card. */
+  card: 'muscle-hierarchy-card',
+  /** Card header. */
+  header: 'muscle-hierarchy-header',
+  /** Card header — expanded state (shows border-b). */
+  headerExpanded: 'muscle-hierarchy-header-expanded',
+  /** Current muscle label (bold). */
+  label: 'muscle-hierarchy-label',
+  /** Current muscle label when it's the current record. */
+  currentLabel: 'muscle-hierarchy-current-label',
+  /** Toggle button for expand/collapse. */
+  toggle: 'muscle-hierarchy-toggle',
+  /** Link to open another muscle. */
+  link: 'muscle-hierarchy-link',
+  /** Muscle ID metadata text. */
+  muscleId: 'muscle-hierarchy-muscle-id',
+  /** Arrow separator. */
+  arrow: 'muscle-hierarchy-arrow',
+  /** Count badge (e.g. "(3 tertiary)"). */
+  count: 'muscle-hierarchy-count',
+  /** Remove relationship button. */
+  removeBtn: 'muscle-hierarchy-remove-btn',
+  /** Expanded content area (shows nested tertiaries). */
+  expandedContent: 'muscle-hierarchy-expanded-content',
+  /** Tertiary muscle item row. */
+  tertiaryItem: 'muscle-hierarchy-tertiary-item',
+  /** Bullet icon for tertiary items. */
+  tertiaryBullet: 'muscle-hierarchy-tertiary-bullet',
+  /** Add relationship dropdown. */
+  addDropdown: 'muscle-hierarchy-add-dropdown',
+  /** Empty state text. */
+  emptyState: 'muscle-hierarchy-empty-state',
+  /** Child muscle adder container. */
+  childAdder: 'muscle-hierarchy-child-adder',
+  /** Child muscle adder dropdown. */
+  childAdderDropdown: 'muscle-hierarchy-child-adder-dropdown',
+  /** Child muscle adder button. */
+  childAdderButton: 'muscle-hierarchy-child-adder-button',
+  /** Child muscle adder create button. */
+  childAdderCreateButton: 'muscle-hierarchy-child-adder-create-button',
+  /** Child muscle adder form container. */
+  childAdderForm: 'muscle-hierarchy-child-adder-form',
+  /** Child muscle adder input field. */
+  childAdderInput: 'muscle-hierarchy-child-adder-input',
+  /** Child muscle adder cancel button. */
+  childAdderCancel: 'muscle-hierarchy-child-adder-cancel',
+};
+
+/* ── Motion & muscle config configurator components ──────────── */
+export const motionConfig = {
+  /** Outer container that holds all motion cards. */
+  container: 'motion-config-container',
+  /** Loading state text. */
+  loading: 'motion-config-loading',
+  /** Primary motion card container. */
+  primaryCard: 'motion-config-primary-card',
+  /** Primary motion header. */
+  primaryHeader: 'motion-config-primary-header',
+  /** Primary motion header — current record state. */
+  primaryHeaderCurrent: 'motion-config-primary-header-current',
+  /** Variation card container. */
+  variationCard: 'motion-config-variation-card',
+  /** Variation card — current record state (ring). */
+  variationCardCurrent: 'motion-config-variation-card-current',
+  /** Variation header. */
+  variationHeader: 'motion-config-variation-header',
+  /** Variation header — current record state. */
+  variationHeaderCurrent: 'motion-config-variation-header-current',
+  /** Variation label (link or bold). */
+  variationLabel: 'motion-config-variation-label',
+  /** Variation label — current record (bold). */
+  variationLabelCurrent: 'motion-config-variation-label-current',
+  /** Orphan variation card container. */
+  orphanCard: 'motion-config-orphan-card',
+  /** Orphan variation header. */
+  orphanHeader: 'motion-config-orphan-header',
+  /** Orphan label text. */
+  orphanLabel: 'motion-config-orphan-label',
+  /** Muscle targets toggle badge. */
+  muscleToggleBadge: 'motion-config-muscle-toggle-badge',
+  /** Muscle targets toggle label. */
+  muscleToggleLabel: 'motion-config-muscle-toggle-label',
+  /** Muscle targets toggle arrow. */
+  muscleToggleArrow: 'motion-config-muscle-toggle-arrow',
+  /** Remove variation button. */
+  removeVariationBtn: 'motion-config-remove-variation-btn',
+  /** Variations nest container. */
+  variationsNest: 'motion-config-variations-nest',
+  /** Add variation dropdown. */
+  addVariationDropdown: 'motion-config-add-variation-dropdown',
+  /** Add variation section (with dropdown and create button). */
+  addVariationSection: 'motion-config-add-variation-section',
+  /** Inline variation creator button. */
+  inlineCreatorButton: 'motion-config-inline-creator-button',
+  /** Inline variation creator form container. */
+  inlineCreatorForm: 'motion-config-inline-creator-form',
+  /** Inline variation creator input. */
+  inlineCreatorInput: 'motion-config-inline-creator-input',
+  /** Inline variation creator create button. */
+  inlineCreatorCreateBtn: 'motion-config-inline-creator-create-btn',
+  /** Inline variation creator cancel button. */
+  inlineCreatorCancelBtn: 'motion-config-inline-creator-cancel-btn',
+  /** Set parent motion dropdown. */
+  setParentDropdown: 'motion-config-set-parent-dropdown',
+  /** Empty state text. */
+  emptyState: 'motion-config-empty-state',
+  /** Primary motion label (when current record). */
+  primaryLabelCurrent: 'motion-config-primary-label-current',
+  /** Primary motion label container (flex). */
+  primaryLabelContainer: 'motion-config-primary-label-container',
+  /** Side-by-side flex container for muscle scores. */
+  scoresRow: 'motion-config-scores-row',
+  /** Side-by-side column (flex-1) - base/default style. */
+  scoresColumn: 'motion-config-scores-column',
+  /** Side-by-side column (flex-1) - editable/variation scores. */
+  scoresColumnEditable: 'motion-config-scores-column-editable',
+  /** Side-by-side column (flex-1) - read-only/parent scores. */
+  scoresColumnReadOnly: 'motion-config-scores-column-read-only',
+  /** Section label (e.g. "Variation Scores", "Parent Scores"). */
+  sectionLabel: 'motion-config-section-label',
+  /** Variation header label container (flex). */
+  variationLabelContainer: 'motion-config-variation-label-container',
+  /** Orphan variation label (when current). */
+  orphanLabelCurrent: 'motion-config-orphan-label-current',
+  /** Orphan header label container (flex). */
+  orphanLabelContainer: 'motion-config-orphan-label-container',
+  /** Parent → variation inline container (flex). */
+  parentVariationRow: 'motion-config-parent-variation-row',
+  /** Inline creator form row (flex gap). */
+  inlineCreatorRow: 'motion-config-inline-creator-row',
+  /** Inline creator button wrapper. */
+  inlineCreatorButtonWrapper: 'motion-config-inline-creator-button-wrapper',
+  /** Tooltip text content. */
+  tooltipText: 'motion-config-tooltip-text',
+  /** Tooltip container with pre-line whitespace. */
+  tooltipContainerPreLine: 'motion-config-tooltip-container-pre-line',
+  /** Tooltip header with red text. */
+  tooltipHeaderRed: 'motion-config-tooltip-header-red',
+  /** Inline creator input with flex-1. */
+  inlineCreatorInputFlex1: 'motion-config-inline-creator-input-flex-1',
+  /** Inline creator input with full width. */
+  inlineCreatorInputFull: 'motion-config-inline-creator-input-full',
+  /** Muscle targets subtree container. */
+  muscleTreeContainer: 'motion-config-muscle-tree-container',
+};
+
 /** Convenience re-export for shorter imports: `import { sp } from '...'` */
 export const sp = {
   card,
@@ -294,6 +544,9 @@ export const sp = {
   loading,
   link,
   motionPlane,
+  deltaRules,
+  muscleHierarchy,
+  motionConfig,
 };
 
 // Runtime check: ensure sp is defined

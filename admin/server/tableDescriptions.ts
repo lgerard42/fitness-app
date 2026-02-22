@@ -36,21 +36,21 @@ export const TABLE_DESCRIPTIONS: Record<string, string> = {
 
 **Columns with dependencies:** \`parent_ids\` is a self-referencing list of muscle IDs that define the hierarchy. \`upper_lower\` is used for filtering (e.g. “Upper Body” vs “Lower Body”) in the exercise and motion pickers.`,
 
-  motions: `**What this table is for:** Motions describe how the body moves during an exercise (e.g. Press, Curl, Squat). Rows can be parent motions (e.g. Press) or variations (e.g. Flat Press, Incline Press) linked by \`parent_id\`. Each motion has muscle targets and allowed motion planes used for scoring and exercise configuration.
+  motions: `**What this table is for:** Motions describe how the body moves during an exercise (e.g. Press, Curl, Squat). Rows can be parent motions (e.g. Press) or variations (e.g. Flat Press, Incline Press) linked by \`parent_id\`. Each motion has muscle targets and a default motion plane; which planes apply to a motion is defined by the Motion Planes table’s \`delta_rules\` (keyed by motion ID).
 
-**Depends on:** \`parent_id\` references this same table (parent motion). \`motion_planes\` is a JSON object whose \`default\` and \`options\` values are motion plane IDs from the Motion Planes table—conceptually a dependency on Motion Planes.
+**Depends on:** \`parent_id\` references this same table (parent motion). \`default_delta_configs\` is a JSON object keyed by table name (e.g. \`motionPlanes\`) storing the default ID for that table—e.g. \`{ "motionPlanes": "MID_MID" }\` for the default plane.
 
-**Other tables that depend on this one:** Exercises in the main app reference a primary motion and optionally a variation. Motion Planes are used *by* motions (each motion specifies which planes it allows). Scoring uses motion + plane + muscle targets.
+**Other tables that depend on this one:** Exercises in the main app reference a primary motion and optionally a variation. Motion Planes reference motions via \`delta_rules\` keys. Scoring uses motion + plane + muscle targets.
 
-**Columns with dependencies:** \`parent_id\` → Motions (self). \`motion_planes.default\` and \`motion_planes.options\` → Motion Planes (by ID). \`muscle_targets\` is a JSON tree keyed by muscle group/muscle IDs (conceptually references Muscles).`,
+**Columns with dependencies:** \`parent_id\` → Motions (self). \`default_delta_configs.motionPlanes\` → Motion Planes (by ID). \`muscle_targets\` is a JSON tree keyed by muscle group/muscle IDs (conceptually references Muscles).`,
 
-  motionPlanes: `**What this table is for:** Motion Planes describe the path or angle of movement (e.g. Low to High, Standard Level). They are used as options and defaults on the Motions table and in exercise configuration to adjust scoring (e.g. incline vs flat).
+  motionPlanes: `**What this table is for:** Motion Planes describe the path or angle of movement (e.g. Low to High, Standard Level). Which motions use which planes is defined here: \`delta_rules\` is keyed by motion ID. Each motion’s default plane is stored in Motions.\`default_delta_configs.motionPlanes\`.
 
 **Depends on:** Nothing—this table is standalone.
 
-**Other tables that depend on this one:** Motions reference motion planes by ID inside their \`motion_planes\` JSON (\`default\` and \`options\`). When a user picks a motion and plane for an exercise, the app uses these IDs.
+**Other tables that depend on this one:** Motions store a default plane in \`default_delta_configs.motionPlanes\`; the relationship (which planes apply to which motion) is defined by this table’s \`delta_rules\` keys. When a user picks a motion and plane for an exercise, the app uses these IDs.
 
-**Columns with dependencies:** None. \`id\` is referenced from Motions.\`motion_planes\`. \`delta_rules\` is used by the scoring system to adjust muscle scores per motion type.`,
+**Columns with dependencies:** None. \`id\` is referenced from Motions.\`default_delta_configs.motionPlanes\`. \`delta_rules\` keys are motion IDs; the scoring system uses them to adjust muscle scores per motion type.`,
 
   grips: `**What this table is for:** Grips define how the hands (or body) hold equipment or position (e.g. Overhand, Underhand, Neutral). Rows can be top-level grip types or variations linked by \`parent_id\`. Used in exercise configuration and in equipment modifier constraints.
 

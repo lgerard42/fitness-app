@@ -17,7 +17,7 @@ interface MotionRecord {
   id: string;
   label: string;
   parent_id?: string | null;
-  motion_planes?: { default: string; options: string[] };
+  default_delta_configs?: { motionPlanes?: string };
   [key: string]: unknown;
 }
 
@@ -27,26 +27,23 @@ interface MuscleRecord {
   parent_ids: string[];
 }
 
-interface MotionPlanesValue {
-  default: string;
-  options: string[];
-}
+/** Stored shape: { motionPlanes?: string } (table key → default id). Options derived from motionPlanes.delta_rules. */
+export type DefaultDeltaConfigs = { motionPlanes?: string; [key: string]: unknown };
 
 interface MotionPlanesFieldProps {
-  value: MotionPlanesValue | Record<string, unknown> | null | undefined;
-  onChange: (v: MotionPlanesValue) => void;
+  value: DefaultDeltaConfigs | Record<string, unknown> | null | undefined;
+  onChange: (v: DefaultDeltaConfigs) => void;
   motionId?: string;
   onOpenRow?: (row: Record<string, unknown>) => void;
 }
 
-function normalize(raw: unknown): MotionPlanesValue {
+function getDefaultFromValue(raw: unknown): string {
   if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
     const obj = raw as Record<string, unknown>;
-    const def = typeof obj.default === 'string' ? obj.default : '';
-    const opts = Array.isArray(obj.options) ? (obj.options as string[]) : [];
-    return { default: def, options: opts };
+    const v = obj.motionPlanes;
+    return typeof v === 'string' ? v : '';
   }
-  return { default: '', options: [] };
+  return '';
 }
 
 /* ──────────────────── DeltaMuscleTree ──────────────────── */
@@ -152,6 +149,203 @@ function flattenTree(tree: TreeNode): Record<string, number> {
   return flat;
 }
 
+function flattenMuscleTargets(targets: Record<string, unknown>): Record<string, number> {
+  const flat: Record<string, number> = {};
+  if (!targets || typeof targets !== 'object') return flat;
+  for (const [pId, pVal] of Object.entries(targets)) {
+    if (pId === '_score') continue;
+    const pNode = pVal as Record<string, unknown>;
+    if (!pNode || typeof pNode !== 'object') continue;
+    flat[pId] = typeof pNode._score === 'number' ? pNode._score : 0;
+    for (const [sId, sVal] of Object.entries(pNode)) {
+      if (sId === '_score') continue;
+      const sNode = sVal as Record<string, unknown>;
+      if (!sNode || typeof sNode !== 'object') continue;
+      flat[sId] = typeof sNode._score === 'number' ? sNode._score : 0;
+      for (const [tId, tVal] of Object.entries(sNode)) {
+        if (tId === '_score') continue;
+        const tNode = tVal as Record<string, unknown>;
+        if (tNode && typeof tNode === 'object') {
+          flat[tId] = typeof (tNode as Record<string, unknown>)._score === 'number'
+            ? (tNode as Record<string, unknown>)._score as number : 0;
+        }
+      }
+    }
+  }
+  return flat;
+}
+
+function ReadOnlyMuscleTree({ targets, allMuscles, deltaScores }: {
+  targets: Record<string, unknown>;
+  allMuscles: MuscleRecord[];
+  deltaScores?: Record<string, number>;
+}) {
+  const getBaseFromTree = (id: string, tree: Record<string, unknown>): number | null => {
+    if (!tree || typeof tree !== 'object') return null;
+    for (const [pId, pVal] of Object.entries(tree)) {
+      if (pId === '_score') continue;
+      const pNode = pVal as Record<string, unknown>;
+      if (!pNode || typeof pNode !== 'object') continue;
+      if (pId === id) return typeof pNode._score === 'number' ? pNode._score : 0;
+      for (const [sId, sVal] of Object.entries(pNode)) {
+        if (sId === '_score') continue;
+        const sNode = sVal as Record<string, unknown>;
+        if (!sNode || typeof sNode !== 'object') continue;
+        if (sId === id) return typeof sNode._score === 'number' ? sNode._score : 0;
+        for (const [tId, tVal] of Object.entries(sNode)) {
+          if (tId === '_score') continue;
+          const tNode = tVal as Record<string, unknown>;
+          if (tId === id && tNode && typeof tNode === 'object') {
+            return typeof (tNode as Record<string, unknown>)._score === 'number'
+              ? (tNode as Record<string, unknown>)._score as number : 0;
+          }
+        }
+      }
+    }
+    return null;
+  };
+
+  const getAfter = (base: number | null, id: string) => {
+    const delta = deltaScores?.[id] ?? 0;
+    if (base === null) return delta;
+    return Math.round((base + delta) * 100) / 100;
+  };
+
+  const hasInTree = (id: string, tree: Record<string, unknown>): boolean => {
+    return getBaseFromTree(id, tree) !== null;
+  };
+
+  // Build merged tree: combine targets and deltaScores, showing all muscles
+  const mergedTree = useMemo(() => {
+    const base = targets && typeof targets === 'object' ? JSON.parse(JSON.stringify(targets)) : {};
+    if (!deltaScores || Object.keys(deltaScores).length === 0) return base;
+
+    // Build tree from deltaScores to get the hierarchical structure
+    const deltaTree = buildTreeFromFlat(deltaScores, allMuscles);
+    
+    // Merge deltaTree into base, adding missing muscles
+    const mergeTree = (deltaNode: TreeNode, baseNode: Record<string, unknown>) => {
+      for (const [key, val] of Object.entries(deltaNode)) {
+        if (key === '_score') continue;
+        if (!baseNode[key]) {
+          baseNode[key] = { _score: 0 };
+        }
+        const childNode = val as TreeNode;
+        if (childNode && typeof childNode === 'object') {
+          mergeTree(childNode, baseNode[key] as Record<string, unknown>);
+        }
+      }
+    };
+
+    mergeTree(deltaTree, base);
+    return base;
+  }, [targets, deltaScores, allMuscles]);
+
+  if (!mergedTree || typeof mergedTree !== 'object') {
+    return <div className="text-xs text-gray-400 italic py-2">No muscle targets</div>;
+  }
+  const primaries = Object.keys(mergedTree).filter(k => k !== '_score');
+  if (primaries.length === 0 && (!deltaScores || Object.keys(deltaScores).length === 0)) {
+    return <div className="text-xs text-gray-400 italic py-2">No muscle targets</div>;
+  }
+
+  return (
+    <div className="space-y-1">
+      {primaries.map(pId => {
+        const pNode = mergedTree[pId] as Record<string, unknown>;
+        if (!pNode || typeof pNode !== 'object') return null;
+        const pLabel = getMuscleLabel(allMuscles, pId);
+        const pBase = getBaseFromTree(pId, targets && typeof targets === 'object' ? targets : {});
+        const pAfter = getAfter(pBase, pId);
+        const sKeys = Object.keys(pNode).filter(k => k !== '_score');
+        const isNew = pBase === null;
+        const isChanged = !isNew && pBase !== null && pBase !== pAfter;
+
+        return (
+          <div key={pId} className={sp.card.treeItem}>
+            <div className={sp.treeRow.primary}>
+              <span className={sp.treeRow.primaryLabel}>{pLabel}</span>
+              {isNew ? (
+                <span className="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded font-medium">Add</span>
+              ) : isChanged ? (
+                <>
+                  <span className={sp.scoreInput.readOnly}>{pBase}</span>
+                  <span className="text-[10px] text-gray-400">→</span>
+                  <span className={sp.scoreInput.changed}>{pAfter}</span>
+                </>
+              ) : (
+                <span className={sp.scoreInput.readOnly}>{pBase}</span>
+              )}
+            </div>
+            {sKeys.length > 0 && (
+              <div className={sp.treeNest.secondaries}>
+                {sKeys.map(sId => {
+                  const sNode = pNode[sId] as Record<string, unknown>;
+                  if (!sNode || typeof sNode !== 'object') return null;
+                  const sLabel = getMuscleLabel(allMuscles, sId);
+                  const sBase = getBaseFromTree(sId, targets && typeof targets === 'object' ? targets : {});
+                  const sAfter = getAfter(sBase, sId);
+                  const tKeys = Object.keys(sNode).filter(k => k !== '_score');
+                  const sIsNew = sBase === null;
+                  const sIsChanged = !sIsNew && sBase !== null && sBase !== sAfter;
+
+                  return (
+                    <div key={sId} className={sp.card.treeItemFlat}>
+                      <div className={sp.treeRow.secondary}>
+                        <span className={sp.treeRow.secondaryLabel}>{sLabel}</span>
+                        {sIsNew ? (
+                          <span className="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded font-medium">Add</span>
+                        ) : sIsChanged ? (
+                          <>
+                            <span className={sp.scoreInput.readOnly}>{sBase}</span>
+                            <span className="text-[10px] text-gray-400">→</span>
+                            <span className={sp.scoreInput.changed}>{sAfter}</span>
+                          </>
+                        ) : (
+                          <span className={sp.scoreInput.readOnly}>{sBase}</span>
+                        )}
+                      </div>
+                      {tKeys.length > 0 && (
+                        <div className={sp.treeNest.tertiaries}>
+                          {tKeys.map(tId => {
+                            const tNode = sNode[tId] as Record<string, unknown>;
+                            const tBase = getBaseFromTree(tId, targets && typeof targets === 'object' ? targets : {});
+                            const tAfter = getAfter(tBase, tId);
+                            const tLabel = getMuscleLabel(allMuscles, tId);
+                            const tIsNew = tBase === null;
+                            const tIsChanged = !tIsNew && tBase !== null && tBase !== tAfter;
+
+                            return (
+                              <div key={tId} className={sp.treeRow.tertiary}>
+                                <span className={sp.treeRow.tertiaryLabel}>{tLabel}</span>
+                                {tIsNew ? (
+                                  <span className="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded font-medium">Add</span>
+                                ) : tIsChanged ? (
+                                  <>
+                                    <span className={sp.scoreInput.readOnly}>{tBase}</span>
+                                    <span className="text-[10px] text-gray-400">→</span>
+                                    <span className={sp.scoreInput.changed}>{tAfter}</span>
+                                  </>
+                                ) : (
+                                  <span className={sp.scoreInput.readOnly}>{tBase}</span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function DeltaMuscleTree({
   delta,
   onSave,
@@ -163,11 +357,6 @@ function DeltaMuscleTree({
   allMuscles: MuscleRecord[];
   planeId: string;
 }) {
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const toggleExp = useCallback((key: string) => {
-    setExpanded(prev => { const n = new Set(prev); if (n.has(key)) n.delete(key); else n.add(key); return n; });
-  }, []);
-
   const tree = useMemo(() => buildTreeFromFlat(delta, allMuscles), [delta, allMuscles]);
 
   const primaryMuscles = useMemo(() =>
@@ -231,7 +420,6 @@ function DeltaMuscleTree({
     save(nd);
   };
 
-  const prefix = `delta-tree-${planeId}`;
   const activePrimaries = Object.keys(tree).filter(k => k !== '_score');
   const unusedPrimaries = primaryMuscles.filter(pm => !activePrimaries.includes(pm.id));
 
@@ -275,84 +463,67 @@ function DeltaMuscleTree({
         const pLabel = getMuscleLabel(allMuscles, pId);
         const pScore = pNode._score ?? 0;
         const sKeys = Object.keys(pNode).filter(k => k !== '_score');
-        const pKey = `${prefix}-${pId}`;
-        const isExp = expanded.has(pKey);
         const availSec = getSecondariesFor(pId).filter(s => !sKeys.includes(s.id));
         const pIsComputed = sKeys.length > 0;
 
         return (
           <div key={pId} className={sp.card.treeItem}>
             <div className={sp.treeRow.primary}>
-              <button type="button" onClick={() => toggleExp(pKey)} className={sp.toggle.small}>
-                {isExp ? '▼' : '▶'}
-              </button>
               <span className={sp.treeRow.primaryLabel}>{pLabel}</span>
               <ScoreInput path={[pId]} score={pScore} computed={pIsComputed} />
               <button type="button" onClick={() => removeKey([pId])} className={sp.removeBtn.small}>×</button>
             </div>
-            {isExp && (
-              <div className={sp.treeNest.secondaries}>
-                {sKeys.map(sId => {
-                  const sNode = pNode[sId] as TreeNode;
-                  if (!sNode || typeof sNode !== 'object') return null;
-                  const sLabel = getMuscleLabel(allMuscles, sId);
-                  const sScore = sNode._score ?? 0;
-                  const tKeys = Object.keys(sNode).filter(k => k !== '_score');
-                  const sKey = `${prefix}-${pId}.${sId}`;
-                  const isSExp = expanded.has(sKey);
-                  const availTer = getTertiariesFor(sId).filter(t => !tKeys.includes(t.id));
-                  const sIsComputed = tKeys.length > 0;
-                  const hasTertiaries = tKeys.length > 0;
+            <div className={sp.treeNest.secondaries}>
+              {sKeys.map(sId => {
+                const sNode = pNode[sId] as TreeNode;
+                if (!sNode || typeof sNode !== 'object') return null;
+                const sLabel = getMuscleLabel(allMuscles, sId);
+                const sScore = sNode._score ?? 0;
+                const tKeys = Object.keys(sNode).filter(k => k !== '_score');
+                const availTer = getTertiariesFor(sId).filter(t => !tKeys.includes(t.id));
+                const sIsComputed = tKeys.length > 0;
 
-                  return (
-                    <div key={sId} className={sp.card.treeItemFlat}>
-                      <div className={sp.treeRow.secondary}>
-                        {hasTertiaries ? (
-                          <button type="button" onClick={() => toggleExp(sKey)} className={sp.toggle.small}>
-                            {isSExp ? '▼' : '▶'}
-                          </button>
-                        ) : (
-                          <span className={sp.treeRow.leafBullet}>●</span>
-                        )}
-                        <span className={sp.treeRow.secondaryLabel}>{sLabel}</span>
-                        <ScoreInput path={[pId, sId]} score={sScore} computed={sIsComputed} />
-                        <button type="button" onClick={() => removeKey([pId, sId])} className={sp.removeBtn.small}>×</button>
-                      </div>
-                      {hasTertiaries && isSExp && (
-                        <div className={sp.treeNest.tertiaries}>
-                          {tKeys.map(tId => {
-                            const tNode = sNode[tId] as TreeNode;
-                            const tScore = (tNode as TreeNode)?._score ?? 0;
-                            const tLabel = getMuscleLabel(allMuscles, tId);
-                            return (
-                              <div key={tId} className={sp.treeRow.tertiary}>
-                                <span className={sp.treeRow.tertiaryLabel}>{tLabel}</span>
-                                <ScoreInput path={[pId, sId, tId]} score={tScore} />
-                                <button type="button" onClick={() => removeKey([pId, sId, tId])} className={sp.removeBtn.small}>×</button>
-                              </div>
-                            );
-                          })}
-                          {availTer.length > 0 && (
-                            <select onChange={e => { if (e.target.value) addTertiary(pId, sId, e.target.value); e.target.value = ''; }}
-                              className={sp.addDropdown.tree} defaultValue="">
-                              <option value="">+ tertiary...</option>
-                              {availTer.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
-                            </select>
-                          )}
-                        </div>
-                      )}
+                return (
+                  <div key={sId} className={sp.card.treeItemFlat}>
+                    <div className={sp.treeRow.secondary}>
+                      <span className={sp.treeRow.secondaryLabel}>{sLabel}</span>
+                      <ScoreInput path={[pId, sId]} score={sScore} computed={sIsComputed} />
+                      <button type="button" onClick={() => removeKey([pId, sId])} className={sp.removeBtn.small}>×</button>
                     </div>
-                  );
-                })}
-                {availSec.length > 0 && (
-                  <select onChange={e => { if (e.target.value) addSecondary(pId, e.target.value); e.target.value = ''; }}
-                    className={sp.addDropdown.tree} defaultValue="">
-                    <option value="">+ secondary...</option>
-                    {availSec.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
-                  </select>
-                )}
-              </div>
-            )}
+                    {(tKeys.length > 0 || availTer.length > 0) && (
+                      <div className={sp.treeNest.tertiaries}>
+                        {tKeys.map(tId => {
+                          const tNode = sNode[tId] as TreeNode;
+                          const tScore = (tNode as TreeNode)?._score ?? 0;
+                          const tLabel = getMuscleLabel(allMuscles, tId);
+                          return (
+                            <div key={tId} className={sp.treeRow.tertiary}>
+                              <span className={sp.treeRow.tertiaryLabel}>{tLabel}</span>
+                              <ScoreInput path={[pId, sId, tId]} score={tScore} />
+                              <button type="button" onClick={() => removeKey([pId, sId, tId])} className={sp.removeBtn.small}>×</button>
+                            </div>
+                          );
+                        })}
+                        {availTer.length > 0 && (
+                          <select onChange={e => { if (e.target.value) addTertiary(pId, sId, e.target.value); e.target.value = ''; }}
+                            className={sp.addDropdown.tree} defaultValue="">
+                            <option value="">+ tertiary...</option>
+                            {availTer.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+                          </select>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {availSec.length > 0 && (
+                <select onChange={e => { if (e.target.value) addSecondary(pId, e.target.value); e.target.value = ''; }}
+                  className={sp.addDropdown.tree} defaultValue="">
+                  <option value="">+ secondary...</option>
+                  {availSec.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                </select>
+              )}
+            </div>
           </div>
         );
       })}
@@ -399,7 +570,6 @@ function DeltaBadge({ motionDelta, allMuscles, hasNoDelta }: {
         onMouseLeave={() => setShowTooltip(false)}
       >
         <span className={sp.motionPlane.deltaBadgeLabel}>Muscle Modifiers (Deltas)</span>
-        <span className={sp.motionPlane.deltaBadgeArrow}>{hasNoDelta ? '▶' : '▼'}</span>
       </div>
       {showTooltip && createPortal(
         <div
@@ -467,8 +637,16 @@ export default function MotionPlanesField({ value, onChange, motionId, onOpenRow
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  const current = useMemo(() => normalize(value), [value]);
-  const selectedSet = useMemo(() => new Set(current.options), [current.options]);
+  const defaultPlaneId = useMemo(() => getDefaultFromValue(value), [value]);
+  /** Options = plane IDs that have this motion in their delta_rules (source of truth on motionPlanes table) */
+  const options = useMemo(() => {
+    if (!motionId) return [];
+    return planes
+      .filter(p => p.delta_rules && typeof p.delta_rules === 'object' && motionId in p.delta_rules)
+      .map(p => p.id);
+  }, [planes, motionId]);
+  const current = useMemo(() => ({ default: defaultPlaneId, options }), [defaultPlaneId, options]);
+  const selectedSet = useMemo(() => new Set(options), [options]);
 
   const currentMotion = useMemo(() => allMotions.find(m => m.id === motionId), [allMotions, motionId]);
 
@@ -480,15 +658,21 @@ export default function MotionPlanesField({ value, onChange, motionId, onOpenRow
 
   const familyPlaneUsage = useMemo(() => {
     const usage: Record<string, { motionId: string; motionLabel: string }> = {};
-    for (const fm of familyMotions) {
-      if (fm.id === motionId) continue;
-      const mp = normalize(fm.motion_planes);
-      for (const planeId of mp.options) {
-        usage[planeId] = { motionId: fm.id, motionLabel: fm.label };
+    const familyIds = new Set(familyMotions.map(m => m.id));
+    familyIds.delete(motionId ?? '');
+    for (const plane of planes) {
+      const rules = plane.delta_rules;
+      if (!rules || typeof rules !== 'object') continue;
+      for (const mid of Object.keys(rules)) {
+        if (familyIds.has(mid)) {
+          const motion = allMotions.find(m => m.id === mid);
+          usage[plane.id] = { motionId: mid, motionLabel: motion?.label ?? mid };
+          break;
+        }
       }
     }
     return usage;
-  }, [familyMotions, motionId]);
+  }, [planes, familyMotions, motionId, allMotions]);
 
   const availablePlanes = useMemo(() => {
     return planes.filter(p => !selectedSet.has(p.id) && !familyPlaneUsage[p.id]);
@@ -536,21 +720,40 @@ export default function MotionPlanesField({ value, onChange, motionId, onOpenRow
     setExpanded(prev => { const n = new Set(prev); if (n.has(key)) n.delete(key); else n.add(key); return n; });
   }, []);
 
-  const addPlane = useCallback((planeId: string) => {
-    const nextOptions = [...current.options, planeId];
-    const nextDefault = current.default || planeId;
-    onChange({ default: nextDefault, options: nextOptions });
-  }, [current, onChange]);
+  const addPlane = useCallback(async (planeId: string) => {
+    const plane = planes.find(p => p.id === planeId);
+    if (!plane || !motionId) return;
+    const newRules = { ...(plane.delta_rules || {}), [motionId]: plane.delta_rules?.[motionId] ?? {} };
+    try {
+      await api.updateRow('motionPlanes', planeId, { delta_rules: newRules });
+      setPlanes(prev => prev.map(p => p.id === planeId ? { ...p, delta_rules: newRules } : p));
+      const nextDefault = defaultPlaneId || planeId;
+      onChange({ ...(value as DefaultDeltaConfigs) || {}, motionPlanes: nextDefault });
+      await loadData();
+    } catch (err) {
+      console.error('Failed to add plane to motion:', err);
+    }
+  }, [planes, motionId, defaultPlaneId, value, onChange, loadData]);
 
-  const removePlane = useCallback((planeId: string) => {
-    const nextOptions = current.options.filter(id => id !== planeId);
-    const nextDefault = current.default === planeId ? (nextOptions[0] || '') : current.default;
-    onChange({ default: nextDefault, options: nextOptions });
-  }, [current, onChange]);
+  const removePlane = useCallback(async (planeId: string) => {
+    const plane = planes.find(p => p.id === planeId);
+    if (!plane || !motionId) return;
+    const newRules = { ...(plane.delta_rules || {}) };
+    delete newRules[motionId];
+    try {
+      await api.updateRow('motionPlanes', planeId, { delta_rules: newRules });
+      setPlanes(prev => prev.map(p => p.id === planeId ? { ...p, delta_rules: newRules } : p));
+      const nextDefault = defaultPlaneId === planeId ? (options.filter(id => id !== planeId)[0] ?? '') : defaultPlaneId;
+      onChange({ ...(value as DefaultDeltaConfigs) || {}, motionPlanes: nextDefault });
+      await loadData();
+    } catch (err) {
+      console.error('Failed to remove plane from motion:', err);
+    }
+  }, [planes, motionId, defaultPlaneId, options, value, onChange, loadData]);
 
   const setDefault = useCallback((planeId: string) => {
-    onChange({ ...current, default: planeId });
-  }, [current, onChange]);
+    onChange({ ...((value as DefaultDeltaConfigs) || {}), motionPlanes: planeId });
+  }, [value, onChange]);
 
   const saveDelta = useCallback(async (planeId: string, flat: Record<string, number>) => {
     const plane = planes.find(p => p.id === planeId);
@@ -576,36 +779,26 @@ export default function MotionPlanesField({ value, onChange, motionId, onOpenRow
   }, [onOpenRow, allMotions]);
 
   const reassignPlane = useCallback(async (planeId: string, fromMotionId: string | null, toMotionId: string) => {
+    const plane = planes.find(p => p.id === planeId);
+    if (!plane) return;
     try {
-      if (fromMotionId && fromMotionId !== motionId) {
-        const fromMotion = allMotions.find(m => m.id === fromMotionId);
-        if (fromMotion) {
-          const fromMp = normalize(fromMotion.motion_planes);
-          const newOptions = fromMp.options.filter(id => id !== planeId);
-          const newDefault = fromMp.default === planeId ? (newOptions[0] || '') : fromMp.default;
-          await api.updateRow('motions', fromMotionId, { motion_planes: { default: newDefault, options: newOptions } });
-        }
-      }
-
+      const newRules = { ...(plane.delta_rules || {}) };
+      if (fromMotionId) delete newRules[fromMotionId];
+      newRules[toMotionId] = newRules[toMotionId] ?? {};
+      await api.updateRow('motionPlanes', planeId, { delta_rules: newRules });
+      setPlanes(prev => prev.map(p => p.id === planeId ? { ...p, delta_rules: newRules } : p));
       if (toMotionId === motionId) {
-        addPlane(planeId);
-      } else {
-        const toMotion = allMotions.find(m => m.id === toMotionId);
-        if (toMotion) {
-          const toMp = normalize(toMotion.motion_planes);
-          if (!toMp.options.includes(planeId)) {
-            const newOptions = [...toMp.options, planeId];
-            const newDefault = toMp.default || planeId;
-            await api.updateRow('motions', toMotionId, { motion_planes: { default: newDefault, options: newOptions } });
-          }
-        }
+        const nextDefault = defaultPlaneId || planeId;
+        onChange({ ...((value as DefaultDeltaConfigs) || {}), motionPlanes: nextDefault });
+      } else if (fromMotionId === motionId) {
+        const nextDefault = defaultPlaneId === planeId ? (options.filter(id => id !== planeId)[0] ?? '') : defaultPlaneId;
+        onChange({ ...((value as DefaultDeltaConfigs) || {}), motionPlanes: nextDefault });
       }
-
       await loadData();
     } catch (err) {
       console.error('Failed to reassign plane:', err);
     }
-  }, [motionId, allMotions, addPlane, loadData]);
+  }, [planes, motionId, defaultPlaneId, options, value, onChange, loadData]);
 
   const handleFamilyMouseEnter = () => {
     if (familyExpanded) return;
@@ -672,12 +865,25 @@ export default function MotionPlanesField({ value, onChange, motionId, onOpenRow
 
               {isExp && motionId && (
                 <div className={sp.motionPlane.expandedContent}>
-                  <DeltaMuscleTree
-                    delta={motionDelta}
-                    onSave={saveDelta}
-                    allMuscles={allMuscles}
-                    planeId={plane.id}
-                  />
+                  <div className="flex gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Delta Modifiers</div>
+                      <DeltaMuscleTree
+                        delta={motionDelta}
+                        onSave={saveDelta}
+                        allMuscles={allMuscles}
+                        planeId={plane.id}
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Base Muscle Scores</div>
+                      <ReadOnlyMuscleTree
+                        targets={(currentMotion?.muscle_targets as Record<string, unknown>) || {}}
+                        allMuscles={allMuscles}
+                        deltaScores={motionDelta}
+                      />
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

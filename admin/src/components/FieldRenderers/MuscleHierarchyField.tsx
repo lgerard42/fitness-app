@@ -214,11 +214,11 @@ export default function MuscleHierarchyField({ tableKey, currentRecordId, onFiel
   }, [currentTier, currentRecord, currentRecordId, primaries, secondaries]);
 
   if (loading) {
-    return <div className={sp.loading}>Loading muscle data...</div>;
+    return <div className={sp.muscleHierarchy.loading}>Loading muscle data...</div>;
   }
 
   return (
-    <div className="space-y-1">
+    <div className={sp.muscleHierarchy.container}>
       {/* Primary: list of secondaries with nested tertiaries */}
       {currentTier === 'primary' && currentRecord && hierarchyItems.map((item) => {
         if (item.type !== 'primary-view') return null;
@@ -226,30 +226,30 @@ export default function MuscleHierarchyField({ tableKey, currentRecordId, onFiel
         const key = `sec-${secondary.id}`;
         const isExp = expanded.has(key);
         return (
-          <div key={secondary.id} className={sp.card.list}>
-            <div className={sp.header.base}>
+          <div key={secondary.id} className={sp.muscleHierarchy.card}>
+            <div className={`${sp.muscleHierarchy.header} ${isExp ? sp.muscleHierarchy.headerExpanded : ''}`}>
               <div className="flex items-center gap-2 flex-1">
-                <button type="button" onClick={() => toggleExpand(key)} className={sp.toggle.base}>
+                <button type="button" onClick={() => toggleExpand(key)} className={sp.muscleHierarchy.toggle}>
                   {isExp ? '▼' : '▶'}
                 </button>
-                <span className="text-sm font-medium text-gray-700">{currentRecord.label}</span>
-                <span className={sp.meta.id}>{currentRecord.id}</span>
-                <span className={sp.meta.arrow}>→</span>
-                <button type="button" onClick={(e) => handleOpenMuscle(e, secondary.id)} className={sp.link.small}>{secondary.label}</button>
-                <span className={sp.meta.id}>{secondary.id}</span>
-                {terts.length > 0 && <span className={sp.meta.count}>({terts.length} tertiary)</span>}
+                <span className={sp.muscleHierarchy.label}>{currentRecord.label}</span>
+                <span className={sp.muscleHierarchy.muscleId}>{currentRecord.id}</span>
+                <span className={sp.muscleHierarchy.arrow}>→</span>
+                <button type="button" onClick={(e) => handleOpenMuscle(e, secondary.id)} className={sp.muscleHierarchy.link}>{secondary.label}</button>
+                <span className={sp.muscleHierarchy.muscleId}>{secondary.id}</span>
+                {terts.length > 0 && <span className={sp.muscleHierarchy.count}>({terts.length} tertiary)</span>}
               </div>
               <button type="button" onClick={() => unlinkParent(secondary.id, currentRecordId)}
-                className={sp.removeBtn.textMl}>Remove</button>
+                className={sp.muscleHierarchy.removeBtn}>Remove</button>
             </div>
             {isExp && (
-              <div className="border-t bg-gray-50">
+              <div className={sp.muscleHierarchy.expandedContent}>
                 {terts.map(t => (
-                  <div key={t.id} className="px-3 py-1.5 pl-8">
+                  <div key={t.id} className={sp.muscleHierarchy.tertiaryItem}>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500">•</span>
-                      <button type="button" onClick={(e) => handleOpenMuscle(e, t.id)} className={sp.link.small}>{t.label}</button>
-                      <span className={sp.meta.id}>{t.id}</span>
+                      <span className={sp.muscleHierarchy.tertiaryBullet}>•</span>
+                      <button type="button" onClick={(e) => handleOpenMuscle(e, t.id)} className={sp.muscleHierarchy.link}>{t.label}</button>
+                      <span className={sp.muscleHierarchy.muscleId}>{t.id}</span>
                     </div>
                   </div>
                 ))}
@@ -273,30 +273,30 @@ export default function MuscleHierarchyField({ tableKey, currentRecordId, onFiel
         const key = `sec-${secondary.id}-pri-${primary.id}`;
         const isExp = expanded.has(key);
         return (
-          <div key={primary.id} className={sp.card.list}>
-            <div className={sp.header.base}>
+          <div key={primary.id} className={sp.muscleHierarchy.card}>
+            <div className={`${sp.muscleHierarchy.header} ${isExp ? sp.muscleHierarchy.headerExpanded : ''}`}>
               <div className="flex items-center gap-2 flex-1">
-                <button type="button" onClick={() => toggleExpand(key)} className={sp.toggle.base}>
+                <button type="button" onClick={() => toggleExpand(key)} className={sp.muscleHierarchy.toggle}>
                   {isExp ? '▼' : '▶'}
                 </button>
-                <button type="button" onClick={(e) => handleOpenMuscle(e, primary.id)} className={sp.link.small}>{primary.label}</button>
-                <span className={sp.meta.id}>{primary.id}</span>
-                <span className={sp.meta.arrow}>→</span>
-                <span className="text-sm font-medium text-gray-700">{secondary.label}</span>
-                <span className={sp.meta.id}>{secondary.id}</span>
-                {terts.length > 0 && <span className={sp.meta.count}>({terts.length} tertiary)</span>}
+                <button type="button" onClick={(e) => handleOpenMuscle(e, primary.id)} className={sp.muscleHierarchy.link}>{primary.label}</button>
+                <span className={sp.muscleHierarchy.muscleId}>{primary.id}</span>
+                <span className={sp.muscleHierarchy.arrow}>→</span>
+                <span className={sp.muscleHierarchy.label}>{secondary.label}</span>
+                <span className={sp.muscleHierarchy.muscleId}>{secondary.id}</span>
+                {terts.length > 0 && <span className={sp.muscleHierarchy.count}>({terts.length} tertiary)</span>}
               </div>
               <button type="button" onClick={() => unlinkParent(currentRecordId, primary.id)}
-                className={sp.removeBtn.textMl}>Remove</button>
+                className={sp.muscleHierarchy.removeBtn}>Remove</button>
             </div>
             {isExp && (
-              <div className="border-t bg-gray-50">
+              <div className={sp.muscleHierarchy.expandedContent}>
                 {terts.map(t => (
-                  <div key={t.id} className="px-3 py-1.5 pl-8">
+                  <div key={t.id} className={sp.muscleHierarchy.tertiaryItem}>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500">•</span>
-                      <button type="button" onClick={(e) => handleOpenMuscle(e, t.id)} className={sp.link.small}>{t.label}</button>
-                      <span className={sp.meta.id}>{t.id}</span>
+                      <span className={sp.muscleHierarchy.tertiaryBullet}>•</span>
+                      <button type="button" onClick={(e) => handleOpenMuscle(e, t.id)} className={sp.muscleHierarchy.link}>{t.label}</button>
+                      <span className={sp.muscleHierarchy.muscleId}>{t.id}</span>
                     </div>
                   </div>
                 ))}
@@ -360,7 +360,7 @@ export default function MuscleHierarchyField({ tableKey, currentRecordId, onFiel
                 await linkParent(currentRecordId, selectedId);
               }
             }}
-            className={sp.addDropdown.blockForm}
+            className={sp.muscleHierarchy.addDropdown}
           >
             <option value="">
               {currentTier === 'primary' ? 'Add Child Muscle...'
@@ -375,7 +375,7 @@ export default function MuscleHierarchyField({ tableKey, currentRecordId, onFiel
       )}
 
       {hierarchyItems.length === 0 && (
-        <div className={sp.emptyState.text}>
+        <div className={sp.muscleHierarchy.emptyState}>
           No muscles linked. Use the dropdown above to add one.
         </div>
       )}
@@ -448,7 +448,7 @@ function ChildMuscleAdder({ currentParentId, existingChildIds, allChildMuscles, 
   };
 
   return (
-    <div className="px-3 py-2 pl-8 border-t bg-white">
+    <div className={sp.muscleHierarchy.childAdder}>
       {!showCreateForm ? (
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-500">+</span>
@@ -456,7 +456,7 @@ function ChildMuscleAdder({ currentParentId, existingChildIds, allChildMuscles, 
             value={selectedChildId}
             onChange={e => setSelectedChildId(e.target.value)}
             disabled={adding}
-            className="flex-1 px-2 py-1 border rounded text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-gray-100"
+            className={sp.muscleHierarchy.childAdderDropdown}
           >
             <option value="">Add Child Muscle...</option>
             {availableChildren.map(t => (
@@ -464,30 +464,30 @@ function ChildMuscleAdder({ currentParentId, existingChildIds, allChildMuscles, 
             ))}
           </select>
           <button type="button" onClick={handleAdd} disabled={!selectedChildId || adding}
-            className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+            className={sp.muscleHierarchy.childAdderButton}>
             {adding ? 'Adding...' : 'Add'}
           </button>
           <button type="button" onClick={() => setShowCreateForm(true)}
-            className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700">Create</button>
+            className={sp.muscleHierarchy.childAdderCreateButton}>Create</button>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className={sp.muscleHierarchy.childAdderForm}>
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-500">New:</span>
             <input type="text" placeholder="ID (required)" value={newChild.id}
               onChange={e => setNewChild({ ...newChild, id: e.target.value })}
-              className="flex-1 px-2 py-1 border rounded text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+              className={sp.muscleHierarchy.childAdderInput} />
             <input type="text" placeholder="Label (required)" value={newChild.label}
               onChange={e => setNewChild({ ...newChild, label: e.target.value })}
-              className="flex-1 px-2 py-1 border rounded text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+              className={sp.muscleHierarchy.childAdderInput} />
           </div>
           <div className="flex items-center gap-2">
             <input type="text" placeholder="Technical Name (optional)" value={newChild.technical_name}
               onChange={e => setNewChild({ ...newChild, technical_name: e.target.value })}
-              className="flex-1 px-2 py-1 border rounded text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+              className={sp.muscleHierarchy.childAdderInput} />
             <input type="text" placeholder="Short Description (optional)" value={newChild.short_description}
               onChange={e => setNewChild({ ...newChild, short_description: e.target.value })}
-              className="flex-1 px-2 py-1 border rounded text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+              className={sp.muscleHierarchy.childAdderInput} />
           </div>
           <div className="flex items-center gap-2">
             <button type="button" onClick={handleCreate} disabled={!newChild.id || !newChild.label || creating}
@@ -495,7 +495,7 @@ function ChildMuscleAdder({ currentParentId, existingChildIds, allChildMuscles, 
               {creating ? 'Creating...' : 'Create'}
             </button>
             <button type="button" onClick={() => { setShowCreateForm(false); setNewChild({ id: '', label: '', technical_name: '', short_description: '' }); }}
-              className="px-3 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300">Cancel</button>
+              className={sp.muscleHierarchy.childAdderCancel}>Cancel</button>
           </div>
         </div>
       )}

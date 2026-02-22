@@ -7,119 +7,49 @@ import { readTable, writeTable, tableStats } from '../fileOps.js';
 
 const router = Router();
 
-/* ──────── Motion ↔ Motion Planes bidirectional sync ──────── */
+/* ──────── Motions: migrate motion_planes → default_delta_configs ──────── */
 
-interface MotionPlanesValue { default: string; options: string[] }
-
-function parseMotionPlanes(raw: unknown): MotionPlanesValue {
-  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
-    const obj = raw as Record<string, unknown>;
-    return {
-      default: typeof obj.default === 'string' ? obj.default : '',
-      options: Array.isArray(obj.options) ? (obj.options as string[]) : [],
-    };
+/** Migrate a single motion row: motion_planes → default_delta_configs, remove motion_planes */
+function migrateMotionsRow(row: Record<string, unknown>): void {
+  if (!row || typeof row !== 'object') return;
+  const mp = row.motion_planes;
+  if (mp && typeof mp === 'object' && !Array.isArray(mp) && 'default' in mp) {
+    const def = (mp as Record<string, unknown>).default;
+    const ddc = (row.default_delta_configs && typeof row.default_delta_configs === 'object' && !Array.isArray(row.default_delta_configs))
+      ? { ...(row.default_delta_configs as Record<string, unknown>) } : {};
+    if (typeof def === 'string') ddc.motionPlanes = def;
+    row.default_delta_configs = ddc;
+    delete row.motion_planes;
   }
-  return { default: '', options: [] };
 }
 
-/**
- * After any mutation to the motions table, reconcile motionPlanes delta_rules.
- * For each plane: its delta_rules keys should exactly match the set of motions
- * that list that plane in their motion_planes.options.
- * - Adds empty {} entries for motions that reference the plane but have no delta
- * - Removes entries for motions that no longer reference the plane
- */
-function syncMotionPlanesToMatchMotions() {
+/** Apply migration to motions table data (in-place). Used on read and before write. */
+function migrateMotionsTable(data: unknown): Record<string, unknown>[] {
+  if (!Array.isArray(data)) return [];
+  for (const row of data as Record<string, unknown>[]) migrateMotionsRow(row);
+  return data as Record<string, unknown>[];
+}
+
+/** When a motion is deleted, remove its id from all motion planes' delta_rules */
+function onMotionDeleted(motionId: string) {
   try {
-    const motions = readTable('motions.json') as Record<string, unknown>[];
     const planes = readTable('motionPlanes.json') as Record<string, unknown>[];
-    if (!Array.isArray(motions) || !Array.isArray(planes)) return;
-
-    const planeToMotions = new Map<string, Set<string>>();
-    for (const p of planes) planeToMotions.set(p.id as string, new Set());
-
-    for (const m of motions) {
-      const mp = parseMotionPlanes(m.motion_planes);
-      for (const pid of mp.options) {
-        planeToMotions.get(pid)?.add(m.id as string);
-      }
-    }
-
+    if (!Array.isArray(planes)) return;
     let changed = false;
     for (const plane of planes) {
-      const pid = plane.id as string;
-      const expected = planeToMotions.get(pid) || new Set();
-      const rules = (plane.delta_rules && typeof plane.delta_rules === 'object')
-        ? { ...(plane.delta_rules as Record<string, unknown>) } : {};
-
-      let planeChanged = false;
-      // Remove orphan keys
-      for (const key of Object.keys(rules)) {
-        if (!expected.has(key)) { delete rules[key]; planeChanged = true; }
-      }
-      // Add missing keys
-      for (const mid of expected) {
-        if (!(mid in rules)) { rules[mid] = {}; planeChanged = true; }
-      }
-      if (planeChanged) { plane.delta_rules = rules; changed = true; }
-    }
-    if (changed) writeTable('motionPlanes.json', planes);
-  } catch { /* ignore if files don't exist */ }
-}
-
-/**
- * After any mutation to the motionPlanes table, reconcile motions' motion_planes.
- * For each motion: its motion_planes.options should exactly match the set of planes
- * that have that motion in their delta_rules.
- */
-function syncMotionsToMatchPlanes() {
-  try {
-    const motions = readTable('motions.json') as Record<string, unknown>[];
-    const planes = readTable('motionPlanes.json') as Record<string, unknown>[];
-    if (!Array.isArray(motions) || !Array.isArray(planes)) return;
-
-    const planesSorted = [...planes].sort((a, b) =>
-      ((a.sort_order as number) || 0) - ((b.sort_order as number) || 0)
-    );
-
-    const motionToPlanes = new Map<string, string[]>();
-    for (const plane of planesSorted) {
-      const pid = plane.id as string;
       const rules = plane.delta_rules as Record<string, unknown> | undefined;
-      if (!rules || typeof rules !== 'object') continue;
-      for (const motionId of Object.keys(rules)) {
-        if (!motionToPlanes.has(motionId)) motionToPlanes.set(motionId, []);
-        motionToPlanes.get(motionId)!.push(pid);
-      }
-    }
-
-    let changed = false;
-    for (const motion of motions) {
-      const mid = motion.id as string;
-      const expectedPlanes = motionToPlanes.get(mid) || [];
-      const current = parseMotionPlanes(motion.motion_planes);
-
-      const expectedSet = new Set(expectedPlanes);
-      const currentSet = new Set(current.options);
-      const same = expectedSet.size === currentSet.size && [...expectedSet].every(p => currentSet.has(p));
-
-      if (!same) {
-        if (expectedPlanes.length > 0) {
-          const def = expectedPlanes.includes(current.default) ? current.default : expectedPlanes[0];
-          motion.motion_planes = { default: def, options: expectedPlanes };
-        } else {
-          delete motion.motion_planes;
-        }
+      if (rules && typeof rules === 'object' && motionId in rules) {
+        delete rules[motionId];
+        plane.delta_rules = { ...rules };
         changed = true;
       }
     }
-    if (changed) writeTable('motions.json', motions);
+    if (changed) writeTable('motionPlanes.json', planes);
   } catch { /* ignore */ }
 }
 
-function postWriteSync(tableKey: string) {
-  if (tableKey === 'motions') syncMotionPlanesToMatchMotions();
-  else if (tableKey === 'motionPlanes') syncMotionsToMatchPlanes();
+function postWriteSync(_tableKey: string) {
+  /* Motion/plane relationship is now defined only by motionPlanes.delta_rules; no bidirectional sync */
 }
 
 /** GET /api/tables — list all registered tables with metadata */
@@ -158,7 +88,10 @@ router.get('/:key', (req: Request, res: Response) => {
     return;
   }
   try {
-    const data = readTable(schema.file);
+    let data = readTable(schema.file);
+    if (schema.key === 'motions' && Array.isArray(data)) {
+      migrateMotionsTable(data);
+    }
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: `Failed to read ${schema.file}: ${err}` });
@@ -207,6 +140,7 @@ router.post('/:key/rows', (req: Request, res: Response) => {
       res.status(500).json({ error: 'Table data is not an array' });
       return;
     }
+    if (schema.key === 'motions') migrateMotionsTable(data);
 
     const newRow = req.body;
     if (!newRow.id) {
@@ -217,6 +151,7 @@ router.post('/:key/rows', (req: Request, res: Response) => {
       res.status(409).json({ error: `Row with id "${newRow.id}" already exists` });
       return;
     }
+    if (schema.key === 'motions') migrateMotionsRow(newRow);
     data.push(newRow);
     writeTable(schema.file, data);
     if (req.query.skipSync !== 'true') postWriteSync(schema.key);
@@ -248,6 +183,7 @@ router.put('/:key/rows/:id', (req: Request, res: Response) => {
       res.status(500).json({ error: 'Table data is not an array' });
       return;
     }
+    if (schema.key === 'motions') migrateMotionsTable(data);
 
     const idx = data.findIndex((row: Record<string, unknown>) => row.id === req.params.id);
     if (idx === -1) {
@@ -255,6 +191,10 @@ router.put('/:key/rows/:id', (req: Request, res: Response) => {
       return;
     }
     data[idx] = { ...data[idx], ...req.body };
+    if (schema.key === 'motions') {
+      migrateMotionsRow(data[idx]);
+      migrateMotionsTable(data);
+    }
     writeTable(schema.file, data);
     if (req.query.skipSync !== 'true') postWriteSync(schema.key);
     res.json({ ok: true, row: data[idx] });
@@ -340,12 +280,14 @@ router.delete('/:key/rows/:id', (req: Request, res: Response) => {
       res.status(500).json({ error: 'Table data is not an array' });
       return;
     }
+    if (schema.key === 'motions') migrateMotionsTable(data);
 
     const idx = data.findIndex((row: Record<string, unknown>) => row.id === req.params.id);
     if (idx === -1) {
       res.status(404).json({ error: `Row "${req.params.id}" not found` });
       return;
     }
+    if (schema.key === 'motions') onMotionDeleted(req.params.id);
     data.splice(idx, 1);
     writeTable(schema.file, data);
     if (req.query.skipSync !== 'true') postWriteSync(schema.key);
@@ -368,6 +310,7 @@ router.post('/:key/reorder', (req: Request, res: Response) => {
       res.status(500).json({ error: 'Table data is not an array' });
       return;
     }
+    if (schema.key === 'motions') migrateMotionsTable(data);
     const orderedIds: string[] = req.body.ids;
     if (!Array.isArray(orderedIds)) {
       res.status(400).json({ error: 'Body must have an "ids" array' });

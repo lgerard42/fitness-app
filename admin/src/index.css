@@ -44,7 +44,10 @@
     @apply bg-red-100 text-red-700;
   }
   .motion-plane-delta-badge-normal {
-    @apply bg-red-50/60 hover:bg-red-100/80 text-red-800;
+    @apply bg-red-50/60 text-red-800;
+  }
+  .motion-plane-delta-badge-normal:hover {
+    @apply bg-red-100/80;
   }
   .motion-plane-delta-badge-label {
     @apply text-[10px] font-bold;
@@ -83,13 +86,460 @@
     @apply text-gray-400;
   }
   .motion-plane-family-link {
-    @apply text-blue-600 hover:underline cursor-pointer;
+    @apply text-blue-600 cursor-pointer;
+  }
+  .motion-plane-family-link:hover {
+    @apply underline;
   }
   .motion-plane-family-reassign {
-    @apply ml-auto text-[10px] px-1.5 py-0.5 border border-gray-300 rounded text-gray-500 hover:border-blue-300 cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500;
+    @apply ml-auto text-[10px] px-1.5 py-0.5 border border-gray-300 rounded text-gray-500 cursor-pointer;
+  }
+  .motion-plane-family-reassign:hover {
+    @apply border-blue-300;
+  }
+  .motion-plane-family-reassign:focus {
+    @apply outline-none ring-1 ring-blue-500;
   }
   .motion-plane-expanded-content {
     @apply px-3 py-2 bg-red-50;
+  }
+
+  /* Delta rules configurator classes */
+  .delta-rules-container {
+    @apply space-y-1;
+  }
+  .delta-rules-empty-state {
+    @apply px-3 py-4 text-xs text-gray-400 italic text-center border rounded-lg bg-gray-50;
+  }
+  .delta-rules-empty-state-inline {
+    @apply px-2 py-2 text-xs text-red-300 italic text-center;
+  }
+  .delta-rules-card {
+    @apply border rounded-lg overflow-hidden;
+  }
+  .delta-rules-card-normal {
+    @apply bg-white border-gray-200 rounded-lg;
+  }
+  .delta-rules-card-alert {
+    @apply bg-red-50 border-red-300 rounded-lg;
+  }
+  .delta-rules-header {
+    @apply px-3 py-1 flex items-center justify-between rounded-lg;
+  }
+  .delta-rules-header-expanded {
+    @apply border-b rounded-b-none;
+  }
+  .delta-rules-header-normal {
+    @apply bg-gray-50 border-gray-200;
+  }
+  .delta-rules-header-alert {
+    @apply bg-red-50 border-red-300;
+  }
+  .delta-rules-label {
+    @apply text-xs font-medium truncate;
+  }
+  .delta-rules-label-normal {
+    @apply text-gray-700;
+  }
+  .delta-rules-label-alert {
+    @apply text-red-800;
+  }
+  .delta-rules-toggle {
+    @apply text-xs text-gray-500 w-4 flex-shrink-0;
+  }
+  .delta-rules-toggle:hover {
+    @apply text-gray-700;
+  }
+  .delta-rules-motion-id {
+    @apply text-xs text-gray-400 flex-shrink-0;
+  }
+  .delta-rules-delta-badge {
+    @apply ml-auto flex items-center gap-1 cursor-default rounded px-1.5 py-0.5 flex-shrink-0;
+  }
+  .delta-rules-delta-badge-alert {
+    @apply bg-red-100 text-red-700;
+  }
+  .delta-rules-delta-badge-normal {
+    @apply bg-red-50/60 text-red-800;
+  }
+  .delta-rules-delta-badge-normal:hover {
+    @apply bg-red-100/80;
+  }
+  .delta-rules-delta-badge-label {
+    @apply text-[10px] font-bold;
+  }
+  .delta-rules-delta-badge-arrow {
+    @apply text-[10px];
+  }
+  .delta-rules-remove-btn {
+    @apply ml-2 text-[10px] text-red-400 flex-shrink-0;
+  }
+  .delta-rules-remove-btn:hover {
+    @apply text-red-600;
+  }
+  .delta-rules-expanded-content {
+    @apply px-0 py-0 bg-red-50;
+  }
+  .delta-rules-muscle-list {
+    @apply py-2 space-y-0.5;
+  }
+  .delta-rules-muscle-row {
+    @apply flex items-center gap-1.5 px-2 py-0.5 bg-red-50/60 rounded;
+  }
+  .delta-rules-muscle-label {
+    @apply text-xs text-red-800 flex-1;
+  }
+  .delta-rules-muscle-remove-btn {
+    @apply ml-auto text-[10px] text-red-400;
+  }
+  .delta-rules-muscle-remove-btn:hover {
+    @apply text-red-600;
+  }
+  .delta-rules-add-muscle-dropdown {
+    @apply text-[10px] px-1 py-0.5 border border-red-300 rounded text-red-500 mt-1 w-full;
+  }
+  .delta-rules-add-muscle-dropdown:focus {
+    @apply outline-none ring-1 ring-red-500;
+  }
+  .delta-rules-add-motion-section {
+    @apply border rounded-lg bg-gray-50 p-3;
+  }
+  .delta-rules-add-motion-dropdown {
+    @apply w-full px-2 py-1.5 border border-gray-300 rounded text-sm text-gray-700 bg-white;
+  }
+  .delta-rules-add-motion-dropdown:focus {
+    @apply outline-none ring-2 ring-blue-500 border-blue-500;
+  }
+  .delta-rules-add-motion-dropdown option {
+    @apply py-1 px-2;
+  }
+  .delta-rules-add-motion-optgroup {
+    @apply font-semibold text-gray-900 bg-gray-100;
+  }
+  .delta-rules-add-motion-option {
+    @apply font-normal text-gray-700 pl-4;
+  }
+  .delta-rules-loading {
+    @apply text-xs text-gray-400 py-2;
+  }
+  .delta-rules-empty-state-tree {
+    @apply text-xs text-gray-400 italic py-2;
+  }
+  .delta-rules-tree-container {
+    @apply space-y-1;
+  }
+  .delta-rules-add-badge {
+    @apply text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded font-medium;
+  }
+  .delta-rules-arrow-separator {
+    @apply text-[10px] text-gray-400;
+  }
+  .delta-rules-header-flex {
+    @apply flex items-center gap-2 flex-1 min-w-0;
+  }
+  .delta-rules-scores-row {
+    @apply flex gap-3;
+  }
+  .delta-rules-scores-column {
+    @apply flex-1 min-w-0;
+  }
+  .delta-rules-scores-column-editable {
+    @apply flex-1 min-w-0 py-2 px-3;
+  }
+  .delta-rules-scores-column-read-only {
+    @apply flex-1 min-w-0 py-2 px-3 bg-gray-200;
+  }
+  .delta-rules-section-label {
+    @apply text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1;
+  }
+  .delta-rules-tooltip-empty {
+    @apply text-red-300 italic;
+  }
+  .delta-rules-tooltip-entries {
+    @apply space-y-0.5;
+  }
+  .delta-rules-tooltip-entry-row {
+    @apply flex justify-between gap-4;
+  }
+  .delta-rules-tooltip-score {
+    @apply font-mono;
+  }
+
+  /* Muscle hierarchy configurator classes */
+  .muscle-hierarchy-container {
+    @apply space-y-1;
+  }
+  .muscle-hierarchy-loading {
+    @apply text-xs text-gray-400 py-2;
+  }
+  .muscle-hierarchy-card {
+    @apply bg-white border rounded-lg;
+  }
+  .muscle-hierarchy-header {
+    @apply px-3 py-2 bg-gray-50 border-b flex items-center justify-between;
+  }
+  .muscle-hierarchy-header-expanded {
+    @apply border-b;
+  }
+  .muscle-hierarchy-label {
+    @apply text-sm font-medium text-gray-700;
+  }
+  .muscle-hierarchy-current-label {
+    @apply text-sm font-medium text-gray-700;
+  }
+  .muscle-hierarchy-toggle {
+    @apply text-xs text-gray-500 w-4 flex-shrink-0;
+  }
+  .muscle-hierarchy-toggle:hover {
+    @apply text-gray-700;
+  }
+  .muscle-hierarchy-link {
+    @apply text-sm text-blue-600 text-left;
+  }
+  .muscle-hierarchy-link:hover {
+    @apply underline;
+  }
+  .muscle-hierarchy-muscle-id {
+    @apply text-xs text-gray-400;
+  }
+  .muscle-hierarchy-arrow {
+    @apply text-xs text-gray-400;
+  }
+  .muscle-hierarchy-count {
+    @apply text-xs text-gray-400 ml-auto;
+  }
+  .muscle-hierarchy-remove-btn {
+    @apply text-xs text-red-600 px-2 py-1 rounded ml-2;
+  }
+  .muscle-hierarchy-remove-btn:hover {
+    @apply text-red-800 bg-red-50;
+  }
+  .muscle-hierarchy-expanded-content {
+    @apply border-t bg-gray-50;
+  }
+  .muscle-hierarchy-tertiary-item {
+    @apply px-3 py-1.5 pl-8;
+  }
+  .muscle-hierarchy-tertiary-bullet {
+    @apply text-xs text-gray-500;
+  }
+  .muscle-hierarchy-add-dropdown {
+    @apply w-full px-3 py-2 border rounded text-sm;
+  }
+  .muscle-hierarchy-add-dropdown:focus {
+    @apply ring-2 ring-blue-500 outline-none;
+  }
+  .muscle-hierarchy-empty-state {
+    @apply text-xs text-gray-400 py-2 italic;
+  }
+  .muscle-hierarchy-child-adder {
+    @apply px-3 py-2 pl-8 border-t bg-white;
+  }
+  .muscle-hierarchy-child-adder-dropdown {
+    @apply flex-1 px-2 py-1 border rounded text-xs;
+  }
+  .muscle-hierarchy-child-adder-dropdown:focus {
+    @apply ring-2 ring-blue-500 outline-none;
+  }
+  .muscle-hierarchy-child-adder-dropdown:disabled {
+    @apply bg-gray-100;
+  }
+  .muscle-hierarchy-child-adder-button {
+    @apply px-2 py-1 text-xs bg-blue-600 text-white rounded;
+  }
+  .muscle-hierarchy-child-adder-button:hover {
+    @apply bg-blue-700;
+  }
+  .muscle-hierarchy-child-adder-button:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+  .muscle-hierarchy-child-adder-create-button {
+    @apply px-2 py-1 text-xs bg-green-600 text-white rounded;
+  }
+  .muscle-hierarchy-child-adder-create-button:hover {
+    @apply bg-green-700;
+  }
+  .muscle-hierarchy-child-adder-form {
+    @apply space-y-2;
+  }
+  .muscle-hierarchy-child-adder-input {
+    @apply flex-1 px-2 py-1 border rounded text-xs;
+  }
+  .muscle-hierarchy-child-adder-input:focus {
+    @apply ring-2 ring-blue-500 outline-none;
+  }
+  .muscle-hierarchy-child-adder-cancel {
+    @apply px-3 py-1 text-xs bg-gray-200 text-gray-700 rounded;
+  }
+  .muscle-hierarchy-child-adder-cancel:hover {
+    @apply bg-gray-300;
+  }
+
+  /* Motion & muscle config configurator classes */
+  .motion-config-container {
+    @apply space-y-1;
+  }
+  .motion-config-loading {
+    @apply text-xs text-gray-400 py-2;
+  }
+  .motion-config-primary-card {
+    @apply border rounded-lg overflow-hidden bg-gray-50;
+  }
+  .motion-config-primary-header {
+    @apply px-3 py-1 border-b flex items-center gap-2 flex-wrap bg-gray-50;
+  }
+  .motion-config-primary-header-current {
+    @apply bg-indigo-100;
+  }
+  .motion-config-variation-card {
+    @apply rounded border overflow-hidden bg-white;
+  }
+  .motion-config-variation-card-current {
+    @apply ring-2 ring-blue-400;
+  }
+  .motion-config-variation-header {
+    @apply px-2 py-1.5 border-b flex items-center gap-2 flex-wrap bg-gray-50;
+  }
+  .motion-config-variation-header-current {
+    @apply bg-blue-100;
+  }
+  .motion-config-variation-label {
+    @apply text-xs font-medium text-blue-600;
+  }
+  .motion-config-variation-label:hover {
+    @apply underline;
+  }
+  .motion-config-variation-label-current {
+    @apply text-xs font-bold text-gray-900;
+  }
+  .motion-config-orphan-card {
+    @apply border rounded-lg overflow-hidden bg-gray-50;
+  }
+  .motion-config-orphan-header {
+    @apply px-3 py-2 border-b flex items-center gap-2 flex-wrap bg-amber-50;
+  }
+  .motion-config-orphan-label {
+    @apply text-xs text-amber-600 italic;
+  }
+  .motion-config-muscle-toggle-badge {
+    @apply flex items-center gap-1 cursor-pointer bg-red-50/60 rounded px-1.5 py-0.5 flex-shrink-0;
+  }
+  .motion-config-muscle-toggle-badge:hover {
+    @apply bg-red-100/80;
+  }
+  .motion-config-muscle-toggle-label {
+    @apply text-[10px] font-bold text-red-800 flex-shrink-0;
+  }
+  .motion-config-muscle-toggle-arrow {
+    @apply text-[10px] text-red-600/70 w-3 flex-shrink-0;
+  }
+  .motion-config-remove-variation-btn {
+    @apply ml-auto text-[10px] text-red-500 px-1 flex-shrink-0;
+  }
+  .motion-config-remove-variation-btn:hover {
+    @apply text-red-700;
+  }
+  .motion-config-variations-nest {
+    @apply pl-4 pr-2 py-2 space-y-2;
+  }
+  .motion-config-add-variation-dropdown {
+    @apply px-1 py-0.5 border border-blue-300 rounded text-[10px] text-blue-500;
+  }
+  .motion-config-add-variation-dropdown:focus {
+    @apply ring-1 ring-blue-500 outline-none;
+  }
+  .motion-config-add-variation-section {
+    @apply flex flex-row gap-2 items-stretch;
+  }
+  .motion-config-inline-creator-button {
+    @apply whitespace-nowrap h-full px-3 py-1.5 text-[10px] bg-blue-50 text-blue-700 rounded border border-blue-200;
+  }
+  .motion-config-inline-creator-button:hover {
+    @apply bg-blue-100;
+  }
+  .motion-config-inline-creator-form {
+    @apply border rounded p-2 space-y-1.5 bg-blue-50;
+  }
+  .motion-config-inline-creator-input {
+    @apply px-1.5 py-0.5 border rounded text-xs;
+  }
+  .motion-config-inline-creator-input:focus {
+    @apply outline-none ring-1 ring-blue-500;
+  }
+  .motion-config-inline-creator-create-btn {
+    @apply px-2 py-0.5 text-xs bg-blue-600 text-white rounded;
+  }
+  .motion-config-inline-creator-create-btn:disabled {
+    @apply opacity-50;
+  }
+  .motion-config-inline-creator-cancel-btn {
+    @apply px-2 py-0.5 text-xs bg-gray-200 rounded;
+  }
+  .motion-config-set-parent-dropdown {
+    @apply px-1 py-0.5 border border-blue-300 rounded text-[10px] text-blue-500;
+  }
+  .motion-config-set-parent-dropdown:focus {
+    @apply ring-1 ring-blue-500 outline-none;
+  }
+  .motion-config-empty-state {
+    @apply text-xs text-gray-400 py-2 italic;
+  }
+  .motion-config-primary-label-current {
+    @apply text-xs font-bold text-gray-900;
+  }
+  .motion-config-primary-label-container {
+    @apply flex items-center gap-2 flex-shrink-0;
+  }
+  .motion-config-scores-row {
+    @apply flex gap-3;
+  }
+  .motion-config-scores-column {
+    @apply flex-1 min-w-0;
+  }
+  .motion-config-scores-column-editable {
+    @apply flex-1 min-w-0 px-3 py-2;
+  }
+  .motion-config-scores-column-read-only {
+    @apply flex-1 min-w-0 px-3 py-2 bg-gray-200;
+  }
+  .motion-config-section-label {
+    @apply text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1;
+  }
+  .motion-config-variation-label-container {
+    @apply flex items-center gap-2 flex-shrink-0;
+  }
+  .motion-config-orphan-label-current {
+    @apply text-sm font-bold text-gray-900;
+  }
+  .motion-config-orphan-label-container {
+    @apply flex items-center gap-2 flex-shrink-0;
+  }
+  .motion-config-parent-variation-row {
+    @apply flex items-center gap-2 flex-1;
+  }
+  .motion-config-inline-creator-row {
+    @apply flex gap-1.5;
+  }
+  .motion-config-inline-creator-button-wrapper {
+    @apply flex-shrink-0 min-w-fit;
+  }
+  .motion-config-tooltip-text {
+    @apply font-mono text-[11px];
+  }
+  .motion-config-tooltip-container-pre-line {
+    @apply whitespace-pre-line;
+  }
+  .motion-config-tooltip-header-red {
+    @apply text-red-300;
+  }
+  .motion-config-inline-creator-input-flex-1 {
+    @apply flex-1;
+  }
+  .motion-config-inline-creator-input-full {
+    @apply w-full;
+  }
+  .motion-config-muscle-tree-container {
+    @apply space-y-1;
   }
 }
 
