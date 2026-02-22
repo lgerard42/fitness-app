@@ -247,7 +247,6 @@ export default function MuscleHierarchyField({ tableKey, currentRecordId, onFiel
                 {terts.map(t => (
                   <div key={t.id} className={sp.muscleHierarchy.tertiaryItem}>
                     <div className="flex items-center gap-2">
-                      <span className={sp.muscleHierarchy.tertiaryBullet}>•</span>
                       <button type="button" onClick={(e) => handleOpenMuscle(e, t.id)} className={sp.muscleHierarchy.link}>{t.label}</button>
                       <span className={sp.muscleHierarchy.muscleId}>{t.id}</span>
                     </div>
@@ -294,7 +293,6 @@ export default function MuscleHierarchyField({ tableKey, currentRecordId, onFiel
                 {terts.map(t => (
                   <div key={t.id} className={sp.muscleHierarchy.tertiaryItem}>
                     <div className="flex items-center gap-2">
-                      <span className={sp.muscleHierarchy.tertiaryBullet}>•</span>
                       <button type="button" onClick={(e) => handleOpenMuscle(e, t.id)} className={sp.muscleHierarchy.link}>{t.label}</button>
                       <span className={sp.muscleHierarchy.muscleId}>{t.id}</span>
                     </div>

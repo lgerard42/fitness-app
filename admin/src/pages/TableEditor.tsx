@@ -906,6 +906,30 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
   const cellDisplay = (row: Record<string, unknown>, field: TableField) => {
     const val = row[field.name];
     if (val == null || val === '' || String(val).toLowerCase() === 'null') return <span className="text-gray-300">—</span>;
+    
+    // Custom rendering for upper_lower on MUSCLES table (3-button toggle display)
+    if (key === 'muscles' && field.name === 'upper_lower' && Array.isArray(val)) {
+      const isUpper = val.includes('Upper Body');
+      const isLower = val.includes('Lower Body');
+      const isBoth = isUpper && isLower;
+      if (isBoth) return <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">Both</span>;
+      if (isUpper) return <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">Upper</span>;
+      if (isLower) return <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">Lower</span>;
+      return <span className="text-gray-300">—</span>;
+    }
+    
+    // Custom rendering for parent_id on MOTIONS table (show actual ID, not label)
+    if (key === 'motions' && field.name === 'parent_id') {
+      return val ? <span className="text-xs font-mono">{String(val)}</span> : <span className="text-gray-300">—</span>;
+    }
+    
+    // Custom rendering for upper_lower on MOTIONS table (simple toggle display)
+    if (key === 'motions' && field.name === 'upper_lower') {
+      if (val === 'Upper') return <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">Upper</span>;
+      if (val === 'Lower') return <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">Lower</span>;
+      return <span className="text-gray-300">—</span>;
+    }
+    
     if (field.type === 'boolean') {
       return val ? (
         <span className="inline-block w-2 h-2 rounded-full bg-green-500" title="true" />

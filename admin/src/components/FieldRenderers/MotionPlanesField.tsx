@@ -250,7 +250,7 @@ function ReadOnlyMuscleTree({ targets, allMuscles, deltaScores }: {
   }
 
   return (
-    <div className="space-y-1">
+    <div className={sp.deltaRules.treeContainer}>
       {primaries.map(pId => {
         const pNode = mergedTree[pId] as Record<string, unknown>;
         if (!pNode || typeof pNode !== 'object') return null;
@@ -262,15 +262,18 @@ function ReadOnlyMuscleTree({ targets, allMuscles, deltaScores }: {
         const isChanged = !isNew && pBase !== null && pBase !== pAfter;
 
         return (
-          <div key={pId} className={sp.card.treeItem}>
-            <div className={sp.treeRow.primary}>
+          <div key={pId} className={sp.deltaRules.treeItemReadOnly}>
+            <div className={sp.deltaRules.treeRowPrimaryReadOnly}>
               <span className={sp.treeRow.primaryLabel}>{pLabel}</span>
               {isNew ? (
-                <span className="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded font-medium">Add</span>
+                <>
+                  <span className={sp.deltaRules.addBadge}>Add</span>
+                  <span className={sp.scoreInput.readOnly}>{pAfter}</span>
+                </>
               ) : isChanged ? (
                 <>
                   <span className={sp.scoreInput.readOnly}>{pBase}</span>
-                  <span className="text-[10px] text-gray-400">→</span>
+                  <span className={sp.deltaRules.arrowSeparator}>→</span>
                   <span className={sp.scoreInput.changed}>{pAfter}</span>
                 </>
               ) : (
@@ -278,7 +281,7 @@ function ReadOnlyMuscleTree({ targets, allMuscles, deltaScores }: {
               )}
             </div>
             {sKeys.length > 0 && (
-              <div className={sp.treeNest.secondaries}>
+              <div className={sp.deltaRules.treeNestSecondariesReadOnly}>
                 {sKeys.map(sId => {
                   const sNode = pNode[sId] as Record<string, unknown>;
                   if (!sNode || typeof sNode !== 'object') return null;
@@ -290,15 +293,18 @@ function ReadOnlyMuscleTree({ targets, allMuscles, deltaScores }: {
                   const sIsChanged = !sIsNew && sBase !== null && sBase !== sAfter;
 
                   return (
-                    <div key={sId} className={sp.card.treeItemFlat}>
-                      <div className={sp.treeRow.secondary}>
+                    <div key={sId} className={sp.deltaRules.treeItemFlatReadOnly}>
+                      <div className={sp.deltaRules.treeRowSecondaryReadOnly}>
                         <span className={sp.treeRow.secondaryLabel}>{sLabel}</span>
                         {sIsNew ? (
-                          <span className="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded font-medium">Add</span>
+                          <>
+                            <span className={sp.deltaRules.addBadge}>Add</span>
+                            <span className={sp.scoreInput.readOnly}>{sAfter}</span>
+                          </>
                         ) : sIsChanged ? (
                           <>
                             <span className={sp.scoreInput.readOnly}>{sBase}</span>
-                            <span className="text-[10px] text-gray-400">→</span>
+                            <span className={sp.deltaRules.arrowSeparator}>→</span>
                             <span className={sp.scoreInput.changed}>{sAfter}</span>
                           </>
                         ) : (
@@ -306,7 +312,7 @@ function ReadOnlyMuscleTree({ targets, allMuscles, deltaScores }: {
                         )}
                       </div>
                       {tKeys.length > 0 && (
-                        <div className={sp.treeNest.tertiaries}>
+                        <div className={sp.deltaRules.treeNestTertiariesReadOnly}>
                           {tKeys.map(tId => {
                             const tNode = sNode[tId] as Record<string, unknown>;
                             const tBase = getBaseFromTree(tId, targets && typeof targets === 'object' ? targets : {});
@@ -316,14 +322,17 @@ function ReadOnlyMuscleTree({ targets, allMuscles, deltaScores }: {
                             const tIsChanged = !tIsNew && tBase !== null && tBase !== tAfter;
 
                             return (
-                              <div key={tId} className={sp.treeRow.tertiary}>
+                              <div key={tId} className={sp.deltaRules.treeRowTertiaryReadOnly}>
                                 <span className={sp.treeRow.tertiaryLabel}>{tLabel}</span>
                                 {tIsNew ? (
-                                  <span className="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded font-medium">Add</span>
+                                  <>
+                                    <span className={sp.deltaRules.addBadge}>Add</span>
+                                    <span className={sp.scoreInput.readOnly}>{tAfter}</span>
+                                  </>
                                 ) : tIsChanged ? (
                                   <>
                                     <span className={sp.scoreInput.readOnly}>{tBase}</span>
-                                    <span className="text-[10px] text-gray-400">→</span>
+                                    <span className={sp.deltaRules.arrowSeparator}>→</span>
                                     <span className={sp.scoreInput.changed}>{tAfter}</span>
                                   </>
                                 ) : (
@@ -456,7 +465,7 @@ function DeltaMuscleTree({
   };
 
   return (
-    <div className="space-y-1">
+    <div className={sp.deltaRules.treeContainer}>
       {activePrimaries.map(pId => {
         const pNode = tree[pId] as TreeNode;
         if (!pNode || typeof pNode !== 'object') return null;
@@ -467,13 +476,13 @@ function DeltaMuscleTree({
         const pIsComputed = sKeys.length > 0;
 
         return (
-          <div key={pId} className={sp.card.treeItem}>
-            <div className={sp.treeRow.primary}>
+          <div key={pId} className={sp.deltaRules.treeItem}>
+            <div className={sp.deltaRules.treeRowPrimary}>
               <span className={sp.treeRow.primaryLabel}>{pLabel}</span>
               <ScoreInput path={[pId]} score={pScore} computed={pIsComputed} />
               <button type="button" onClick={() => removeKey([pId])} className={sp.removeBtn.small}>×</button>
             </div>
-            <div className={sp.treeNest.secondaries}>
+            <div className={sp.deltaRules.treeNestSecondaries}>
               {sKeys.map(sId => {
                 const sNode = pNode[sId] as TreeNode;
                 if (!sNode || typeof sNode !== 'object') return null;
@@ -484,20 +493,20 @@ function DeltaMuscleTree({
                 const sIsComputed = tKeys.length > 0;
 
                 return (
-                  <div key={sId} className={sp.card.treeItemFlat}>
-                    <div className={sp.treeRow.secondary}>
+                  <div key={sId} className={sp.deltaRules.treeItemFlat}>
+                    <div className={sp.deltaRules.treeRowSecondary}>
                       <span className={sp.treeRow.secondaryLabel}>{sLabel}</span>
                       <ScoreInput path={[pId, sId]} score={sScore} computed={sIsComputed} />
                       <button type="button" onClick={() => removeKey([pId, sId])} className={sp.removeBtn.small}>×</button>
                     </div>
                     {(tKeys.length > 0 || availTer.length > 0) && (
-                      <div className={sp.treeNest.tertiaries}>
+                      <div className={sp.deltaRules.treeNestTertiaries}>
                         {tKeys.map(tId => {
                           const tNode = sNode[tId] as TreeNode;
                           const tScore = (tNode as TreeNode)?._score ?? 0;
                           const tLabel = getMuscleLabel(allMuscles, tId);
                           return (
-                            <div key={tId} className={sp.treeRow.tertiary}>
+                            <div key={tId} className={sp.deltaRules.treeRowTertiary}>
                               <span className={sp.treeRow.tertiaryLabel}>{tLabel}</span>
                               <ScoreInput path={[pId, sId, tId]} score={tScore} />
                               <button type="button" onClick={() => removeKey([pId, sId, tId])} className={sp.removeBtn.small}>×</button>
@@ -506,7 +515,7 @@ function DeltaMuscleTree({
                         })}
                         {availTer.length > 0 && (
                           <select onChange={e => { if (e.target.value) addTertiary(pId, sId, e.target.value); e.target.value = ''; }}
-                            className={sp.addDropdown.tree} defaultValue="">
+                            className={sp.deltaRules.treeAddDropdown} defaultValue="">
                             <option value="">+ tertiary...</option>
                             {availTer.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
                           </select>
@@ -518,7 +527,7 @@ function DeltaMuscleTree({
               })}
               {availSec.length > 0 && (
                 <select onChange={e => { if (e.target.value) addSecondary(pId, e.target.value); e.target.value = ''; }}
-                  className={sp.addDropdown.tree} defaultValue="">
+                  className={sp.deltaRules.treeAddDropdown} defaultValue="">
                   <option value="">+ secondary...</option>
                   {availSec.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
                 </select>
@@ -529,7 +538,7 @@ function DeltaMuscleTree({
       })}
       {unusedPrimaries.length > 0 && (
         <select onChange={e => { if (e.target.value) addPrimary(e.target.value); e.target.value = ''; }}
-          className={sp.addDropdown.tree} defaultValue="">
+          className={sp.deltaRules.treeAddDropdown} defaultValue="">
           <option value="">+ muscle group...</option>
           {unusedPrimaries.map(pm => <option key={pm.id} value={pm.id}>{pm.label}</option>)}
         </select>
@@ -865,9 +874,9 @@ export default function MotionPlanesField({ value, onChange, motionId, onOpenRow
 
               {isExp && motionId && (
                 <div className={sp.motionPlane.expandedContent}>
-                  <div className="flex gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Delta Modifiers</div>
+                  <div className={sp.deltaRules.scoresRow}>
+                    <div className={sp.deltaRules.scoresColumnEditable}>
+                      <div className={sp.deltaRules.sectionLabel}>Delta Modifiers</div>
                       <DeltaMuscleTree
                         delta={motionDelta}
                         onSave={saveDelta}
@@ -875,8 +884,8 @@ export default function MotionPlanesField({ value, onChange, motionId, onOpenRow
                         planeId={plane.id}
                       />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Base Muscle Scores</div>
+                    <div className={sp.deltaRules.scoresColumnReadOnly}>
+                      <div className={sp.deltaRules.sectionLabel}>Base Muscle Scores</div>
                       <ReadOnlyMuscleTree
                         targets={(currentMotion?.muscle_targets as Record<string, unknown>) || {}}
                         allMuscles={allMuscles}

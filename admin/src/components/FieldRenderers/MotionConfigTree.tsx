@@ -288,7 +288,12 @@ function MuscleTargetsSubtree({
         const isChanged = baseScore !== null && variationScore !== null && baseScore !== variationScore;
 
         if (isNew) {
-          return <span className={sp.deltaRules.addBadge}>Add</span>;
+          return (
+            <>
+              <span className={sp.deltaRules.addBadge}>Add</span>
+              <span className={sp.scoreInput.readOnly}>{variationScore}</span>
+            </>
+          );
         } else if (isChanged) {
           return (
             <>
@@ -324,8 +329,26 @@ function MuscleTargetsSubtree({
     );
   };
 
+  const treeStyles = readOnly ? {
+    item: sp.deltaRules.treeItemReadOnly,
+    itemFlat: sp.deltaRules.treeItemFlatReadOnly,
+    rowPrimary: sp.deltaRules.treeRowPrimaryReadOnly,
+    rowSecondary: sp.deltaRules.treeRowSecondaryReadOnly,
+    rowTertiary: sp.deltaRules.treeRowTertiaryReadOnly,
+    nestSecondaries: sp.deltaRules.treeNestSecondariesReadOnly,
+    nestTertiaries: sp.deltaRules.treeNestTertiariesReadOnly,
+  } : {
+    item: sp.deltaRules.treeItem,
+    itemFlat: sp.deltaRules.treeItemFlat,
+    rowPrimary: sp.deltaRules.treeRowPrimary,
+    rowSecondary: sp.deltaRules.treeRowSecondary,
+    rowTertiary: sp.deltaRules.treeRowTertiary,
+    nestSecondaries: sp.deltaRules.treeNestSecondaries,
+    nestTertiaries: sp.deltaRules.treeNestTertiaries,
+  };
+
   return (
-    <div className={sp.motionConfig.muscleTreeContainer}>
+    <div className={sp.deltaRules.treeContainer}>
       {activePrimariesDisplay.map(pId => {
         const pNode = displayData[pId] as Record<string, unknown> | undefined;
         if (!pNode || typeof pNode !== 'object') return null;
@@ -336,15 +359,15 @@ function MuscleTargetsSubtree({
         const pIsComputed = sKeys.length > 0;
 
         return (
-          <div key={pId} className={sp.card.treeItem}>
-            <div className={sp.treeRow.primary}>
+          <div key={pId} className={treeStyles.item}>
+            <div className={treeStyles.rowPrimary}>
               <span className={sp.treeRow.primaryLabel}>{pLabel}</span>
               <ScoreInput path={[pId]} score={pScore} computed={pIsComputed} muscleId={pId} />
               {!readOnly && (
                 <button type="button" onClick={() => removeKey([pId])} className={sp.removeBtn.small}>×</button>
               )}
             </div>
-            <div className={sp.treeNest.secondaries}>
+            <div className={treeStyles.nestSecondaries}>
               {sKeys.map(sId => {
                 const sNode = pNode[sId] as Record<string, unknown> | undefined;
                 if (!sNode || typeof sNode !== 'object') return null;
@@ -355,8 +378,8 @@ function MuscleTargetsSubtree({
                 const sIsComputed = tKeys.length > 0;
 
                 return (
-                  <div key={sId} className={sp.card.treeItemFlat}>
-                    <div className={sp.treeRow.secondary}>
+                  <div key={sId} className={treeStyles.itemFlat}>
+                    <div className={treeStyles.rowSecondary}>
                       <span className={sp.treeRow.secondaryLabel}>{sLabel}</span>
                       <ScoreInput path={[pId, sId]} score={sScore} computed={sIsComputed} muscleId={sId} />
                       {!readOnly && (
@@ -364,13 +387,13 @@ function MuscleTargetsSubtree({
                       )}
                     </div>
                     {(tKeys.length > 0 || availTer.length > 0) && (
-                      <div className={sp.treeNest.tertiaries}>
+                      <div className={treeStyles.nestTertiaries}>
                         {tKeys.map(tId => {
                           const tNode = sNode[tId] as Record<string, unknown> | undefined;
                           const tScore = (tNode?._score as number) ?? 0;
                           const tLabel = getMuscleLabelById(allMuscles, tId);
                           return (
-                            <div key={tId} className={sp.treeRow.tertiary}>
+                            <div key={tId} className={treeStyles.rowTertiary}>
                               <span className={sp.treeRow.tertiaryLabel}>{tLabel}</span>
                               <ScoreInput path={[pId, sId, tId]} score={tScore} muscleId={tId} />
                               {!readOnly && (
@@ -381,7 +404,7 @@ function MuscleTargetsSubtree({
                         })}
                         {!readOnly && availTer.length > 0 && (
                           <select onChange={e => { if (e.target.value) addTertiary(pId, sId, e.target.value); e.target.value = ''; }}
-                            className={sp.addDropdown.tree} defaultValue="">
+                            className={sp.deltaRules.treeAddDropdown} defaultValue="">
                             <option value="">+ tertiary...</option>
                             {availTer.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
                           </select>
@@ -393,7 +416,7 @@ function MuscleTargetsSubtree({
               })}
               {!readOnly && availSec.length > 0 && (
                 <select onChange={e => { if (e.target.value) addSecondary(pId, e.target.value); e.target.value = ''; }}
-                  className={sp.addDropdown.tree} defaultValue="">
+                  className={sp.deltaRules.treeAddDropdown} defaultValue="">
                   <option value="">+ secondary...</option>
                   {availSec.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
                 </select>
@@ -404,7 +427,7 @@ function MuscleTargetsSubtree({
       })}
       {!readOnly && unusedPrimariesDisplay.length > 0 && (
         <select onChange={e => { if (e.target.value) addPrimary(e.target.value); e.target.value = ''; }}
-          className={sp.addDropdown.tree} defaultValue="">
+          className={sp.deltaRules.treeAddDropdown} defaultValue="">
           <option value="">+ muscle group...</option>
           {unusedPrimariesDisplay.map(pm => <option key={pm.id} value={pm.id}>{pm.label}</option>)}
         </select>
@@ -465,6 +488,7 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
   const [allMuscles, setAllMuscles] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [error, setError] = useState<string | null>(null);
 
   const loadAll = useCallback(async () => {
     try {
@@ -474,8 +498,10 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
       ]);
       setAllMotions((motions as MotionRecord[]) || []);
       setAllMuscles((muscles as Record<string, unknown>[]) || []);
+      setError(null);
     } catch (err) {
       console.error('Failed to load data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load data');
     } finally {
       setLoading(false);
     }
@@ -537,7 +563,123 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
     expanded, toggleExpanded: toggle, allMuscles,
   }), [expanded, toggle, allMuscles]);
 
+  // Helper to get primary muscles from a motion
+  const getPrimaryMusclesFromMotion = useCallback((motion: MotionRecord): string[] => {
+    const targets = motion.muscle_targets as Record<string, unknown> | undefined;
+    if (!targets || typeof targets !== 'object') return [];
+    return Object.keys(targets).filter(k => k !== '_score');
+  }, []);
+
+  // Compute currentMotion and related values early, but after hooks
+  const currentMotion = allMotions.find(m => m.id === currentRecordId);
+  const isCurrentParent = currentMotion ? !currentMotion.parent_id : false;
+  const computedFocusVariationId = currentMotion && !isCurrentParent ? currentRecordId : null;
+  
+  // Group motions by primary muscle, then by primary motion with variations indented
+  const groupedMotions = useMemo(() => {
+    if (!currentMotion || !allMuscles || allMuscles.length === 0 || !allMotions || allMotions.length === 0) return [];
+    
+    const addToPrimaryOptions = computedFocusVariationId
+      ? parentMotions.filter(pm => pm.id !== currentMotion.parent_id)
+      : [];
+    
+    if (addToPrimaryOptions.length === 0) return [];
+
+    const groups: Record<string, Array<{ motion: MotionRecord; isPrimary: boolean }>> = {};
+    const primaryMuscles = allMuscles.filter((m: Record<string, unknown>) => {
+      const pids = m.parent_ids;
+      return !pids || (Array.isArray(pids) && pids.length === 0);
+    });
+    const primaryMuscleMap = new Map(primaryMuscles.map((m: Record<string, unknown>) => [m.id as string, m]));
+
+    // Separate primary motions from variations
+    const primaryMotionsList = addToPrimaryOptions.filter(m => !m.parent_id);
+    const variationsList = addToPrimaryOptions.filter(m => !!m.parent_id);
+
+    // Group primary motions by their primary muscles
+    primaryMotionsList.forEach(motion => {
+      const primaryMuscleIds = getPrimaryMusclesFromMotion(motion);
+      if (primaryMuscleIds.length === 0) {
+        // If no primary muscles, put in "Other" group
+        if (!groups['OTHER']) groups['OTHER'] = [];
+        groups['OTHER'].push({ motion, isPrimary: true });
+      } else {
+        // Group by first primary muscle
+        const primaryId = primaryMuscleIds[0];
+        if (!groups[primaryId]) groups[primaryId] = [];
+        groups[primaryId].push({ motion, isPrimary: true });
+      }
+    });
+
+    // Add variations under their parent's primary muscle group
+    variationsList.forEach(variation => {
+      const parentMotion = allMotions.find(m => m.id === variation.parent_id);
+      if (parentMotion) {
+        const primaryMuscleIds = getPrimaryMusclesFromMotion(parentMotion);
+        const groupKey = primaryMuscleIds.length > 0 ? primaryMuscleIds[0] : 'OTHER';
+        if (!groups[groupKey]) groups[groupKey] = [];
+        groups[groupKey].push({ motion: variation, isPrimary: false });
+      }
+    });
+
+    // Sort motions within each group: primaries first (alphabetically), then variations under their parent
+    Object.keys(groups).forEach(key => {
+      const items = groups[key];
+      const primaries = items.filter(item => item.isPrimary).sort((a, b) => a.motion.label.localeCompare(b.motion.label));
+      const variations = items.filter(item => !item.isPrimary);
+      
+      // Sort variations and group them under their parents
+      variations.sort((a, b) => {
+        const aParentId = a.motion.parent_id;
+        const bParentId = b.motion.parent_id;
+        if (aParentId !== bParentId) {
+          // Group by parent, then sort by label
+          const aParent = primaries.find(p => p.motion.id === aParentId);
+          const bParent = primaries.find(p => p.motion.id === bParentId);
+          if (aParent && bParent) {
+            const parentCompare = aParent.motion.label.localeCompare(bParent.motion.label);
+            if (parentCompare !== 0) return parentCompare;
+          }
+        }
+        return a.motion.label.localeCompare(b.motion.label);
+      });
+
+      // Rebuild array: primaries first, then variations under their parent
+      const sorted: Array<{ motion: MotionRecord; isPrimary: boolean }> = [];
+      primaries.forEach(primary => {
+        sorted.push(primary);
+        // Add variations for this primary
+        variations.filter(v => v.motion.parent_id === primary.motion.id).forEach(v => sorted.push(v));
+      });
+      // Add any variations whose parent isn't in this group (shouldn't happen, but just in case)
+      variations.filter(v => !primaries.some(p => p.motion.id === v.motion.parent_id)).forEach(v => sorted.push(v));
+      
+      groups[key] = sorted;
+    });
+
+    // Sort groups by primary muscle label
+    const sortedGroups: Array<{ primaryId: string; primaryLabel: string; motions: Array<{ motion: MotionRecord; isPrimary: boolean }> }> = [];
+    Object.keys(groups).forEach(primaryId => {
+      const primary = primaryMuscleMap.get(primaryId);
+      const primaryLabel = primary && typeof primary === 'object' && 'label' in primary ? String(primary.label) : primaryId;
+      sortedGroups.push({
+        primaryId,
+        primaryLabel,
+        motions: groups[primaryId],
+      });
+    });
+    sortedGroups.sort((a, b) => {
+      if (a.primaryId === 'OTHER') return 1;
+      if (b.primaryId === 'OTHER') return -1;
+      return a.primaryLabel.localeCompare(b.primaryLabel);
+    });
+
+    return sortedGroups;
+  }, [computedFocusVariationId, currentMotion, parentMotions, allMuscles, allMotions, getPrimaryMusclesFromMotion]);
+
   if (loading) return <div className={sp.motionConfig.loading}>Loading...</div>;
+  if (error) return <div className={sp.motionConfig.emptyState}>Error: {error}</div>;
+  if (!currentMotion) return <div className={sp.motionConfig.emptyState}>Record not found.</div>;
 
   const isCurrent = (id: string) => id === currentRecordId;
 
@@ -577,15 +719,15 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
             className={sp.motionConfig.removeVariationBtn}>Remove</button>
         </div>
         {expanded.has(varMtKey) && (
-          <div className={sp.muscleTreeBg.bordered}>
-            <div className={sp.motionConfig.scoresRow}>
-              <div className={sp.motionConfig.scoresColumnEditable}>
-                <div className={sp.motionConfig.sectionLabel}>Variation Scores</div>
+          <div className={sp.deltaRules.expandedContent}>
+            <div className={sp.deltaRules.scoresRow}>
+              <div className={sp.deltaRules.scoresColumnEditable}>
+                <div className={sp.deltaRules.sectionLabel}>Variation Scores</div>
                 <MuscleTargetsSubtree targets={targets} depth={0} onChange={onChange} {...mtProps} />
               </div>
               {parentTargets && Object.keys(parentTargets).filter(k => k !== '_score').length > 0 && (
-                <div className={sp.motionConfig.scoresColumnReadOnly}>
-                  <div className={sp.motionConfig.sectionLabel}>Parent Scores</div>
+                <div className={sp.deltaRules.scoresColumnReadOnly}>
+                  <div className={sp.deltaRules.sectionLabel}>Parent Scores</div>
                   <MuscleTargetsSubtree targets={parentTargets} depth={0} readOnly variationTargets={targets} {...mtProps} />
                 </div>
               )}
@@ -596,19 +738,12 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
     );
   };
 
-  const currentMotion = allMotions.find(m => m.id === currentRecordId);
-  if (!currentMotion) return <div className={sp.motionConfig.emptyState}>Record not found.</div>;
-
-  const isCurrentParent = !currentMotion.parent_id;
-
   let rootPrimaries: MotionRecord[] = [];
-  let focusVariationId: string | null = null;
   let orphanVariation: MotionRecord | null = null;
 
   if (isCurrentParent) {
     rootPrimaries = [currentMotion];
   } else {
-    focusVariationId = currentRecordId;
     const pm = parentMotions.find(p => p.id === currentMotion.parent_id);
     if (pm) {
       rootPrimaries = [pm];
@@ -623,7 +758,7 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
     const current = isCurrent(pm.id);
     const { targets, onChange } = getTargetsAndOnChange(pm.id, pm);
     const relVars = childMotions.filter(v => v.parent_id === pm.id);
-    const displayVars = focusVariationId ? relVars.filter(v => v.id === focusVariationId) : relVars;
+    const displayVars = computedFocusVariationId ? relVars.filter(v => v.id === computedFocusVariationId) : relVars;
     const unlinkedVars = allMotions.filter(v =>
       !v.parent_id &&
       v.id !== pm.id &&
@@ -632,7 +767,7 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
     const pmMtKey = `mt-pm-${pm.id}`;
 
     // If viewing a variation, show parent → variation on same row
-    if (focusVariationId && displayVars.length === 1) {
+    if (computedFocusVariationId && displayVars.length === 1) {
       const variation = displayVars[0];
       const varMtKey = `mt-var-${variation.id}`;
       return (
@@ -659,15 +794,15 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
               className={sp.motionConfig.removeVariationBtn}>Remove</button>
           </div>
           {expanded.has(`mt-var-${variation.id}`) && (
-            <div className={sp.muscleTreeBg.bordered}>
-              <div className={sp.motionConfig.scoresRow}>
-                <div className={sp.motionConfig.scoresColumnEditable}>
-                  <div className={sp.motionConfig.sectionLabel}>Variation Scores</div>
+            <div className={sp.deltaRules.expandedContent}>
+              <div className={sp.deltaRules.scoresRow}>
+                <div className={sp.deltaRules.scoresColumnEditable}>
+                  <div className={sp.deltaRules.sectionLabel}>Variation Scores</div>
                   <MuscleTargetsSubtree targets={getTargetsAndOnChange(variation.id, variation).targets} depth={0} onChange={getTargetsAndOnChange(variation.id, variation).onChange} {...mtProps} />
                 </div>
                 {Object.keys(targets).filter(k => k !== '_score').length > 0 && (
-                  <div className={sp.motionConfig.scoresColumnReadOnly}>
-                    <div className={sp.motionConfig.sectionLabel}>Parent Scores</div>
+                  <div className={sp.deltaRules.scoresColumnReadOnly}>
+                    <div className={sp.deltaRules.sectionLabel}>Parent Scores</div>
                     <MuscleTargetsSubtree targets={targets} depth={0} readOnly variationTargets={getTargetsAndOnChange(variation.id, variation).targets} {...mtProps} />
                   </div>
                 )}
@@ -679,11 +814,16 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
     }
 
     // Normal parent view (when not viewing a variation)
+    // If viewing the primary motion itself, don't show the variations toggle (no parent to show)
+    const shouldShowVariationsToggle = !current;
+    
     return (
       <div key={pm.id} className={sp.motionConfig.primaryCard}>
         <div className={`${sp.motionConfig.primaryHeader} ${current ? sp.motionConfig.primaryHeaderCurrent : ''}`}>
           <button type="button" onClick={() => toggle(pmMtKey)} className={sp.toggle.base}>{expanded.has(pmMtKey) ? '▼' : '▶'}</button>
-          <button type="button" onClick={() => toggle(rootKey)} className={sp.toggle.base}>{isRootExp ? '▼' : '▶'}</button>
+          {shouldShowVariationsToggle && (
+            <button type="button" onClick={() => toggle(rootKey)} className={sp.toggle.base}>{isRootExp ? '▼' : '▶'}</button>
+          )}
           <div className={sp.motionConfig.primaryLabelContainer}>
             {current ? (
               <span className={sp.motionConfig.primaryLabelCurrent}>{pm.label}</span>
@@ -695,14 +835,14 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
           <MuscleTargetsToggle mtKey={pmMtKey} targets={targets} allMuscles={allMuscles} expanded={expanded} toggle={toggle} />
         </div>
         {expanded.has(pmMtKey) && (
-          <div className={sp.muscleTreeBg.bordered}>
+          <div className={sp.deltaRules.expandedContent}>
             <MuscleTargetsSubtree targets={targets} depth={0} onChange={onChange} {...mtProps} />
           </div>
         )}
-        {isRootExp && (
+        {(current ? true : isRootExp) && (
           <div className={sp.motionConfig.variationsNest}>
             {displayVars.map(v => renderVariation(v, `pm-${pm.id}`, targets))}
-            {!focusVariationId && (
+            {!computedFocusVariationId && (
               <div className={sp.motionConfig.addVariationSection}>
                 <select value="" onChange={async e => { if (e.target.value) await addVariationToPrimary(pm.id, e.target.value); }}
                   className={sp.motionConfig.addVariationDropdown}>
@@ -740,7 +880,7 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
           <MuscleTargetsToggle mtKey={orphanVarMtKey} targets={targets} allMuscles={allMuscles} expanded={expanded} toggle={toggle} />
         </div>
         {expanded.has(orphanVarMtKey) && (
-          <div className={sp.muscleTreeBg.bordered}>
+          <div className={sp.deltaRules.expandedContent}>
             <MuscleTargetsSubtree targets={targets} depth={0} onChange={onChange} {...mtProps} />
           </div>
         )}
@@ -757,22 +897,26 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
     );
   };
 
-  const addToPrimaryOptions = focusVariationId
-    ? parentMotions.filter(pm => pm.id !== currentMotion.parent_id)
-    : [];
-
   return (
     <div className={sp.motionConfig.container}>
       {rootPrimaries.map(pm => renderPrimaryMotionTree(pm))}
       {orphanVariation && renderOrphanVariation(orphanVariation)}
 
-      {focusVariationId && addToPrimaryOptions.length > 0 && (
+      {computedFocusVariationId && groupedMotions.length > 0 && (
         <select value="" onChange={async e => {
-          if (e.target.value) await setPrimaryForVariation(focusVariationId!, e.target.value);
+          if (e.target.value) await setPrimaryForVariation(computedFocusVariationId!, e.target.value);
         }}
           className={sp.motionConfig.setParentDropdown}>
           <option value="">{rootPrimaries.length > 0 ? 'Move to another Motion...' : 'Set Parent Motion...'}</option>
-          {addToPrimaryOptions.map(p => <option key={p.id} value={p.id}>{p.label} ({p.id})</option>)}
+          {groupedMotions.map(group => (
+            <optgroup key={group.primaryId} label={group.primaryLabel} className={sp.deltaRules.addMotionOptgroup}>
+              {group.motions.map(({ motion, isPrimary }) => (
+                <option key={motion.id} value={motion.id} className={isPrimary ? sp.deltaRules.addMotionOption : sp.deltaRules.addMotionOptionIndented}>
+                  {motion.label} ({motion.id})
+                </option>
+              ))}
+            </optgroup>
+          ))}
         </select>
       )}
     </div>

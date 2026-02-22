@@ -1,0 +1,117 @@
+Gemini said
+Here is the complete architectural master document for your Delta-Based Exercise Scoring System.
+
+This engine is designed to move away from the traditional, fragile model of storing 10,000 individual, hardcoded exercises. Instead, you have built a Biomechanical Physics Engine. It treats human movement as a base formula, and environmental factors (equipment, stance, gravity) as mathematical modifiers.
+
+Part 1: The Core Scoring Logic
+The scoring system calculates the exact muscular volume a user achieves by combining a Base Score with Delta Modifiers.
+
+The Base Score: The engine queries the MOTIONS table. If the user selects an exercise (e.g., "Incline Fly"), the engine retrieves the pre-calculated base muscle targets (e.g., 1.0 Upper Chest, 0.6 Front Delts).
+
+The Modifiers (Deltas): As the user configures their exercise in the UI (selecting a specific grip, stance, or plane), the engine queries the corresponding modifier tables. If a modifier alters the physics of the movement, it returns a JSON object containing mathematical shifts (e.g., {"CHEST_UPPER": 0.20, "CHEST_MID": -0.10}).
+
+The Output: The engine adds the Deltas to the Base Score. If a muscle score drops below 0, it is zeroed out. The final tallied array is injected into the user's workout log as their hyper-accurate volume for that set.
+
+The Golden Rule of the UI/UX:
+To prevent the system from double-counting math ("The Double Dip"), if a user selects a specific Variation (like an Incline Press), its angle is already baked into its Base Score. The UI automatically locks the "Motion Plane" modifier, hiding it from the user and feeding an empty delta to the engine. Modifiers are only shown to the user when they have the physical freedom to change them.
+
+Part 2: The Database Tables Overview
+Your database is divided into 15 tables, categorized by their role in the physics engine.
+
+Group 1: The Anchor
+1. MOTIONS
+This is the heart of the system. It contains the primary joint actions (e.g., PRESS, SQUAT) and their rigidly defined variations (e.g., PRESS_INCLINE, SQUAT_FRONT).
+
+Role: Provides the Base Score for every exercise.
+
+Key Logic: Variations contain perfectly pre-calculated math. Parent motions act as fallbacks and baseline structures.
+
+Group 2: Trajectory & Posture
+2. MOTION_PLANES
+Defines the vector of resistance relative to the working joint (e.g., LOW_HIGH, HIGH_LOW).
+
+Role: Used primarily for free-form movements like cables or bands. It applies aggressive deltas to shift muscle focus (e.g., shifting a flat cable fly into an upper-chest scoop fly).
+
+3. TORSO_ANGLES
+Defines the angle of the user's spine relative to gravity (e.g., UPRIGHT, BENT_OVER, INCLINED).
+
+Role: Crucial for separating rows (bent over vs. upright) and determining lower back/core stabilizer demand.
+
+4. TORSO_ORIENTATIONS
+Defines the user's physical direction relative to the equipment anchor point (e.g., FACING_AWAY, FACING_TOWARD).
+
+Role: Essential for cable setups (e.g., Cable Crunches facing the tower vs. facing away from the tower) to ensure the resistance curve is applied to the correct side of the body.
+
+Group 3: Upper Body Biomechanics
+5. GRIPS
+Defines hand rotation (e.g., PRONATED / Overhand, SUPINATED / Underhand, NEUTRAL).
+
+Role: Heavily modifies forearm, bicep, and specific back segment activations (e.g., a supinated pulldown shifts volume to the biceps and lower lats).
+
+6. GRIP_WIDTHS
+Defines the distance between the hands (e.g., NARROW, WIDE, STANDARD).
+
+Role: Modifies the stretch and leverage on the chest and back. Wide grips isolate outer fibers/lats; narrow grips shift focus to inner fibers and triceps.
+
+7. ELBOW_RELATIONSHIP
+Defines the flare of the elbow relative to the torso (e.g., TUCKED, FLARED).
+
+Role: The ultimate determining factor for tricep vs. chest dominance in presses, and lat vs. upper-back dominance in rows.
+
+Group 4: Lower Body Biomechanics
+8. FOOT_POSITIONS
+Defines where the feet are placed on a platform (e.g., HIGH, LOW, FORWARD).
+
+Role: Primarily modifies Leg Press and Hack Squat mechanics. High foot placement shifts deltas to glutes/hamstrings; low placement shifts deltas to quads.
+
+9. STANCE_WIDTHS
+Defines the lateral distance between the feet (e.g., NARROW, SUMO, STANDARD).
+
+Role: Modifies the adductor (inner thigh) and glute activation during squats and deadlifts.
+
+10. STANCE_TYPES
+Defines the structural footprint of the lower body (e.g., BILATERAL, STAGGERED, SINGLE_LEG).
+
+Role: Modifies core stabilizer demand and completely changes the volume distribution (e.g., turning a standard deadlift into a B-Stance or single-leg RDL).
+
+Group 5: Execution Variables
+11. SUPPORT_STRUCTURES
+Defines what is bracing the body during the lift (e.g., CHEST_SUPPORTED, SEATED_BACK_SUPPORT, UNSUPPORTED).
+
+Role: Dictates the "Core Tax." An unsupported barbell row triggers heavy lower-back and core deltas; a chest-supported row zeroes them out, allowing 100% of the volume to go to the upper back.
+
+12. LOADING_AIDS
+Defines exactly how the resistance is applied to the body (e.g., ANTERIOR_LOAD, POSTERIOR_LOAD, or specific accommodations like BANDS / CHAINS).
+
+Role: Shifts the center of gravity (e.g., a Front Squat's anterior load applies deltas to the quads and upper back, while reducing lower back strain).
+
+13. RANGE_OF_MOTION
+Defines the degree of the joint hinge (e.g., FULL, BOTTOM_HALF, TOP_HALF, ISOMETRIC).
+
+Role: Reduces or shifts the global volume multiplier based on time under tension and peak contraction phases.
+
+Group 6: The Equipment Taxonomy
+14. EQUIPMENT_CATEGORIES
+The hierarchical taxonomy tree of the gym (e.g., WEIGHTS -> CABLES -> CABLE_ATTACHMENTS).
+
+Role: Powers the UI navigation, allowing users to drill down from broad categories into specific setups effortlessly.
+
+15. EQUIPMENT
+The physical items the user holds or interacts with (e.g., BARBELL, D_HANDLE, ROPE).
+
+Role: The trigger for the constraint system. When a user selects a "Rope," the engine knows it cannot allow a SUPINATED grip, preventing impossible biomechanical combinations before they even reach the math engine.
+
+How the Engine Breathes (The User Flow)
+When a user logs a workout, your app isn't forcing them to fill out a math test. The intelligence is entirely under the hood.
+
+The User Selects Equipment: They choose "Cable Machine" and "D-Handles".
+
+The App Filters: The constraint engine immediately knows BILATERAL handles allow free-form paths, so it unlocks the MOTION_PLANES modifier.
+
+The User Selects a Motion: They select "Fly."
+
+The App Asks for Context: Because it's a cable Fly, the app asks, "Where are the pulleys?" The user selects "Low to High".
+
+The Engine Executes: It grabs the Mid-Chest Base Score from FLY, grabs the Upper-Chest Delta from LOW_HIGH in the MOTION_PLANES table, adds them together, and seamlessly credits the user with a perfect Incline Fly volume score.
+
+This is a globally scalable system. If a new machine is invented tomorrow, you don't need to add 50 new exercises to your database. You just add the machine to the EQUIPMENT table, map its constraints, and let the physics engine do the rest.
