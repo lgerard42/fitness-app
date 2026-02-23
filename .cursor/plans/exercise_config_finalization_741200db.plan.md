@@ -94,6 +94,8 @@ graph LR
   D --> E
 ```
 
+
+
 ---
 
 ## Current Baseline
@@ -132,6 +134,8 @@ flowchart TD
   SumDeltas --> FinalScore
 ```
 
+
+
 ### Data Relationship Map (tables involved in scoring)
 
 ```mermaid
@@ -165,6 +169,8 @@ erDiagram
   EQUIPMENT ||--o{ SUPPORT_STRUCTURES : "modifier_constraints"
   EQUIPMENT ||--o{ TORSO_ANGLES : "modifier_constraints"
 ```
+
+
 
 ---
 
@@ -201,6 +207,8 @@ graph TD
   JSONFiles -->|"seeded into"| MobileDB
 ```
 
+
+
 ### Mobile Logging Architecture Refactor (before Phase 3)
 
 - Extract logic from large components (`indexWorkoutTemplate.tsx`, `SetRow.tsx`) into state layer + hooks (reducer/store/Zustand)
@@ -228,6 +236,8 @@ graph LR
   StateLayer --> SharedEval
   StateLayer --> CacheService
 ```
+
+
 
 ---
 
@@ -259,6 +269,8 @@ graph TD
   Fixtures -->|"consumed by"| AdminTests["Admin Tests"]
   Fixtures -->|"consumed by"| MobileTests["Mobile Tests"]
 ```
+
+
 
 ### Deliverables
 
@@ -303,6 +315,8 @@ flowchart TD
   Output --> Errors
 ```
 
+
+
 ### Delta Inheritance Resolution
 
 ```mermaid
@@ -329,6 +343,8 @@ flowchart TD
   ParentFound -- Yes --> UseParentDelta
   ParentFound -- No --> NoKey
 ```
+
+
 
 ### Guardrails
 
@@ -380,6 +396,8 @@ flowchart TD
   Trainer --> RelGraph
   Trainer --> QADash
 ```
+
+
 
 ### Deliverables
 
@@ -441,6 +459,8 @@ flowchart TD
   CacheHit --> LogSet
   LogSet --> SaveLocal
 ```
+
+
 
 ### Deliverables
 
@@ -509,6 +529,8 @@ flowchart LR
   Compose --> Log
 ```
 
+
+
 ### Parity Validation Loop
 
 ```mermaid
@@ -530,6 +552,8 @@ flowchart TD
   Fail --> Fix
   Fix --> SharedFixtures
 ```
+
+
 
 - No duplicated biomechanics logic -- math lives in one place only
 - Compiled-output consumption -- UI layers consume evaluator/scoring outputs and present them
