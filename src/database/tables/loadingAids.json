@@ -22,22 +22,39 @@
       "Figure-8s"
     ],
     "delta_rules": {
-      "VERTICAL_PULL": {
-        "LATS": 0.12,
-        "FOREARMS": -0.4
+      "PULL_FRONT": {
+        "LATS_LOWER": 0.12,
+        "FOREARM_BOTTOM": -0.4
       },
-      "HORIZONTAL_ROW": {
+      "PULL_BEHIND": {
+        "BACK_UPPER": 0.12,
+        "FOREARM_BOTTOM": -0.4
+      },
+      "ROW_MID": {
         "BACK_MID": 0.12,
-        "FOREARMS": -0.4
+        "FOREARM_BOTTOM": -0.4
       },
-      "HINGE": {
+      "ROW_HIGH": {
+        "BACK_UPPER": 0.12,
+        "FOREARM_BOTTOM": -0.4
+      },
+      "ROW_LOW": {
+        "LATS_UPPER": 0.12,
+        "FOREARM_BOTTOM": -0.4
+      },
+      "HINGE_STD": {
         "GLUTES": 0.05,
-        "HAMSTRINGS": 0.05,
-        "FOREARMS": -0.5
+        "HAMSTRING_OUTER": 0.05,
+        "FOREARM_BOTTOM": -0.5
+      },
+      "HINGE_STRAIGHT": {
+        "GLUTES": 0.05,
+        "HAMSTRING_OUTER": 0.05,
+        "FOREARM_BOTTOM": -0.5
       },
       "SHRUG": {
         "TRAPS_UPPER": 0.15,
-        "FOREARMS": -0.4
+        "FOREARM_BOTTOM": -0.4
       }
     },
     "short_description": "Removes grip as a bottleneck. Increases the load to the target muscle while significantly reducing forearm/grip stimulation.",
@@ -54,15 +71,23 @@
       "Prone Brace"
     ],
     "delta_rules": {
-      "SQUAT": {
+      "SQUAT_REGULAR": {
         "CORE_DEEP": 0.15,
         "BACK_LOWER": -0.1
       },
-      "HINGE": {
+      "SQUAT_FRONT": {
         "CORE_DEEP": 0.15,
         "BACK_LOWER": -0.1
       },
-      "PRESS_VERTICAL": {
+      "HINGE_STD": {
+        "CORE_DEEP": 0.15,
+        "BACK_LOWER": -0.1
+      },
+      "HINGE_STRAIGHT": {
+        "CORE_DEEP": 0.15,
+        "BACK_LOWER": -0.1
+      },
+      "PRESS_OVERHEAD": {
         "CORE_DEEP": 0.1
       }
     },
@@ -80,14 +105,24 @@
       "Chained"
     ],
     "delta_rules": {
-      "PRESS": {
-        "TRICEPS": 0.15
+      "PRESS_FLAT": {
+        "TRICEP_DEEP": 0.15
       },
-      "SQUAT": {
+      "PRESS_INCLINE": {
+        "TRICEP_DEEP": 0.15
+      },
+      "SQUAT_REGULAR": {
         "QUADS": 0.1,
         "GLUTES": 0.1
       },
-      "HINGE": {
+      "SQUAT_FRONT": {
+        "QUADS": 0.1,
+        "GLUTES": 0.1
+      },
+      "HINGE_STD": {
+        "GLUTES": 0.15
+      },
+      "HINGE_STRAIGHT": {
         "GLUTES": 0.15
       }
     },
@@ -106,15 +141,25 @@
     ],
     "delta_rules": {
       "CURL": {
-        "FOREARMS": 0.35,
-        "BICEPS": -0.1
+        "FOREARM_BOTTOM": 0.35,
+        "BICEP_INNER": -0.1
       },
-      "HORIZONTAL_ROW": {
-        "FOREARMS": 0.3
+      "ROW_MID": {
+        "FOREARM_BOTTOM": 0.3
       },
-      "VERTICAL_PULL": {
-        "FOREARMS": 0.3,
-        "LATS": -0.05
+      "ROW_HIGH": {
+        "FOREARM_BOTTOM": 0.3
+      },
+      "ROW_LOW": {
+        "FOREARM_BOTTOM": 0.3
+      },
+      "PULL_FRONT": {
+        "FOREARM_BOTTOM": 0.3,
+        "LATS_LOWER": -0.05
+      },
+      "PULL_BEHIND": {
+        "FOREARM_BOTTOM": 0.3,
+        "BACK_UPPER": -0.05
       }
     },
     "short_description": "Increases the diameter of the handle. Drastically increases the demand on the hand and forearm flexors.",

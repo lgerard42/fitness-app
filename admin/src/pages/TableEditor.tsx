@@ -128,6 +128,425 @@ function MuscleTargetBar({ targets }: { targets: Record<string, unknown> }) {
   );
 }
 
+// ─── Delta rules tooltip (tree per motion) ───────────────────────────────
+type MuscleRecord = { id: string; label: string; parent_ids?: string[]; [k: string]: unknown };
+
+function getMuscleLabelMuscles(all: MuscleRecord[], id: string): string {
+  return all.find(m => m.id === id)?.label ?? id;
+}
+
+function getMuscleLevelMuscles(id: string, all: MuscleRecord[]): 'primary' | 'secondary' | 'tertiary' {
+  const m = all.find(mu => mu.id === id);
+  if (!m?.parent_ids?.length) return 'primary';
+  const parent = all.find(mu => mu.id === m.parent_ids![0]);
+  if (!parent?.parent_ids?.length) return 'secondary';
+  return 'tertiary';
+}
+
+function findPrimaryForMuscles(id: string, all: MuscleRecord[]): string {
+  const m = all.find(mu => mu.id === id);
+  if (!m?.parent_ids?.length) return id;
+  return findPrimaryForMuscles(m.parent_ids[0], all);
+}
+
+function findSecondaryForMuscles(id: string, all: MuscleRecord[]): string | null {
+  const m = all.find(mu => mu.id === id);
+  if (!m?.parent_ids?.length) return null;
+  const parent = all.find(mu => mu.id === m.parent_ids![0]);
+  if (!parent?.parent_ids?.length) return null;
+  return parent.id;
+}
+
+type TreeBranch = { label: string; score?: number; children?: Record<string, TreeBranch> };
+
+function buildDeltaTreeFromFlat(flat: Record<string, number>, allMuscles: MuscleRecord[]): Record<string, TreeBranch> {
+  const tree: Record<string, TreeBranch> = {};
+  for (const [muscleId, score] of Object.entries(flat)) {
+    const level = getMuscleLevelMuscles(muscleId, allMuscles);
+    const label = getMuscleLabelMuscles(allMuscles, muscleId);
+    if (level === 'primary') {
+      tree[muscleId] = { label, score, children: tree[muscleId]?.children ?? {} };
+    } else if (level === 'secondary') {
+      const pId = findPrimaryForMuscles(muscleId, allMuscles);
+      if (!tree[pId]) tree[pId] = { label: getMuscleLabelMuscles(allMuscles, pId), children: {} };
+      const p = tree[pId];
+      p.children = p.children ?? {};
+      p.children[muscleId] = { label, score, children: (p.children[muscleId] as TreeBranch)?.children ?? {} };
+    } else {
+      const sId = findSecondaryForMuscles(muscleId, allMuscles);
+      const pId = findPrimaryForMuscles(muscleId, allMuscles);
+      if (!tree[pId]) tree[pId] = { label: getMuscleLabelMuscles(allMuscles, pId), children: {} };
+      const p = tree[pId];
+      p.children = p.children ?? {};
+      if (sId && !p.children[sId]) p.children[sId] = { label: getMuscleLabelMuscles(allMuscles, sId), children: {} };
+      if (sId) {
+        const s = p.children[sId];
+        s.children = s.children ?? {};
+        s.children[muscleId] = { label, score };
+      }
+    }
+  }
+  return tree;
+}
+
+function DeltaRulesTooltipContent({
+  rules,
+  refData,
+}: {
+  rules: Record<string, Record<string, number> | "inherit">;
+  refData: Record<string, Record<string, unknown>[]>;
+}) {
+  const muscles = (refData['muscles'] ?? []) as MuscleRecord[];
+  const motions = (refData['motions'] ?? []) as Record<string, unknown>[];
+  const getMotionLabel = (id: string) => motions.find((r) => String(r.id) === id)?.['label'] ?? id;
+
+  return (
+    <div className="bg-gray-900 text-gray-100 rounded-lg shadow-xl border border-gray-700 overflow-hidden max-h-[70vh] overflow-y-auto" style={{ fontSize: '10px', minWidth: '200px', maxWidth: '320px' }}>
+      <div className="px-2.5 py-1.5 border-b border-gray-700 font-semibold text-amber-200 text-[11px] sticky top-0 bg-gray-900 z-10">
+        Delta rules
+      </div>
+      <div className="p-2 space-y-3">
+        {Object.entries(rules).map(([motionId, flatOrInherit]) => {
+          const motionLabel = getMotionLabel(motionId);
+          
+          // Handle "inherit" case
+          if (flatOrInherit === "inherit") {
+            return (
+              <div key={motionId} className="rounded bg-gray-800/80 overflow-hidden">
+                <div className="px-2 py-1 font-medium text-blue-200 border-b border-gray-700">{motionLabel}</div>
+                <div className="p-1.5">
+                  <span className="text-green-300 italic text-xs">Inherits from parent</span>
+                </div>
+              </div>
+            );
+          }
+          
+          // Handle actual delta rules
+          const flat = flatOrInherit as Record<string, number>;
+          const tree = buildDeltaTreeFromFlat(flat, muscles);
+          return (
+            <div key={motionId} className="rounded bg-gray-800/80 overflow-hidden">
+              <div className="px-2 py-1 font-medium text-blue-200 border-b border-gray-700">{motionLabel}</div>
+              <div className="p-1.5 space-y-0.5">
+                {Object.entries(tree).map(([pId, p]) => (
+                  <div key={pId} className="pl-0">
+                    <div className="flex items-center gap-1.5 py-0.5">
+                      <span className="text-amber-300 font-medium">{p.label}</span>
+                      {p.score != null && <span className="text-gray-400 font-mono ml-auto">{p.score >= 0 ? '+' : ''}{p.score}</span>}
+                    </div>
+                    {p.children && Object.keys(p.children).length > 0 && (
+                      <div className="pl-2 border-l border-gray-600 ml-1 space-y-0.5">
+                        {Object.entries(p.children).map(([sId, s]) => (
+                          <div key={sId}>
+                            <div className="flex items-center gap-1.5 py-0.5">
+                              <span className="text-cyan-200">{s.label}</span>
+                              {s.score != null && <span className="text-gray-400 font-mono ml-auto text-[9px]">{s.score >= 0 ? '+' : ''}{s.score}</span>}
+                            </div>
+                            {s.children && Object.keys(s.children).length > 0 && (
+                              <div className="pl-2 border-l border-gray-600 ml-1">
+                                {Object.entries(s.children).map(([tId, t]) => (
+                                  <div key={tId} className="flex items-center gap-1.5 py-0.5">
+                                    <span className="text-gray-300">{t.label}</span>
+                                    {t.score != null && <span className="text-gray-500 font-mono ml-auto text-[9px]">{t.score >= 0 ? '+' : ''}{t.score}</span>}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function MuscleTargetsTooltipContent({
+  targets,
+  refData,
+}: {
+  targets: Record<string, unknown>;
+  refData: Record<string, Record<string, unknown>[]>;
+}) {
+  const muscles = (refData['muscles'] ?? []) as MuscleRecord[];
+  const getMuscleLabel = (id: string) => muscles.find((m) => String(m.id) === id)?.label ?? id;
+
+  // Build tree structure from nested muscle_targets
+  const buildTree = (data: Record<string, unknown>): Record<string, TreeBranch> => {
+    const tree: Record<string, TreeBranch> = {};
+    const pKeys = Object.keys(data).filter(k => k !== '_score');
+
+    for (const pId of pKeys) {
+      const pNode = data[pId] as Record<string, unknown> | undefined;
+      if (!pNode || typeof pNode !== 'object') continue;
+      
+      const pLabel = getMuscleLabel(pId);
+      const pScore = typeof pNode._score === 'number' ? pNode._score : undefined;
+      const pChildren: Record<string, TreeBranch> = {};
+      
+      const sKeys = Object.keys(pNode).filter(k => k !== '_score');
+      for (const sId of sKeys) {
+        const sNode = pNode[sId] as Record<string, unknown> | undefined;
+        if (!sNode || typeof sNode !== 'object') continue;
+        
+        const sLabel = getMuscleLabel(sId);
+        const sScore = typeof sNode._score === 'number' ? sNode._score : undefined;
+        const sChildren: Record<string, TreeBranch> = {};
+        
+        const tKeys = Object.keys(sNode).filter(k => k !== '_score');
+        for (const tId of tKeys) {
+          const tNode = sNode[tId] as Record<string, unknown> | undefined;
+          if (!tNode || typeof tNode !== 'object') continue;
+          
+          const tLabel = getMuscleLabel(tId);
+          const tScore = typeof tNode._score === 'number' ? tNode._score : undefined;
+          sChildren[tId] = { label: tLabel, score: tScore };
+        }
+        
+        pChildren[sId] = { label: sLabel, score: sScore, children: Object.keys(sChildren).length > 0 ? sChildren : undefined };
+      }
+      
+      tree[pId] = { label: pLabel, score: pScore, children: Object.keys(pChildren).length > 0 ? pChildren : undefined };
+    }
+    
+    return tree;
+  };
+
+  const tree = buildTree(targets);
+  const hasContent = Object.keys(tree).length > 0;
+
+  return (
+    <div className="bg-gray-900 text-gray-100 rounded-lg shadow-xl border border-gray-700 overflow-hidden max-h-[70vh] overflow-y-auto" style={{ fontSize: '10px', minWidth: '200px', maxWidth: '320px' }}>
+      <div className="px-2.5 py-1.5 border-b border-gray-700 font-semibold text-amber-200 text-[11px] sticky top-0 bg-gray-900 z-10">
+        Muscle Targets
+      </div>
+      <div className="p-2 space-y-3">
+        {!hasContent ? (
+          <div className="text-gray-400 text-xs italic">No muscle targets</div>
+        ) : (
+          Object.entries(tree).map(([pId, p]) => (
+            <div key={pId} className="rounded bg-gray-800/80 overflow-hidden">
+              <div className="px-2 py-1 font-medium text-blue-200 border-b border-gray-700">{p.label}</div>
+              <div className="p-1.5 space-y-0.5">
+                {p.score != null && (
+                  <div className="flex items-center gap-1.5 py-0.5">
+                    <span className="text-gray-400 text-[9px]">Score:</span>
+                    <span className="text-gray-300 font-mono">{p.score}</span>
+                  </div>
+                )}
+                {p.children && Object.keys(p.children).length > 0 && (
+                  <div className="pl-0 space-y-0.5 mt-1">
+                    {Object.entries(p.children).map(([sId, s]) => (
+                      <div key={sId} className="pl-0">
+                        <div className="flex items-center gap-1.5 py-0.5">
+                          <span className="text-cyan-200">{s.label}</span>
+                          {s.score != null && <span className="text-gray-400 font-mono ml-auto text-[9px]">{s.score}</span>}
+                        </div>
+                        {s.children && Object.keys(s.children).length > 0 && (
+                          <div className="pl-2 border-l border-gray-600 ml-1">
+                            {Object.entries(s.children).map(([tId, t]) => (
+                              <div key={tId} className="flex items-center gap-1.5 py-0.5">
+                                <span className="text-gray-300">{t.label}</span>
+                                {t.score != null && <span className="text-gray-500 font-mono ml-auto text-[9px]">{t.score}</span>}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MuscleTargetsCellWithTooltip({
+  targets,
+  refData,
+}: {
+  targets: Record<string, unknown>;
+  refData: Record<string, Record<string, unknown>[]>;
+}) {
+  const [show, setShow] = React.useState(false);
+  const [pos, setPos] = React.useState({ top: 0, left: 0 });
+  const ref = useRef<HTMLSpanElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  const hideTimeoutRef = useRef<number | null>(null);
+
+  const clearHideTimeout = useCallback(() => {
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+      hideTimeoutRef.current = null;
+    }
+  }, []);
+
+  const scheduleHide = useCallback(() => {
+    clearHideTimeout();
+    hideTimeoutRef.current = setTimeout(() => {
+      setShow(false);
+      hideTimeoutRef.current = null;
+    }, 100);
+  }, [clearHideTimeout]);
+
+  const onEnter = useCallback(() => {
+    clearHideTimeout();
+    const el = ref.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    setPos({ left: rect.left, top: rect.bottom });
+    setShow(true);
+  }, [clearHideTimeout]);
+
+  const onLeave = useCallback(() => {
+    scheduleHide();
+  }, [scheduleHide]);
+
+  const onTooltipEnter = useCallback(() => {
+    clearHideTimeout();
+    setShow(true);
+  }, [clearHideTimeout]);
+
+  const onTooltipLeave = useCallback(() => {
+    scheduleHide();
+  }, [scheduleHide]);
+
+  React.useEffect(() => {
+    return () => {
+      clearHideTimeout();
+    };
+  }, [clearHideTimeout]);
+
+  const tooltipEl =
+    show && typeof document !== 'undefined'
+      ? createPortal(
+          <div
+            ref={tooltipRef}
+            className="fixed z-[9999] pointer-events-auto"
+            style={{ left: pos.left, top: pos.top }}
+            onMouseEnter={onTooltipEnter}
+            onMouseLeave={onTooltipLeave}
+          >
+            <MuscleTargetsTooltipContent targets={targets} refData={refData} />
+          </div>,
+          document.body
+        )
+      : null;
+
+  return (
+    <>
+      <span
+        ref={ref}
+        className="text-xs cursor-help"
+        onMouseEnter={onEnter}
+        onMouseLeave={onLeave}
+      >
+        <MuscleTargetBar targets={targets} />
+      </span>
+      {tooltipEl}
+    </>
+  );
+}
+
+function DeltaRulesCellWithTooltip({
+  rules,
+  refData,
+  ruleCount,
+}: {
+  rules: Record<string, Record<string, number> | "inherit">;
+  refData: Record<string, Record<string, unknown>[]>;
+  ruleCount: number;
+}) {
+  const [show, setShow] = React.useState(false);
+  const [pos, setPos] = React.useState({ top: 0, left: 0 });
+  const ref = useRef<HTMLSpanElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  const hideTimeoutRef = useRef<number | null>(null);
+
+  const clearHideTimeout = useCallback(() => {
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+      hideTimeoutRef.current = null;
+    }
+  }, []);
+
+  const scheduleHide = useCallback(() => {
+    clearHideTimeout();
+    hideTimeoutRef.current = setTimeout(() => {
+      setShow(false);
+      hideTimeoutRef.current = null;
+    }, 100);
+  }, [clearHideTimeout]);
+
+  const onEnter = useCallback(() => {
+    clearHideTimeout();
+    const el = ref.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    setPos({ left: rect.left, top: rect.bottom });
+    setShow(true);
+  }, [clearHideTimeout]);
+
+  const onLeave = useCallback(() => {
+    scheduleHide();
+  }, [scheduleHide]);
+
+  const onTooltipEnter = useCallback(() => {
+    clearHideTimeout();
+    setShow(true);
+  }, [clearHideTimeout]);
+
+  const onTooltipLeave = useCallback(() => {
+    scheduleHide();
+  }, [scheduleHide]);
+
+  React.useEffect(() => {
+    return () => {
+      clearHideTimeout();
+    };
+  }, [clearHideTimeout]);
+
+  const tooltipEl =
+    show && typeof document !== 'undefined'
+      ? createPortal(
+          <div
+            ref={tooltipRef}
+            className="fixed z-[9999] pointer-events-auto"
+            style={{ left: pos.left, top: pos.top }}
+            onMouseEnter={onTooltipEnter}
+            onMouseLeave={onTooltipLeave}
+          >
+            <DeltaRulesTooltipContent rules={rules} refData={refData} />
+          </div>,
+          document.body
+        )
+      : null;
+
+  return (
+    <>
+      <span
+        ref={ref}
+        className="text-xs cursor-help"
+        onMouseEnter={onEnter}
+        onMouseLeave={onLeave}
+      >
+        {ruleCount} rule(s)
+      </span>
+      {tooltipEl}
+    </>
+  );
+}
+
 export default function TableEditor({ schemas, onDataChange }: TableEditorProps) {
   const { key } = useParams<{ key: string }>();
   const schema = useMemo(() => schemas.find((s) => s.key === key), [schemas, key]);
@@ -143,6 +562,7 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
   const [showFilterForm, setShowFilterForm] = useState(false);
   const [sortCol, setSortCol] = useState('sort_order');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [groupBy, setGroupBy] = useState<string | null>(null);
   const [fkRefs, setFkRefs] = useState<FKRef[]>([]);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [deleteLabel, setDeleteLabel] = useState('');
@@ -278,6 +698,7 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
     setSortDir('asc');
     setDeleteConfirm(null);
     setMuscleTierFilter('ALL');
+    setGroupBy(null);
     loadData();
     loadRefData();
     loadColumnSettings();
@@ -385,8 +806,400 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
       const cmp = String(aVal).localeCompare(String(bVal));
       return sortDir === 'asc' ? cmp : -cmp;
     });
+
+    // Group by field if specified
+    if (groupBy && schema) {
+      // Special handling for grouping by muscles on MOTIONS table
+      if (groupBy === 'muscles' && key === 'motions') {
+        const muscles = refData['muscles'] || [];
+        const muscleMap = new Map(muscles.map((m: Record<string, unknown>) => [String(m.id ?? ''), m]));
+        
+        // Helper to get primary muscle with highest score from muscle_targets
+        const getPrimaryMuscleForMotion = (motion: Record<string, unknown>): string | null => {
+          const targets = motion.muscle_targets as Record<string, unknown> | undefined;
+          if (!targets || typeof targets !== 'object') return null;
+          
+          // Get all primary muscle IDs (top-level keys excluding '_score')
+          const primaryMuscleIds = Object.keys(targets).filter(k => k !== '_score');
+          if (primaryMuscleIds.length === 0) return null;
+          
+          // If only one primary muscle, use it
+          if (primaryMuscleIds.length === 1) return primaryMuscleIds[0];
+          
+          // If multiple, find the one with highest score
+          let maxScore = -Infinity;
+          let maxMuscleId: string | null = null;
+          
+          primaryMuscleIds.forEach(muscleId => {
+            const muscleNode = targets[muscleId] as Record<string, unknown> | undefined;
+            if (muscleNode && typeof muscleNode === 'object') {
+              const score = typeof muscleNode._score === 'number' ? muscleNode._score : 0;
+              if (score > maxScore) {
+                maxScore = score;
+                maxMuscleId = muscleId;
+              }
+            }
+          });
+          
+          return maxMuscleId || primaryMuscleIds[0];
+        };
+        
+        // Group motions by their primary muscle
+        const muscleGroups = new Map<string | null, Record<string, unknown>[]>();
+        
+        result.forEach(motion => {
+          const primaryMuscleId = getPrimaryMuscleForMotion(motion);
+          if (!muscleGroups.has(primaryMuscleId)) {
+            muscleGroups.set(primaryMuscleId, []);
+          }
+          muscleGroups.get(primaryMuscleId)!.push(motion);
+        });
+        
+        // Sort groups by muscle label, then sort motions within each group
+        const grouped: Record<string, unknown>[] = [];
+        const sortedGroups = Array.from(muscleGroups.entries()).sort((a, b) => {
+          if (a[0] === null) return 1;
+          if (b[0] === null) return -1;
+          const muscleA = muscleMap.get(a[0]);
+          const muscleB = muscleMap.get(b[0]);
+          const labelA = String(muscleA?.label ?? muscleA?.id ?? a[0] ?? '');
+          const labelB = String(muscleB?.label ?? muscleB?.id ?? b[0] ?? '');
+          return labelA.localeCompare(labelB);
+        });
+        
+        sortedGroups.forEach(([muscleId, motions]) => {
+          // Add section header row for this muscle
+          const muscle = muscleId ? muscleMap.get(muscleId) : null;
+          const muscleLabel = muscleId 
+            ? String(muscle?.label ?? muscle?.id ?? muscleId ?? 'Unknown')
+            : 'No Primary Muscle';
+          grouped.push({ 
+            _isSectionHeader: true, 
+            _sectionLabel: muscleLabel,
+            _groupLevel: 0 
+          });
+          
+          // Group motions by parent_id within this muscle section
+          const parentMotions: Record<string, unknown>[] = [];
+          const childMotionsMap = new Map<string, Record<string, unknown>[]>();
+          
+          motions.forEach(motion => {
+            const parentId = motion.parent_id;
+            if (!parentId || parentId === '' || parentId === null) {
+              // This is a parent motion
+              parentMotions.push(motion);
+            } else {
+              // This is a child motion
+              const parentIdStr = String(parentId);
+              if (!childMotionsMap.has(parentIdStr)) {
+                childMotionsMap.set(parentIdStr, []);
+              }
+              childMotionsMap.get(parentIdStr)!.push(motion);
+            }
+          });
+          
+          // Sort parent motions
+          parentMotions.sort((a, b) => {
+            const aLabel = String(a[schema.labelField] ?? a[schema.idField] ?? '');
+            const bLabel = String(b[schema.labelField] ?? b[schema.idField] ?? '');
+            return aLabel.localeCompare(bLabel);
+          });
+          
+          // Add parent motions first (level 0), followed by their children
+          parentMotions.forEach(parentMotion => {
+            const parentId = String(parentMotion[schema.idField] ?? '');
+            grouped.push({ ...parentMotion, _groupLevel: 0 });
+            
+            // Add children of this parent (level 1) and remove them from the map
+            const children = childMotionsMap.get(parentId) || [];
+            if (children.length > 0) {
+              children.sort((a, b) => {
+                const aLabel = String(a[schema.labelField] ?? a[schema.idField] ?? '');
+                const bLabel = String(b[schema.labelField] ?? b[schema.idField] ?? '');
+                return aLabel.localeCompare(bLabel);
+              });
+              
+              children.forEach(child => {
+                grouped.push({ ...child, _groupLevel: 1 });
+              });
+              
+              // Remove from map so they're not added again as orphans
+              childMotionsMap.delete(parentId);
+            }
+          });
+          
+          // Add any orphaned child motions (parent not in this muscle group)
+          childMotionsMap.forEach((children, parentId) => {
+            children.sort((a, b) => {
+              const aLabel = String(a[schema.labelField] ?? a[schema.idField] ?? '');
+              const bLabel = String(b[schema.labelField] ?? b[schema.idField] ?? '');
+              return aLabel.localeCompare(bLabel);
+            });
+            children.forEach(child => {
+              grouped.push({ ...child, _groupLevel: 0 });
+            });
+          });
+        });
+        
+        return grouped;
+      }
+      
+      // Special handling for grouping by category_id on EQUIPMENT table (group by full category path)
+      if (groupBy === 'category_id' && key === 'equipment') {
+        const categories = refData['equipmentCategories'] || [];
+        const categoryMap = new Map(categories.map((c: Record<string, unknown>) => [String(c.id ?? ''), c]));
+        
+        // Helper to build full category path (including all parents)
+        const getCategoryPath = (categoryId: string | null | undefined): string[] => {
+          if (!categoryId) return [];
+          const path: string[] = [];
+          let currentId: string | null | undefined = categoryId;
+          const visited = new Set<string>();
+          
+          while (currentId && !visited.has(currentId)) {
+            visited.add(currentId);
+            const category = categoryMap.get(currentId);
+            if (category) {
+              path.unshift(String(category.id ?? currentId));
+              currentId = category.parent_id as string | null | undefined;
+            } else {
+              break;
+            }
+          }
+          
+          return path;
+        };
+        
+        // Group equipment by their full category path
+        const pathGroups = new Map<string, Record<string, unknown>[]>();
+        
+        result.forEach(equipment => {
+          const categoryId = equipment.category_id;
+          const path = getCategoryPath(categoryId as string | null | undefined);
+          const pathKey = path.length > 0 ? path.join(' > ') : 'No Category';
+          
+          if (!pathGroups.has(pathKey)) {
+            pathGroups.set(pathKey, []);
+          }
+          pathGroups.get(pathKey)!.push(equipment);
+        });
+        
+        // Sort groups by path (alphabetically)
+        const grouped: Record<string, unknown>[] = [];
+        const sortedGroups = Array.from(pathGroups.entries()).sort((a, b) => {
+          if (a[0] === 'No Category') return 1;
+          if (b[0] === 'No Category') return -1;
+          return a[0].localeCompare(b[0]);
+        });
+        
+        sortedGroups.forEach(([pathKey, equipmentList]) => {
+          // Add section header row for this category path
+          grouped.push({ 
+            _isSectionHeader: true, 
+            _sectionLabel: pathKey,
+            _groupLevel: 0 
+          });
+          
+          // Sort equipment within group
+          equipmentList.sort((a, b) => {
+            const aLabel = String(a[schema.labelField] ?? a[schema.idField] ?? '');
+            const bLabel = String(b[schema.labelField] ?? b[schema.idField] ?? '');
+            return aLabel.localeCompare(bLabel);
+          });
+          
+          // Add equipment with group level 1 (indented under section header)
+          equipmentList.forEach((equipment) => {
+            grouped.push({ ...equipment, _groupLevel: 1 });
+          });
+        });
+        
+        return grouped;
+      }
+      
+      const groupField = schema.fields.find(f => f.name === groupBy);
+      if (groupField) {
+        // Build parent-child relationships
+        const parentRows: Record<string, unknown>[] = [];
+        const childRows: Record<string, unknown>[] = [];
+        const idField = schema.idField;
+        
+        result.forEach(row => {
+          const groupValue = row[groupBy];
+          const rowId = String(row[idField] ?? '');
+          let isParent = false;
+          
+          if (groupField.type === 'fk') {
+            // For FK fields, check if this row's ID is referenced by other rows
+            isParent = result.some(r => {
+              const refValue = r[groupBy];
+              return String(refValue) === rowId && r !== row;
+            });
+          } else if (groupField.type === 'fk[]') {
+            // For FK[] fields, check if this row's ID is in any other row's array
+            isParent = result.some(r => {
+              const refArray = r[groupBy];
+              return Array.isArray(refArray) && refArray.includes(rowId) && r !== row;
+            });
+          } else if (groupField.type === 'string' || groupField.type === 'number') {
+            // For simple fields, group by value - handled separately below
+            return;
+          }
+          
+          if (isParent || groupValue == null || groupValue === '') {
+            parentRows.push(row);
+          } else {
+            childRows.push(row);
+          }
+        });
+        
+        // For FK/FK[] fields, organize parent-child relationships
+        if (groupField.type === 'fk' || groupField.type === 'fk[]') {
+          // Special handling for multi-level hierarchies (like Muscles table with parent_ids)
+          if (groupField.type === 'fk[]' && key === 'muscles') {
+            // Build a hierarchy tree for multi-level grouping
+            const rowMap = new Map<string, Record<string, unknown>>();
+            result.forEach(row => {
+              const rowId = String(row[idField] ?? '');
+              rowMap.set(rowId, row);
+            });
+            
+            // Find all primary rows (no parents)
+            const primaryRows: Record<string, unknown>[] = [];
+            const allRows = Array.from(rowMap.values());
+            
+            allRows.forEach(row => {
+              const parentIds = row[groupBy];
+              const pidArray = Array.isArray(parentIds) ? parentIds as string[] : [];
+              if (pidArray.length === 0) {
+                primaryRows.push(row);
+              }
+            });
+            
+            // Recursively build hierarchy and assign levels
+            const grouped: Record<string, unknown>[] = [];
+            const processed = new Set<string>();
+            
+            const addRowWithChildren = (row: Record<string, unknown>, level: number) => {
+              const rowId = String(row[idField] ?? '');
+              if (processed.has(rowId)) return;
+              
+              grouped.push({ ...row, _groupLevel: level });
+              processed.add(rowId);
+              
+              // Find children of this row
+              const children = allRows.filter(childRow => {
+                const childParentIds = childRow[groupBy];
+                const childPidArray = Array.isArray(childParentIds) ? childParentIds as string[] : [];
+                return childPidArray.includes(rowId);
+              });
+              
+              // Sort children and add them recursively
+              children.sort((a, b) => {
+                const aLabel = String(a[schema.labelField] ?? a[idField] ?? '');
+                const bLabel = String(b[schema.labelField] ?? b[idField] ?? '');
+                return aLabel.localeCompare(bLabel);
+              });
+              
+              children.forEach(child => {
+                addRowWithChildren(child, level + 1);
+              });
+            };
+            
+            // Sort primary rows and process them
+            primaryRows.sort((a, b) => {
+              const aLabel = String(a[schema.labelField] ?? a[idField] ?? '');
+              const bLabel = String(b[schema.labelField] ?? b[idField] ?? '');
+              return aLabel.localeCompare(bLabel);
+            });
+            
+            primaryRows.forEach(primary => {
+              addRowWithChildren(primary, 0);
+            });
+            
+            // Add any remaining orphaned rows
+            allRows.forEach(row => {
+              const rowId = String(row[idField] ?? '');
+              if (!processed.has(rowId)) {
+                grouped.push({ ...row, _groupLevel: 0 });
+              }
+            });
+            
+            return grouped;
+          } else {
+            // Standard 2-level grouping for FK fields or simple FK[] fields
+            const grouped: Record<string, unknown>[] = [];
+            const processed = new Set<string>();
+            
+            // Add parent rows first, followed by their children
+            parentRows.forEach(parent => {
+              const parentId = String(parent[idField] ?? '');
+              grouped.push({ ...parent, _groupLevel: 0 });
+              processed.add(parentId);
+              
+              // Add children of this parent
+              childRows.forEach(child => {
+                const childId = String(child[idField] ?? '');
+                if (processed.has(childId)) return;
+                
+                const childGroupValue = child[groupBy];
+                let isChildOfParent = false;
+                
+                if (groupField.type === 'fk') {
+                  isChildOfParent = String(childGroupValue) === parentId;
+                } else if (groupField.type === 'fk[]') {
+                  isChildOfParent = Array.isArray(childGroupValue) && childGroupValue.includes(parentId);
+                }
+                
+                if (isChildOfParent) {
+                  grouped.push({ ...child, _groupLevel: 1 });
+                  processed.add(childId);
+                }
+              });
+            });
+            
+            // Add remaining orphaned rows
+            childRows.forEach(child => {
+              const childId = String(child[idField] ?? '');
+              if (!processed.has(childId)) {
+                grouped.push({ ...child, _groupLevel: 0 });
+              }
+            });
+            
+            return grouped;
+          }
+        } else {
+          // For simple fields (string/number), group by value
+          const valueMap = new Map<string | null, Record<string, unknown>[]>();
+          
+          result.forEach(row => {
+            const groupValue = row[groupBy];
+            const groupKey = groupValue == null ? null : String(groupValue);
+            if (!valueMap.has(groupKey)) {
+              valueMap.set(groupKey, []);
+            }
+            valueMap.get(groupKey)!.push(row);
+          });
+          
+          const grouped: Record<string, unknown>[] = [];
+          const sortedGroups = Array.from(valueMap.entries()).sort((a, b) => {
+            if (a[0] === null) return 1;
+            if (b[0] === null) return -1;
+            return String(a[0]).localeCompare(String(b[0]));
+          });
+          
+          sortedGroups.forEach(([groupKey, groupRows]) => {
+            groupRows.forEach((row, idx) => {
+              grouped.push({ ...row, _groupLevel: idx === 0 ? 0 : 1 });
+            });
+          });
+          
+          return grouped;
+        }
+      }
+    }
+    
     return result;
-  }, [rows, search, filters, sortCol, sortDir, schema, key, muscleTierFilter, computeMuscleTier]);
+  }, [rows, search, filters, sortCol, sortDir, schema, key, muscleTierFilter, computeMuscleTier, groupBy]);
 
   const visibleCols = useMemo(() => {
     if (!schema) return [];
@@ -907,14 +1720,14 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
     const val = row[field.name];
     if (val == null || val === '' || String(val).toLowerCase() === 'null') return <span className="text-gray-300">—</span>;
     
-    // Custom rendering for upper_lower on MUSCLES table (3-button toggle display)
+    // Custom rendering for upper_lower on MUSCLES table (UPPER / LOWER / BOTH)
     if (key === 'muscles' && field.name === 'upper_lower' && Array.isArray(val)) {
-      const isUpper = val.includes('Upper Body');
-      const isLower = val.includes('Lower Body');
+      const isUpper = val.some((v) => String(v).toUpperCase() === 'UPPER' || String(v).toUpperCase() === 'UPPER BODY');
+      const isLower = val.some((v) => String(v).toUpperCase() === 'LOWER' || String(v).toUpperCase() === 'LOWER BODY');
       const isBoth = isUpper && isLower;
-      if (isBoth) return <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">Both</span>;
-      if (isUpper) return <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">Upper</span>;
-      if (isLower) return <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">Lower</span>;
+      if (isBoth) return <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">BOTH</span>;
+      if (isUpper) return <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">UPPER</span>;
+      if (isLower) return <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">LOWER</span>;
       return <span className="text-gray-300">—</span>;
     }
     
@@ -923,10 +1736,21 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
       return val ? <span className="text-xs font-mono">{String(val)}</span> : <span className="text-gray-300">—</span>;
     }
     
-    // Custom rendering for upper_lower on MOTIONS table (simple toggle display)
+    // Custom rendering for parent_id on GRIPS table (show actual ID, not label)
+    if (key === 'grips' && field.name === 'parent_id') {
+      return val ? <span className="text-xs font-mono">{String(val)}</span> : <span className="text-gray-300">—</span>;
+    }
+    
+    // Custom rendering for category_id on EQUIPMENT table (show actual ID, not label)
+    if (key === 'equipment' && field.name === 'category_id') {
+      return val ? <span className="text-xs font-mono">{String(val)}</span> : <span className="text-gray-300">—</span>;
+    }
+    
+    // Custom rendering for upper_lower on MOTIONS table (display as UPPER/LOWER)
     if (key === 'motions' && field.name === 'upper_lower') {
-      if (val === 'Upper') return <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">Upper</span>;
-      if (val === 'Lower') return <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">Lower</span>;
+      const v = String(val).toUpperCase();
+      if (v === 'UPPER') return <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">UPPER</span>;
+      if (v === 'LOWER') return <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">LOWER</span>;
       return <span className="text-gray-300">—</span>;
     }
     
@@ -949,7 +1773,15 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
     }
     if (field.type === 'json') {
       if (field.jsonShape === 'muscle_targets' && val && typeof val === 'object') {
-        return <MuscleTargetBar targets={val as Record<string, unknown>} />;
+        const targets = val as Record<string, unknown>;
+        const hasTargets = Object.keys(targets).filter(k => k !== '_score').length > 0;
+        if (!hasTargets) return <span className="text-gray-300">—</span>;
+        return (
+          <MuscleTargetsCellWithTooltip
+            targets={targets}
+            refData={refData}
+          />
+        );
       }
       if (field.jsonShape === 'default_delta_configs' && val && typeof val === 'object' && !Array.isArray(val)) {
         const ddc = val as { motionPlanes?: string };
@@ -962,26 +1794,17 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
         );
       }
       if (field.jsonShape === 'delta_rules' && val && typeof val === 'object' && !Array.isArray(val)) {
-        const rules = val as Record<string, Record<string, number>>;
+        const rules = val as Record<string, Record<string, number> | "inherit">;
         const keys = Object.keys(rules);
-        const summary = keys.length === 0
-          ? 'No rules'
-          : keys
-              .map((motionId) => {
-                const muscles = rules[motionId];
-                if (!muscles || typeof muscles !== 'object') return `${motionId}: —`;
-                const parts = Object.entries(muscles)
-                  .map(([muscleId, delta]) => `${muscleId} ${delta >= 0 ? '+' : ''}${delta}`)
-                  .join(', ');
-                return `${motionId}: ${parts || '—'}`;
-              })
-              .join('\n');
-        return keys.length === 0 ? (
-          <span className="text-gray-300">—</span>
-        ) : (
-          <span className="text-xs cursor-help" title={summary}>
-            {keys.length} rule(s)
-          </span>
+        if (keys.length === 0) return <span className="text-gray-300">—</span>;
+        // Count only non-inherit rules for display
+        const nonInheritCount = Object.values(rules).filter(v => v !== "inherit").length;
+        return (
+          <DeltaRulesCellWithTooltip
+            rules={rules}
+            refData={refData}
+            ruleCount={nonInheritCount}
+          />
         );
       }
       if (field.jsonShape === 'free' && val && typeof val === 'object' && !Array.isArray(val)) {
@@ -1115,17 +1938,37 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
             </select>
           )}
           {schema && (
-            <button
-              type="button"
-              onClick={() => setShowFilterForm(!showFilterForm)}
-              className={`px-3 py-2 text-sm border rounded ${
-                filters.length > 0
-                  ? 'bg-blue-50 border-blue-300 text-blue-700'
-                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              {filters.length > 0 ? `Filters (${filters.length})` : '+ Filter'}
-            </button>
+            <>
+              <select
+                value={groupBy || ''}
+                onChange={(e) => setGroupBy(e.target.value || null)}
+                className="px-3 py-2 text-sm border rounded bg-white border-gray-300 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Group by: None</option>
+                {schema.fields
+                  .filter(f => f.type === 'fk' || f.type === 'fk[]' || f.type === 'string' || f.type === 'number')
+                  .map(field => (
+                    <option key={field.name} value={field.name}>
+                      Group by: {field.label || field.name}
+                    </option>
+                  ))}
+                {/* Special option for grouping by muscles on MOTIONS table */}
+                {key === 'motions' && (
+                  <option value="muscles">Group by: Muscles</option>
+                )}
+              </select>
+              <button
+                type="button"
+                onClick={() => setShowFilterForm(!showFilterForm)}
+                className={`px-3 py-2 text-sm border rounded ${
+                  filters.length > 0
+                    ? 'bg-blue-50 border-blue-300 text-blue-700'
+                    : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                {filters.length > 0 ? `Filters (${filters.length})` : '+ Filter'}
+              </button>
+            </>
           )}
           {filtered.length !== rows.length && (
             <span className="px-3 py-2 text-sm text-gray-600 bg-gray-100 rounded">
@@ -1256,6 +2099,27 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
               {filtered.map((row, idx) => {
                 const rowId = String(row.id ?? idx);
                 const isDragged = draggedRowId === rowId;
+                const isSectionHeader = (row._isSectionHeader as boolean) || false;
+                
+                // Render section header row
+                if (isSectionHeader) {
+                  const sectionLabel = String(row._sectionLabel ?? '');
+                  return (
+                    <tr 
+                      key={`header-${idx}`} 
+                      className="bg-gray-100 border-b border-gray-300"
+                      style={{ pointerEvents: 'none' }}
+                    >
+                      <td 
+                        colSpan={visibleCols.length + (key === 'muscles' ? 2 : 1)}
+                        className="px-4 py-2 font-semibold text-gray-700 text-sm uppercase tracking-wider"
+                      >
+                        {sectionLabel}
+                      </td>
+                    </tr>
+                  );
+                }
+                
                 return (
                   <tr
                     key={rowId}
@@ -1290,6 +2154,7 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
                       const width = columnWidths[col.name] || 150;
                       const isFirst = index === 0;
                       const isIdField = col.name === schema.idField;
+                      const groupLevel = (row._groupLevel as number) || 0;
                       return (
                         <td
                           key={col.name}
@@ -1301,7 +2166,7 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
                           }`}
                         >
                           {isIdField ? (
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2" style={{ paddingLeft: isFirst ? `${groupLevel * 24}px` : '0' }}>
                               <span
                                 className="row-drag-handle text-gray-400 cursor-grab active:cursor-grabbing hover:text-gray-600 select-none"
                                 title="Drag to reorder"
@@ -1319,7 +2184,9 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
                               <span>{cellDisplay(row, col)}</span>
                             </div>
                           ) : (
-                            cellDisplay(row, col)
+                            <div style={{ paddingLeft: isFirst ? `${groupLevel * 24}px` : '0' }}>
+                              {cellDisplay(row, col)}
+                            </div>
                           )}
                         </td>
                       );

@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import TableEditor from './pages/TableEditor';
 import FilterMatrix from './pages/FilterMatrix';
 import RelationshipGraph from './pages/RelationshipGraph';
+import MotionDeltaMatrix from './pages/MotionDeltaMatrix';
 import { api, type TableInfo, type SchemaResponse } from './api';
 
 export default function App() {
@@ -59,6 +60,10 @@ export default function App() {
           <Route
             path="/matrix"
             element={<FilterMatrix schemas={schemaData?.tables ?? []} onDataChange={reload} />}
+          />
+          <Route
+            path="/motion-delta-matrix"
+            element={<MotionDeltaMatrix schemas={schemaData?.tables ?? []} onDataChange={reload} />}
           />
           <Route path="/graph" element={<RelationshipGraph />} />
         </Routes>

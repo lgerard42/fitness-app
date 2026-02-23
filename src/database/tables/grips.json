@@ -1,44 +1,56 @@
 [
   {
     "id": "NEUTRAL",
-    "parent_id": null,
     "label": "Neutral",
     "is_dynamic": false,
     "grip_category": "Vertical",
-    "rotation_path": null,
     "common_names": [
       "Hammer Grip",
       "Palms Facing",
       "Parallel Grip"
     ],
     "delta_rules": {
-      "PRESS": {
-        "CHEST_MID": -0.2,
-        "TRICEPS": 0.15,
-        "DELTS_FRONT": 0.05
+      "CURL": {
+        "BRACHIALIS": 0.4,
+        "FOREARM_OUTER": 0.3,
+        "BICEP_INNER": -0.3
       },
-      "PRESS_INCLINE": {
-        "CHEST_UPPER": -0.2,
-        "TRICEPS": 0.15,
-        "DELTS_FRONT": 0.05
+      "PULL_FRONT": {
+        "LATS_LOWER": 0.2,
+        "BRACHIALIS": 0.2,
+        "BACK_MID": -0.2
       },
-      "VERTICAL_PULL": {
-        "BICEP_INNER": -0.1,
-        "LATS": 0.1
+      "ROW_MID": {
+        "LATS_UPPER": 0.2,
+        "BACK_MID": -0.1
+      },
+      "PRESS_OVERHEAD": {
+        "DELTS_FRONT": 0.2,
+        "DELTS_SIDE": -0.1
+      },
+      "PRESS_FLAT": {
+        "TRICEP_OUTER": 0.1
+      },
+      "EXT_PUSHDOWN": {
+        "TRICEP_OUTER": 0.2,
+        "TRICEP_INNER": -0.1
+      },
+      "RAISE_FRONT": {
+        "DELTS_FRONT": 0.1
       }
     },
     "short_description": "Palms facing each other. Highly joint-friendly.",
     "sort_order": 0,
-    "icon": "",
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "rotation_path": null,
+    "icon": null
   },
   {
     "id": "PRONATED",
-    "parent_id": null,
     "label": "Pronated",
     "is_dynamic": false,
     "grip_category": "Horizontal",
-    "rotation_path": null,
     "common_names": [
       "Overhand",
       "Palms Down",
@@ -46,57 +58,73 @@
     ],
     "delta_rules": {
       "CURL": {
-        "BICEP_INNER": -0.3,
-        "BICEP_OUTER": -0.2,
+        "FOREARM_TOP": 0.4,
         "BRACHIALIS": 0.3,
-        "FOREARM_TOP": 0.2
+        "BICEP_INNER": -0.5
       },
-      "HORIZONTAL_ROW": {
-        "LATS": -0.15,
-        "BACK_UPPER": 0.15
-      }
+      "PULL_FRONT": {},
+      "ROW_MID": {},
+      "PRESS_FLAT": {},
+      "EXT_PUSHDOWN": {},
+      "PRESS_OVERHEAD": {},
+      "RAISE_LATERAL": {},
+      "SHRUG": {}
     },
     "short_description": "Palms facing away from you (or down).",
     "sort_order": 1,
-    "icon": "",
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "rotation_path": null,
+    "icon": null
   },
   {
     "id": "SUPINATED",
-    "parent_id": null,
     "label": "Supinated",
     "is_dynamic": false,
     "grip_category": "Horizontal",
-    "rotation_path": null,
     "common_names": [
       "Underhand",
       "Palms Up",
       "Reverse Grip"
     ],
     "delta_rules": {
-      "PRESS": {
-        "CHEST_MID": -0.3,
-        "CHEST_UPPER": 0.2,
-        "TRICEPS": 0.1
+      "CURL": {},
+      "PULL_FRONT": {
+        "LATS_LOWER": 0.3,
+        "BICEP_INNER": 0.2,
+        "BACK_MID": -0.2
       },
-      "HORIZONTAL_ROW": {
-        "BACK_UPPER": -0.2,
-        "LATS": 0.1,
-        "BICEP_INNER": 0.1
+      "ROW_MID": {
+        "LATS_LOWER": 0.3,
+        "BICEP_INNER": 0.2,
+        "BACK_UPPER": -0.2
+      },
+      "PRESS_FLAT": {
+        "CHEST_UPPER": 0.3,
+        "TRICEP_INNER": 0.2,
+        "CHEST_MID": -0.2
+      },
+      "EXT_PUSHDOWN": {
+        "TRICEP_DEEP": 0.3,
+        "TRICEP_OUTER": -0.2
+      },
+      "RAISE_FRONT": {
+        "CHEST_UPPER": 0.2,
+        "DELTS_FRONT": -0.1
       }
     },
     "short_description": "Palms facing toward you (or up). Maximizes bicep engagement.",
     "sort_order": 2,
-    "icon": "",
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "rotation_path": null,
+    "icon": null
   },
   {
     "id": "SEMI_PRONATED",
-    "parent_id": null,
     "label": "Semi-Pronated",
     "is_dynamic": false,
     "grip_category": "Angled",
-    "rotation_path": null,
     "common_names": [
       "Angled Overhand",
       "EZ Overhand",
@@ -104,24 +132,26 @@
     ],
     "delta_rules": {
       "CURL": {
-        "BICEP_INNER": -0.15,
-        "BICEP_OUTER": -0.1,
-        "BRACHIALIS": 0.15,
-        "FOREARM_TOP": 0.1
+        "FOREARM_TOP": 0.2,
+        "BRACHIALIS": 0.2,
+        "BICEP_INNER": -0.2
+      },
+      "ROW_MID": {
+        "LATS_UPPER": 0.1
       }
     },
     "short_description": "Slightly angled inward from pronated. Reduces wrist strain.",
     "sort_order": 3,
-    "icon": "",
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "rotation_path": null,
+    "icon": null
   },
   {
     "id": "SEMI_SUPINATED",
-    "parent_id": null,
     "label": "Semi-Supinated",
     "is_dynamic": false,
     "grip_category": "Angled",
-    "rotation_path": null,
     "common_names": [
       "Angled Underhand",
       "EZ Curl Grip",
@@ -129,94 +159,85 @@
     ],
     "delta_rules": {
       "CURL": {
-        "BICEP_INNER": 0.05,
-        "BRACHIALIS": -0.05
+        "BRACHIALIS": 0.1,
+        "BICEP_OUTER": 0.1
+      },
+      "PULL_FRONT": {
+        "LATS_LOWER": 0.1,
+        "BICEP_INNER": 0.1
       }
     },
     "short_description": "Slightly angled inward from supinated. The standard EZ-bar grip.",
     "sort_order": 4,
-    "icon": "",
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "rotation_path": null,
+    "icon": null
   },
   {
     "id": "ROTATING",
-    "parent_id": null,
     "label": "Rotating",
     "is_dynamic": true,
     "grip_category": "Other",
-    "rotation_path": null,
     "common_names": [
       "Twisting Grip",
       "Dynamic Grip",
       "Corkscrew"
     ],
-    "delta_rules": {
-      "CURL": {
-        "BICEP_INNER": 0.1,
-        "BRACHIALIS": 0.1
-      },
-      "PRESS_VERTICAL": {
-        "DELTS_FRONT": 0.1,
-        "DELTS_SIDE": -0.05
-      }
-    },
+    "delta_rules": {},
     "short_description": "Hand position rotates during the movement.",
     "sort_order": 5,
-    "icon": "",
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "rotation_path": null,
+    "icon": null
   },
   {
     "id": "ALTERNATING",
-    "parent_id": null,
     "label": "Alternating",
     "is_dynamic": false,
     "grip_category": "Other",
-    "rotation_path": null,
     "common_names": [
       "Mixed Grip",
       "Over/Under Grip"
     ],
     "delta_rules": {
       "HINGE_STD": {
-        "FOREARMS": -0.2,
-        "BACK_LOWER": 0.05
+        "FOREARM_BOTTOM": 0.2
       }
     },
     "short_description": "One palm faces you, one faces away. Prevents bar rolling.",
     "sort_order": 6,
-    "icon": "",
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "rotation_path": null,
+    "icon": null
   },
   {
     "id": "FLAT",
-    "parent_id": null,
     "label": "Flat Palms Up",
     "is_dynamic": false,
     "grip_category": "Other",
-    "rotation_path": null,
     "common_names": [
       "Open Palm",
       "Shelf Grip",
       "Zercher Grip"
     ],
     "delta_rules": {
-      "SQUAT_REGULAR": {
-        "FOREARMS": -0.2,
-        "SHOULDERS": 0.1
-      }
+      "SQUAT_FRONT": {}
     },
     "short_description": "Weight rests on the palms or arms without wrapping the fingers.",
     "sort_order": 7,
-    "icon": "",
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "rotation_path": null,
+    "icon": null
   },
   {
     "id": "OTHER",
-    "parent_id": null,
     "label": "Other",
     "is_dynamic": false,
     "grip_category": "Other",
-    "rotation_path": null,
     "common_names": [
       "Specialty Grip",
       "Custom Grip"
@@ -224,13 +245,15 @@
     "delta_rules": {},
     "short_description": "Any non-standard grip attachment.",
     "sort_order": 8,
-    "icon": "",
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "rotation_path": null,
+    "icon": null
   },
   {
     "id": "NEUTRAL_PRO",
-    "parent_id": "ROTATING",
     "label": "Neutral -> Pronated",
+    "parent_id": "ROTATING",
     "is_dynamic": true,
     "grip_category": "Dynamic",
     "rotation_path": {
@@ -242,24 +265,24 @@
       "Zottman Twist"
     ],
     "delta_rules": {
-      "PRESS_VERTICAL": {
-        "DELTS_SIDE": -0.1,
-        "DELTS_FRONT": 0.1
-      },
       "CURL": {
-        "BICEP_INNER": -0.15,
-        "BRACHIALIS": 0.15
+        "FOREARM_TOP": 0.2,
+        "BRACHIALIS": 0.15,
+        "BICEP_INNER": -0.2
+      },
+      "PRESS_OVERHEAD": {
+        "DELTS_FRONT": 0.15
       }
     },
     "short_description": "Start neutral, twist to pronated at the top of the concentric phase.",
     "sort_order": 0,
-    "icon": "",
-    "is_active": true
+    "is_active": true,
+    "icon": null
   },
   {
     "id": "NEUTRAL_SUP",
-    "parent_id": "ROTATING",
     "label": "Neutral -> Supinated",
+    "parent_id": "ROTATING",
     "is_dynamic": true,
     "grip_category": "Dynamic",
     "rotation_path": {
@@ -272,61 +295,66 @@
     ],
     "delta_rules": {
       "CURL": {
-        "BRACHIALIS": 0.1,
-        "BICEP_INNER": 0.1
+        "BICEP_INNER": 0.2,
+        "FOREARM_OUTER": 0.1,
+        "BRACHIALIS": -0.1
+      },
+      "PULL_FRONT": {
+        "LATS_LOWER": 0.1
       }
     },
     "short_description": "Start neutral, twist to supinated at the top. Maximizes bicep peak contraction.",
     "sort_order": 1,
-    "icon": "",
-    "is_active": true
+    "is_active": true,
+    "icon": null
   },
   {
     "id": "NEUTRAL_SEMIPRO",
-    "parent_id": "ROTATING",
     "label": "Neutral -> Semi-Pro",
+    "parent_id": "ROTATING",
     "is_dynamic": true,
     "grip_category": "Dynamic",
-    "rotation_path": null,
     "common_names": [
       "Partial Overhand Twist"
     ],
     "delta_rules": {
       "CURL": {
-        "BICEP_INNER": -0.1,
-        "BRACHIALIS": 0.1
+        "FOREARM_TOP": 0.1,
+        "BRACHIALIS": 0.1,
+        "BICEP_INNER": -0.1
       }
     },
     "short_description": "Start neutral, twist slightly downward.",
     "sort_order": 2,
-    "icon": "",
-    "is_active": true
+    "is_active": true,
+    "rotation_path": null,
+    "icon": null
   },
   {
     "id": "NEUTRAL_SEMISUP",
-    "parent_id": "ROTATING",
     "label": "Neutral -> Semi-Sup",
+    "parent_id": "ROTATING",
     "is_dynamic": true,
     "grip_category": "Dynamic",
-    "rotation_path": null,
     "common_names": [
       "Partial Underhand Twist"
     ],
     "delta_rules": {
       "CURL": {
-        "BRACHIALIS": 0.05,
-        "BICEP_INNER": 0.05
+        "BICEP_INNER": 0.1,
+        "FOREARM_OUTER": 0.05
       }
     },
     "short_description": "Start neutral, twist slightly upward.",
     "sort_order": 3,
-    "icon": "",
-    "is_active": true
+    "is_active": true,
+    "rotation_path": null,
+    "icon": null
   },
   {
     "id": "PRO_NEUTRAL",
-    "parent_id": "ROTATING",
     "label": "Pronated -> Neutral",
+    "parent_id": "ROTATING",
     "is_dynamic": true,
     "grip_category": "Dynamic",
     "rotation_path": {
@@ -337,20 +365,27 @@
       "Hammer Twist Pull"
     ],
     "delta_rules": {
+      "PULL_FRONT": {
+        "LATS_LOWER": 0.2,
+        "BRACHIALIS": 0.1
+      },
       "ROW_MID": {
-        "BACK_UPPER": 0.1,
-        "LATS": -0.1
+        "LATS_UPPER": 0.15
+      },
+      "CURL": {
+        "BRACHIALIS": 0.2,
+        "FOREARM_OUTER": 0.1
       }
     },
     "short_description": "Start pronated, twist to neutral at peak contraction. Great for lat engagement.",
     "sort_order": 4,
-    "icon": "",
-    "is_active": true
+    "is_active": true,
+    "icon": null
   },
   {
     "id": "PRO_SUP",
-    "parent_id": "ROTATING",
     "label": "Pronated -> Supinated",
+    "parent_id": "ROTATING",
     "is_dynamic": true,
     "grip_category": "Dynamic",
     "rotation_path": {
@@ -363,41 +398,45 @@
     ],
     "delta_rules": {
       "CURL": {
-        "BICEP_INNER": 0.15,
-        "BRACHIALIS": 0.1,
-        "FOREARM_TOP": 0.1
+        "BICEP_INNER": 0.3,
+        "FOREARM_OUTER": 0.1,
+        "FOREARM_TOP": -0.2
+      },
+      "PULL_FRONT": {
+        "LATS_LOWER": 0.2,
+        "BICEP_INNER": 0.15
       }
     },
     "short_description": "Full 180-degree rotation from overhand to underhand.",
     "sort_order": 5,
-    "icon": "",
-    "is_active": true
+    "is_active": true,
+    "icon": null
   },
   {
     "id": "PRO_SEMISUP",
-    "parent_id": "ROTATING",
     "label": "Pronated -> Semi-Sup",
+    "parent_id": "ROTATING",
     "is_dynamic": true,
     "grip_category": "Dynamic",
-    "rotation_path": null,
     "common_names": [
       "Three-Quarter Twist"
     ],
     "delta_rules": {
       "CURL": {
-        "BICEP_INNER": 0.1,
-        "BRACHIALIS": 0.05
+        "BICEP_INNER": 0.15,
+        "FOREARM_OUTER": 0.1
       }
     },
     "short_description": "Start overhand, twist to an angled underhand.",
     "sort_order": 6,
-    "icon": "",
-    "is_active": true
+    "is_active": true,
+    "rotation_path": null,
+    "icon": null
   },
   {
     "id": "SUP_NEUTRAL",
-    "parent_id": "ROTATING",
     "label": "Supinated -> Neutral",
+    "parent_id": "ROTATING",
     "is_dynamic": true,
     "grip_category": "Dynamic",
     "rotation_path": {
@@ -408,20 +447,24 @@
       "Reverse Hammer Twist"
     ],
     "delta_rules": {
-      "VERTICAL_PULL": {
-        "BICEP_INNER": 0.1,
-        "LATS": -0.1
+      "CURL": {
+        "BRACHIALIS": 0.2,
+        "FOREARM_OUTER": 0.1,
+        "BICEP_INNER": -0.15
+      },
+      "ROW_MID": {
+        "LATS_UPPER": 0.1
       }
     },
     "short_description": "Start underhand, twist to neutral.",
     "sort_order": 7,
-    "icon": "",
-    "is_active": true
+    "is_active": true,
+    "icon": null
   },
   {
     "id": "SUP_PRO",
-    "parent_id": "ROTATING",
     "label": "Supinated -> Pronated",
+    "parent_id": "ROTATING",
     "is_dynamic": true,
     "grip_category": "Dynamic",
     "rotation_path": {
@@ -433,304 +476,177 @@
       "Reverse 180 Twist"
     ],
     "delta_rules": {
-      "PRESS_VERTICAL": {
-        "DELTS_FRONT": 0.15,
-        "DELTS_SIDE": -0.1
+      "PRESS_OVERHEAD": {
+        "DELTS_FRONT": 0.3,
+        "CHEST_UPPER": 0.1,
+        "DELTS_SIDE": -0.2
+      },
+      "CURL": {
+        "FOREARM_TOP": 0.3,
+        "BRACHIALIS": 0.1,
+        "BICEP_INNER": -0.3
       }
     },
     "short_description": "Start underhand, push and twist to overhand (The classic Arnold Press path).",
     "sort_order": 8,
-    "icon": "",
-    "is_active": true
+    "is_active": true,
+    "icon": null
   },
   {
     "id": "SUP_SEMIPRO",
-    "parent_id": "ROTATING",
     "label": "Supinated -> Semi-Pro",
+    "parent_id": "ROTATING",
     "is_dynamic": true,
     "grip_category": "Dynamic",
-    "rotation_path": null,
     "common_names": [
       "Partial Arnold Twist"
     ],
     "delta_rules": {
-      "PRESS_VERTICAL": {
-        "DELTS_FRONT": 0.1,
-        "DELTS_SIDE": -0.05
+      "PRESS_OVERHEAD": {
+        "DELTS_FRONT": 0.15,
+        "DELTS_SIDE": -0.1
+      },
+      "CURL": {
+        "FOREARM_TOP": 0.15,
+        "BRACHIALIS": 0.1
       }
     },
     "short_description": "Start underhand, twist to angled overhand.",
     "sort_order": 9,
-    "icon": "",
-    "is_active": true
+    "is_active": true,
+    "rotation_path": null,
+    "icon": null
   },
   {
     "id": "SEMIPRO_NEUTRAL",
-    "parent_id": "ROTATING",
     "label": "Semi-Pro -> Neutral",
+    "parent_id": "ROTATING",
     "is_dynamic": true,
     "grip_category": "Dynamic",
-    "rotation_path": null,
     "common_names": [
       "Slight Neutral Twist"
     ],
-    "delta_rules": {},
+    "delta_rules": {
+      "CURL": {
+        "BRACHIALIS": 0.1
+      },
+      "ROW_MID": {
+        "LATS_UPPER": 0.1
+      }
+    },
     "short_description": "Start angled overhand, twist to parallel.",
     "sort_order": 10,
-    "icon": "",
-    "is_active": true
+    "is_active": true,
+    "rotation_path": null,
+    "icon": null
   },
   {
     "id": "SEMIPRO_SUP",
-    "parent_id": "ROTATING",
     "label": "Semi-Pro -> Supinated",
+    "parent_id": "ROTATING",
     "is_dynamic": true,
     "grip_category": "Dynamic",
-    "rotation_path": null,
     "common_names": [
       "Angled Supinating Twist"
     ],
     "delta_rules": {
       "CURL": {
-        "BICEP_INNER": 0.1,
-        "BRACHIALIS": 0.05
+        "BICEP_INNER": 0.2,
+        "FOREARM_OUTER": 0.1
+      },
+      "PULL_FRONT": {
+        "LATS_LOWER": 0.1
       }
     },
     "short_description": "Start angled overhand, finish fully underhand.",
     "sort_order": 11,
-    "icon": "",
-    "is_active": true
+    "is_active": true,
+    "rotation_path": null,
+    "icon": null
   },
   {
     "id": "SEMIPRO_SEMISUP",
-    "parent_id": "ROTATING",
     "label": "Semi-Pro -> Semi-Sup",
+    "parent_id": "ROTATING",
     "is_dynamic": true,
     "grip_category": "Dynamic",
-    "rotation_path": null,
     "common_names": [
       "EZ Twist"
     ],
     "delta_rules": {
       "CURL": {
-        "BICEP_INNER": 0.05,
+        "BICEP_INNER": 0.15,
         "BRACHIALIS": 0.05
       }
     },
     "short_description": "Moving between the two angled positions.",
     "sort_order": 12,
-    "icon": "",
-    "is_active": true
+    "is_active": true,
+    "rotation_path": null,
+    "icon": null
   },
   {
     "id": "SEMISUP_NEUTRAL",
-    "parent_id": "ROTATING",
     "label": "Semi-Sup -> Neutral",
+    "parent_id": "ROTATING",
     "is_dynamic": true,
     "grip_category": "Dynamic",
-    "rotation_path": null,
     "common_names": [
       "Angled Hammer Twist"
     ],
-    "delta_rules": {},
+    "delta_rules": {
+      "CURL": {
+        "BRACHIALIS": 0.15,
+        "FOREARM_OUTER": 0.05
+      }
+    },
     "short_description": "Start angled underhand, finish parallel.",
     "sort_order": 13,
-    "icon": "",
-    "is_active": true
+    "is_active": true,
+    "rotation_path": null,
+    "icon": null
   },
   {
     "id": "SEMISUP_PRO",
-    "parent_id": "ROTATING",
     "label": "Semi-Sup -> Pronated",
+    "parent_id": "ROTATING",
     "is_dynamic": true,
     "grip_category": "Dynamic",
-    "rotation_path": null,
     "common_names": [
       "Modified Arnold Twist"
     ],
     "delta_rules": {
-      "PRESS_VERTICAL": {
-        "DELTS_FRONT": 0.1,
-        "DELTS_SIDE": -0.05
+      "CURL": {
+        "FOREARM_TOP": 0.2,
+        "BRACHIALIS": 0.1,
+        "BICEP_INNER": -0.2
       }
     },
     "short_description": "Start angled underhand, finish fully overhand.",
     "sort_order": 14,
-    "icon": "",
-    "is_active": true
+    "is_active": true,
+    "rotation_path": null,
+    "icon": null
   },
   {
     "id": "SEMISUP_SEMIPRO",
-    "parent_id": "ROTATING",
     "label": "Semi-Sup -> Semi-Pro",
+    "parent_id": "ROTATING",
     "is_dynamic": true,
     "grip_category": "Dynamic",
-    "rotation_path": null,
     "common_names": [
       "Reverse EZ Twist"
     ],
-    "delta_rules": {},
+    "delta_rules": {
+      "CURL": {
+        "FOREARM_TOP": 0.1,
+        "BRACHIALIS": 0.1
+      }
+    },
     "short_description": "Moving between the two angled positions in reverse.",
     "sort_order": 15,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "EXTRA_NARROW",
-    "parent_id": null,
-    "label": "Extra Narrow",
-    "is_dynamic": false,
-    "grip_category": "Width",
+    "is_active": true,
     "rotation_path": null,
-    "common_names": [
-      "Close Grip",
-      "Diamond Grip",
-      "Touching Hands"
-    ],
-    "delta_rules": {
-      "PRESS": {
-        "CHEST_MID": -0.2,
-        "CHEST_INNER": 0.15,
-        "TRICEPS": 0.25,
-        "DELTS_FRONT": -0.1
-      },
-      "VERTICAL_PULL": {
-        "LATS": -0.15,
-        "BACK_UPPER": -0.1,
-        "BICEPS": 0.2,
-        "FOREARMS": 0.1
-      },
-      "HORIZONTAL_ROW": {
-        "BACK_MID": -0.2,
-        "LATS": 0.15,
-        "BICEPS": 0.15
-      }
-    },
-    "short_description": "Hands positioned very close together, often touching. Maximizes arm involvement.",
-    "sort_order": 0,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "NARROW",
-    "parent_id": null,
-    "label": "Narrow",
-    "is_dynamic": false,
-    "grip_category": "Width",
-    "rotation_path": null,
-    "common_names": [
-      "Inside Shoulder Width",
-      "Slightly Close Grip"
-    ],
-    "delta_rules": {
-      "PRESS": {
-        "CHEST_MID": -0.1,
-        "CHEST_INNER": 0.05,
-        "TRICEPS": 0.15,
-        "DELTS_FRONT": -0.05
-      },
-      "VERTICAL_PULL": {
-        "LATS": -0.05,
-        "BICEPS": 0.1
-      },
-      "HORIZONTAL_ROW": {
-        "BACK_MID": -0.1,
-        "LATS": 0.1
-      }
-    },
-    "short_description": "Hands positioned just inside the shoulders.",
-    "sort_order": 1,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "SHOULDER",
-    "parent_id": null,
-    "label": "Shoulder-Width",
-    "is_dynamic": false,
-    "grip_category": "Width",
-    "rotation_path": null,
-    "common_names": [
-      "Standard Width",
-      "Normal Grip"
-    ],
-    "delta_rules": {},
-    "short_description": "Hands positioned perfectly in line with the shoulders. This is the baseline for all scoring.",
-    "sort_order": 2,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "WIDE",
-    "parent_id": null,
-    "label": "Wide",
-    "is_dynamic": false,
-    "grip_category": "Width",
-    "rotation_path": null,
-    "common_names": [
-      "Outside Shoulder Width",
-      "Slightly Wide Grip"
-    ],
-    "delta_rules": {
-      "PRESS": {
-        "CHEST_MID": -0.1,
-        "CHEST_OUTER": 0.15,
-        "TRICEPS": -0.15,
-        "DELTS_FRONT": 0.1
-      },
-      "VERTICAL_PULL": {
-        "LATS": 0.15,
-        "BACK_UPPER": 0.1,
-        "BICEPS": -0.15
-      },
-      "HORIZONTAL_ROW": {
-        "BACK_MID": 0.15,
-        "LATS": -0.1,
-        "BICEPS": -0.1
-      }
-    },
-    "short_description": "Hands positioned roughly one hand-width outside the shoulders.",
-    "sort_order": 3,
-    "icon": "",
-    "is_active": true
-  },
-  {
-    "id": "EXTRA_WIDE",
-    "parent_id": null,
-    "label": "Extra Wide",
-    "is_dynamic": false,
-    "grip_category": "Width",
-    "rotation_path": null,
-    "common_names": [
-      "Snatch Grip",
-      "Maximum Width",
-      "Collar-to-Collar"
-    ],
-    "delta_rules": {
-      "PRESS": {
-        "CHEST_MID": -0.25,
-        "CHEST_OUTER": 0.25,
-        "TRICEPS": -0.25,
-        "DELTS_FRONT": 0.15
-      },
-      "VERTICAL_PULL": {
-        "LATS": 0.2,
-        "BACK_UPPER": 0.2,
-        "BICEPS": -0.25
-      },
-      "HORIZONTAL_ROW": {
-        "BACK_MID": 0.25,
-        "LATS": -0.2,
-        "BICEPS": -0.15
-      },
-      "ROW_HIGH": {
-        "BACK_UPPER": 0.2,
-        "DELTS_REAR": 0.15
-      }
-    },
-    "short_description": "Hands positioned extremely wide. Maximizes torso stretch but heavily limits range of motion and arm involvement.",
-    "sort_order": 4,
-    "icon": "",
-    "is_active": true
+    "icon": null
   }
 ]

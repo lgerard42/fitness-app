@@ -22,21 +22,31 @@
       "High Elbows"
     ],
     "delta_rules": {
-      "PRESS": {
+      "PRESS_FLAT": {
         "CHEST_MID": 0.15,
         "CHEST_UPPER": 0.1,
         "DELTS_FRONT": 0.1,
         "ROTATOR_CUFF": -0.25
       },
-      "HORIZONTAL_ROW": {
+      "PRESS_INCLINE": {
+        "CHEST_UPPER": 0.15,
+        "DELTS_FRONT": 0.1,
+        "ROTATOR_CUFF": -0.25
+      },
+      "ROW_MID": {
         "BACK_UPPER": 0.2,
         "DELTS_REAR": 0.15,
-        "LATS": -0.2
+        "LATS_UPPER": -0.2
       },
-      "VERTICAL_PULL": {
+      "ROW_HIGH": {
+        "BACK_UPPER": 0.2,
+        "DELTS_REAR": 0.15,
+        "LATS_UPPER": -0.2
+      },
+      "PULL_FRONT": {
         "BACK_UPPER": 0.1,
-        "LATS_OUTER": 0.1,
-        "BICEPS": -0.1
+        "LATS_UPPER": 0.1,
+        "BICEP_INNER": -0.1
       }
     },
     "short_description": "Elbows are driven out wide. Maximizes the stretch on the chest and upper back but increases torque on the shoulder joint.",
@@ -53,19 +63,29 @@
       "Parallel Path"
     ],
     "delta_rules": {
-      "PRESS": {
-        "TRICEPS": 0.2,
+      "PRESS_FLAT": {
+        "TRICEP_OUTER": 0.2,
         "DELTS_FRONT": 0.1,
-        "CHEST": -0.15
+        "CHEST_MID": -0.15
       },
-      "HORIZONTAL_ROW": {
-        "LATS": 0.25,
+      "PRESS_INCLINE": {
+        "TRICEP_OUTER": 0.2,
+        "DELTS_FRONT": 0.1,
+        "CHEST_UPPER": -0.15
+      },
+      "ROW_MID": {
+        "LATS_UPPER": 0.25,
         "BACK_UPPER": -0.15,
-        "BICEPS": 0.05
+        "BICEP_OUTER": 0.05
       },
-      "VERTICAL_PULL": {
-        "LATS": 0.2,
-        "BICEPS": 0.05,
+      "ROW_LOW": {
+        "LATS_LOWER": 0.25,
+        "BACK_UPPER": -0.15,
+        "BICEP_OUTER": 0.05
+      },
+      "PULL_FRONT": {
+        "LATS_LOWER": 0.2,
+        "BICEP_OUTER": 0.05,
         "BACK_UPPER": -0.1
       }
     },

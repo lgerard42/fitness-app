@@ -58,7 +58,7 @@ Defines the flare of the elbow relative to the torso (e.g., TUCKED, FLARED).
 
 Role: The ultimate determining factor for tricep vs. chest dominance in presses, and lat vs. upper-back dominance in rows.
 
-Group 4: Lower Body Biomechanics
+Group 4: Lower Body Mechanics
 8. FOOT_POSITIONS
 Defines where the feet are placed on a platform (e.g., HIGH, LOW, FORWARD).
 

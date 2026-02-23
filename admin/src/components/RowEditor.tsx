@@ -125,6 +125,32 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
   const recordId = String(data[schema.idField] ?? '');
   const recordLabel = String(data[schema.labelField] ?? data[schema.idField] ?? '');
 
+  // Get unique grip categories and non-child grips for GRIPS table
+  const gripCategories = useMemo(() => {
+    if (schema.key !== 'grips') return [];
+    const allGrips = refData['grips'] || [];
+    const categories = new Set<string>();
+    allGrips.forEach((grip: Record<string, unknown>) => {
+      const cat = grip.grip_category;
+      if (cat && typeof cat === 'string') {
+        categories.add(cat);
+      }
+    });
+    return Array.from(categories).sort();
+  }, [schema.key, refData]);
+
+  const nonChildGrips = useMemo(() => {
+    if (schema.key !== 'grips') return [];
+    const allGrips = refData['grips'] || [];
+    return allGrips.filter((grip: Record<string, unknown>) => {
+      const parentId = grip.parent_id;
+      return !parentId || parentId === null || parentId === '';
+    }).map((grip: Record<string, unknown>) => ({
+      id: String(grip.id ?? ''),
+      label: String(grip.label ?? grip.id ?? ''),
+    })).sort((a, b) => a.label.localeCompare(b.label));
+  }, [schema.key, refData]);
+
   // Helper function to render a field
   const renderField = (field: typeof schema.fields[0]) => {
     const value = data[field.name];
@@ -184,6 +210,24 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
 
     switch (field.type) {
       case 'string':
+        // Special handling for grip_category on GRIPS table (dropdown with unique categories)
+        if (schema.key === 'grips' && field.name === 'grip_category') {
+          return (
+            <div key={field.name}>
+              {label}
+              <select
+                value={String(value ?? '')}
+                onChange={(e) => update(field.name, e.target.value)}
+                className="w-full px-3 py-2 border rounded text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              >
+                <option value="">(none)</option>
+                {gripCategories.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+            </div>
+          );
+        }
         return (
           <div key={field.name}>
             {label}
@@ -242,6 +286,8 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
             </div>
           );
         }
+        // Hide the blue card for parent_id on GRIPS table
+        const hideCard = schema.key === 'grips' && field.name === 'parent_id';
         return (
           <div key={field.name}>
             {label}
@@ -251,6 +297,7 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
               labelField={field.refLabelField || 'label'}
               onChange={(v) => update(field.name, v)}
               refTable={field.refTable}
+              hideSelectedCard={hideCard}
             />
           </div>
         );
@@ -334,6 +381,63 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
         );
 
       case 'json':
+        // Special handling for rotation_path on GRIPS table (two dropdowns: start and end)
+        if (schema.key === 'grips' && field.name === 'rotation_path') {
+          const rotationPath = value && typeof value === 'object' && !Array.isArray(value)
+            ? (value as { start?: string; end?: string })
+            : { start: '', end: '' };
+          
+          const handleRotationPathChange = (key: 'start' | 'end', newValue: string) => {
+            const updated = { ...rotationPath, [key]: newValue };
+            // If start changes and end equals the new start, clear end
+            if (key === 'start' && updated.end === newValue) {
+              updated.end = '';
+            }
+            // If end is set to equal start, clear end (shouldn't happen due to filtering, but safety check)
+            if (key === 'end' && updated.start === newValue && updated.start !== '') {
+              updated.end = '';
+            }
+            update(field.name, updated);
+          };
+          
+          // Filter end options to exclude the selected start value
+          const endOptions = nonChildGrips.filter(g => g.id !== rotationPath.start);
+          
+          return (
+            <div key={field.name}>
+              {label}
+              <div className="space-y-2">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Start</label>
+                  <select
+                    value={rotationPath.start ?? ''}
+                    onChange={(e) => handleRotationPathChange('start', e.target.value)}
+                    className="w-full px-3 py-2 border rounded text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  >
+                    <option value="">(none)</option>
+                    {nonChildGrips.map(grip => (
+                      <option key={grip.id} value={grip.id}>{grip.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Finish</label>
+                  <select
+                    value={rotationPath.end ?? ''}
+                    onChange={(e) => handleRotationPathChange('end', e.target.value)}
+                    className="w-full px-3 py-2 border rounded text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    disabled={!rotationPath.start}
+                  >
+                    <option value="">(none)</option>
+                    {endOptions.map(grip => (
+                      <option key={grip.id} value={grip.id}>{grip.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+          );
+        }
         if (field.jsonShape === 'muscle_targets') {
           return (
             <div key={field.name}>

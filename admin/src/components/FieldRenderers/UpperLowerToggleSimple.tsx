@@ -6,14 +6,15 @@ interface UpperLowerToggleSimpleProps {
 }
 
 export default function UpperLowerToggleSimple({ value, onChange }: UpperLowerToggleSimpleProps) {
-  const isUpper = value === 'Upper';
-  const isLower = value === 'Lower';
+  const normalized = String(value ?? '').toUpperCase();
+  const isUpper = normalized === 'UPPER';
+  const isLower = normalized === 'LOWER';
 
   return (
     <div className="flex gap-1">
       <button
         type="button"
-        onClick={() => onChange('Upper')}
+        onClick={() => onChange('UPPER')}
         className={`px-3 py-1.5 text-xs font-medium rounded border transition-colors ${
           isUpper
             ? 'bg-blue-600 text-white border-blue-600'
@@ -24,7 +25,7 @@ export default function UpperLowerToggleSimple({ value, onChange }: UpperLowerTo
       </button>
       <button
         type="button"
-        onClick={() => onChange('Lower')}
+        onClick={() => onChange('LOWER')}
         className={`px-3 py-1.5 text-xs font-medium rounded border transition-colors ${
           isLower
             ? 'bg-blue-600 text-white border-blue-600'

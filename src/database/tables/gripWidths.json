@@ -8,27 +8,66 @@
       "Touching Hands"
     ],
     "delta_rules": {
-      "PRESS": {
+      "PRESS_FLAT": {
         "CHEST_MID": -0.2,
-        "CHEST_INNER": 0.15,
-        "TRICEPS": 0.25,
-        "DELTS_FRONT": -0.1
+        "TRICEP_OUTER": 0.2,
+        "TRICEP_DEEP": 0.1,
+        "DELTS_FRONT": 0.1
       },
-      "VERTICAL_PULL": {
-        "LATS": -0.15,
-        "BACK_UPPER": -0.1,
-        "BICEPS": 0.2,
-        "FOREARMS": 0.1
+      "PRESS_INCLINE": {
+        "CHEST_UPPER": -0.2,
+        "TRICEP_OUTER": 0.2,
+        "TRICEP_DEEP": 0.1,
+        "DELTS_FRONT": 0.1
       },
-      "HORIZONTAL_ROW": {
+      "PRESS_DECLINE": {
+        "CHEST_LOWER": -0.2,
+        "TRICEP_OUTER": 0.2,
+        "TRICEP_DEEP": 0.1
+      },
+      "PRESS_OVERHEAD": {
+        "DELTS_FRONT": -0.1,
+        "TRICEP_OUTER": 0.2,
+        "TRICEP_DEEP": 0.1
+      },
+      "PRESS_HIGH_INCLINE": {
+        "CHEST_UPPER": -0.1,
+        "TRICEP_OUTER": 0.2,
+        "TRICEP_DEEP": 0.1
+      },
+      "PULL_FRONT": {
+        "LATS_UPPER": -0.2,
+        "LATS_LOWER": 0.1,
+        "BICEP_OUTER": 0.15,
+        "BRACHIALIS": 0.1
+      },
+      "PULL_BEHIND": {
+        "BACK_UPPER": -0.2,
+        "BICEP_OUTER": 0.15
+      },
+      "ROW_MID": {
         "BACK_MID": -0.2,
-        "LATS": 0.15,
-        "BICEPS": 0.15
+        "LATS_LOWER": 0.15,
+        "BICEP_OUTER": 0.15
+      },
+      "ROW_LOW": {
+        "LATS_UPPER": -0.1,
+        "LATS_LOWER": 0.1,
+        "BICEP_OUTER": 0.15
+      },
+      "ROW_HIGH": {
+        "BACK_UPPER": -0.2,
+        "LATS_UPPER": 0.15,
+        "BICEP_OUTER": 0.15
+      },
+      "CURL": {
+        "BICEP_OUTER": 0.2,
+        "BICEP_INNER": -0.2
       }
     },
     "short_description": "Hands positioned very close together, often touching. Maximizes arm involvement.",
     "sort_order": 0,
-    "icon": "",
+    "icon": null,
     "is_active": true
   },
   {
@@ -39,24 +78,65 @@
       "Slightly Close Grip"
     ],
     "delta_rules": {
-      "PRESS": {
+      "PRESS_FLAT": {
         "CHEST_MID": -0.1,
-        "CHEST_INNER": 0.05,
-        "TRICEPS": 0.15,
-        "DELTS_FRONT": -0.05
+        "TRICEP_OUTER": 0.1,
+        "TRICEP_DEEP": 0.05,
+        "DELTS_FRONT": 0.05
       },
-      "VERTICAL_PULL": {
-        "LATS": -0.05,
-        "BICEPS": 0.1
+      "PRESS_INCLINE": {
+        "CHEST_UPPER": -0.1,
+        "TRICEP_OUTER": 0.1,
+        "TRICEP_DEEP": 0.05,
+        "DELTS_FRONT": 0.05
       },
-      "HORIZONTAL_ROW": {
+      "PRESS_DECLINE": {
+        "CHEST_LOWER": -0.1,
+        "TRICEP_OUTER": 0.1,
+        "TRICEP_DEEP": 0.05
+      },
+      "PRESS_OVERHEAD": {
+        "DELTS_FRONT": -0.05,
+        "TRICEP_OUTER": 0.1,
+        "TRICEP_DEEP": 0.05
+      },
+      "PRESS_HIGH_INCLINE": {
+        "CHEST_UPPER": -0.05,
+        "TRICEP_OUTER": 0.1,
+        "TRICEP_DEEP": 0.05
+      },
+      "PULL_FRONT": {
+        "LATS_UPPER": -0.1,
+        "LATS_LOWER": 0.05,
+        "BICEP_OUTER": 0.1
+      },
+      "PULL_BEHIND": {
+        "BACK_UPPER": -0.1,
+        "BICEP_OUTER": 0.1
+      },
+      "ROW_MID": {
         "BACK_MID": -0.1,
-        "LATS": 0.1
+        "LATS_LOWER": 0.1,
+        "BICEP_OUTER": 0.1
+      },
+      "ROW_LOW": {
+        "LATS_UPPER": -0.05,
+        "LATS_LOWER": 0.05,
+        "BICEP_OUTER": 0.1
+      },
+      "ROW_HIGH": {
+        "BACK_UPPER": -0.1,
+        "LATS_UPPER": 0.1,
+        "BICEP_OUTER": 0.1
+      },
+      "CURL": {
+        "BICEP_OUTER": 0.1,
+        "BICEP_INNER": -0.1
       }
     },
     "short_description": "Hands positioned just inside the shoulders.",
     "sort_order": 1,
-    "icon": "",
+    "icon": null,
     "is_active": true
   },
   {
@@ -69,7 +149,7 @@
     "delta_rules": {},
     "short_description": "Hands positioned perfectly in line with the shoulders. This is the baseline for all scoring.",
     "sort_order": 2,
-    "icon": "",
+    "icon": null,
     "is_active": true
   },
   {
@@ -80,26 +160,67 @@
       "Slightly Wide Grip"
     ],
     "delta_rules": {
-      "PRESS": {
-        "CHEST_MID": -0.1,
-        "CHEST_OUTER": 0.15,
-        "TRICEPS": -0.15,
-        "DELTS_FRONT": 0.1
+      "PRESS_FLAT": {
+        "CHEST_MID": 0.1,
+        "TRICEP_OUTER": -0.1,
+        "TRICEP_DEEP": -0.1
       },
-      "VERTICAL_PULL": {
-        "LATS": 0.15,
+      "PRESS_INCLINE": {
+        "CHEST_UPPER": 0.1,
+        "TRICEP_OUTER": -0.1,
+        "TRICEP_DEEP": -0.1
+      },
+      "PRESS_DECLINE": {
+        "CHEST_LOWER": 0.1,
+        "TRICEP_OUTER": -0.1,
+        "TRICEP_DEEP": -0.1
+      },
+      "PRESS_OVERHEAD": {
+        "DELTS_SIDE": 0.1,
+        "TRICEP_OUTER": -0.1,
+        "TRICEP_DEEP": -0.1
+      },
+      "PRESS_HIGH_INCLINE": {
+        "CHEST_UPPER": 0.05,
+        "DELTS_FRONT": 0.05,
+        "TRICEP_OUTER": -0.1
+      },
+      "PULL_FRONT": {
+        "LATS_UPPER": 0.1,
+        "LATS_LOWER": -0.1,
+        "BICEP_INNER": -0.1,
+        "BICEP_OUTER": -0.1
+      },
+      "PULL_BEHIND": {
         "BACK_UPPER": 0.1,
-        "BICEPS": -0.15
+        "BICEP_INNER": -0.1,
+        "BICEP_OUTER": -0.1
       },
-      "HORIZONTAL_ROW": {
-        "BACK_MID": 0.15,
-        "LATS": -0.1,
-        "BICEPS": -0.1
+      "ROW_MID": {
+        "BACK_MID": 0.1,
+        "RHOMBOIDS": 0.1,
+        "LATS_LOWER": -0.1,
+        "BICEP_INNER": -0.1,
+        "BICEP_OUTER": -0.1
+      },
+      "ROW_LOW": {
+        "LATS_UPPER": 0.1,
+        "LATS_LOWER": -0.1,
+        "BICEP_OUTER": -0.1
+      },
+      "ROW_HIGH": {
+        "BACK_UPPER": 0.1,
+        "DELTS_REAR": 0.1,
+        "BICEP_OUTER": -0.1
+      },
+      "CURL": {
+        "BICEP_INNER": 0.15,
+        "BICEP_OUTER": -0.15
       }
     },
     "short_description": "Hands positioned roughly one hand-width outside the shoulders.",
     "sort_order": 3,
-    "icon": "",
+    "icon": null,
     "is_active": true
   },
   {
@@ -111,30 +232,83 @@
       "Collar-to-Collar"
     ],
     "delta_rules": {
-      "PRESS": {
-        "CHEST_MID": -0.25,
-        "CHEST_OUTER": 0.25,
-        "TRICEPS": -0.25,
-        "DELTS_FRONT": 0.15
+      "PRESS_FLAT": {
+        "CHEST_MID": 0.2,
+        "TRICEP_OUTER": -0.2,
+        "TRICEP_DEEP": -0.2,
+        "DELTS_FRONT": 0.1
       },
-      "VERTICAL_PULL": {
-        "LATS": 0.2,
+      "PRESS_INCLINE": {
+        "CHEST_UPPER": 0.2,
+        "TRICEP_OUTER": -0.2,
+        "TRICEP_DEEP": -0.2,
+        "DELTS_FRONT": 0.1
+      },
+      "PRESS_DECLINE": {
+        "CHEST_LOWER": 0.2,
+        "TRICEP_OUTER": -0.2,
+        "TRICEP_DEEP": -0.2
+      },
+      "PRESS_OVERHEAD": {
+        "DELTS_SIDE": 0.2,
+        "TRICEP_OUTER": -0.2,
+        "TRICEP_DEEP": -0.2
+      },
+      "PRESS_HIGH_INCLINE": {
+        "CHEST_UPPER": 0.1,
+        "DELTS_FRONT": 0.1,
+        "TRICEP_OUTER": -0.2
+      },
+      "PULL_FRONT": {
+        "LATS_UPPER": 0.2,
+        "BACK_UPPER": 0.1,
+        "LATS_LOWER": -0.2,
+        "BICEP_INNER": -0.2,
+        "BICEP_OUTER": -0.2
+      },
+      "PULL_BEHIND": {
         "BACK_UPPER": 0.2,
-        "BICEPS": -0.25
+        "BICEP_INNER": -0.2,
+        "BICEP_OUTER": -0.2
       },
-      "HORIZONTAL_ROW": {
-        "BACK_MID": 0.25,
-        "LATS": -0.2,
-        "BICEPS": -0.15
+      "ROW_MID": {
+        "BACK_MID": 0.2,
+        "RHOMBOIDS": 0.2,
+        "DELTS_REAR": 0.1,
+        "LATS_LOWER": -0.2,
+        "BICEP_INNER": -0.2,
+        "BICEP_OUTER": -0.2
+      },
+      "ROW_LOW": {
+        "LATS_UPPER": 0.2,
+        "LATS_LOWER": -0.2,
+        "BICEP_OUTER": -0.2
       },
       "ROW_HIGH": {
         "BACK_UPPER": 0.2,
-        "DELTS_REAR": 0.15
+        "DELTS_REAR": 0.2,
+        "BICEP_OUTER": -0.2
+      },
+      "CURL": {
+        "BICEP_INNER": 0.25,
+        "BICEP_OUTER": -0.25
+      },
+      "HINGE_STD": {
+        "TRAPS_UPPER": 0.2,
+        "BACK_UPPER": 0.2,
+        "GLUTES": 0.1,
+        "BACK_LOWER": 0.1
+      },
+      "HINGE_STRAIGHT": {
+        "TRAPS_UPPER": 0.2,
+        "BACK_UPPER": 0.2,
+        "GLUTES": 0.1,
+        "BACK_LOWER": 0.1
       }
     },
     "short_description": "Hands positioned extremely wide. Maximizes torso stretch but heavily limits range of motion and arm involvement.",
     "sort_order": 4,
-    "icon": "",
+    "icon": null,
     "is_active": true
   }
 ]

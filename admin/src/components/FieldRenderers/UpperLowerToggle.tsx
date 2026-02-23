@@ -5,18 +5,27 @@ interface UpperLowerToggleProps {
   onChange: (v: string[]) => void;
 }
 
+function isUpperValue(v: string): boolean {
+  const u = String(v).toUpperCase();
+  return u === 'UPPER' || u === 'UPPER BODY';
+}
+function isLowerValue(v: string): boolean {
+  const u = String(v).toUpperCase();
+  return u === 'LOWER' || u === 'LOWER BODY';
+}
+
 export default function UpperLowerToggle({ value, onChange }: UpperLowerToggleProps) {
-  const isUpper = Array.isArray(value) && value.includes('Upper Body');
-  const isLower = Array.isArray(value) && value.includes('Lower Body');
+  const isUpper = Array.isArray(value) && value.some(isUpperValue);
+  const isLower = Array.isArray(value) && value.some(isLowerValue);
   const isBoth = isUpper && isLower;
 
   const handleToggle = (option: 'Upper' | 'Lower' | 'Both') => {
     if (option === 'Upper') {
-      onChange(['Upper Body']);
+      onChange(['UPPER']);
     } else if (option === 'Lower') {
-      onChange(['Lower Body']);
+      onChange(['LOWER']);
     } else {
-      onChange(['Upper Body', 'Lower Body']);
+      onChange(['UPPER', 'LOWER']);
     }
   };
 

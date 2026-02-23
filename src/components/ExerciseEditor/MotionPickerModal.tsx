@@ -72,6 +72,12 @@ const UPPER_LOWER_OPTIONS: { id: UpperLowerFilter; label: string }[] = [
   { id: 'Full Body', label: 'Full Body' },
 ];
 
+/** Match upper_lower array (accepts "Upper Body"/"UPPER" and "Lower Body"/"LOWER") */
+function upperLowerIncludes(arr: string[], key: 'Upper Body' | 'Lower Body'): boolean {
+  if (key === 'Upper Body') return arr.some((v) => String(v).toUpperCase() === 'UPPER' || v === 'Upper Body');
+  return arr.some((v) => String(v).toUpperCase() === 'LOWER' || v === 'Lower Body');
+}
+
 const MotionPickerModal: React.FC<MotionPickerModalProps> = ({
   visible,
   onClose,
@@ -122,13 +128,13 @@ const MotionPickerModal: React.FC<MotionPickerModalProps> = ({
       .filter((pm: any) => {
         const upperLower = pm.upper_lower || [];
         if (upperLowerFilter === 'Upper Body') {
-          return upperLower.includes('Upper Body');
+          return upperLowerIncludes(upperLower, 'Upper Body');
         }
         if (upperLowerFilter === 'Lower Body') {
-          return upperLower.includes('Lower Body');
+          return upperLowerIncludes(upperLower, 'Lower Body');
         }
         // Full Body: must have BOTH
-        return upperLower.includes('Upper Body') && upperLower.includes('Lower Body');
+        return upperLowerIncludes(upperLower, 'Upper Body') && upperLowerIncludes(upperLower, 'Lower Body');
       })
       .sort((a: any, b: any) => (a.sort_order ?? 99) - (b.sort_order ?? 99))
       .map((pm: any) => pm.label);

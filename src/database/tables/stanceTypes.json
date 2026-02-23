@@ -10,7 +10,7 @@
     "delta_rules": {},
     "short_description": "Standard stance where both legs bear the load equally. Baseline score.",
     "sort_order": 0,
-    "icon": "",
+    "icon": null,
     "is_active": true
   },
   {
@@ -22,19 +22,33 @@
       "Offset Stance"
     ],
     "delta_rules": {
-      "HINGE": {
+      "HINGE_STD": {
         "GLUTES": 0.15,
         "HAMSTRINGS": 0.1,
         "BACK_LOWER": -0.1
       },
-      "SQUAT": {
+      "HINGE_STRAIGHT": {
+        "GLUTES": 0.15,
+        "HAMSTRINGS": 0.1,
+        "BACK_LOWER": -0.1
+      },
+      "SQUAT_REGULAR": {
+        "GLUTES": 0.1,
+        "QUADS": 0.05,
+        "BACK_LOWER": -0.05
+      },
+      "SQUAT_FRONT": {
         "GLUTES": 0.1,
         "QUADS": 0.05
+      },
+      "THRUST": {
+        "GLUTES": 0.15,
+        "HAMSTRINGS": 0.05
       }
     },
     "short_description": "One foot is slightly behind the other for balance, placing ~70-80% of the load on the front leg.",
     "sort_order": 1,
-    "icon": "",
+    "icon": null,
     "is_active": true
   },
   {
@@ -46,24 +60,50 @@
       "Pistol Stance"
     ],
     "delta_rules": {
-      "HINGE": {
+      "HINGE_STD": {
         "GLUTE_MEDIUS": 0.3,
         "GLUTES": 0.15,
         "CORE": 0.1,
         "BACK_LOWER": -0.15
       },
-      "SQUAT": {
+      "HINGE_STRAIGHT": {
+        "GLUTE_MEDIUS": 0.3,
+        "GLUTES": 0.15,
+        "CORE": 0.1,
+        "BACK_LOWER": -0.15
+      },
+      "SQUAT_REGULAR": {
+        "GLUTE_MEDIUS": 0.25,
+        "GLUTES": 0.15,
+        "CORE": 0.1,
+        "BACK_LOWER": -0.1
+      },
+      "SQUAT_FRONT": {
         "GLUTE_MEDIUS": 0.25,
         "GLUTES": 0.15,
         "CORE": 0.1
       },
-      "CALF_RAISE": {
+      "CALF_RAISE_STRAIGHT": {
+        "CORE": 0.1
+      },
+      "CALF_RAISE_BENT": {
+        "CORE": 0.1
+      },
+      "THRUST": {
+        "GLUTE_MEDIUS": 0.2,
+        "GLUTES": 0.2,
+        "CORE": 0.1
+      },
+      "LEG_CURL": {
+        "CORE": 0.1
+      },
+      "LEG_EXTENSION": {
         "CORE": 0.1
       }
     },
     "short_description": "Only one foot is in contact with the ground/platform. Maximizes stability demand.",
     "sort_order": 2,
-    "icon": "",
+    "icon": null,
     "is_active": true
   }
 ]

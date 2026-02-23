@@ -7,9 +7,10 @@ interface FKDropdownProps {
   labelField: string;
   onChange: (v: string) => void;
   refTable?: string;
+  hideSelectedCard?: boolean;
 }
 
-export default function FKDropdown({ value, options, labelField, onChange, refTable }: FKDropdownProps) {
+export default function FKDropdown({ value, options, labelField, onChange, refTable, hideSelectedCard = false }: FKDropdownProps) {
   const [search, setSearch] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -30,7 +31,7 @@ export default function FKDropdown({ value, options, labelField, onChange, refTa
   return (
     <div className="relative">
       {/* Selected value chip */}
-      {value && selectedRecord && (
+      {!hideSelectedCard && value && selectedRecord && (
         <div className="flex items-center gap-2 mb-2 p-2 bg-blue-50 border border-blue-200 rounded">
           <div className="flex-1 min-w-0">
             <span className="text-sm font-medium text-blue-800">{String(selectedLabel)}</span>

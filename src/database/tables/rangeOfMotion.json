@@ -23,18 +23,25 @@
     ],
     "delta_rules": {
       "CURL": {
-        "BICEPS": 0.1,
+        "BICEP_INNER": 0.1,
         "BICEP_OUTER": 0.05
       },
-      "SQUAT": {
+      "SQUAT_REGULAR": {
         "GLUTES": 0.15,
-        "QUADS": 0.1
+        "QUAD_DEEP": 0.1
       },
-      "PRESS": {
-        "CHEST": 0.1
+      "SQUAT_FRONT": {
+        "GLUTES": 0.15,
+        "QUAD_DEEP": 0.1
+      },
+      "PRESS_FLAT": {
+        "CHEST_MID": 0.1
+      },
+      "PRESS_INCLINE": {
+        "CHEST_UPPER": 0.1
       },
       "LEG_CURL": {
-        "HAMSTRINGS": 0.15
+        "HAMSTRING_INNER": 0.15
       }
     },
     "short_description": "Performing only the portion of the rep where the muscle is under the greatest stretch. Highly effective for hypertrophy.",
@@ -51,16 +58,20 @@
       "Squeeze Reps"
     ],
     "delta_rules": {
-      "PRESS": {
-        "TRICEPS": 0.15,
-        "CHEST": -0.15
+      "PRESS_FLAT": {
+        "TRICEP_DEEP": 0.15,
+        "CHEST_MID": -0.15
       },
-      "EXT_LEG": {
+      "PRESS_INCLINE": {
+        "TRICEP_DEEP": 0.15,
+        "CHEST_UPPER": -0.15
+      },
+      "LEG_EXTENSION": {
         "QUAD_INNER": 0.15
       },
-      "VERTICAL_PULL": {
+      "PULL_FRONT": {
         "BACK_MID": 0.1,
-        "LATS": -0.05
+        "LATS_LOWER": -0.05
       }
     },
     "short_description": "Performing only the portion of the rep where the muscle is fully shortened. Focuses on peak tension and lockout strength.",
@@ -77,16 +88,24 @@
       "Past Neutral"
     ],
     "delta_rules": {
-      "HINGE": {
-        "HAMSTRINGS": 0.2,
+      "HINGE_STD": {
+        "HAMSTRING_OUTER": 0.2,
         "GLUTES": 0.15,
         "BACK_LOWER": 0.1
       },
-      "PUSH_UP": {
-        "CHEST": 0.15,
-        "SHOULDERS": 0.05
+      "HINGE_STRAIGHT": {
+        "HAMSTRING_OUTER": 0.2,
+        "GLUTES": 0.15,
+        "BACK_LOWER": 0.1
       },
-      "LUNGE": {
+      "PRESS_FLAT": {
+        "CHEST_MID": 0.15,
+        "DELTS_FRONT": 0.05
+      },
+      "LUNGE_STATIC": {
+        "GLUTES": 0.15
+      },
+      "LUNGE_STEP": {
         "GLUTES": 0.15
       }
     },
@@ -104,17 +123,18 @@
       "Pin Press"
     ],
     "delta_rules": {
-      "PRESS": {
-        "TRICEPS": 0.2,
-        "CHEST": -0.2,
-        "SHOULDERS": -0.1
-      },
-      "SQUAT": {
-        "QUADS": 0.1,
-        "GLUTES": -0.15
+      "PRESS_FLAT": {
+        "TRICEP_DEEP": 0.2,
+        "CHEST_MID": -0.2,
+        "DELTS_FRONT": -0.1
       },
       "SQUAT_REGULAR": {
-        "QUADS": 0.15
+        "QUAD_DEEP": 0.15,
+        "GLUTES": -0.15
+      },
+      "SQUAT_FRONT": {
+        "QUAD_DEEP": 0.1,
+        "GLUTES": -0.15
       }
     },
     "short_description": "Intentionally stopping the movement before full depth (usually due to a physical barrier like the floor). Focuses load on the mid-to-top range.",

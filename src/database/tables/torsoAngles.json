@@ -1,14 +1,128 @@
 [
   {
-    "id": "FLAT",
-    "label": "Flat",
+    "id": "DEG_NEG_60",
+    "label": "-60° Decline",
     "common_names": [
-      "0 Degrees",
+      "Severe Decline",
+      "Inverted"
+    ],
+    "delta_rules": {
+      "PRESS_FLAT": {
+        "CHEST_LOWER": 0.3,
+        "CHEST_MID": -0.2,
+        "TRICEP_OUTER": 0.1
+      },
+      "AB_CRUNCH": {
+        "ABS_UPPER": 0.3,
+        "CORE_DEEP": 0.15
+      }
+    },
+    "short_description": "Extreme decline. Usually requires locking the legs in. Maximum lower chest isolation.",
+    "angle_range": {
+      "min": -60,
+      "max": -60,
+      "step": 0,
+      "default": -60
+    },
+    "allow_torso_orientations": true,
+    "sort_order": 0,
+    "is_active": true
+  },
+  {
+    "id": "DEG_NEG_45",
+    "label": "-45° Decline",
+    "common_names": [
+      "Standard Decline",
+      "Steep Decline"
+    ],
+    "delta_rules": {
+      "PRESS_FLAT": {
+        "CHEST_LOWER": 0.25,
+        "CHEST_MID": -0.15
+      },
+      "AB_CRUNCH": {
+        "ABS_UPPER": 0.2,
+        "CORE_DEEP": 0.1
+      }
+    },
+    "short_description": "Standard steep decline bench.",
+    "angle_range": {
+      "min": -45,
+      "max": -45,
+      "step": 0,
+      "default": -45
+    },
+    "allow_torso_orientations": true,
+    "sort_order": 1,
+    "is_active": true
+  },
+  {
+    "id": "DEG_NEG_30",
+    "label": "-30° Decline",
+    "common_names": [
+      "Moderate Decline"
+    ],
+    "delta_rules": {
+      "PRESS_FLAT": {
+        "CHEST_LOWER": 0.2,
+        "CHEST_MID": -0.1
+      },
+      "AB_CRUNCH": {
+        "ABS_UPPER": 0.15
+      }
+    },
+    "short_description": "Moderate decline angle.",
+    "angle_range": {
+      "min": -30,
+      "max": -30,
+      "step": 0,
+      "default": -30
+    },
+    "allow_torso_orientations": true,
+    "sort_order": 2,
+    "is_active": true
+  },
+  {
+    "id": "DEG_NEG_15",
+    "label": "-15° Decline",
+    "common_names": [
+      "Shallow Decline",
+      "Slight Decline"
+    ],
+    "delta_rules": {
+      "PRESS_FLAT": {
+        "CHEST_LOWER": 0.1,
+        "CHEST_MID": -0.05
+      },
+      "PRESS_DECLINE": {},
+      "AB_CRUNCH": {
+        "ABS_UPPER": 0.1
+      }
+    },
+    "short_description": "Shallow decline. PRESS_DECLINE home base.",
+    "angle_range": {
+      "min": -15,
+      "max": -15,
+      "step": 0,
+      "default": -15
+    },
+    "allow_torso_orientations": true,
+    "sort_order": 3,
+    "is_active": true
+  },
+  {
+    "id": "DEG_0",
+    "label": "0° Flat",
+    "common_names": [
+      "Flat",
       "Horizontal",
       "Level"
     ],
-    "delta_rules": {},
-    "short_description": "Torso is perfectly horizontal. Baseline for most floor and bench work.",
+    "delta_rules": {
+      "PRESS_FLAT": {},
+      "FLY_FLAT": {}
+    },
+    "short_description": "Perfectly horizontal. PRESS_FLAT and FLY_FLAT home base.",
     "angle_range": {
       "min": 0,
       "max": 0,
@@ -16,82 +130,165 @@
       "default": 0
     },
     "allow_torso_orientations": true,
-    "sort_order": 0,
-    "icon": "",
+    "sort_order": 4,
     "is_active": true
   },
   {
-    "id": "INCLINED",
-    "label": "Inclined",
+    "id": "DEG_15",
+    "label": "15° Incline",
     "common_names": [
-      "Angled Up",
-      "Reclined",
-      "Positive Slope"
+      "Shallow Incline",
+      "Slight Incline"
     ],
     "delta_rules": {
-      "PRESS": {
-        "CHEST_UPPER": 0.2,
-        "DELTS_FRONT": 0.1,
-        "CHEST_MID": -0.15
+      "PRESS_FLAT": {
+        "CHEST_UPPER": 0.1,
+        "CHEST_MID": -0.05
       },
       "CURL": {
-        "BICEP_OUTER": 0.2,
-        "BICEP_INNER": -0.1
-      },
-      "RAISE": {
-        "DELTS_SIDE": 0.15
+        "BICEP_OUTER": 0.1,
+        "BICEP_INNER": -0.05
       }
     },
-    "short_description": "Torso is tilted backward. Shifts load to the upper chest, front delts, and long-head of the biceps.",
+    "short_description": "One notch up on the bench. Shifts tension to the clavicular head without engaging front delts yet.",
     "angle_range": {
-      "min": 5,
-      "max": 85,
-      "step": 5,
+      "min": 15,
+      "max": 15,
+      "step": 0,
+      "default": 15
+    },
+    "allow_torso_orientations": true,
+    "sort_order": 5,
+    "is_active": true
+  },
+  {
+    "id": "DEG_30",
+    "label": "30° Incline",
+    "common_names": [
+      "Moderate Incline",
+      "Low Incline"
+    ],
+    "delta_rules": {
+      "PRESS_FLAT": {
+        "CHEST_UPPER": 0.2,
+        "DELTS_FRONT": 0.05,
+        "CHEST_MID": -0.1
+      },
+      "CURL": {
+        "BICEP_OUTER": 0.15,
+        "BICEP_INNER": -0.1
+      }
+    },
+    "short_description": "Two notches up. Upper chest reaches near-peak activation.",
+    "angle_range": {
+      "min": 30,
+      "max": 30,
+      "step": 0,
+      "default": 30
+    },
+    "allow_torso_orientations": true,
+    "sort_order": 6,
+    "is_active": true
+  },
+  {
+    "id": "DEG_45",
+    "label": "45° Incline",
+    "common_names": [
+      "Standard Incline",
+      "True Incline"
+    ],
+    "delta_rules": {
+      "PRESS_FLAT": {
+        "CHEST_UPPER": 0.25,
+        "DELTS_FRONT": 0.15,
+        "CHEST_MID": -0.2
+      },
+      "PRESS_INCLINE": {},
+      "CURL": {
+        "BICEP_OUTER": 0.2,
+        "BICEP_INNER": -0.15
+      }
+    },
+    "short_description": "True standard incline. Even split of upper chest and front delt. PRESS_INCLINE home base.",
+    "angle_range": {
+      "min": 45,
+      "max": 45,
+      "step": 0,
       "default": 45
     },
     "allow_torso_orientations": true,
-    "sort_order": 1,
-    "icon": "",
+    "sort_order": 7,
     "is_active": true
   },
   {
-    "id": "DECLINED",
-    "label": "Declined",
+    "id": "DEG_60",
+    "label": "60° Incline",
     "common_names": [
-      "Angled Down",
-      "Head Down",
-      "Negative Slope"
+      "Steep Incline",
+      "High Incline"
     ],
     "delta_rules": {
-      "PRESS": {
-        "CHEST_LOWER": 0.2,
-        "CHEST_MID": -0.1
+      "PRESS_FLAT": {
+        "DELTS_FRONT": 0.25,
+        "CHEST_UPPER": 0.15,
+        "CHEST_MID": -0.25
       },
-      "AB_CRUNCH": {
-        "ABS_UPPER": 0.2
+      "CURL": {
+        "BICEP_OUTER": 0.25,
+        "BICEP_INNER": -0.2
       }
     },
-    "short_description": "Torso is tilted downward. Shifts load to the lower chest and increases abdominal tension.",
+    "short_description": "Steep incline. Front delts officially take over as the primary mover.",
     "angle_range": {
-      "min": -5,
-      "max": -60,
-      "step": 5,
-      "default": -15
+      "min": 60,
+      "max": 60,
+      "step": 0,
+      "default": 60
     },
     "allow_torso_orientations": true,
-    "sort_order": 2,
-    "icon": "",
+    "sort_order": 8,
     "is_active": true
   },
   {
-    "id": "UPRIGHT",
-    "label": "Upright",
+    "id": "DEG_75",
+    "label": "75° Incline",
+    "common_names": [
+      "Very High Incline",
+      "Shoulder Bias"
+    ],
+    "delta_rules": {
+      "PRESS_FLAT": {
+        "DELTS_FRONT": 0.3,
+        "CHEST_UPPER": 0.05,
+        "CHEST_MID": -0.3
+      },
+      "PRESS_HIGH_INCLINE": {},
+      "CURL": {
+        "BICEP_OUTER": 0.3,
+        "BICEP_INNER": -0.25
+      }
+    },
+    "short_description": "High incline. Almost entirely front delts. PRESS_HIGH_INCLINE home base.",
+    "angle_range": {
+      "min": 75,
+      "max": 75,
+      "step": 0,
+      "default": 75
+    },
+    "allow_torso_orientations": true,
+    "sort_order": 9,
+    "is_active": true
+  },
+  {
+    "id": "DEG_90",
+    "label": "90° Upright",
     "common_names": [
       "Seated",
       "Vertical",
-      "90 Degrees"
+      "Overhead"
     ],
     "delta_rules": {
+      "PRESS_OVERHEAD": {},
       "LEG_CURL": {
         "HAMSTRINGS": 0.2,
         "HAMSTRING_INNER": 0.1
@@ -100,7 +297,7 @@
         "ABS_LOWER": 0.15
       }
     },
-    "short_description": "Torso is perfectly vertical. Maximizes hamstring stretch in leg curls and lower-ab recruitment in core work.",
+    "short_description": "Dead vertical. Removes chest from the press entirely. PRESS_OVERHEAD home base.",
     "angle_range": {
       "min": 90,
       "max": 90,
@@ -108,8 +305,7 @@
       "default": 90
     },
     "allow_torso_orientations": false,
-    "sort_order": 3,
-    "icon": "",
+    "sort_order": 10,
     "is_active": true
   }
 ]

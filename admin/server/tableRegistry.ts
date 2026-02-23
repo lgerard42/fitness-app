@@ -28,7 +28,7 @@ export interface TableSchema {
   /** Human-readable name */
   label: string;
   /** Group for sidebar organization */
-  group: 'Exercise Setup' | 'Muscles' | 'Equipment' | 'Motions' | 'Score Modifiers';
+  group: 'Exercise Setup' | 'Muscles & Motions' | 'Trajectory & Posture' | 'Upper Body Biomechanics' | 'Lower Body Mechanics' | 'Execution Variables' | 'Equipment';
   /** Primary key field (always "id") */
   idField: string;
   /** Field used for display labels in dropdowns */
@@ -114,12 +114,12 @@ const TABLE_DEFINITIONS: TableSchema[] = [
     fields: standardFields(),
   },
 
-  // ── Muscles ─────────────────────────────────────────────────────
+  // ── Muscles & Motions ────────────────────────────────────────────
   {
     key: 'muscles',
     file: 'muscles.json',
     label: 'Muscles',
-    group: 'Muscles',
+    group: 'Muscles & Motions',
     idField: 'id',
     labelField: 'label',
     fields: baseFields([
@@ -134,12 +134,11 @@ const TABLE_DEFINITIONS: TableSchema[] = [
     ]),
   },
 
-  // ── Motions ─────────────────────────────────────────────────────
   {
     key: 'motions',
     file: 'motions.json',
     label: 'Motions',
-    group: 'Motions',
+    group: 'Muscles & Motions',
     idField: 'id',
     labelField: 'label',
     fields: baseFields([
@@ -151,11 +150,12 @@ const TABLE_DEFINITIONS: TableSchema[] = [
       { name: 'short_description', type: 'string' },
     ]),
   },
+  // ── Trajectory & Posture ────────────────────────────────────────
   {
     key: 'motionPlanes',
     file: 'motionPlanes.json',
     label: 'Motion Planes',
-    group: 'Motions',
+    group: 'Trajectory & Posture',
     idField: 'id',
     labelField: 'label',
     fields: baseFields([
@@ -164,13 +164,42 @@ const TABLE_DEFINITIONS: TableSchema[] = [
       { name: 'short_description', type: 'string' },
     ]),
   },
+  {
+    key: 'torsoAngles',
+    file: 'torsoAngles.json',
+    label: 'Torso Angles',
+    group: 'Trajectory & Posture',
+    idField: 'id',
+    labelField: 'label',
+    fields: baseFields([
+      { name: 'common_names', type: 'string[]', defaultValue: [] },
+      { name: 'short_description', type: 'string' },
+      { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
+      { name: 'angle_range', type: 'json', jsonShape: 'free' },
+      { name: 'allow_torso_orientations', type: 'boolean', defaultValue: false },
+    ]),
+  },
+  {
+    key: 'torsoOrientations',
+    file: 'torsoOrientations.json',
+    label: 'Torso Orientations',
+    group: 'Trajectory & Posture',
+    idField: 'id',
+    labelField: 'label',
+    parentTableKey: 'torsoAngles',
+    fields: baseFields([
+      { name: 'common_names', type: 'string[]', defaultValue: [] },
+      { name: 'short_description', type: 'string' },
+      { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
+    ]),
+  },
 
-  // ── Score Modifiers ──────────────────────────────────────────────
+  // ── Upper Body Biomechanics ─────────────────────────────────────
   {
     key: 'grips',
     file: 'grips.json',
     label: 'Grips',
-    group: 'Score Modifiers',
+    group: 'Upper Body Biomechanics',
     idField: 'id',
     labelField: 'label',
     fields: baseFields([
@@ -187,88 +216,7 @@ const TABLE_DEFINITIONS: TableSchema[] = [
     key: 'gripWidths',
     file: 'gripWidths.json',
     label: 'Grip Widths',
-    group: 'Score Modifiers',
-    idField: 'id',
-    labelField: 'label',
-    fields: baseFields([
-      { name: 'common_names', type: 'string[]', defaultValue: [] },
-      { name: 'short_description', type: 'string' },
-      { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
-    ]),
-  },
-  {
-    key: 'footPositions',
-    file: 'footPositions.json',
-    label: 'Foot Positions',
-    group: 'Score Modifiers',
-    idField: 'id',
-    labelField: 'label',
-    fields: baseFields([
-      { name: 'common_names', type: 'string[]', defaultValue: [] },
-      { name: 'short_description', type: 'string' },
-      { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
-    ]),
-  },
-  {
-    key: 'stanceTypes',
-    file: 'stanceTypes.json',
-    label: 'Stance Types',
-    group: 'Score Modifiers',
-    idField: 'id',
-    labelField: 'label',
-    fields: baseFields([
-      { name: 'common_names', type: 'string[]', defaultValue: [] },
-      { name: 'short_description', type: 'string' },
-      { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
-    ]),
-  },
-  {
-    key: 'stanceWidths',
-    file: 'stanceWidths.json',
-    label: 'Stance Widths',
-    group: 'Score Modifiers',
-    idField: 'id',
-    labelField: 'label',
-    fields: baseFields([
-      { name: 'common_names', type: 'string[]', defaultValue: [] },
-      { name: 'short_description', type: 'string' },
-      { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
-    ]),
-  },
-  {
-    key: 'torsoAngles',
-    file: 'torsoAngles.json',
-    label: 'Torso Angles',
-    group: 'Score Modifiers',
-    idField: 'id',
-    labelField: 'label',
-    fields: baseFields([
-      { name: 'common_names', type: 'string[]', defaultValue: [] },
-      { name: 'short_description', type: 'string' },
-      { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
-      { name: 'angle_range', type: 'json', jsonShape: 'free' },
-      { name: 'allow_torso_orientations', type: 'boolean', defaultValue: false },
-    ]),
-  },
-  {
-    key: 'torsoOrientations',
-    file: 'torsoOrientations.json',
-    label: 'Torso Orientations',
-    group: 'Score Modifiers',
-    idField: 'id',
-    labelField: 'label',
-    parentTableKey: 'torsoAngles',
-    fields: baseFields([
-      { name: 'common_names', type: 'string[]', defaultValue: [] },
-      { name: 'short_description', type: 'string' },
-      { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
-    ]),
-  },
-  {
-    key: 'supportStructures',
-    file: 'supportStructures.json',
-    label: 'Support Structures',
-    group: 'Score Modifiers',
+    group: 'Upper Body Biomechanics',
     idField: 'id',
     labelField: 'label',
     fields: baseFields([
@@ -281,7 +229,63 @@ const TABLE_DEFINITIONS: TableSchema[] = [
     key: 'elbowRelationship',
     file: 'elbowRelationship.json',
     label: 'Elbow Relationship',
-    group: 'Score Modifiers',
+    group: 'Upper Body Biomechanics',
+    idField: 'id',
+    labelField: 'label',
+    fields: baseFields([
+      { name: 'common_names', type: 'string[]', defaultValue: [] },
+      { name: 'short_description', type: 'string' },
+      { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
+    ]),
+  },
+
+  // ── Lower Body Mechanics ──────────────────────────────────────
+  {
+    key: 'footPositions',
+    file: 'footPositions.json',
+    label: 'Foot Positions',
+    group: 'Lower Body Mechanics',
+    idField: 'id',
+    labelField: 'label',
+    fields: baseFields([
+      { name: 'common_names', type: 'string[]', defaultValue: [] },
+      { name: 'short_description', type: 'string' },
+      { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
+    ]),
+  },
+  {
+    key: 'stanceWidths',
+    file: 'stanceWidths.json',
+    label: 'Stance Widths',
+    group: 'Lower Body Mechanics',
+    idField: 'id',
+    labelField: 'label',
+    fields: baseFields([
+      { name: 'common_names', type: 'string[]', defaultValue: [] },
+      { name: 'short_description', type: 'string' },
+      { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
+    ]),
+  },
+  {
+    key: 'stanceTypes',
+    file: 'stanceTypes.json',
+    label: 'Stance Types',
+    group: 'Lower Body Mechanics',
+    idField: 'id',
+    labelField: 'label',
+    fields: baseFields([
+      { name: 'common_names', type: 'string[]', defaultValue: [] },
+      { name: 'short_description', type: 'string' },
+      { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
+    ]),
+  },
+
+  // ── Execution Variables ──────────────────────────────────────────
+  {
+    key: 'supportStructures',
+    file: 'supportStructures.json',
+    label: 'Support Structures',
+    group: 'Execution Variables',
     idField: 'id',
     labelField: 'label',
     fields: baseFields([
@@ -294,7 +298,7 @@ const TABLE_DEFINITIONS: TableSchema[] = [
     key: 'loadingAids',
     file: 'loadingAids.json',
     label: 'Loading Aids',
-    group: 'Score Modifiers',
+    group: 'Execution Variables',
     idField: 'id',
     labelField: 'label',
     fields: baseFields([
@@ -303,12 +307,11 @@ const TABLE_DEFINITIONS: TableSchema[] = [
       { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
     ]),
   },
-
   {
     key: 'rangeOfMotion',
     file: 'rangeOfMotion.json',
     label: 'Range of Motion',
-    group: 'Score Modifiers',
+    group: 'Execution Variables',
     idField: 'id',
     labelField: 'label',
     fields: baseFields([

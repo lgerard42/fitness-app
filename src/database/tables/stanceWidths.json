@@ -8,11 +8,19 @@
       "Touching Feet"
     ],
     "delta_rules": {
-      "SQUAT": {
+      "SQUAT_REGULAR": {
         "QUAD_OUTER": 0.2,
         "THIGHS_INNER": -0.2
       },
-      "HINGE": {
+      "SQUAT_FRONT": {
+        "QUAD_OUTER": 0.2,
+        "THIGHS_INNER": -0.2
+      },
+      "HINGE_STD": {
+        "HAMSTRING_OUTER": 0.15,
+        "GLUTES": -0.1
+      },
+      "HINGE_STRAIGHT": {
         "HAMSTRING_OUTER": 0.15,
         "GLUTES": -0.1
       }
@@ -30,11 +38,19 @@
       "Narrow Stance"
     ],
     "delta_rules": {
-      "SQUAT": {
+      "SQUAT_REGULAR": {
         "QUAD_OUTER": 0.1,
         "THIGHS_INNER": -0.1
       },
-      "HINGE": {
+      "SQUAT_FRONT": {
+        "QUAD_OUTER": 0.1,
+        "THIGHS_INNER": -0.1
+      },
+      "HINGE_STD": {
+        "HAMSTRING_OUTER": 0.1,
+        "GLUTES": -0.05
+      },
+      "HINGE_STRAIGHT": {
         "HAMSTRING_OUTER": 0.1,
         "GLUTES": -0.05
       }
@@ -52,10 +68,16 @@
       "Neutral Width"
     ],
     "delta_rules": {
-      "SQUAT": {
+      "SQUAT_REGULAR": {
         "QUAD_OUTER": 0.05,
         "THIGHS_INNER": -0.05
-      }
+      },
+      "SQUAT_FRONT": {
+        "QUAD_OUTER": 0.05,
+        "THIGHS_INNER": -0.05
+      },
+      "HINGE_STD": {},
+      "HINGE_STRAIGHT": {}
     },
     "short_description": "Feet directly under the hips. This acts as the baseline for Hinge movements (Deadlifts).",
     "sort_order": 2,
@@ -70,7 +92,13 @@
       "Normal Stance"
     ],
     "delta_rules": {
-      "HINGE": {
+      "SQUAT_REGULAR": {},
+      "SQUAT_FRONT": {},
+      "HINGE_STD": {
+        "THIGHS_INNER": 0.05,
+        "GLUTES": 0.05
+      },
+      "HINGE_STRAIGHT": {
         "THIGHS_INNER": 0.05,
         "GLUTES": 0.05
       }
@@ -88,12 +116,22 @@
       "Outside Shoulder Width"
     ],
     "delta_rules": {
-      "SQUAT": {
+      "SQUAT_REGULAR": {
         "THIGHS_INNER": 0.15,
         "GLUTES": 0.1,
         "QUADS": -0.1
       },
-      "HINGE": {
+      "SQUAT_FRONT": {
+        "THIGHS_INNER": 0.15,
+        "GLUTES": 0.1,
+        "QUADS": -0.1
+      },
+      "HINGE_STD": {
+        "THIGHS_INNER": 0.2,
+        "GLUTES": 0.1,
+        "BACK_LOWER": -0.1
+      },
+      "HINGE_STRAIGHT": {
         "THIGHS_INNER": 0.2,
         "GLUTES": 0.1,
         "BACK_LOWER": -0.1
@@ -113,12 +151,22 @@
       "Frog Stance"
     ],
     "delta_rules": {
-      "SQUAT": {
+      "SQUAT_REGULAR": {
         "THIGHS_INNER": 0.25,
         "GLUTES": 0.15,
         "QUADS": -0.2
       },
-      "HINGE": {
+      "SQUAT_FRONT": {
+        "THIGHS_INNER": 0.25,
+        "GLUTES": 0.15,
+        "QUADS": -0.2
+      },
+      "HINGE_STD": {
+        "THIGHS_INNER": 0.3,
+        "GLUTES": 0.15,
+        "BACK_LOWER": -0.2
+      },
+      "HINGE_STRAIGHT": {
         "THIGHS_INNER": 0.3,
         "GLUTES": 0.15,
         "BACK_LOWER": -0.2

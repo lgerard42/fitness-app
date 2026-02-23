@@ -22,14 +22,31 @@
       "Turned Out"
     ],
     "delta_rules": {
-      "SQUAT": {
+      "SQUAT_REGULAR": {
         "THIGHS_INNER": 0.15,
         "GLUTES": 0.1,
         "QUAD_OUTER": -0.1
       },
-      "CALF_RAISE": {
+      "SQUAT_FRONT": {
+        "THIGHS_INNER": 0.15,
+        "GLUTES": 0.1,
+        "QUAD_OUTER": -0.1
+      },
+      "CALF_RAISE_STRAIGHT": {
         "CALF_INNER": 0.2,
         "CALF_OUTER": -0.1
+      },
+      "CALF_RAISE_BENT": {
+        "CALF_INNER": 0.2,
+        "CALF_OUTER": -0.1
+      },
+      "LEG_EXTENSION": {
+        "QUAD_INNER": 0.15,
+        "QUAD_OUTER": -0.1
+      },
+      "LEG_CURL": {
+        "HAMSTRING_OUTER": 0.15,
+        "HAMSTRING_INNER": -0.1
       }
     },
     "short_description": "Toes are angled outward. Opens the hips to engage inner thighs and inner calves.",
@@ -46,13 +63,29 @@
       "Turned In"
     ],
     "delta_rules": {
-      "CALF_RAISE": {
+      "SQUAT_REGULAR": {
+        "QUAD_OUTER": 0.1,
+        "THIGHS_INNER": -0.1
+      },
+      "SQUAT_FRONT": {
+        "QUAD_OUTER": 0.1,
+        "THIGHS_INNER": -0.1
+      },
+      "CALF_RAISE_STRAIGHT": {
         "CALF_OUTER": 0.2,
         "CALF_INNER": -0.1
       },
-      "SQUAT": {
-        "QUAD_OUTER": 0.1,
-        "THIGHS_INNER": -0.1
+      "CALF_RAISE_BENT": {
+        "CALF_OUTER": 0.2,
+        "CALF_INNER": -0.1
+      },
+      "LEG_EXTENSION": {
+        "QUAD_OUTER": 0.15,
+        "QUAD_INNER": -0.1
+      },
+      "LEG_CURL": {
+        "HAMSTRING_INNER": 0.15,
+        "HAMSTRING_OUTER": -0.1
       }
     },
     "short_description": "Toes are angled inward. Shifts focus to the outer sweeping muscles.",
@@ -69,13 +102,23 @@
       "Cyclist Stance"
     ],
     "delta_rules": {
-      "SQUAT": {
+      "SQUAT_REGULAR": {
         "QUADS": 0.2,
         "QUAD_MID": 0.15,
         "GLUTES": -0.1,
         "HAMSTRINGS": -0.1
       },
-      "LUNGE": {
+      "SQUAT_FRONT": {
+        "QUADS": 0.15,
+        "QUAD_MID": 0.1,
+        "GLUTES": -0.05,
+        "HAMSTRINGS": -0.05
+      },
+      "LUNGE_STATIC": {
+        "QUADS": 0.15,
+        "GLUTES": -0.1
+      },
+      "LUNGE_STEP": {
         "QUADS": 0.15,
         "GLUTES": -0.1
       }
@@ -93,11 +136,18 @@
       "Reverse Wedges"
     ],
     "delta_rules": {
-      "HINGE": {
+      "HINGE_STD": {
         "HAMSTRINGS": 0.15,
         "CALVES": 0.1
       },
-      "CALF_RAISE": {
+      "HINGE_STRAIGHT": {
+        "HAMSTRINGS": 0.15,
+        "CALVES": 0.1
+      },
+      "CALF_RAISE_STRAIGHT": {
+        "CALVES": 0.2
+      },
+      "CALF_RAISE_BENT": {
         "CALVES": 0.2
       }
     },

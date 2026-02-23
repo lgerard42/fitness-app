@@ -2,7 +2,14 @@
   {
     "id": "HIP_ABDUCTION",
     "label": "Hip Abduction",
-    "upper_lower_body": "LOWER",
+    "upper_lower": "LOWER",
+    "common_names": [
+      "Abductions",
+      "Outer Thighs",
+      "Clamshells",
+      "Lateral Leg Raises"
+    ],
+    "short_description": "Pushing the legs laterally away from the midline of the body.",
     "muscle_targets": {
       "LEGS": {
         "_score": 1,
@@ -17,21 +24,23 @@
         }
       }
     },
-    "common_names": [
-      "Abductions",
-      "Outer Thighs",
-      "Clamshells",
-      "Lateral Leg Raises",
-      "Hip Extensions"
-    ],
-    "short_description": "Pushing the legs laterally away from the midline of the body.",
     "sort_order": 0,
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "HIP_ADDUCTION",
     "label": "Hip Adduction",
-    "upper_lower_body": "LOWER",
+    "upper_lower": "LOWER",
+    "common_names": [
+      "Adductions",
+      "Inner Thighs",
+      "Groin Squeezes",
+      "Thigh Squeezes"
+    ],
+    "short_description": "Squeezing the legs inward toward the midline of the body.",
     "muscle_targets": {
       "LEGS": {
         "_score": 1,
@@ -43,20 +52,23 @@
         }
       }
     },
-    "common_names": [
-      "Adductions",
-      "Inner Thighs",
-      "Groin Squeezes",
-      "Thigh Squeezes"
-    ],
-    "short_description": "Squeezing the legs inward toward the midline of the body.",
     "sort_order": 1,
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "DORSIFLEXION",
     "label": "Dorsiflexion",
-    "upper_lower_body": "LOWER",
+    "upper_lower": "LOWER",
+    "common_names": [
+      "Tib Raises",
+      "Toe Raises",
+      "Reverse Calf Raises",
+      "Shin Raises"
+    ],
+    "short_description": "Pulling the top of the foot upward toward the shin.",
     "muscle_targets": {
       "LEGS": {
         "_score": 1,
@@ -68,20 +80,22 @@
         }
       }
     },
-    "common_names": [
-      "Tib Raises",
-      "Toe Raises",
-      "Reverse Calf Raises",
-      "Shin Raises"
-    ],
-    "short_description": "Pulling the top of the foot upward toward the shin.",
     "sort_order": 2,
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "FLEXION_WRIST",
     "label": "Wrist Flexion",
-    "upper_lower_body": "UPPER",
+    "upper_lower": "UPPER",
+    "common_names": [
+      "Wrist Curls",
+      "Forearm Curls",
+      "Flexor Curls"
+    ],
+    "short_description": "Curling the knuckles inward toward the inner forearm.",
     "muscle_targets": {
       "ARMS": {
         "_score": 1,
@@ -93,19 +107,22 @@
         }
       }
     },
-    "common_names": [
-      "Wrist Curls",
-      "Forearm Curls",
-      "Flexor Curls"
-    ],
-    "short_description": "Curling the knuckles inward toward the inner forearm.",
     "sort_order": 3,
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "EXTENSION_WRIST",
     "label": "Wrist Extension",
-    "upper_lower_body": "UPPER",
+    "upper_lower": "UPPER",
+    "common_names": [
+      "Reverse Wrist Curls",
+      "Wrist Extensions",
+      "Extensor Curls"
+    ],
+    "short_description": "Extending the knuckles backward toward the outer forearm.",
     "muscle_targets": {
       "ARMS": {
         "_score": 1,
@@ -117,37 +134,33 @@
         }
       }
     },
-    "common_names": [
-      "Reverse Wrist Curls",
-      "Wrist Extensions",
-      "Extensor Curls"
-    ],
-    "short_description": "Extending the knuckles backward toward the outer forearm.",
     "sort_order": 4,
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "ROTATION_SHOULDER_EXT",
     "label": "External Rotation",
-    "upper_lower_body": "UPPER",
-    "motion_planes": {
-      "default": "MID_MID",
-      "options": [
-        "HIGH_HIGH",
-        "MID_MID",
-        "LOW_LOW"
-      ]
-    },
+    "upper_lower": "UPPER",
+    "common_names": [
+      "External Rotations",
+      "Cuban Press",
+      "Field Goals",
+      "Cuff Rotations"
+    ],
+    "short_description": "Rotating the upper arm outward away from the torso.",
     "muscle_targets": {
       "SHOULDERS": {
         "_score": 1,
         "ROTATOR_CUFF": {
-          "_score": 0.7,
+          "_score": 1,
           "INFRASPINATUS": {
-            "_score": 0.4
+            "_score": 0.6
           },
           "TERES_MINOR": {
-            "_score": 0.3
+            "_score": 0.4
           }
         },
         "DELTS_REAR": {
@@ -155,29 +168,24 @@
         }
       }
     },
-    "common_names": [
-      "External Rotations",
-      "Cuban Press",
-      "Field Goals",
-      "Cuff Rotations",
-      "Face Pull ER"
-    ],
-    "short_description": "Rotating the upper arm outward away from the torso.",
+    "default_delta_configs": {
+      "motionPlanes": "MID_MID"
+    },
     "sort_order": 5,
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "icon": null
   },
   {
     "id": "ROTATION_SHOULDER_INT",
     "label": "Internal Rotation",
-    "upper_lower_body": "UPPER",
-    "motion_planes": {
-      "default": "MID_MID",
-      "options": [
-        "HIGH_HIGH",
-        "MID_MID",
-        "LOW_LOW"
-      ]
-    },
+    "upper_lower": "UPPER",
+    "common_names": [
+      "Internal Rotations",
+      "Inward Cuff Rotations",
+      "Arm Wrestling Pulls"
+    ],
+    "short_description": "Rotating the upper arm inward across the torso.",
     "muscle_targets": {
       "SHOULDERS": {
         "_score": 1,
@@ -189,19 +197,24 @@
         }
       }
     },
-    "common_names": [
-      "Internal Rotations",
-      "Inward Cuff Rotations",
-      "Arm Wrestling Pulls"
-    ],
-    "short_description": "Rotating the upper arm inward across the torso.",
+    "default_delta_configs": {
+      "motionPlanes": "MID_MID"
+    },
     "sort_order": 6,
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "icon": null
   },
   {
     "id": "VACUUM",
     "label": "Vacuum",
-    "upper_lower_body": "CORE",
+    "upper_lower": "CORE",
+    "common_names": [
+      "Stomach Vacuum",
+      "Transverse Abdominis Pull",
+      "TVA Holds"
+    ],
+    "short_description": "Isometric pulling of the abdominal wall inward.",
     "muscle_targets": {
       "CORE": {
         "_score": 1,
@@ -213,19 +226,23 @@
         }
       }
     },
-    "common_names": [
-      "Stomach Vacuum",
-      "Transverse Abdominis Pull",
-      "TVA Holds"
-    ],
-    "short_description": "Isometric pulling of the abdominal wall inward.",
     "sort_order": 7,
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "DIP",
     "label": "Dip",
-    "upper_lower_body": "UPPER",
+    "upper_lower": "UPPER",
+    "common_names": [
+      "Dips",
+      "Bodyweight Press",
+      "Parallel Bar Dips",
+      "Ring Dips"
+    ],
+    "short_description": "Pushing the body or weight downward and away from the torso.",
     "muscle_targets": {
       "ARMS": {
         "_score": 0.9,
@@ -255,21 +272,24 @@
         }
       }
     },
-    "common_names": [
-      "Dips",
-      "Bodyweight Press",
-      "Parallel Bar Dips",
-      "Ring Dips"
-    ],
-    "short_description": "Pushing the body or weight downward and away from the torso.",
     "sort_order": 8,
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "DIP_CHEST",
     "label": "Chest Dip",
     "parent_id": "DIP",
-    "upper_lower_body": "UPPER",
+    "upper_lower": "UPPER",
+    "common_names": [
+      "Leaning Dip",
+      "Chest Dips",
+      "Forward Dips",
+      "Gironda Dips"
+    ],
+    "short_description": "Pushing down with a forward torso lean.",
     "muscle_targets": {
       "CHEST": {
         "_score": 1,
@@ -296,21 +316,22 @@
         }
       }
     },
-    "common_names": [
-      "Leaning Dip",
-      "Chest Dips",
-      "Forward Dips",
-      "Gironda Dips"
-    ],
-    "short_description": "Pushing down with a forward torso lean.",
     "sort_order": 9,
-    "is_active": true
+    "is_active": true,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "DIP_TRICEPS",
     "label": "Tricep Dip",
     "parent_id": "DIP",
-    "upper_lower_body": "UPPER",
+    "upper_lower": "UPPER",
+    "common_names": [
+      "Vertical Dip",
+      "Tricep Dips",
+      "Upright Dips"
+    ],
+    "short_description": "Pushing down with a strictly upright torso.",
     "muscle_targets": {
       "ARMS": {
         "_score": 1,
@@ -337,27 +358,22 @@
         }
       }
     },
-    "common_names": [
-      "Vertical Dip",
-      "Tricep Dips",
-      "Upright Dips"
-    ],
-    "short_description": "Pushing down with a strictly upright torso.",
     "sort_order": 10,
-    "is_active": true
+    "is_active": true,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "CURL",
     "label": "Curl",
-    "upper_lower_body": "UPPER",
-    "motion_planes": {
-      "default": "LOW_HIGH",
-      "options": [
-        "LOW_HIGH",
-        "LOW_MID",
-        "LOW_LOW"
-      ]
-    },
+    "upper_lower": "UPPER",
+    "common_names": [
+      "Curls",
+      "Bicep Curls",
+      "Arm Curls",
+      "Dumbbell Curls"
+    ],
+    "short_description": "Bending the arm at the elbow against resistance.",
     "muscle_targets": {
       "ARMS": {
         "_score": 1,
@@ -372,20 +388,25 @@
         }
       }
     },
-    "common_names": [
-      "Curls",
-      "Bicep Curls",
-      "Arm Curls",
-      "Dumbbell Curls"
-    ],
-    "short_description": "Bending the arm at the elbow against resistance.",
+    "default_delta_configs": {
+      "motionPlanes": "LOW_HIGH"
+    },
     "sort_order": 11,
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "icon": null
   },
   {
     "id": "EXTENSION_ARM",
     "label": "Arm Extension",
-    "upper_lower_body": "UPPER",
+    "upper_lower": "UPPER",
+    "common_names": [
+      "Tricep Extensions",
+      "Pushdowns",
+      "Skullcrushers",
+      "Arm Extensions"
+    ],
+    "short_description": "Straightening the arm at the elbow against resistance.",
     "muscle_targets": {
       "ARMS": {
         "_score": 1,
@@ -403,28 +424,23 @@
         }
       }
     },
-    "common_names": [
-      "Tricep Extensions",
-      "Pushdowns",
-      "Skullcrushers",
-      "Arm Extensions"
-    ],
-    "short_description": "Straightening the arm at the elbow against resistance.",
     "sort_order": 12,
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "EXT_OVERHEAD",
     "label": "Overhead Ext",
     "parent_id": "EXTENSION_ARM",
-    "upper_lower_body": "UPPER",
-    "motion_planes": {
-      "default": "LOW_HIGH",
-      "options": [
-        "LOW_HIGH",
-        "MID_HIGH"
-      ]
-    },
+    "upper_lower": "UPPER",
+    "common_names": [
+      "French Press",
+      "Overhead Tricep Extensions",
+      "Katana Extensions"
+    ],
+    "short_description": "Straightening the arm from an overhead position.",
     "muscle_targets": {
       "ARMS": {
         "_score": 1,
@@ -436,27 +452,24 @@
         }
       }
     },
-    "common_names": [
-      "French Press",
-      "Overhead Tricep Extensions",
-      "Katana Extensions"
-    ],
-    "short_description": "Straightening the arm from an overhead position.",
+    "default_delta_configs": {
+      "motionPlanes": "LOW_HIGH"
+    },
     "sort_order": 13,
-    "is_active": true
+    "is_active": true,
+    "icon": null
   },
   {
     "id": "EXT_PUSHDOWN",
     "label": "Pushdown",
     "parent_id": "EXTENSION_ARM",
-    "upper_lower_body": "UPPER",
-    "motion_planes": {
-      "default": "HIGH_LOW",
-      "options": [
-        "HIGH_LOW",
-        "HIGH_MID"
-      ]
-    },
+    "upper_lower": "UPPER",
+    "common_names": [
+      "Cable Extensions",
+      "Tricep Pushdowns",
+      "Pressdowns"
+    ],
+    "short_description": "Straightening the arm downward with neutral shoulders.",
     "muscle_targets": {
       "ARMS": {
         "_score": 1,
@@ -471,24 +484,32 @@
         }
       }
     },
-    "common_names": [
-      "Cable Extensions",
-      "Tricep Pushdowns",
-      "Pressdowns"
-    ],
-    "short_description": "Straightening the arm downward with neutral shoulders.",
+    "default_delta_configs": {
+      "motionPlanes": "HIGH_LOW"
+    },
     "sort_order": 14,
-    "is_active": true
+    "is_active": true,
+    "icon": null
   },
   {
     "id": "PULLOVER",
     "label": "Pullover",
-    "upper_lower_body": "UPPER",
+    "upper_lower": "UPPER",
+    "common_names": [
+      "Pullovers",
+      "Straight-Arm Pulls",
+      "Dumbbell Pullovers",
+      "Lat Sweeps"
+    ],
+    "short_description": "Moving arms in a long sagittal arc from overhead toward the hips.",
     "muscle_targets": {
       "BACK": {
         "_score": 0.8,
         "LATS": {
-          "_score": 0.8
+          "_score": 0.8,
+          "LATS_LOWER": {
+            "_score": 0.8
+          }
         }
       },
       "CHEST": {
@@ -507,33 +528,31 @@
         }
       }
     },
-    "common_names": [
-      "Pullovers",
-      "Straight-Arm Pulls",
-      "Dumbbell Pullovers",
-      "Lat Sweeps"
-    ],
-    "short_description": "Moving arms in a long sagittal arc from overhead toward the hips.",
     "sort_order": 15,
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "PULLOVER_BACK",
     "label": "Lat Pullover",
     "parent_id": "PULLOVER",
-    "upper_lower_body": "UPPER",
-    "motion_planes": {
-      "default": "HIGH_LOW",
-      "options": [
-        "HIGH_LOW",
-        "MID_LOW"
-      ]
-    },
+    "upper_lower": "UPPER",
+    "common_names": [
+      "Lat Pullovers",
+      "Straight Arm Lat Pulls",
+      "Cable Pullovers"
+    ],
+    "short_description": "Pulling arc focusing on lat stretch.",
     "muscle_targets": {
       "BACK": {
         "_score": 1.5,
         "LATS": {
-          "_score": 1
+          "_score": 1,
+          "LATS_LOWER": {
+            "_score": 1
+          }
         },
         "BACK_UPPER": {
           "_score": 0.5
@@ -549,27 +568,24 @@
         }
       }
     },
-    "common_names": [
-      "Lat Pullovers",
-      "Straight Arm Lat Pulls",
-      "Cable Pullovers"
-    ],
-    "short_description": "Pulling arc focusing on lat stretch.",
+    "default_delta_configs": {
+      "motionPlanes": "HIGH_LOW"
+    },
     "sort_order": 16,
-    "is_active": true
+    "is_active": true,
+    "icon": null
   },
   {
     "id": "PULLOVER_CHEST",
     "label": "Chest Pullover",
     "parent_id": "PULLOVER",
-    "upper_lower_body": "UPPER",
-    "motion_planes": {
-      "default": "HIGH_LOW",
-      "options": [
-        "HIGH_LOW",
-        "MID_LOW"
-      ]
-    },
+    "upper_lower": "UPPER",
+    "common_names": [
+      "Pec Pullovers",
+      "Chest Pullovers",
+      "Cross-Bench Pullovers"
+    ],
+    "short_description": "Pulling arc focusing on chest squeeze.",
     "muscle_targets": {
       "CHEST": {
         "_score": 0.8,
@@ -580,7 +596,10 @@
       "BACK": {
         "_score": 0.7,
         "LATS": {
-          "_score": 0.7
+          "_score": 0.7,
+          "LATS_LOWER": {
+            "_score": 0.7
+          }
         }
       },
       "ARMS": {
@@ -593,19 +612,23 @@
         }
       }
     },
-    "common_names": [
-      "Pec Pullovers",
-      "Chest Pullovers",
-      "Cross-Bench Pullovers"
-    ],
-    "short_description": "Pulling arc focusing on chest squeeze.",
+    "default_delta_configs": {
+      "motionPlanes": "HIGH_LOW"
+    },
     "sort_order": 17,
-    "is_active": true
+    "is_active": true,
+    "icon": null
   },
   {
     "id": "SHRUG",
     "label": "Shrug",
-    "upper_lower_body": "UPPER",
+    "upper_lower": "UPPER",
+    "common_names": [
+      "Shrugs",
+      "Trap Raises",
+      "Shoulder Shrugs"
+    ],
+    "short_description": "Vertical elevation of the shoulder girdle.",
     "muscle_targets": {
       "BACK": {
         "_score": 0.8,
@@ -620,24 +643,35 @@
         "_score": 0.5
       }
     },
-    "common_names": [
-      "Shrugs",
-      "Trap Raises",
-      "Shoulder Shrugs"
-    ],
-    "short_description": "Vertical elevation of the shoulder girdle.",
     "sort_order": 18,
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "VERTICAL_PULL",
     "label": "Vertical Pull",
-    "upper_lower_body": "UPPER",
+    "upper_lower": "UPPER",
+    "common_names": [
+      "Pull-ups",
+      "Pulldowns",
+      "Lat Pulldowns",
+      "Chin-ups",
+      "Vertical Rows"
+    ],
+    "short_description": "Pulling resistance from overhead down toward the body.",
     "muscle_targets": {
       "BACK": {
         "_score": 1,
         "LATS": {
-          "_score": 1
+          "_score": 1,
+          "LATS_LOWER": {
+            "_score": 0.7
+          },
+          "LATS_UPPER": {
+            "_score": 0.3
+          }
         }
       },
       "ARMS": {
@@ -659,22 +693,23 @@
         }
       }
     },
-    "common_names": [
-      "Pull-ups",
-      "Pulldowns",
-      "Lat Pulldowns",
-      "Chin-ups",
-      "Vertical Rows"
-    ],
-    "short_description": "Pulling resistance from overhead down toward the body.",
     "sort_order": 19,
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "PULL_BEHIND",
     "label": "Behind Neck",
     "parent_id": "VERTICAL_PULL",
-    "upper_lower_body": "UPPER",
+    "upper_lower": "UPPER",
+    "common_names": [
+      "Behind the Neck Pulldowns",
+      "Neck Pulls",
+      "Guillotine Pulls"
+    ],
+    "short_description": "Vertical pulling motion behind the head.",
     "muscle_targets": {
       "BACK": {
         "_score": 1.7,
@@ -695,56 +730,40 @@
         }
       }
     },
-    "common_names": [
-      "Behind the Neck Pulldowns",
-      "Neck Pulls",
-      "Guillotine Pulls"
-    ],
-    "short_description": "Vertical pulling motion behind the head.",
     "sort_order": 20,
-    "is_active": true
+    "is_active": true,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "PULL_FRONT",
     "label": "Front Pulldown",
     "parent_id": "VERTICAL_PULL",
-    "upper_lower_body": "UPPER",
-    "muscle_targets": {
-      "BACK": {
-        "_score": 1.5,
-        "LATS": {
-          "_score": 1
-        },
-        "BACK_MID": {
-          "_score": 0.5
-        }
-      },
-      "ARMS": {
-        "_score": 0.6,
-        "BICEPS": {
-          "_score": 0.6,
-          "BICEP_INNER": {
-            "_score": 0.3
-          },
-          "BICEP_OUTER": {
-            "_score": 0.3
-          }
-        }
-      }
-    },
+    "upper_lower": "UPPER",
     "common_names": [
       "Lat Pulldowns",
       "Front Pulldowns",
       "Standard Pulldowns"
     ],
     "short_description": "Standard vertical pulling motion.",
+    "muscle_targets": {},
     "sort_order": 21,
-    "is_active": true
+    "is_active": true,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "HORIZONTAL_ROW",
     "label": "Horizontal Row",
-    "upper_lower_body": "UPPER",
+    "upper_lower": "UPPER",
+    "common_names": [
+      "Rows",
+      "Seated Rows",
+      "Bent Over Rows",
+      "Cable Rows",
+      "Horizontal Pulls"
+    ],
+    "short_description": "Pulling resistance from in front of the body toward the torso.",
     "muscle_targets": {
       "BACK": {
         "_score": 1.8,
@@ -752,7 +771,13 @@
           "_score": 1
         },
         "LATS": {
-          "_score": 0.8
+          "_score": 0.8,
+          "LATS_UPPER": {
+            "_score": 0.48
+          },
+          "LATS_LOWER": {
+            "_score": 0.32
+          }
         }
       },
       "ARMS": {
@@ -768,31 +793,24 @@
         }
       }
     },
-    "common_names": [
-      "Rows",
-      "Seated Rows",
-      "Bent Over Rows",
-      "Cable Rows",
-      "Horizontal Pulls"
-    ],
-    "short_description": "Pulling resistance from in front of the body toward the torso.",
     "sort_order": 22,
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "ROW_HIGH",
     "label": "High Row",
     "parent_id": "HORIZONTAL_ROW",
-    "upper_lower_body": "UPPER",
-    "motion_planes": {
-      "default": "HIGH_MID",
-      "options": [
-        "HIGH_HIGH",
-        "HIGH_MID",
-        "MID_HIGH",
-        "LOW_HIGH"
-      ]
-    },
+    "upper_lower": "UPPER",
+    "common_names": [
+      "Sternum Rows",
+      "High Rows",
+      "Upper Back Rows",
+      "Face-Level Rows"
+    ],
+    "short_description": "Pulling toward the upper chest.",
     "muscle_targets": {
       "BACK": {
         "_score": 1.7,
@@ -813,29 +831,25 @@
         }
       }
     },
-    "common_names": [
-      "Sternum Rows",
-      "High Rows",
-      "Upper Back Rows",
-      "Face-Level Rows"
-    ],
-    "short_description": "Pulling toward the upper chest.",
+    "default_delta_configs": {
+      "motionPlanes": "HIGH_MID"
+    },
     "sort_order": 23,
-    "is_active": true
+    "is_active": true,
+    "icon": null
   },
   {
     "id": "ROW_MID",
     "label": "Mid Row",
     "parent_id": "HORIZONTAL_ROW",
-    "upper_lower_body": "UPPER",
-    "motion_planes": {
-      "default": "MID_MID",
-      "options": [
-        "HIGH_MID",
-        "MID_MID",
-        "LOW_MID"
-      ]
-    },
+    "upper_lower": "UPPER",
+    "common_names": [
+      "Standard Rows",
+      "Mid Rows",
+      "Stomach Rows",
+      "T-Bar Rows"
+    ],
+    "short_description": "Pulling toward the stomach.",
     "muscle_targets": {
       "BACK": {
         "_score": 2.5,
@@ -846,7 +860,13 @@
           "_score": 0.9
         },
         "LATS": {
-          "_score": 0.6
+          "_score": 0.6,
+          "LATS_UPPER": {
+            "_score": 0.36
+          },
+          "LATS_LOWER": {
+            "_score": 0.24
+          }
         }
       },
       "ARMS": {
@@ -862,34 +882,36 @@
         }
       }
     },
-    "common_names": [
-      "Standard Rows",
-      "Mid Rows",
-      "Stomach Rows",
-      "T-Bar Rows"
-    ],
-    "short_description": "Pulling toward the stomach.",
+    "default_delta_configs": {
+      "motionPlanes": "MID_MID"
+    },
     "sort_order": 24,
-    "is_active": true
+    "is_active": true,
+    "icon": null
   },
   {
     "id": "ROW_LOW",
     "label": "Low Row",
     "parent_id": "HORIZONTAL_ROW",
-    "upper_lower_body": "UPPER",
-    "motion_planes": {
-      "default": "LOW_LOW",
-      "options": [
-        "HIGH_LOW",
-        "MID_LOW",
-        "LOW_LOW"
-      ]
-    },
+    "upper_lower": "UPPER",
+    "common_names": [
+      "Belly Rows",
+      "Low Rows",
+      "Lat Rows",
+      "Hip-Level Rows"
+    ],
+    "short_description": "Pulling toward the hips/navel.",
     "muscle_targets": {
       "BACK": {
         "_score": 1.5,
         "LATS": {
-          "_score": 1
+          "_score": 1,
+          "LATS_UPPER": {
+            "_score": 0.6
+          },
+          "LATS_LOWER": {
+            "_score": 0.4
+          }
         },
         "BACK_MID": {
           "_score": 0.5
@@ -905,20 +927,24 @@
         }
       }
     },
-    "common_names": [
-      "Belly Rows",
-      "Low Rows",
-      "Lat Rows",
-      "Hip-Level Rows"
-    ],
-    "short_description": "Pulling toward the hips/navel.",
+    "default_delta_configs": {
+      "motionPlanes": "LOW_LOW"
+    },
     "sort_order": 25,
-    "is_active": true
+    "is_active": true,
+    "icon": null
   },
   {
     "id": "CRUSH",
     "label": "Crush",
-    "upper_lower_body": "UPPER",
+    "upper_lower": "UPPER",
+    "common_names": [
+      "Squeeze Press",
+      "Svend Press",
+      "Hex Press",
+      "Isometric Chest Squeezes"
+    ],
+    "short_description": "Creating inward tension by pressing hands or weights together.",
     "muscle_targets": {
       "CHEST": {
         "_score": 1,
@@ -933,20 +959,24 @@
         }
       }
     },
-    "common_names": [
-      "Squeeze Press",
-      "Svend Press",
-      "Hex Press",
-      "Isometric Chest Squeezes"
-    ],
-    "short_description": "Creating inward tension by pressing hands or weights together.",
     "sort_order": 26,
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "PRESS",
     "label": "Press",
-    "upper_lower_body": "UPPER",
+    "upper_lower": "UPPER",
+    "common_names": [
+      "Chest Press",
+      "Bench Press",
+      "Flat Press",
+      "Push-ups",
+      "Horizontal Press"
+    ],
+    "short_description": "Moving resistance horizontally away from the torso in a straight line.",
     "muscle_targets": {
       "CHEST": {
         "_score": 1,
@@ -976,30 +1006,23 @@
         }
       }
     },
-    "common_names": [
-      "Chest Press",
-      "Bench Press",
-      "Flat Press",
-      "Push-ups",
-      "Horizontal Press"
-    ],
-    "short_description": "Moving resistance horizontally away from the torso in a straight line.",
     "sort_order": 27,
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "PRESS_FLAT",
     "label": "Flat Press",
     "parent_id": "PRESS",
-    "upper_lower_body": "UPPER",
-    "motion_planes": {
-      "default": "MID_MID",
-      "options": [
-        "MID_MID",
-        "HIGH_MID",
-        "LOW_MID"
-      ]
-    },
+    "upper_lower": "UPPER",
+    "common_names": [
+      "Standard Bench Press",
+      "Flat Presses",
+      "Horizontal Chest Presses"
+    ],
+    "short_description": "Pushing perpendicular to the torso.",
     "muscle_targets": {
       "CHEST": {
         "_score": 1,
@@ -1029,27 +1052,24 @@
         }
       }
     },
-    "common_names": [
-      "Standard Bench Press",
-      "Flat Presses",
-      "Horizontal Chest Presses"
-    ],
-    "short_description": "Pushing perpendicular to the torso.",
+    "default_delta_configs": {
+      "motionPlanes": "MID_MID"
+    },
     "sort_order": 28,
-    "is_active": true
+    "is_active": true,
+    "icon": null
   },
   {
     "id": "PRESS_INCLINE",
     "label": "Incline Press",
     "parent_id": "PRESS",
-    "upper_lower_body": "UPPER",
-    "motion_planes": {
-      "default": "LOW_HIGH",
-      "options": [
-        "LOW_HIGH",
-        "MID_HIGH"
-      ]
-    },
+    "upper_lower": "UPPER",
+    "common_names": [
+      "Upper Chest Presses",
+      "Incline Bench Press",
+      "Incline DB Presses"
+    ],
+    "short_description": "Pushing at an upward angle (15-45°).",
     "muscle_targets": {
       "CHEST": {
         "_score": 1,
@@ -1079,28 +1099,24 @@
         }
       }
     },
-    "common_names": [
-      "Upper Chest Presses",
-      "Incline Bench Press",
-      "Incline DB Presses"
-    ],
-    "short_description": "Pushing at an upward angle (15-45°).",
+    "default_delta_configs": {
+      "motionPlanes": "LOW_HIGH"
+    },
     "sort_order": 29,
-    "is_active": true
+    "is_active": true,
+    "icon": null
   },
   {
     "id": "PRESS_DECLINE",
     "label": "Decline Press",
     "parent_id": "PRESS",
-    "upper_lower_body": "UPPER",
-    "motion_planes": {
-      "default": "HIGH_LOW",
-      "options": [
-        "HIGH_LOW",
-        "MID_LOW",
-        "LOW_LOW"
-      ]
-    },
+    "upper_lower": "UPPER",
+    "common_names": [
+      "Lower Chest Presses",
+      "Decline Bench",
+      "Decline Dumbbell Presses"
+    ],
+    "short_description": "Pushing at a downward angle (-15°).",
     "muscle_targets": {
       "CHEST": {
         "_score": 1,
@@ -1127,19 +1143,25 @@
         }
       }
     },
-    "common_names": [
-      "Lower Chest Presses",
-      "Decline Bench",
-      "Decline Dumbbell Presses"
-    ],
-    "short_description": "Pushing at a downward angle (-15°).",
+    "default_delta_configs": {
+      "motionPlanes": "HIGH_LOW"
+    },
     "sort_order": 30,
-    "is_active": true
+    "is_active": true,
+    "icon": null
   },
   {
     "id": "PRESS_VERTICAL",
     "label": "Vertical Press",
-    "upper_lower_body": "UPPER",
+    "upper_lower": "UPPER",
+    "common_names": [
+      "Shoulder Press",
+      "Overhead Press",
+      "Military Press",
+      "OHP",
+      "Strict Press"
+    ],
+    "short_description": "Moving resistance vertically away from the shoulders.",
     "muscle_targets": {
       "SHOULDERS": {
         "_score": 1.2,
@@ -1169,37 +1191,69 @@
         }
       }
     },
-    "common_names": [
-      "Shoulder Press",
-      "Overhead Press",
-      "Military Press",
-      "OHP",
-      "Strict Press"
-    ],
-    "short_description": "Moving resistance vertically away from the shoulders.",
     "sort_order": 31,
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "PRESS_HIGH_INCLINE",
     "label": "High Incline Press",
     "parent_id": "PRESS_VERTICAL",
-    "upper_lower_body": "UPPER",
-    "muscle_targets": {},
+    "upper_lower": "UPPER",
     "common_names": [
       "Seated Shoulder Presses",
       "High Incline Bench",
       "Steep Presses"
     ],
     "short_description": "Pushing at a steep 60-80° angle.",
+    "muscle_targets": {
+      "SHOULDERS": {
+        "_score": 1.4,
+        "DELTS_FRONT": {
+          "_score": 1
+        }
+      },
+      "CHEST": {
+        "_score": 0.7,
+        "CHEST_UPPER": {
+          "_score": 0.7
+        }
+      },
+      "ARMS": {
+        "_score": 0.6,
+        "TRICEPS": {
+          "_score": 0.6,
+          "TRICEP_INNER": {
+            "_score": 0.2
+          },
+          "TRICEP_OUTER": {
+            "_score": 0.2
+          },
+          "TRICEP_DEEP": {
+            "_score": 0.2
+          }
+        }
+      }
+    },
     "sort_order": 32,
-    "is_active": true
+    "is_active": true,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "PRESS_OVERHEAD",
     "label": "Overhead Press",
     "parent_id": "PRESS_VERTICAL",
-    "upper_lower_body": "UPPER",
+    "upper_lower": "UPPER",
+    "common_names": [
+      "Military Presses",
+      "Strict Presses",
+      "Standing Overhead Presses",
+      "OHP"
+    ],
+    "short_description": "Pushing vertically above the head.",
     "muscle_targets": {
       "SHOULDERS": {
         "_score": 1.5,
@@ -1229,34 +1283,15 @@
         }
       }
     },
-    "common_names": [
-      "Military Presses",
-      "Strict Presses",
-      "Standing Overhead Presses",
-      "OHP"
-    ],
-    "short_description": "Pushing vertically above the head.",
     "sort_order": 33,
-    "is_active": true
+    "is_active": true,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "FLY",
     "label": "Fly",
-    "upper_lower_body": "UPPER",
-    "muscle_targets": {
-      "CHEST": {
-        "_score": 1,
-        "CHEST_MID": {
-          "_score": 1
-        }
-      },
-      "SHOULDERS": {
-        "_score": 0.4,
-        "DELTS_FRONT": {
-          "_score": 0.4
-        }
-      }
-    },
+    "upper_lower": "UPPER",
     "common_names": [
       "Chest Flys",
       "Pec Deck",
@@ -1265,22 +1300,6 @@
       "Dumbbell Flys"
     ],
     "short_description": "Moving the arms in a wide hugging arc toward the midline.",
-    "sort_order": 34,
-    "is_active": true
-  },
-  {
-    "id": "FLY_FLAT",
-    "label": "Flat Fly",
-    "parent_id": "FLY",
-    "upper_lower_body": "UPPER",
-    "motion_planes": {
-      "default": "MID_MID",
-      "options": [
-        "MID_MID",
-        "HIGH_MID",
-        "LOW_MID"
-      ]
-    },
     "muscle_targets": {
       "CHEST": {
         "_score": 1,
@@ -1295,27 +1314,55 @@
         }
       }
     },
+    "sort_order": 34,
+    "is_active": true,
+    "parent_id": null,
+    "default_delta_configs": null,
+    "icon": null
+  },
+  {
+    "id": "FLY_FLAT",
+    "label": "Flat Fly",
+    "parent_id": "FLY",
+    "upper_lower": "UPPER",
     "common_names": [
       "Chest Flys",
       "Flat Bench Flys",
       "Pec Deck Machine"
     ],
     "short_description": "Hugging arc on a horizontal plane.",
+    "muscle_targets": {
+      "CHEST": {
+        "_score": 1,
+        "CHEST_MID": {
+          "_score": 1
+        }
+      },
+      "SHOULDERS": {
+        "_score": 0.4,
+        "DELTS_FRONT": {
+          "_score": 0.4
+        }
+      }
+    },
+    "default_delta_configs": {
+      "motionPlanes": "MID_MID"
+    },
     "sort_order": 35,
-    "is_active": true
+    "is_active": true,
+    "icon": null
   },
   {
     "id": "FLY_INCLINE",
     "label": "Incline Fly",
     "parent_id": "FLY",
-    "upper_lower_body": "UPPER",
-    "motion_planes": {
-      "default": "LOW_HIGH",
-      "options": [
-        "LOW_HIGH",
-        "MID_HIGH"
-      ]
-    },
+    "upper_lower": "UPPER",
+    "common_names": [
+      "Upper Flys",
+      "Incline Chest Flys",
+      "Low-to-High Crossovers"
+    ],
+    "short_description": "Hugging arc at an upward angle.",
     "muscle_targets": {
       "CHEST": {
         "_score": 1,
@@ -1330,28 +1377,24 @@
         }
       }
     },
-    "common_names": [
-      "Upper Flys",
-      "Incline Chest Flys",
-      "Low-to-High Crossovers"
-    ],
-    "short_description": "Hugging arc at an upward angle.",
+    "default_delta_configs": {
+      "motionPlanes": "LOW_HIGH"
+    },
     "sort_order": 36,
-    "is_active": true
+    "is_active": true,
+    "icon": null
   },
   {
     "id": "FLY_DECLINE",
     "label": "Decline Fly",
     "parent_id": "FLY",
-    "upper_lower_body": "UPPER",
-    "motion_planes": {
-      "default": "HIGH_LOW",
-      "options": [
-        "HIGH_LOW",
-        "MID_LOW",
-        "LOW_LOW"
-      ]
-    },
+    "upper_lower": "UPPER",
+    "common_names": [
+      "Lower Flys",
+      "Decline Chest Flys",
+      "High-to-Low Crossovers"
+    ],
+    "short_description": "Hugging arc at a downward angle.",
     "muscle_targets": {
       "CHEST": {
         "_score": 1,
@@ -1366,27 +1409,24 @@
         }
       }
     },
-    "common_names": [
-      "Lower Flys",
-      "Decline Chest Flys",
-      "High-to-Low Crossovers"
-    ],
-    "short_description": "Hugging arc at a downward angle.",
+    "default_delta_configs": {
+      "motionPlanes": "HIGH_LOW"
+    },
     "sort_order": 37,
-    "is_active": true
+    "is_active": true,
+    "icon": null
   },
   {
     "id": "FLY_SCOOP",
     "label": "Scoop",
     "parent_id": "FLY",
-    "upper_lower_body": "UPPER",
-    "motion_planes": {
-      "default": "LOW_HIGH",
-      "options": [
-        "LOW_HIGH",
-        "LOW_MID"
-      ]
-    },
+    "upper_lower": "UPPER",
+    "common_names": [
+      "Low-to-High Flys",
+      "Underhand Flys",
+      "Scoop Flys"
+    ],
+    "short_description": "Upward underhand arcing path.",
     "muscle_targets": {
       "CHEST": {
         "_score": 1,
@@ -1401,42 +1441,38 @@
         }
       }
     },
-    "common_names": [
-      "Low-to-High Flys",
-      "Underhand Flys",
-      "Scoop Flys"
-    ],
-    "short_description": "Upward underhand arcing path.",
+    "default_delta_configs": {
+      "motionPlanes": "LOW_HIGH"
+    },
     "sort_order": 38,
-    "is_active": true
+    "is_active": true,
+    "icon": null
   },
   {
     "id": "FLEXION_NECK",
     "label": "Neck Flexion",
-    "upper_lower_body": "UPPER",
-    "muscle_targets": {
-      "NECK": {
-        "_score": 1
-      }
-    },
+    "upper_lower": "UPPER",
     "common_names": [
       "Neck Curls",
       "Neck Flexions",
       "Forward Neck Nods"
     ],
     "short_description": "Tilting the head forward under load.",
-    "sort_order": 39,
-    "is_active": true
-  },
-  {
-    "id": "EXTENSION_NECK",
-    "label": "Neck Extension",
-    "upper_lower_body": "UPPER",
     "muscle_targets": {
       "NECK": {
         "_score": 1
       }
     },
+    "sort_order": 39,
+    "is_active": true,
+    "parent_id": null,
+    "default_delta_configs": null,
+    "icon": null
+  },
+  {
+    "id": "EXTENSION_NECK",
+    "label": "Neck Extension",
+    "upper_lower": "UPPER",
     "common_names": [
       "Head Lifts",
       "Neck Extensions",
@@ -1444,13 +1480,28 @@
       "Neck Harness Pulls"
     ],
     "short_description": "Tilting the head backward under load.",
+    "muscle_targets": {
+      "NECK": {
+        "_score": 1
+      }
+    },
     "sort_order": 40,
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "RAISE",
     "label": "Raise",
-    "upper_lower_body": "UPPER",
+    "upper_lower": "UPPER",
+    "common_names": [
+      "Lateral Raises",
+      "Front Raises",
+      "Shoulder Raises",
+      "Delt Raises"
+    ],
+    "short_description": "Raising the arms in an arc without bending the elbows.",
     "muscle_targets": {
       "SHOULDERS": {
         "_score": 1,
@@ -1459,28 +1510,23 @@
         }
       }
     },
-    "common_names": [
-      "Lateral Raises",
-      "Front Raises",
-      "Shoulder Raises",
-      "Delt Raises"
-    ],
-    "short_description": "Raising the arms in an arc without bending the elbows.",
     "sort_order": 41,
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "RAISE_FRONT",
     "label": "Front Raise",
     "parent_id": "RAISE",
-    "upper_lower_body": "UPPER",
-    "motion_planes": {
-      "default": "LOW_HIGH",
-      "options": [
-        "LOW_HIGH",
-        "LOW_MID"
-      ]
-    },
+    "upper_lower": "UPPER",
+    "common_names": [
+      "Front Raises",
+      "Shoulder Front Raises",
+      "Forward Raises"
+    ],
+    "short_description": "Arcing arms out to the front.",
     "muscle_targets": {
       "SHOULDERS": {
         "_score": 1,
@@ -1495,27 +1541,25 @@
         }
       }
     },
-    "common_names": [
-      "Front Raises",
-      "Shoulder Front Raises",
-      "Forward Raises"
-    ],
-    "short_description": "Arcing arms out to the front.",
+    "default_delta_configs": {
+      "motionPlanes": "LOW_HIGH"
+    },
     "sort_order": 42,
-    "is_active": true
+    "is_active": true,
+    "icon": null
   },
   {
     "id": "RAISE_LATERAL",
     "label": "Lateral Raise",
     "parent_id": "RAISE",
-    "upper_lower_body": "UPPER",
-    "motion_planes": {
-      "default": "LOW_HIGH",
-      "options": [
-        "LOW_HIGH",
-        "LOW_MID"
-      ]
-    },
+    "upper_lower": "UPPER",
+    "common_names": [
+      "Side Raises",
+      "Lateral Raises",
+      "Delt Raises",
+      "Side Lateral Raises"
+    ],
+    "short_description": "Arcing arms out to the sides.",
     "muscle_targets": {
       "SHOULDERS": {
         "_score": 1,
@@ -1533,21 +1577,25 @@
         }
       }
     },
-    "common_names": [
-      "Side Raises",
-      "Lateral Raises",
-      "Delt Raises",
-      "Side Lateral Raises"
-    ],
-    "short_description": "Arcing arms out to the sides.",
+    "default_delta_configs": {
+      "motionPlanes": "LOW_HIGH"
+    },
     "sort_order": 43,
-    "is_active": true
+    "is_active": true,
+    "icon": null
   },
   {
     "id": "RAISE_V",
     "label": "V-Raise",
     "parent_id": "RAISE",
-    "upper_lower_body": "UPPER",
+    "upper_lower": "UPPER",
+    "common_names": [
+      "Scaptions",
+      "V-Raises",
+      "Scapular Plane Raises",
+      "Y-Raises"
+    ],
+    "short_description": "Arcing arms at a 45-degree angle.",
     "muscle_targets": {
       "SHOULDERS": {
         "_score": 2.1,
@@ -1562,20 +1610,22 @@
         }
       }
     },
-    "common_names": [
-      "Scaptions",
-      "V-Raises",
-      "Scapular Plane Raises",
-      "Y-Raises"
-    ],
-    "short_description": "Arcing arms at a 45-degree angle.",
     "sort_order": 44,
-    "is_active": true
+    "is_active": true,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "REVERSE_FLY",
     "label": "Reverse Fly",
-    "upper_lower_body": "UPPER",
+    "upper_lower": "UPPER",
+    "common_names": [
+      "Rear Delt Flys",
+      "Reverse Pec Deck",
+      "Rear Delt Raises",
+      "Bent Over Flys"
+    ],
+    "short_description": "Arcing the arms backward away from the midline.",
     "muscle_targets": {
       "SHOULDERS": {
         "_score": 1.2,
@@ -1596,28 +1646,23 @@
         }
       }
     },
-    "common_names": [
-      "Rear Delt Flys",
-      "Reverse Pec Deck",
-      "Rear Delt Raises",
-      "Bent Over Flys"
-    ],
-    "short_description": "Arcing the arms backward away from the midline.",
     "sort_order": 45,
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "FLY_REVERSE",
     "label": "Reverse Fly (Var)",
     "parent_id": "REVERSE_FLY",
-    "upper_lower_body": "UPPER",
-    "motion_planes": {
-      "default": "MID_MID",
-      "options": [
-        "MID_MID",
-        "HIGH_HIGH"
-      ]
-    },
+    "upper_lower": "UPPER",
+    "common_names": [
+      "Rear Delt Flys",
+      "Horizontal Reverse Flys",
+      "Reverse Pec Deck"
+    ],
+    "short_description": "Arcing arms backward horizontally.",
     "muscle_targets": {
       "SHOULDERS": {
         "_score": 1.2,
@@ -1635,27 +1680,24 @@
         }
       }
     },
-    "common_names": [
-      "Rear Delt Flys",
-      "Horizontal Reverse Flys",
-      "Reverse Pec Deck"
-    ],
-    "short_description": "Arcing arms backward horizontally.",
+    "default_delta_configs": {
+      "motionPlanes": "MID_MID"
+    },
     "sort_order": 46,
-    "is_active": true
+    "is_active": true,
+    "icon": null
   },
   {
     "id": "FLY_REVERSE_DECLINE",
     "label": "Decline Rev Fly",
     "parent_id": "REVERSE_FLY",
-    "upper_lower_body": "UPPER",
-    "motion_planes": {
-      "default": "HIGH_LOW",
-      "options": [
-        "HIGH_LOW",
-        "HIGH_MID"
-      ]
-    },
+    "upper_lower": "UPPER",
+    "common_names": [
+      "High Cable Rev Flys",
+      "Downward Reverse Flys",
+      "Skiers"
+    ],
+    "short_description": "Arcing arms backward at a downward angle.",
     "muscle_targets": {
       "SHOULDERS": {
         "_score": 1.1,
@@ -1676,20 +1718,24 @@
         }
       }
     },
-    "common_names": [
-      "High Cable Rev Flys",
-      "Downward Reverse Flys",
-      "Skiers"
-    ],
-    "short_description": "Arcing arms backward at a downward angle.",
+    "default_delta_configs": {
+      "motionPlanes": "HIGH_LOW"
+    },
     "sort_order": 47,
-    "is_active": true
+    "is_active": true,
+    "icon": null
   },
   {
     "id": "FLY_REVERSE_INCLINE",
     "label": "Incline Rev Fly",
     "parent_id": "REVERSE_FLY",
-    "upper_lower_body": "UPPER",
+    "upper_lower": "UPPER",
+    "common_names": [
+      "Y-Flys",
+      "Prone Incline Reverse Flys",
+      "Chest-Supported Reverse Flys"
+    ],
+    "short_description": "Arcing arms backward at an upward angle.",
     "muscle_targets": {
       "SHOULDERS": {
         "_score": 1,
@@ -1710,28 +1756,22 @@
         }
       }
     },
-    "common_names": [
-      "Y-Flys",
-      "Prone Incline Reverse Flys",
-      "Chest-Supported Reverse Flys"
-    ],
-    "short_description": "Arcing arms backward at an upward angle.",
     "sort_order": 48,
-    "is_active": true
+    "is_active": true,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "FACE_PULL",
     "label": "Face Pull",
-    "upper_lower_body": "UPPER",
-    "motion_planes": {
-      "default": "HIGH_HIGH",
-      "options": [
-        "HIGH_HIGH",
-        "MID_HIGH",
-        "MID_MID",
-        "HIGH_LOW"
-      ]
-    },
+    "upper_lower": "UPPER",
+    "common_names": [
+      "Face Pulls",
+      "Cable Face Pulls",
+      "High Pulls",
+      "Rope Pulls to Face"
+    ],
+    "short_description": "Pulling resistance toward the face to engage the upper back.",
     "muscle_targets": {
       "SHOULDERS": {
         "_score": 1.9,
@@ -1752,20 +1792,25 @@
         }
       }
     },
-    "common_names": [
-      "Face Pulls",
-      "Cable Face Pulls",
-      "High Pulls",
-      "Rope Pulls to Face"
-    ],
-    "short_description": "Pulling resistance toward the face to engage the upper back.",
+    "default_delta_configs": {
+      "motionPlanes": "HIGH_HIGH"
+    },
     "sort_order": 49,
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "icon": null
   },
   {
     "id": "EXTENSION_BACK",
     "label": "Back Extension",
-    "upper_lower_body": "LOWER",
+    "upper_lower": "LOWER",
+    "common_names": [
+      "Hyperextensions",
+      "Back Extensions",
+      "Supermans",
+      "Lower Back Raises"
+    ],
+    "short_description": "Extending the torso backward against gravity.",
     "muscle_targets": {
       "BACK": {
         "_score": 1.2,
@@ -1783,20 +1828,23 @@
         }
       }
     },
-    "common_names": [
-      "Hyperextensions",
-      "Back Extensions",
-      "Supermans",
-      "Lower Back Raises"
-    ],
-    "short_description": "Extending the torso backward against gravity.",
     "sort_order": 50,
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "CALF_RAISE",
     "label": "Calf Raise",
-    "upper_lower_body": "LOWER",
+    "upper_lower": "LOWER",
+    "common_names": [
+      "Heel Raises",
+      "Calf Raises",
+      "Calf Bounces",
+      "Ankle Extensions"
+    ],
+    "short_description": "Lifting the heels to engage the lower leg.",
     "muscle_targets": {
       "LEGS": {
         "_score": 1,
@@ -1811,21 +1859,23 @@
         }
       }
     },
-    "common_names": [
-      "Heel Raises",
-      "Calf Raises",
-      "Calf Bounces",
-      "Ankle Extensions"
-    ],
-    "short_description": "Lifting the heels to engage the lower leg.",
     "sort_order": 51,
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "CALF_RAISE_BENT",
     "label": "Bent-Knee Calf Raise",
     "parent_id": "CALF_RAISE",
-    "upper_lower_body": "LOWER",
+    "upper_lower": "LOWER",
+    "common_names": [
+      "Bent Knee Calf Raise",
+      "Seated Calf Raise",
+      "Soleus Raises"
+    ],
+    "short_description": "Raising heels with flexed knees targeting Soleus.",
     "muscle_targets": {
       "LEGS": {
         "_score": 1,
@@ -1837,20 +1887,22 @@
         }
       }
     },
-    "common_names": [
-      "Bent Knee Calf Raise",
-      "Seated Calf Raise",
-      "Soleus Raises"
-    ],
-    "short_description": "Raising heels with flexed knees targeting Soleus.",
     "sort_order": 52,
-    "is_active": true
+    "is_active": true,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "CALF_RAISE_STRAIGHT",
     "label": "Straight-Knee Calf Raise",
     "parent_id": "CALF_RAISE",
-    "upper_lower_body": "LOWER",
+    "upper_lower": "LOWER",
+    "common_names": [
+      "Straight Leg Calf Raise",
+      "Standing Calf Raise",
+      "Gastrocnemius Raises"
+    ],
+    "short_description": "Raising heels with fully extended knees targeting Gastrocnemius.",
     "muscle_targets": {
       "LEGS": {
         "_score": 1,
@@ -1865,19 +1917,22 @@
         }
       }
     },
-    "common_names": [
-      "Straight Leg Calf Raise",
-      "Standing Calf Raise",
-      "Gastrocnemius Raises"
-    ],
-    "short_description": "Raising heels with fully extended knees targeting Gastrocnemius.",
     "sort_order": 53,
-    "is_active": true
+    "is_active": true,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "LEG_CURL",
     "label": "Leg Curl",
-    "upper_lower_body": "LOWER",
+    "upper_lower": "LOWER",
+    "common_names": [
+      "Hamstring Curls",
+      "Leg Curls",
+      "Knee Flexions",
+      "Nordic Curls"
+    ],
+    "short_description": "Bending the knee to bring the heel toward the glutes.",
     "muscle_targets": {
       "LEGS": {
         "_score": 1,
@@ -1892,20 +1947,22 @@
         }
       }
     },
-    "common_names": [
-      "Hamstring Curls",
-      "Leg Curls",
-      "Knee Flexions",
-      "Nordic Curls"
-    ],
-    "short_description": "Bending the knee to bring the heel toward the glutes.",
     "sort_order": 54,
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "LEG_EXTENSION",
     "label": "Leg Extension",
-    "upper_lower_body": "LOWER",
+    "upper_lower": "LOWER",
+    "common_names": [
+      "Quad Extensions",
+      "Leg Extensions",
+      "Knee Extensions"
+    ],
+    "short_description": "Straightening the knee against resistance.",
     "muscle_targets": {
       "LEGS": {
         "_score": 1,
@@ -1923,19 +1980,24 @@
         }
       }
     },
-    "common_names": [
-      "Quad Extensions",
-      "Leg Extensions",
-      "Knee Extensions"
-    ],
-    "short_description": "Straightening the knee against resistance.",
     "sort_order": 55,
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "HINGE",
     "label": "Hinge",
-    "upper_lower_body": "LOWER",
+    "upper_lower": "LOWER",
+    "common_names": [
+      "Deadlifts",
+      "RDLs",
+      "Hip Hinges",
+      "Good Mornings",
+      "Kettlebell Swings"
+    ],
+    "short_description": "Bending primarily at the hips with minimal knee bend.",
     "muscle_targets": {
       "LEGS": {
         "_score": 1.8,
@@ -1959,22 +2021,23 @@
         }
       }
     },
-    "common_names": [
-      "Deadlifts",
-      "RDLs",
-      "Hip Hinges",
-      "Good Mornings",
-      "Kettlebell Swings"
-    ],
-    "short_description": "Bending primarily at the hips with minimal knee bend.",
     "sort_order": 56,
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "HINGE_STD",
     "label": "Deadlift",
     "parent_id": "HINGE",
-    "upper_lower_body": "LOWER",
+    "upper_lower": "LOWER",
+    "common_names": [
+      "Conventional Deadlifts",
+      "Standard Deadlifts",
+      "Barbell Deadlifts"
+    ],
+    "short_description": "Hip-dominant pull from the floor with moderate knee bend.",
     "muscle_targets": {
       "LEGS": {
         "_score": 1.7,
@@ -2004,20 +2067,23 @@
         }
       }
     },
-    "common_names": [
-      "Conventional Deadlifts",
-      "Standard Deadlifts",
-      "Barbell Deadlifts"
-    ],
-    "short_description": "Hip-dominant pull from the floor with moderate knee bend.",
     "sort_order": 57,
-    "is_active": true
+    "is_active": true,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "HINGE_STRAIGHT",
     "label": "Stiff Leg",
     "parent_id": "HINGE",
-    "upper_lower_body": "LOWER",
+    "upper_lower": "LOWER",
+    "common_names": [
+      "RDLs",
+      "Romanian Deadlifts",
+      "Stiff-Legged Deadlifts",
+      "SLDLs"
+    ],
+    "short_description": "Minimal knee bend hip hinge focusing on hamstring stretch.",
     "muscle_targets": {
       "LEGS": {
         "_score": 1.7,
@@ -2041,20 +2107,22 @@
         }
       }
     },
-    "common_names": [
-      "RDLs",
-      "Romanian Deadlifts",
-      "Stiff-Legged Deadlifts",
-      "SLDLs"
-    ],
-    "short_description": "Minimal knee bend hip hinge focusing on hamstring stretch.",
     "sort_order": 58,
-    "is_active": true
+    "is_active": true,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "THRUST",
     "label": "Thrust",
-    "upper_lower_body": "LOWER",
+    "upper_lower": "LOWER",
+    "common_names": [
+      "Hip Thrusts",
+      "Glute Bridges",
+      "Pelvic Thrusts",
+      "Bridges"
+    ],
+    "short_description": "Driving the hips forward in a bridging motion.",
     "muscle_targets": {
       "LEGS": {
         "_score": 1.5,
@@ -2078,20 +2146,23 @@
         }
       }
     },
-    "common_names": [
-      "Hip Thrusts",
-      "Glute Bridges",
-      "Pelvic Thrusts",
-      "Bridges"
-    ],
-    "short_description": "Driving the hips forward in a bridging motion.",
     "sort_order": 59,
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "SQUAT",
     "label": "Squat",
-    "upper_lower_body": "LOWER",
+    "upper_lower": "LOWER",
+    "common_names": [
+      "Squats",
+      "Knee Bends",
+      "Deep Squats",
+      "Air Squats"
+    ],
+    "short_description": "Bending at the hips and knees simultaneously.",
     "muscle_targets": {
       "LEGS": {
         "_score": 1.8,
@@ -2124,21 +2195,24 @@
         }
       }
     },
-    "common_names": [
-      "Squats",
-      "Knee Bends",
-      "Deep Squats",
-      "Air Squats"
-    ],
-    "short_description": "Bending at the hips and knees simultaneously.",
     "sort_order": 60,
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "SQUAT_REGULAR",
     "label": "Back Squat",
     "parent_id": "SQUAT",
-    "upper_lower_body": "LOWER",
+    "upper_lower": "LOWER",
+    "common_names": [
+      "Standard Squats",
+      "Back Squats",
+      "Barbell Squats",
+      "Traditional Squats"
+    ],
+    "short_description": "Balanced knee/hip flexion.",
     "muscle_targets": {
       "LEGS": {
         "_score": 1.7,
@@ -2165,21 +2239,23 @@
         }
       }
     },
-    "common_names": [
-      "Standard Squats",
-      "Back Squats",
-      "Barbell Squats",
-      "Traditional Squats"
-    ],
-    "short_description": "Balanced knee/hip flexion.",
     "sort_order": 61,
-    "is_active": true
+    "is_active": true,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "SQUAT_FRONT",
     "label": "Front Squat",
     "parent_id": "SQUAT",
-    "upper_lower_body": "LOWER",
+    "upper_lower": "LOWER",
+    "common_names": [
+      "Quad Squats",
+      "Front Squats",
+      "Anterior Squats",
+      "Goblet Squats"
+    ],
+    "short_description": "Upright squat emphasizing knees.",
     "muscle_targets": {
       "LEGS": {
         "_score": 1,
@@ -2209,20 +2285,22 @@
         }
       }
     },
-    "common_names": [
-      "Quad Squats",
-      "Front Squats",
-      "Anterior Squats",
-      "Goblet Squats"
-    ],
-    "short_description": "Upright squat emphasizing knees.",
     "sort_order": 62,
-    "is_active": true
+    "is_active": true,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "LUNGE",
     "label": "Lunge",
-    "upper_lower_body": "LOWER",
+    "upper_lower": "LOWER",
+    "common_names": [
+      "Split Squats",
+      "Lunges",
+      "Step-ups",
+      "Bulgarian Squats"
+    ],
+    "short_description": "Single-leg dominant pushing movements.",
     "muscle_targets": {
       "LEGS": {
         "_score": 1.8,
@@ -2240,21 +2318,23 @@
         }
       }
     },
-    "common_names": [
-      "Split Squats",
-      "Lunges",
-      "Step-ups",
-      "Bulgarian Squats"
-    ],
-    "short_description": "Single-leg dominant pushing movements.",
     "sort_order": 63,
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "LUNGE_SIDE",
     "label": "Lateral Lunge",
     "parent_id": "LUNGE",
-    "upper_lower_body": "LOWER",
+    "upper_lower": "LOWER",
+    "common_names": [
+      "Cossack Squats",
+      "Side Lunges",
+      "Lateral Squats"
+    ],
+    "short_description": "Stepping out to the side, stretching the inner thigh.",
     "muscle_targets": {
       "LEGS": {
         "_score": 2,
@@ -2272,20 +2352,23 @@
         }
       }
     },
-    "common_names": [
-      "Cossack Squats",
-      "Side Lunges",
-      "Lateral Squats"
-    ],
-    "short_description": "Stepping out to the side, stretching the inner thigh.",
     "sort_order": 64,
-    "is_active": true
+    "is_active": true,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "LUNGE_STATIC",
     "label": "Split Squat",
     "parent_id": "LUNGE",
-    "upper_lower_body": "LOWER",
+    "upper_lower": "LOWER",
+    "common_names": [
+      "Bulgarian Split Squats",
+      "Stationary Lunges",
+      "BSS",
+      "Split Squats"
+    ],
+    "short_description": "Stationary single-leg squat.",
     "muscle_targets": {
       "LEGS": {
         "_score": 2.1,
@@ -2303,21 +2386,23 @@
         }
       }
     },
-    "common_names": [
-      "Bulgarian Split Squats",
-      "Stationary Lunges",
-      "BSS",
-      "Split Squats"
-    ],
-    "short_description": "Stationary single-leg squat.",
     "sort_order": 65,
-    "is_active": true
+    "is_active": true,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "LUNGE_STEP",
     "label": "Walking Lunge",
     "parent_id": "LUNGE",
-    "upper_lower_body": "LOWER",
+    "upper_lower": "LOWER",
+    "common_names": [
+      "Forward Lunges",
+      "Walking Lunges",
+      "Reverse Lunges",
+      "Dynamic Lunges"
+    ],
+    "short_description": "Dynamic single-leg step.",
     "muscle_targets": {
       "LEGS": {
         "_score": 1.6,
@@ -2341,20 +2426,22 @@
         }
       }
     },
-    "common_names": [
-      "Forward Lunges",
-      "Walking Lunges",
-      "Reverse Lunges",
-      "Dynamic Lunges"
-    ],
-    "short_description": "Dynamic single-leg step.",
     "sort_order": 66,
-    "is_active": true
+    "is_active": true,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "PLANK",
     "label": "Plank",
-    "upper_lower_body": "CORE",
+    "upper_lower": "CORE",
+    "common_names": [
+      "Front Holds",
+      "Planks",
+      "Core Holds",
+      "Prone Bridges"
+    ],
+    "short_description": "Static core stability holds bracing the spine.",
     "muscle_targets": {
       "CORE": {
         "_score": 1,
@@ -2372,20 +2459,23 @@
         }
       }
     },
-    "common_names": [
-      "Front Holds",
-      "Planks",
-      "Core Holds",
-      "Prone Bridges"
-    ],
-    "short_description": "Static core stability holds bracing the spine.",
     "sort_order": 67,
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "AB_CRUNCH",
     "label": "Crunch",
-    "upper_lower_body": "CORE",
+    "upper_lower": "CORE",
+    "common_names": [
+      "Sit-ups",
+      "Crunches",
+      "Curl-ups",
+      "Ab Crunches"
+    ],
+    "short_description": "Rolling or flexing the spine forward.",
     "muscle_targets": {
       "CORE": {
         "_score": 1,
@@ -2400,20 +2490,23 @@
         }
       }
     },
-    "common_names": [
-      "Sit-ups",
-      "Crunches",
-      "Curl-ups",
-      "Ab Crunches"
-    ],
-    "short_description": "Rolling or flexing the spine forward.",
     "sort_order": 68,
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "SIDE_BEND",
     "label": "Side Bend",
-    "upper_lower_body": "CORE",
+    "upper_lower": "CORE",
+    "common_names": [
+      "Oblique Crunches",
+      "Side Bends",
+      "Side Crunches",
+      "Teapots"
+    ],
+    "short_description": "Bending the torso sideways.",
     "muscle_targets": {
       "CORE": {
         "_score": 1,
@@ -2425,28 +2518,24 @@
         }
       }
     },
-    "common_names": [
-      "Oblique Crunches",
-      "Side Bends",
-      "Side Crunches",
-      "Teapots"
-    ],
-    "short_description": "Bending the torso sideways.",
     "sort_order": 69,
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "default_delta_configs": null,
+    "icon": null
   },
   {
     "id": "ROTATION",
     "label": "Rotation",
-    "upper_lower_body": "CORE",
-    "motion_planes": {
-      "default": "MID_MID",
-      "options": [
-        "HIGH_LOW",
-        "MID_MID",
-        "LOW_HIGH"
-      ]
-    },
+    "upper_lower": "CORE",
+    "common_names": [
+      "Woodchops",
+      "Twists",
+      "Russian Twists",
+      "Torso Rotations",
+      "Cable Twists"
+    ],
+    "short_description": "Twisting the torso horizontally or diagonally.",
     "muscle_targets": {
       "CORE": {
         "_score": 1,
@@ -2461,21 +2550,25 @@
         }
       }
     },
-    "common_names": [
-      "Woodchops",
-      "Twists",
-      "Russian Twists",
-      "Torso Rotations",
-      "Cable Twists"
-    ],
-    "short_description": "Twisting the torso horizontally or diagonally.",
+    "default_delta_configs": {
+      "motionPlanes": "MID_MID"
+    },
     "sort_order": 70,
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "icon": null
   },
   {
     "id": "LEG_RAISE",
     "label": "Leg Raise",
-    "upper_lower_body": "CORE",
+    "upper_lower": "CORE",
+    "common_names": [
+      "Hanging Leg Raises",
+      "Knee Tucks",
+      "Leg Lifts",
+      "Reverse Crunches"
+    ],
+    "short_description": "Lifting the legs toward the torso.",
     "muscle_targets": {
       "CORE": {
         "_score": 1.8,
@@ -2490,14 +2583,10 @@
         }
       }
     },
-    "common_names": [
-      "Hanging Leg Raises",
-      "Knee Tucks",
-      "Leg Lifts",
-      "Reverse Crunches"
-    ],
-    "short_description": "Lifting the legs toward the torso.",
     "sort_order": 71,
-    "is_active": true
+    "is_active": true,
+    "parent_id": null,
+    "default_delta_configs": null,
+    "icon": null
   }
 ]

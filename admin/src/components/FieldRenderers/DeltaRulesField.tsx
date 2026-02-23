@@ -4,8 +4,8 @@ import { api } from '../../api';
 import { sp } from '../../styles/sidePanelStyles';
 
 interface DeltaRulesFieldProps {
-  value: Record<string, Record<string, number>> | null | undefined;
-  onChange: (v: Record<string, Record<string, number>>) => void;
+  value: Record<string, Record<string, number> | "inherit"> | null | undefined;
+  onChange: (v: Record<string, Record<string, number> | "inherit">) => void;
 }
 
 interface MotionRecord {
@@ -598,18 +598,42 @@ export default function DeltaRulesField({ value, onChange }: DeltaRulesFieldProp
       api.getTable('muscles'),
     ])
       .then(([motions, muscles]) => {
-        setAllMotions((motions as MotionRecord[]) || []);
-        setAllMuscles((muscles as MuscleRecord[]) || []);
+        setAllMotions(Array.isArray(motions) ? (motions as MotionRecord[]) : []);
+        setAllMuscles(Array.isArray(muscles) ? (muscles as MuscleRecord[]) : []);
       })
       .catch(err => {
         console.error('Failed to load data:', err);
+        setAllMotions([]);
+        setAllMuscles([]);
       })
       .finally(() => {
         setLoading(false);
       });
   }, []);
 
-  const deltaRules = value || {};
+  // Normalize value to handle both object deltas and "inherit" strings
+  // Preserves "inherit" strings and normalizes object values
+  const deltaRules = useMemo(() => {
+    if (value == null) return {};
+    if (typeof value !== 'object' || Array.isArray(value)) return {};
+    const obj = value as Record<string, unknown>;
+    const out: Record<string, Record<string, number> | "inherit"> = {};
+    for (const [k, v] of Object.entries(obj)) {
+      if (v === "inherit") {
+        out[k] = "inherit";
+      } else if (v != null && typeof v === 'object' && !Array.isArray(v)) {
+        const flat: Record<string, number> = {};
+        for (const [mid, score] of Object.entries(v)) {
+          if (mid === '_score') continue;
+          const n = typeof score === 'number' ? score : Number(score);
+          if (!Number.isNaN(n)) flat[mid] = n;
+        }
+        out[k] = flat;
+      }
+    }
+    return out;
+  }, [value]);
+
   const motionEntries = Object.entries(deltaRules);
 
   const toggleExpand = (motionId: string) => {
@@ -627,6 +651,19 @@ export default function DeltaRulesField({ value, onChange }: DeltaRulesFieldProp
       delete next[motionId];
     } else {
       next[motionId] = newDelta;
+    }
+    onChange(next);
+  };
+
+  const toggleInherit = (motionId: string) => {
+    const next = { ...deltaRules };
+    const currentValue = next[motionId];
+    if (currentValue === "inherit") {
+      // Switch from inherit to empty object (will show red until user adds deltas)
+      next[motionId] = {};
+    } else {
+      // Switch to inherit
+      next[motionId] = "inherit";
     }
     onChange(next);
   };
@@ -654,11 +691,13 @@ export default function DeltaRulesField({ value, onChange }: DeltaRulesFieldProp
   // Group motions by primary muscle and sort
   const groupedMotions = useMemo(() => {
     const groups: Record<string, MotionRecord[]> = {};
-    const primaryMuscles = allMuscles.filter(m => !m.parent_ids || m.parent_ids.length === 0);
+    const muscles = Array.isArray(allMuscles) ? allMuscles : [];
+    const motions = Array.isArray(availableMotions) ? availableMotions : [];
+    const primaryMuscles = muscles.filter(m => !m.parent_ids || m.parent_ids.length === 0);
     const primaryMuscleMap = new Map(primaryMuscles.map(m => [m.id, m]));
 
     // Group motions by their primary muscles
-    availableMotions.forEach(motion => {
+    motions.forEach(motion => {
       const primaryMuscleIds = getPrimaryMusclesFromMotion(motion);
       if (primaryMuscleIds.length === 0) {
         // If no primary muscles, put in "Other" group
@@ -707,12 +746,15 @@ export default function DeltaRulesField({ value, onChange }: DeltaRulesFieldProp
           No motion delta rules configured
         </div>
       ) : (
-        motionEntries.map(([motionId, delta]) => {
+        motionEntries.map(([motionId, deltaOrInherit]) => {
           const motion = allMotions.find(m => m.id === motionId);
           const motionLabel = motion?.label || motionId;
           const isExp = expanded.has(motionId);
+          const isInherit = deltaOrInherit === "inherit";
+          const delta = isInherit ? {} : deltaOrInherit;
           const deltaCount = Object.keys(delta).length;
-          const hasNoDelta = deltaCount === 0;
+          // Only highlight red if it's an empty object (not "inherit")
+          const hasNoDelta = !isInherit && deltaCount === 0;
 
           return (
             <div key={motionId} className={`${sp.deltaRules.card} ${
@@ -734,6 +776,15 @@ export default function DeltaRulesField({ value, onChange }: DeltaRulesFieldProp
                   </button>
                   <span className={`${sp.deltaRules.label} ${hasNoDelta ? sp.deltaRules.labelAlert : sp.deltaRules.labelNormal}`}>{motionLabel}</span>
                   <span className={sp.deltaRules.motionId}>{motionId}</span>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isInherit}
+                      onChange={() => toggleInherit(motionId)}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-xs text-gray-600">Inherit</span>
+                  </label>
                   <DeltaBadge motionDelta={delta} allMuscles={allMuscles} hasNoDelta={hasNoDelta} />
                 </div>
                 <button
@@ -744,7 +795,7 @@ export default function DeltaRulesField({ value, onChange }: DeltaRulesFieldProp
                   ×
                 </button>
               </div>
-              {isExp && (
+              {isExp && !isInherit && (
                 <div className={sp.deltaRules.expandedContent}>
                   <div className={sp.deltaRules.scoresRow}>
                     <div className={sp.deltaRules.scoresColumnEditable}>
@@ -764,6 +815,13 @@ export default function DeltaRulesField({ value, onChange }: DeltaRulesFieldProp
                         deltaScores={delta}
                       />
                     </div>
+                  </div>
+                </div>
+              )}
+              {isExp && isInherit && (
+                <div className={sp.deltaRules.expandedContent}>
+                  <div className="p-4 text-sm text-gray-600 italic">
+                    This motion inherits delta rules from its parent and does not require explicit modifiers.
                   </div>
                 </div>
               )}

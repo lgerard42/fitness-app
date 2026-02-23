@@ -109,18 +109,31 @@ function coerceValue(raw: string, field: TableField): unknown {
     case 'boolean':
       return ['true', '1', 'yes', 'TRUE'].includes(raw);
     case 'string[]': {
-      // Valid JSON array
+      let arr: string[];
       try {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) return parsed.filter((item): item is string => typeof item === 'string');
-      } catch { /* not valid JSON */ }
-      // Bracket-wrapped comma-separated: [Name1, Name2]
-      let processed = raw.trim();
-      if (processed.startsWith('[') && processed.endsWith(']')) {
-        processed = processed.slice(1, -1).trim();
+        if (Array.isArray(parsed)) arr = parsed.filter((item): item is string => typeof item === 'string');
+        else arr = raw.split(',').map(s => s.trim()).filter(s => s !== '');
+      } catch {
+        let processed = raw.trim();
+        if (processed.startsWith('[') && processed.endsWith(']')) {
+          processed = processed.slice(1, -1).trim();
+        }
+        arr = processed.split(',').map(s => s.trim()).filter(s => s !== '');
       }
-      // Comma-separated string
-      return processed.split(',').map(s => s.trim()).filter(s => s !== '');
+      // muscles.upper_lower: case-insensitive, store as UPPER / LOWER
+      if (field.name === 'upper_lower') {
+        const normalized = arr
+          .map((s) => {
+            const u = String(s).trim().toUpperCase();
+            if (u === 'UPPER' || u === 'UPPER BODY') return 'UPPER';
+            if (u === 'LOWER' || u === 'LOWER BODY') return 'LOWER';
+            return null;
+          })
+          .filter((s): s is string => s !== null);
+        return [...new Set(normalized)];
+      }
+      return arr;
     }
     case 'fk[]': {
       // Valid JSON array
@@ -151,6 +164,12 @@ function coerceValue(raw: string, field: TableField): unknown {
       return {};
     }
     default:
+      // motions.upper_lower: case-insensitive, store as UPPER / LOWER
+      if (field.name === 'upper_lower') {
+        const u = raw.trim().toUpperCase();
+        if (u === 'UPPER' || u === 'LOWER') return u;
+        return raw;
+      }
       return raw;
   }
 }

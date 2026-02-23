@@ -8,13 +8,27 @@
       "In Space"
     ],
     "delta_rules": {
-      "HORIZONTAL_ROW": {
-        "CORE": 0.25,
+      "ROW_MID": {
+        "CORE_DEEP": 0.25,
         "BACK_LOWER": 0.2
       },
-      "PRESS": {
-        "CORE": 0.25,
-        "CHEST": -0.1
+      "ROW_HIGH": {
+        "CORE_DEEP": 0.25,
+        "BACK_LOWER": 0.2
+      },
+      "ROW_LOW": {
+        "CORE_DEEP": 0.25,
+        "BACK_LOWER": 0.2
+      },
+      "PRESS_OVERHEAD": {
+        "CORE_DEEP": 0.2,
+        "ABS_MIDDLE": 0.1
+      },
+      "CURL": {
+        "CORE_DEEP": 0.1
+      },
+      "EXT_OVERHEAD": {
+        "CORE_DEEP": 0.1
       }
     },
     "short_description": "No external bracing. The body must provide all stability internally. Highest core/lower back demand.",
@@ -30,13 +44,21 @@
       "One-Arm Support"
     ],
     "delta_rules": {
-      "HORIZONTAL_ROW": {
-        "CORE": -0.15,
+      "ROW_MID": {
+        "CORE_DEEP": -0.15,
+        "BACK_LOWER": -0.15
+      },
+      "ROW_HIGH": {
+        "CORE_DEEP": -0.15,
+        "BACK_LOWER": -0.15
+      },
+      "ROW_LOW": {
+        "CORE_DEEP": -0.15,
         "BACK_LOWER": -0.15
       },
       "CURL": {
         "BICEP_INNER": 0.1,
-        "SHOULDERS": -0.15
+        "DELTS_FRONT": -0.15
       }
     },
     "short_description": "One limb (hand or foot) is used for balance. Reduces spinal load but still requires rotational core stability.",
@@ -52,8 +74,16 @@
       "Two-Point Support"
     ],
     "delta_rules": {
-      "HORIZONTAL_ROW": {
-        "CORE": -0.25,
+      "ROW_MID": {
+        "CORE_DEEP": -0.25,
+        "BACK_LOWER": -0.2
+      },
+      "ROW_HIGH": {
+        "CORE_DEEP": -0.25,
+        "BACK_LOWER": -0.2
+      },
+      "ROW_LOW": {
+        "CORE_DEEP": -0.25,
         "BACK_LOWER": -0.2
       }
     },
@@ -70,15 +100,30 @@
       "Lying on Bench"
     ],
     "delta_rules": {
-      "HORIZONTAL_ROW": {
-        "CORE": -0.35,
+      "ROW_MID": {
+        "CORE_DEEP": -0.35,
         "BACK_LOWER": -0.3,
         "BACK_MID": 0.1
       },
-      "PRESS": {
-        "CHEST": 0.1,
-        "TRICEPS": 0.05,
-        "CORE": -0.2
+      "ROW_HIGH": {
+        "CORE_DEEP": -0.35,
+        "BACK_LOWER": -0.3,
+        "BACK_UPPER": 0.1
+      },
+      "ROW_LOW": {
+        "CORE_DEEP": -0.35,
+        "BACK_LOWER": -0.3,
+        "LATS_UPPER": 0.1
+      },
+      "PRESS_FLAT": {
+        "CHEST_MID": 0.1,
+        "TRICEP_OUTER": 0.05,
+        "CORE_DEEP": -0.2
+      },
+      "PRESS_INCLINE": {
+        "CHEST_UPPER": 0.1,
+        "TRICEP_OUTER": 0.05,
+        "CORE_DEEP": -0.2
       }
     },
     "short_description": "The torso is fully supported by a pad or bench. Maximum isolation of the target muscles; core and lower back are completely offloaded.",
@@ -97,11 +142,15 @@
       "CURL": {
         "BICEP_INNER": 0.15,
         "BRACHIALIS": 0.1,
-        "SHOULDERS": -0.25
+        "DELTS_FRONT": -0.25
       },
-      "EXTENSION_ARM": {
-        "TRICEPS": 0.1,
-        "SHOULDERS": -0.15
+      "EXT_PUSHDOWN": {
+        "TRICEP_OUTER": 0.1,
+        "DELTS_FRONT": -0.15
+      },
+      "EXT_OVERHEAD": {
+        "TRICEP_INNER": 0.1,
+        "DELTS_FRONT": -0.15
       }
     },
     "short_description": "The elbows are pinned against a fixed surface. Eliminates all shoulder cheating and isolates the upper arm.",
@@ -117,9 +166,13 @@
       "Seated with Pads"
     ],
     "delta_rules": {
-      "VERTICAL_PULL": {
-        "LATS": 0.15,
-        "CORE": -0.1
+      "PULL_FRONT": {
+        "LATS_LOWER": 0.15,
+        "CORE_DEEP": -0.1
+      },
+      "PULL_BEHIND": {
+        "BACK_UPPER": 0.15,
+        "CORE_DEEP": -0.1
       }
     },
     "short_description": "The lower body is mechanically locked down (like pulldown pads). Allows for force production exceeding body weight.",

@@ -9,10 +9,12 @@ interface SidebarProps {
 
 const groupIcons: Record<string, string> = {
   'Exercise Setup': '🏋️',
-  Muscles: '💪',
-  Equipment: '🔧',
-  Motions: '🔄',
-  'Grips & Stance': '✊',
+  'Muscles & Motions': '💪',
+  'Trajectory & Posture': '📐',
+  'Upper Body Biomechanics': '🤲',
+  'Lower Body Mechanics': '🦵',
+  'Execution Variables': '⚙️',
+  'Equipment': '🔧',
 };
 
 export default function Sidebar({ tables, groups }: SidebarProps) {
@@ -24,7 +26,7 @@ export default function Sidebar({ tables, groups }: SidebarProps) {
         </NavLink>
       </div>
 
-      <nav className="flex-1 p-2 space-y-1">
+      <nav className="flex-1 p-2 pb-[30px] space-y-1">
         <NavLink
           to="/"
           end
@@ -42,6 +44,15 @@ export default function Sidebar({ tables, groups }: SidebarProps) {
           }
         >
           Filter Matrix
+        </NavLink>
+
+        <NavLink
+          to="/motion-delta-matrix"
+          className={({ isActive }) =>
+            `block px-3 py-2 rounded text-sm ${isActive ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-800'}`
+          }
+        >
+          Motion Delta Matrix
         </NavLink>
 
         <NavLink
