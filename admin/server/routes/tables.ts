@@ -7,19 +7,19 @@ import { readTable, writeTable, tableStats } from '../fileOps.js';
 
 const router = Router();
 
-/* ──────── Motions: migrate motion_planes → default_delta_configs ──────── */
+/* ──────── Motions: migrate motion_paths → default_delta_configs ──────── */
 
-/** Migrate a single motion row: motion_planes → default_delta_configs, remove motion_planes */
+/** Migrate a single motion row: motion_paths → default_delta_configs, remove motion_paths */
 function migrateMotionsRow(row: Record<string, unknown>): void {
   if (!row || typeof row !== 'object') return;
-  const mp = row.motion_planes;
+  const mp = row.motion_paths;
   if (mp && typeof mp === 'object' && !Array.isArray(mp) && 'default' in mp) {
     const def = (mp as Record<string, unknown>).default;
     const ddc = (row.default_delta_configs && typeof row.default_delta_configs === 'object' && !Array.isArray(row.default_delta_configs))
       ? { ...(row.default_delta_configs as Record<string, unknown>) } : {};
-    if (typeof def === 'string') ddc.motionPlanes = def;
+    if (typeof def === 'string') ddc.motionPaths = def;
     row.default_delta_configs = ddc;
-    delete row.motion_planes;
+    delete row.motion_paths;
   }
 }
 
@@ -30,10 +30,10 @@ function migrateMotionsTable(data: unknown): Record<string, unknown>[] {
   return data as Record<string, unknown>[];
 }
 
-/** When a motion is deleted, remove its id from all motion planes' delta_rules */
+/** When a motion is deleted, remove its id from all motion paths' delta_rules */
 function onMotionDeleted(motionId: string) {
   try {
-    const planes = readTable('motionPlanes.json') as Record<string, unknown>[];
+    const planes = readTable('motionPaths.json') as Record<string, unknown>[];
     if (!Array.isArray(planes)) return;
     let changed = false;
     for (const plane of planes) {
@@ -44,12 +44,12 @@ function onMotionDeleted(motionId: string) {
         changed = true;
       }
     }
-    if (changed) writeTable('motionPlanes.json', planes);
+    if (changed) writeTable('motionPaths.json', planes);
   } catch { /* ignore */ }
 }
 
 function postWriteSync(_tableKey: string) {
-  /* Motion/plane relationship is now defined only by motionPlanes.delta_rules; no bidirectional sync */
+  /* Motion/plane relationship is now defined only by motionPaths.delta_rules; no bidirectional sync */
 }
 
 /** GET /api/tables — list all registered tables with metadata */
@@ -362,7 +362,7 @@ router.post('/bulk-matrix', (req: Request, res: Response) => {
   }
 });
 
-/** POST /api/tables/:key/sync — trigger bidirectional sync for motion/motionPlanes */
+/** POST /api/tables/:key/sync — trigger bidirectional sync for motion/motionPaths */
 router.post('/:key/sync', (req: Request, res: Response) => {
   const schema = getSchema(req.params.key);
   if (!schema) {

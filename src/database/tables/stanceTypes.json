@@ -8,7 +8,7 @@
       "Symmetrical"
     ],
     "delta_rules": {},
-    "short_description": "Standard stance where both legs bear the load equally. Baseline score.",
+    "short_description": "{}",
     "sort_order": 0,
     "icon": null,
     "is_active": true
@@ -21,32 +21,8 @@
       "Kickstand",
       "Offset Stance"
     ],
-    "delta_rules": {
-      "HINGE_STD": {
-        "GLUTES": 0.15,
-        "HAMSTRINGS": 0.1,
-        "BACK_LOWER": -0.1
-      },
-      "HINGE_STRAIGHT": {
-        "GLUTES": 0.15,
-        "HAMSTRINGS": 0.1,
-        "BACK_LOWER": -0.1
-      },
-      "SQUAT_REGULAR": {
-        "GLUTES": 0.1,
-        "QUADS": 0.05,
-        "BACK_LOWER": -0.05
-      },
-      "SQUAT_FRONT": {
-        "GLUTES": 0.1,
-        "QUADS": 0.05
-      },
-      "THRUST": {
-        "GLUTES": 0.15,
-        "HAMSTRINGS": 0.05
-      }
-    },
-    "short_description": "One foot is slightly behind the other for balance, placing ~70-80% of the load on the front leg.",
+    "delta_rules": {},
+    "short_description": "{SQUAT_REGULAR:{GLUTES:0.15,HAMSTRINGS:0.1},HINGE_STD:{GLUTES:0.15,HAMSTRINGS:0.1}}",
     "sort_order": 1,
     "icon": null,
     "is_active": true
@@ -59,50 +35,37 @@
       "One-Legged",
       "Pistol Stance"
     ],
-    "delta_rules": {
-      "HINGE_STD": {
-        "GLUTE_MEDIUS": 0.3,
-        "GLUTES": 0.15,
-        "CORE": 0.1,
-        "BACK_LOWER": -0.15
-      },
-      "HINGE_STRAIGHT": {
-        "GLUTE_MEDIUS": 0.3,
-        "GLUTES": 0.15,
-        "CORE": 0.1,
-        "BACK_LOWER": -0.15
-      },
-      "SQUAT_REGULAR": {
-        "GLUTE_MEDIUS": 0.25,
-        "GLUTES": 0.15,
-        "CORE": 0.1,
-        "BACK_LOWER": -0.1
-      },
-      "SQUAT_FRONT": {
-        "GLUTE_MEDIUS": 0.25,
-        "GLUTES": 0.15,
-        "CORE": 0.1
-      },
-      "CALF_RAISE_STRAIGHT": {
-        "CORE": 0.1
-      },
-      "CALF_RAISE_BENT": {
-        "CORE": 0.1
-      },
-      "THRUST": {
-        "GLUTE_MEDIUS": 0.2,
-        "GLUTES": 0.2,
-        "CORE": 0.1
-      },
-      "LEG_CURL": {
-        "CORE": 0.1
-      },
-      "LEG_EXTENSION": {
-        "CORE": 0.1
-      }
-    },
-    "short_description": "Only one foot is in contact with the ground/platform. Maximizes stability demand.",
+    "delta_rules": {},
+    "short_description": "{SQUAT_REGULAR:{CORE_DEEP:0.25,HIP_ABDUCTORS:0.2,CALVES:0.1},HINGE_STD:{CORE_DEEP:0.2,HIP_ABDUCTORS:0.2}}",
+    "sort_order": 4,
+    "icon": null,
+    "is_active": true
+  },
+  {
+    "id": "STAGGERED_RFE",
+    "label": "Rear-Foot Elevated",
+    "common_names": [
+      "Bulgarian",
+      "Back Foot Up",
+      "RFE"
+    ],
+    "short_description": "{LUNGE_STATIC:{QUADS:0.2,GLUTES:0.2,CORE_DEEP:0.15,RECTUS_FEMORIS:0.15}}",
+    "delta_rules": {},
     "sort_order": 2,
+    "icon": null,
+    "is_active": true
+  },
+  {
+    "id": "STAGGERED_FFE",
+    "label": "Front-Foot Elevated",
+    "common_names": [
+      "Deficit Lunge",
+      "Front Foot Up",
+      "FFE"
+    ],
+    "short_description": "{LUNGE_STATIC:{GLUTES:0.25,HAMSTRINGS:0.15,CORE_DEEP:0.1}}",
+    "delta_rules": {},
+    "sort_order": 3,
     "icon": null,
     "is_active": true
   }

@@ -12,7 +12,7 @@ import MuscleTargetTree from './FieldRenderers/MuscleTargetTree';
 import ExerciseInputPermissionsField from './FieldRenderers/ExerciseInputPermissionsField';
 import MuscleHierarchyField from './FieldRenderers/MuscleHierarchyField';
 import MotionConfigTree from './FieldRenderers/MotionConfigTree';
-import MotionPlanesField from './FieldRenderers/MotionPlanesField';
+import MotionPathsField from './FieldRenderers/MotionPathsField';
 import DeltaRulesField from './FieldRenderers/DeltaRulesField';
 import UpperLowerToggle from './FieldRenderers/UpperLowerToggle';
 import UpperLowerToggleSimple from './FieldRenderers/UpperLowerToggleSimple';
@@ -757,7 +757,7 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
                 }
                 
                 // For MOTION PLANES table: reorder fields (short_description after common_names)
-                if (schema.key === 'motionPlanes') {
+                if (schema.key === 'motionPaths') {
                   const orderedFields: typeof schema.fields = [];
                   const idField = allFields.find(f => f.name === 'id' || f.name === schema.idField);
                   const commonNamesField = allFields.find(f => f.name === 'common_names');

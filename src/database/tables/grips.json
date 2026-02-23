@@ -138,7 +138,8 @@
       },
       "ROW_MID": {
         "LATS_UPPER": 0.1
-      }
+      },
+      "EXT_PUSHDOWN": {}
     },
     "short_description": "Slightly angled inward from pronated. Reduces wrist strain.",
     "sort_order": 3,
@@ -165,7 +166,8 @@
       "PULL_FRONT": {
         "LATS_LOWER": 0.1,
         "BICEP_INNER": 0.1
-      }
+      },
+      "EXT_PUSHDOWN": {}
     },
     "short_description": "Slightly angled inward from supinated. The standard EZ-bar grip.",
     "sort_order": 4,

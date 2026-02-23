@@ -11,7 +11,7 @@ const groupIcons: Record<string, string> = {
   'Exercise Setup': '🏋️',
   'Muscles & Motions': '💪',
   'Trajectory & Posture': '📐',
-  'Upper Body Biomechanics': '🤲',
+  'Upper Body Mechanics': '🤲',
   'Lower Body Mechanics': '🦵',
   'Execution Variables': '⚙️',
   'Equipment': '🔧',

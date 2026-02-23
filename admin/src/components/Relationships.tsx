@@ -66,12 +66,12 @@ export default function Relationships({
     if (tableKey === 'motions') {
       relationships.push(
         { label: 'Motions (self-referencing hierarchy)', tableKey: 'motions' },
-        { label: 'Motion Planes', tableKey: 'motionPlanes' }
+        { label: 'Motion Paths', tableKey: 'motionPaths' }
       );
     }
 
-    // Motion Planes: show relationships to Motions
-    if (tableKey === 'motionPlanes') {
+    // Motion Paths: show relationships to Motions
+    if (tableKey === 'motionPaths') {
       relationships.push(
         { label: 'Motions', tableKey: 'motions' }
       );

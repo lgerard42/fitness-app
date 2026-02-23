@@ -149,8 +149,8 @@ export const link = {
   small: 'text-xs text-blue-600 hover:underline text-left',
 };
 
-/* ── Motion plane card components ─────────────────────────── */
-export const motionPlane = {
+/* ── Motion path card components ─────────────────────────── */
+export const motionPath = {
   card: 'border rounded-lg overflow-hidden',
   cardNormal: 'bg-white border-gray-200',
   cardAlert: 'bg-red-50 border-red-300',
@@ -405,7 +405,7 @@ export const sp = {
   emptyState,
   loading,
   link,
-  motionPlane,
+  motionPath,
   deltaRules,
   muscleHierarchy,
   motionConfig,

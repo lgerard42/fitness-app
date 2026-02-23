@@ -4,7 +4,7 @@ import { api } from '../../api';
 import { sp } from '../../styles/sidePanelStyles';
 
 
-interface MotionPlane {
+interface MotionPath {
   id: string;
   label: string;
   short_description?: string;
@@ -17,7 +17,7 @@ interface MotionRecord {
   id: string;
   label: string;
   parent_id?: string | null;
-  default_delta_configs?: { motionPlanes?: string };
+  default_delta_configs?: { motionPaths?: string };
   [key: string]: unknown;
 }
 
@@ -27,10 +27,10 @@ interface MuscleRecord {
   parent_ids: string[];
 }
 
-/** Stored shape: { motionPlanes?: string } (table key → default id). Options derived from motionPlanes.delta_rules. */
-export type DefaultDeltaConfigs = { motionPlanes?: string; [key: string]: unknown };
+/** Stored shape: { motionPaths?: string } (table key → default id). Options derived from motionPaths.delta_rules. */
+export type DefaultDeltaConfigs = { motionPaths?: string; [key: string]: unknown };
 
-interface MotionPlanesFieldProps {
+interface MotionPathsFieldProps {
   value: DefaultDeltaConfigs | Record<string, unknown> | null | undefined;
   onChange: (v: DefaultDeltaConfigs) => void;
   motionId?: string;
@@ -40,7 +40,7 @@ interface MotionPlanesFieldProps {
 function getDefaultFromValue(raw: unknown): string {
   if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
     const obj = raw as Record<string, unknown>;
-    const v = obj.motionPlanes;
+    const v = obj.motionPaths;
     return typeof v === 'string' ? v : '';
   }
   return '';
@@ -572,13 +572,13 @@ function DeltaBadge({ motionDelta, allMuscles, hasNoDelta }: {
     <>
       <div
         ref={ref}
-        className={`${sp.motionPlane.deltaBadge} ${
-          hasNoDelta ? sp.motionPlane.deltaBadgeAlert : sp.motionPlane.deltaBadgeNormal
+        className={`${sp.motionPath.deltaBadge} ${
+          hasNoDelta ? sp.motionPath.deltaBadgeAlert : sp.motionPath.deltaBadgeNormal
         }`}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={() => setShowTooltip(false)}
       >
-        <span className={sp.motionPlane.deltaBadgeLabel}>Muscle Modifiers (Deltas)</span>
+        <span className={sp.motionPath.deltaBadgeLabel}>Muscle Modifiers (Deltas)</span>
       </div>
       {showTooltip && createPortal(
         <div
@@ -612,8 +612,8 @@ function DeltaBadge({ motionDelta, allMuscles, hasNoDelta }: {
 
 /* ──────────────────── Main Component ──────────────────── */
 
-export default function MotionPlanesField({ value, onChange, motionId, onOpenRow }: MotionPlanesFieldProps) {
-  const [planes, setPlanes] = useState<MotionPlane[]>([]);
+export default function MotionPathsField({ value, onChange, motionId, onOpenRow }: MotionPathsFieldProps) {
+  const [planes, setPlanes] = useState<MotionPath[]>([]);
   const [allMotions, setAllMotions] = useState<MotionRecord[]>([]);
   const [allMuscles, setAllMuscles] = useState<MuscleRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -626,11 +626,11 @@ export default function MotionPlanesField({ value, onChange, motionId, onOpenRow
   const loadData = useCallback(async () => {
     try {
       const [planesData, motionsData, musclesData] = await Promise.all([
-        api.getTable('motionPlanes'),
+        api.getTable('motionPaths'),
         api.getTable('motions'),
         api.getTable('muscles'),
       ]);
-      setPlanes((planesData as MotionPlane[]).filter(p => p.is_active !== false).sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
+      setPlanes((planesData as MotionPath[]).filter(p => p.is_active !== false).sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
       setAllMotions(motionsData as MotionRecord[]);
       setAllMuscles((musclesData as { id: string; label: string; parent_ids?: string[] }[]).map(m => ({
         id: m.id,
@@ -647,7 +647,7 @@ export default function MotionPlanesField({ value, onChange, motionId, onOpenRow
   useEffect(() => { loadData(); }, [loadData]);
 
   const defaultPlaneId = useMemo(() => getDefaultFromValue(value), [value]);
-  /** Options = plane IDs that have this motion in their delta_rules (source of truth on motionPlanes table) */
+  /** Options = path IDs that have this motion in their delta_rules (source of truth on motionPaths table) */
   const options = useMemo(() => {
     if (!motionId) return [];
     return planes
@@ -734,13 +734,13 @@ export default function MotionPlanesField({ value, onChange, motionId, onOpenRow
     if (!plane || !motionId) return;
     const newRules = { ...(plane.delta_rules || {}), [motionId]: plane.delta_rules?.[motionId] ?? {} };
     try {
-      await api.updateRow('motionPlanes', planeId, { delta_rules: newRules });
+      await api.updateRow('motionPaths', planeId, { delta_rules: newRules });
       setPlanes(prev => prev.map(p => p.id === planeId ? { ...p, delta_rules: newRules } : p));
       const nextDefault = defaultPlaneId || planeId;
-      onChange({ ...(value as DefaultDeltaConfigs) || {}, motionPlanes: nextDefault });
+      onChange({ ...(value as DefaultDeltaConfigs) || {}, motionPaths: nextDefault });
       await loadData();
     } catch (err) {
-      console.error('Failed to add plane to motion:', err);
+      console.error('Failed to add path to motion:', err);
     }
   }, [planes, motionId, defaultPlaneId, value, onChange, loadData]);
 
@@ -750,18 +750,18 @@ export default function MotionPlanesField({ value, onChange, motionId, onOpenRow
     const newRules = { ...(plane.delta_rules || {}) };
     delete newRules[motionId];
     try {
-      await api.updateRow('motionPlanes', planeId, { delta_rules: newRules });
+      await api.updateRow('motionPaths', planeId, { delta_rules: newRules });
       setPlanes(prev => prev.map(p => p.id === planeId ? { ...p, delta_rules: newRules } : p));
       const nextDefault = defaultPlaneId === planeId ? (options.filter(id => id !== planeId)[0] ?? '') : defaultPlaneId;
-      onChange({ ...(value as DefaultDeltaConfigs) || {}, motionPlanes: nextDefault });
+      onChange({ ...(value as DefaultDeltaConfigs) || {}, motionPaths: nextDefault });
       await loadData();
     } catch (err) {
-      console.error('Failed to remove plane from motion:', err);
+      console.error('Failed to remove path from motion:', err);
     }
   }, [planes, motionId, defaultPlaneId, options, value, onChange, loadData]);
 
   const setDefault = useCallback((planeId: string) => {
-    onChange({ ...((value as DefaultDeltaConfigs) || {}), motionPlanes: planeId });
+    onChange({ ...((value as DefaultDeltaConfigs) || {}), motionPaths: planeId });
   }, [value, onChange]);
 
   const saveDelta = useCallback(async (planeId: string, flat: Record<string, number>) => {
@@ -774,7 +774,7 @@ export default function MotionPlanesField({ value, onChange, motionId, onOpenRow
       delete newDeltaRules[motionId];
     }
     try {
-      await api.updateRow('motionPlanes', planeId, { delta_rules: newDeltaRules });
+      await api.updateRow('motionPaths', planeId, { delta_rules: newDeltaRules });
       setPlanes(prev => prev.map(p => p.id === planeId ? { ...p, delta_rules: newDeltaRules } : p));
     } catch (err) {
       console.error('Failed to save delta_rules:', err);
@@ -794,18 +794,18 @@ export default function MotionPlanesField({ value, onChange, motionId, onOpenRow
       const newRules = { ...(plane.delta_rules || {}) };
       if (fromMotionId) delete newRules[fromMotionId];
       newRules[toMotionId] = newRules[toMotionId] ?? {};
-      await api.updateRow('motionPlanes', planeId, { delta_rules: newRules });
+      await api.updateRow('motionPaths', planeId, { delta_rules: newRules });
       setPlanes(prev => prev.map(p => p.id === planeId ? { ...p, delta_rules: newRules } : p));
       if (toMotionId === motionId) {
         const nextDefault = defaultPlaneId || planeId;
-        onChange({ ...((value as DefaultDeltaConfigs) || {}), motionPlanes: nextDefault });
+        onChange({ ...((value as DefaultDeltaConfigs) || {}), motionPaths: nextDefault });
       } else if (fromMotionId === motionId) {
         const nextDefault = defaultPlaneId === planeId ? (options.filter(id => id !== planeId)[0] ?? '') : defaultPlaneId;
-        onChange({ ...((value as DefaultDeltaConfigs) || {}), motionPlanes: nextDefault });
+        onChange({ ...((value as DefaultDeltaConfigs) || {}), motionPaths: nextDefault });
       }
       await loadData();
     } catch (err) {
-      console.error('Failed to reassign plane:', err);
+      console.error('Failed to reassign path:', err);
     }
   }, [planes, motionId, defaultPlaneId, options, value, onChange, loadData]);
 
@@ -819,18 +819,18 @@ export default function MotionPlanesField({ value, onChange, motionId, onOpenRow
   };
 
   if (loading) {
-    return <div className={sp.loading}>Loading motion planes...</div>;
+    return <div className={sp.loading}>Loading motion paths...</div>;
   }
 
   const selectedPlanes = current.options
     .map(id => planes.find(p => p.id === id))
-    .filter((p): p is MotionPlane => p != null);
+    .filter((p): p is MotionPath => p != null);
 
   return (
     <div className="space-y-1">
       {selectedPlanes.length === 0 ? (
         <div className={sp.emptyState.box}>
-          No motion planes assigned
+          No motion paths assigned
         </div>
       ) : (
         selectedPlanes.map(plane => {
@@ -842,21 +842,21 @@ export default function MotionPlanesField({ value, onChange, motionId, onOpenRow
           const hasNoDelta = deltaCount === 0;
 
           return (
-            <div key={plane.id} className={`${sp.motionPlane.card} ${
-              hasNoDelta ? sp.motionPlane.cardAlert : sp.motionPlane.cardNormal
+            <div key={plane.id} className={`${sp.motionPath.card} ${
+              hasNoDelta ? sp.motionPath.cardAlert : sp.motionPath.cardNormal
             }`}>
-              <div className={`${sp.motionPlane.header} ${
-                isExp ? sp.motionPlane.headerExpanded : ''
+              <div className={`${sp.motionPath.header} ${
+                isExp ? sp.motionPath.headerExpanded : ''
               } ${hasNoDelta
-                ? sp.motionPlane.headerAlert
-                : sp.motionPlane.headerNormal
+                ? sp.motionPath.headerAlert
+                : sp.motionPath.headerNormal
               }`}>
                 <div className="flex items-center gap-2 flex-1 min-w-0">
                   <button type="button" onClick={() => toggle(cardKey)}
-                    className={sp.motionPlane.toggle}>
+                    className={sp.motionPath.toggle}>
                     {isExp ? '▼' : '▶'}
                   </button>
-                  <span className={`${sp.motionPlane.label} ${hasNoDelta ? sp.motionPlane.labelAlert : sp.motionPlane.labelNormal}`}>{plane.label}</span>
+                  <span className={`${sp.motionPath.label} ${hasNoDelta ? sp.motionPath.labelAlert : sp.motionPath.labelNormal}`}>{plane.label}</span>
                   <span className={`${sp.meta.id} flex-shrink-0`}>{plane.id}</span>
                   {isDefault ? (
                     <span className={sp.badge.info}>Default</span>
@@ -869,11 +869,11 @@ export default function MotionPlanesField({ value, onChange, motionId, onOpenRow
                   <DeltaBadge motionDelta={motionDelta} allMuscles={allMuscles} hasNoDelta={hasNoDelta} />
                 </div>
                 <button type="button" onClick={() => removePlane(plane.id)}
-                  className={sp.motionPlane.removeBtn}>×</button>
+                  className={sp.motionPath.removeBtn}>×</button>
               </div>
 
               {isExp && motionId && (
-                <div className={sp.motionPlane.expandedContent}>
+                <div className={sp.motionPath.expandedContent}>
                   <div className={sp.deltaRules.scoresRow}>
                     <div className={sp.deltaRules.scoresColumnEditable}>
                       <div className={sp.deltaRules.sectionLabel}>Delta Modifiers</div>
@@ -903,22 +903,22 @@ export default function MotionPlanesField({ value, onChange, motionId, onOpenRow
       {allFamilyPlaneInfo.length > 0 && (
         <div
           ref={familyRef}
-          className={sp.motionPlane.familyContainer}
+          className={sp.motionPath.familyContainer}
           onMouseEnter={handleFamilyMouseEnter}
           onMouseLeave={() => setFamilyTooltip(false)}
         >
           <div
-            className={`${sp.motionPlane.familyHeader} ${familyExpanded ? 'border-b border-amber-200' : ''}`}
+            className={`${sp.motionPath.familyHeader} ${familyExpanded ? 'border-b border-amber-200' : ''}`}
             onClick={() => { setFamilyExpanded(e => !e); setFamilyTooltip(false); }}
           >
-            <span className={sp.motionPlane.familyToggle}>{familyExpanded ? '▼' : '▶'}</span>
-            <span className={sp.motionPlane.familyTitle}>
-              Motion planes in this family
+            <span className={sp.motionPath.familyToggle}>{familyExpanded ? '▼' : '▶'}</span>
+            <span className={sp.motionPath.familyTitle}>
+              Motion paths in this family
             </span>
-            <span className={sp.motionPlane.familyCount}>{allFamilyPlaneInfo.length}</span>
+            <span className={sp.motionPath.familyCount}>{allFamilyPlaneInfo.length}</span>
           </div>
           {familyExpanded && (
-            <div className={sp.motionPlane.familyBody}>
+            <div className={sp.motionPath.familyBody}>
               {allFamilyPlaneInfo.map(info => {
                 const isAssigned = info.assignedToMotionId !== null;
                 const assignableMotions = familyMotions.filter(
@@ -926,8 +926,8 @@ export default function MotionPlanesField({ value, onChange, motionId, onOpenRow
                 );
 
                 return (
-                  <div key={info.planeId} className={sp.motionPlane.familyRow}>
-                    <span className={isAssigned ? sp.motionPlane.familyPlaneLabel : sp.motionPlane.familyPlaneDisabled}>
+                  <div key={info.planeId} className={sp.motionPath.familyRow}>
+                    <span className={isAssigned ? sp.motionPath.familyPlaneLabel : sp.motionPath.familyPlaneDisabled}>
                       {info.planeLabel}
                     </span>
                     {isAssigned ? (
@@ -935,7 +935,7 @@ export default function MotionPlanesField({ value, onChange, motionId, onOpenRow
                         <span className="text-gray-400">→</span>
                         {onOpenRow ? (
                           <button type="button" onClick={() => handleOpenMotion(info.assignedToMotionId!)}
-                            className={sp.motionPlane.familyLink}>
+                            className={sp.motionPath.familyLink}>
                             {info.assignedToMotionLabel}
                           </button>
                         ) : (
@@ -953,7 +953,7 @@ export default function MotionPlanesField({ value, onChange, motionId, onOpenRow
                           }
                           e.target.value = '';
                         }}
-                        className={sp.motionPlane.familyReassign}
+                        className={sp.motionPath.familyReassign}
                         defaultValue=""
                       >
                         <option value="">{isAssigned ? 'Move to...' : 'Assign to...'}</option>
@@ -972,7 +972,7 @@ export default function MotionPlanesField({ value, onChange, motionId, onOpenRow
               className={sp.tooltip.container}
               style={{ top: `${familyTooltipPos.top}px`, left: `${familyTooltipPos.left}px`, maxWidth: '340px' }}
             >
-              <div className={`${sp.tooltip.header} text-amber-300`}>Family Plane Overview:</div>
+              <div className={`${sp.tooltip.header} text-amber-300`}>Family Path Overview:</div>
               <div className="space-y-0.5">
                 {allFamilyPlaneInfo.map(info => (
                   <div key={info.planeId} className="flex gap-2">

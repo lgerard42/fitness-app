@@ -202,9 +202,9 @@ async function createTables(db: SQLite.SQLiteDatabase) {
     );
   `);
 
-  // MOTION_PLANES table
+  // MOTION_PATHS table
   await db.execAsync(`
-    CREATE TABLE IF NOT EXISTS motion_planes (
+    CREATE TABLE IF NOT EXISTS motion_paths (
       id TEXT PRIMARY KEY,
       label TEXT NOT NULL,
       common_names TEXT,
@@ -224,7 +224,7 @@ async function createTables(db: SQLite.SQLiteDatabase) {
       label TEXT NOT NULL,
       upper_lower_body TEXT,
       muscle_targets TEXT DEFAULT '{}',
-      motion_planes TEXT DEFAULT '{}',
+      motion_paths TEXT DEFAULT '{}',
       common_names TEXT,
       short_description TEXT,
       sort_order INTEGER DEFAULT 0,
@@ -533,25 +533,25 @@ async function migrateToV10(db: SQLite.SQLiteDatabase) {
   }
 
   try {
-    // Add motion_variation_ids and motion_plane_ids to primary_motions
+    // Add motion_variation_ids and motion_path_ids to primary_motions
     const pmInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(primary_motions)`);
     if (!pmInfo.some(col => col.name === 'motion_variation_ids')) {
       await db.execAsync(`ALTER TABLE primary_motions ADD COLUMN motion_variation_ids TEXT DEFAULT '[]'`);
     }
-    if (!pmInfo.some(col => col.name === 'motion_plane_ids')) {
-      await db.execAsync(`ALTER TABLE primary_motions ADD COLUMN motion_plane_ids TEXT DEFAULT '[]'`);
+    if (!pmInfo.some(col => col.name === 'motion_path_ids')) {
+      await db.execAsync(`ALTER TABLE primary_motions ADD COLUMN motion_path_ids TEXT DEFAULT '[]'`);
     }
 
-    // Add motion_variation_ids and primary_motion_ids to motion_planes
-    const mpInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(motion_planes)`);
+    // Add motion_variation_ids and primary_motion_ids to motion_paths
+    const mpInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(motion_paths)`);
     if (!mpInfo.some(col => col.name === 'motion_variation_ids')) {
-      await db.execAsync(`ALTER TABLE motion_planes ADD COLUMN motion_variation_ids TEXT DEFAULT '[]'`);
+      await db.execAsync(`ALTER TABLE motion_paths ADD COLUMN motion_variation_ids TEXT DEFAULT '[]'`);
     }
     if (!mpInfo.some(col => col.name === 'primary_motion_ids')) {
-      await db.execAsync(`ALTER TABLE motion_planes ADD COLUMN primary_motion_ids TEXT DEFAULT '[]'`);
+      await db.execAsync(`ALTER TABLE motion_paths ADD COLUMN primary_motion_ids TEXT DEFAULT '[]'`);
     }
 
-    // Populate primary_motions.motion_variation_ids and motion_plane_ids
+    // Populate primary_motions.motion_variation_ids and motion_path_ids
     const pmVarMap: Record<string, string[]> = {};
     const pmPlaneMap: Record<string, Set<string>> = {};
     for (const v of primaryMotionVariations) {
@@ -559,22 +559,22 @@ async function migrateToV10(db: SQLite.SQLiteDatabase) {
       if (!pmVarMap[pmKey]) pmVarMap[pmKey] = [];
       pmVarMap[pmKey].push(String(v.id));
       if (!pmPlaneMap[pmKey]) pmPlaneMap[pmKey] = new Set();
-      const planes = Array.isArray(v.motion_plane_ids) ? (v.motion_plane_ids as string[]) : [];
+      const planes = Array.isArray(v.motion_path_ids) ? (v.motion_path_ids as string[]) : [];
       planes.forEach(p => pmPlaneMap[pmKey].add(p));
     }
     for (const [pmKey, varIds] of Object.entries(pmVarMap)) {
       const planeIds = [...(pmPlaneMap[pmKey] || [])];
       await db.runAsync(
-        `UPDATE primary_motions SET motion_variation_ids = ?, motion_plane_ids = ? WHERE id = ?`,
+        `UPDATE primary_motions SET motion_variation_ids = ?, motion_path_ids = ? WHERE id = ?`,
         JSON.stringify(varIds), JSON.stringify(planeIds), pmKey
       );
     }
 
-    // Populate motion_planes.motion_variation_ids and primary_motion_ids
+    // Populate motion_paths.motion_variation_ids and primary_motion_ids
     const mpVarMap: Record<string, string[]> = {};
     const mpPmMap: Record<string, Set<string>> = {};
     for (const v of primaryMotionVariations) {
-      const planes = Array.isArray(v.motion_plane_ids) ? (v.motion_plane_ids as string[]) : [];
+      const planes = Array.isArray(v.motion_path_ids) ? (v.motion_path_ids as string[]) : [];
       for (const planeId of planes) {
         if (!mpVarMap[planeId]) mpVarMap[planeId] = [];
         mpVarMap[planeId].push(String(v.id));
@@ -585,7 +585,7 @@ async function migrateToV10(db: SQLite.SQLiteDatabase) {
     for (const [planeId, varIds] of Object.entries(mpVarMap)) {
       const pmIds = [...(mpPmMap[planeId] || [])];
       await db.runAsync(
-        `UPDATE motion_planes SET motion_variation_ids = ?, primary_motion_ids = ? WHERE id = ?`,
+        `UPDATE motion_paths SET motion_variation_ids = ?, primary_motion_ids = ? WHERE id = ?`,
         JSON.stringify(varIds), JSON.stringify(pmIds), planeId
       );
     }
@@ -595,14 +595,14 @@ async function migrateToV10(db: SQLite.SQLiteDatabase) {
 }
 
 async function migrateToV11(db: SQLite.SQLiteDatabase) {
-  // V11 adds muscle_targets column to motion_planes
+  // V11 adds muscle_targets column to motion_paths
   try {
-    const mpInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(motion_planes)`);
+    const mpInfo = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(motion_paths)`);
     if (!mpInfo.some(col => col.name === 'muscle_targets')) {
-      await db.execAsync(`ALTER TABLE motion_planes ADD COLUMN muscle_targets TEXT DEFAULT '{}'`);
+      await db.execAsync(`ALTER TABLE motion_paths ADD COLUMN muscle_targets TEXT DEFAULT '{}'`);
     }
   } catch (e) {
-    console.warn('migrateToV11: failed to add muscle_targets to motion_planes', e);
+    console.warn('migrateToV11: failed to add muscle_targets to motion_paths', e);
   }
 }
 
@@ -682,12 +682,12 @@ async function migrateToV16(db: SQLite.SQLiteDatabase) {
       }
     };
 
-    await addCol('primary_motions', 'motion_planes', '{}');
+    await addCol('primary_motions', 'motion_paths', '{}');
     await addCol('primary_motions', 'icon');
-    await addCol('primary_motion_variations', 'motion_planes', '{}');
+    await addCol('primary_motion_variations', 'motion_paths', '{}');
     await addCol('primary_motion_variations', 'primary_motion_key');
     await addCol('primary_motion_variations', 'icon');
-    await addCol('motion_planes', 'icon');
+    await addCol('motion_paths', 'icon');
     await addCol('grip_types', 'grip_category');
     await addCol('grip_types', 'delta_rules', '{}');
     await addCol('grip_types', 'default_variation');
@@ -943,9 +943,9 @@ async function migrateToV20(db: SQLite.SQLiteDatabase) {
     const str = (v: unknown) => (v == null ? '' : String(v));
     const num = (v: unknown, def: number) => (v == null ? def : Number(v));
 
-    // Recreate motion_planes with new schema (drop muscle_targets, add delta_rules and icon)
+    // Recreate motion_paths with new schema (drop muscle_targets, add delta_rules and icon)
     await db.execAsync(`
-      CREATE TABLE IF NOT EXISTS motion_planes_new (
+      CREATE TABLE IF NOT EXISTS motion_paths_new (
         id TEXT PRIMARY KEY,
         label TEXT NOT NULL,
         common_names TEXT,
@@ -958,12 +958,12 @@ async function migrateToV20(db: SQLite.SQLiteDatabase) {
     `);
     try {
       await db.execAsync(`
-        INSERT INTO motion_planes_new (id, label, common_names, delta_rules, short_description, sort_order, icon, is_active)
-        SELECT id, label, common_names, '{}', short_description, sort_order, COALESCE(icon, ''), is_active FROM motion_planes
+        INSERT INTO motion_paths_new (id, label, common_names, delta_rules, short_description, sort_order, icon, is_active)
+        SELECT id, label, common_names, '{}', short_description, sort_order, COALESCE(icon, ''), is_active FROM motion_paths
       `);
     } catch { /* old table may not exist */ }
-    await db.execAsync('DROP TABLE IF EXISTS motion_planes');
-    await db.execAsync('ALTER TABLE motion_planes_new RENAME TO motion_planes');
+    await db.execAsync('DROP TABLE IF EXISTS motion_paths');
+    await db.execAsync('ALTER TABLE motion_paths_new RENAME TO motion_paths');
 
     // Create new motions table
     await db.execAsync(`
@@ -973,7 +973,7 @@ async function migrateToV20(db: SQLite.SQLiteDatabase) {
         label TEXT NOT NULL,
         upper_lower_body TEXT,
         muscle_targets TEXT DEFAULT '{}',
-        motion_planes TEXT DEFAULT '{}',
+        motion_paths TEXT DEFAULT '{}',
         common_names TEXT,
         short_description TEXT,
         sort_order INTEGER DEFAULT 0,
@@ -987,7 +987,7 @@ async function migrateToV20(db: SQLite.SQLiteDatabase) {
       const primaries = await db.getAllAsync<Record<string, unknown>>('SELECT * FROM primary_motions');
       for (const row of primaries) {
         await db.runAsync(
-          `INSERT OR REPLACE INTO motions (id, parent_id, label, upper_lower_body, muscle_targets, motion_planes, common_names, short_description, sort_order, icon, is_active)
+          `INSERT OR REPLACE INTO motions (id, parent_id, label, upper_lower_body, muscle_targets, motion_paths, common_names, short_description, sort_order, icon, is_active)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           str(row.id), null, str(row.label), '',
           str(row.muscle_targets) || '{}',
@@ -1006,7 +1006,7 @@ async function migrateToV20(db: SQLite.SQLiteDatabase) {
       const variations = await db.getAllAsync<Record<string, unknown>>('SELECT * FROM primary_motion_variations');
       for (const row of variations) {
         await db.runAsync(
-          `INSERT OR REPLACE INTO motions (id, parent_id, label, upper_lower_body, muscle_targets, motion_planes, common_names, short_description, sort_order, icon, is_active)
+          `INSERT OR REPLACE INTO motions (id, parent_id, label, upper_lower_body, muscle_targets, motion_paths, common_names, short_description, sort_order, icon, is_active)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           str(row.id), str(row.primary_motion_key), str(row.label), '',
           str(row.muscle_targets) || '{}',
@@ -1181,15 +1181,15 @@ async function migrateToV21(db: SQLite.SQLiteDatabase) {
 
 async function migrateToV22(db: SQLite.SQLiteDatabase) {
   try {
-    // Replace default_plane_id with upper_lower_body + motion_planes on motions table
+    // Replace default_plane_id with upper_lower_body + motion_paths on motions table
     const cols = await db.getAllAsync<{ name: string }>('PRAGMA table_info(motions)');
     const colNames = cols.map(c => c.name);
 
     if (!colNames.includes('upper_lower_body')) {
       await db.execAsync(`ALTER TABLE motions ADD COLUMN upper_lower_body TEXT DEFAULT ''`);
     }
-    if (!colNames.includes('motion_planes')) {
-      await db.execAsync(`ALTER TABLE motions ADD COLUMN motion_planes TEXT DEFAULT '{}'`);
+    if (!colNames.includes('motion_paths')) {
+      await db.execAsync(`ALTER TABLE motions ADD COLUMN motion_paths TEXT DEFAULT '{}'`);
     }
 
     // Create range_of_motion table
@@ -1224,7 +1224,7 @@ async function migrateToV23(db: SQLite.SQLiteDatabase) {
       }
     };
 
-    await addIconColumn('motion_planes');
+    await addIconColumn('motion_paths');
     await addIconColumn('equipment_categories');
     await addIconColumn('equipment');
   } catch (e) {
@@ -1431,13 +1431,13 @@ async function seedMotionData(db: SQLite.SQLiteDatabase) {
   const str = (v: unknown) => (v == null ? '' : String(v));
   const num = (v: unknown, def: number) => (v == null ? def : Number(v));
   const json = (v: unknown, fallback = '{}') => (v != null ? JSON.stringify(v) : fallback);
-  const motionPlanes = require('./tables/motionPlanes.json') as Record<string, unknown>[];
+  const motionPaths = require('./tables/motionPaths.json') as Record<string, unknown>[];
   const motions = require('./tables/motions.json') as Record<string, unknown>[];
 
-  await db.execAsync('DELETE FROM motion_planes');
-  for (const row of motionPlanes) {
+  await db.execAsync('DELETE FROM motion_paths');
+  for (const row of motionPaths) {
     await db.runAsync(
-      `INSERT OR REPLACE INTO motion_planes (id, label, common_names, delta_rules, short_description, sort_order, icon, is_active)
+      `INSERT OR REPLACE INTO motion_paths (id, label, common_names, delta_rules, short_description, sort_order, icon, is_active)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       str(row.id),
       str(row.label),
@@ -1453,14 +1453,14 @@ async function seedMotionData(db: SQLite.SQLiteDatabase) {
   await db.execAsync('DELETE FROM motions');
   for (const row of motions) {
     await db.runAsync(
-      `INSERT OR REPLACE INTO motions (id, parent_id, label, upper_lower_body, muscle_targets, motion_planes, common_names, short_description, sort_order, icon, is_active)
+      `INSERT OR REPLACE INTO motions (id, parent_id, label, upper_lower_body, muscle_targets, motion_paths, common_names, short_description, sort_order, icon, is_active)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       str(row.id),
       row.parent_id ? str(row.parent_id) : null,
       str(row.label),
       str(row.upper_lower_body),
       json(row.muscle_targets),
-      json(row.motion_planes),
+      json(row.default_delta_configs ?? row.motion_paths),
       Array.isArray(row.common_names) ? JSON.stringify(row.common_names) : str(row.common_names),
       str(row.short_description),
       num(row.sort_order, 0),

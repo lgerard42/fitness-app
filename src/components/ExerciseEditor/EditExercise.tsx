@@ -56,7 +56,7 @@ interface EditExerciseState {
     tertiaryMuscles?: string[];
     primaryMotion?: string;
     primaryMotionVariation?: string;
-    motionPlane?: string;
+    motionPath?: string;
     cardioType: string;
     trainingFocus: string;
     weightEquipTags: string[];
@@ -75,7 +75,7 @@ interface EditExerciseState {
 
 const getInitialState = (): EditExerciseState => ({
     name: "", category: "", primaryMuscles: [], secondaryMuscles: [], tertiaryMuscles: [],
-    primaryMotion: "", primaryMotionVariation: "", motionPlane: "",
+    primaryMotion: "", primaryMotionVariation: "", motionPath: "",
     cardioType: "", trainingFocus: "", weightEquipTags: [], description: "",
     trackDuration: false, trackReps: false, trackDistance: false,
     singleDouble: "", cableAttachment: "", gripType: "", gripWidth: "",
@@ -99,7 +99,7 @@ const getStateFromExercise = (
         tertiaryMuscles: (exercise.tertiaryMuscles as string[]) || [],
         primaryMotion: (exercise.primaryMotion as string) || "",
         primaryMotionVariation: (exercise.primaryMotionVariation as string) || "",
-        motionPlane: (exercise.motionPlane as string) || "",
+        motionPath: (exercise.motionPath as string) || "",
         cardioType: (exercise.cardioType as string) || "",
         trainingFocus: (exercise.trainingFocus as string) || "",
         weightEquipTags: (exercise.weightEquipTags as string[]) || [],
@@ -342,12 +342,12 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
     // Load motion data
     const [primaryMotions, setPrimaryMotions] = useState<any[]>([]);
     const [primaryMotionVariations, setPrimaryMotionVariations] = useState<any[]>([]);
-    const [motionPlanes, setMotionPlanes] = useState<any[]>([]);
+    const [motionPaths, setMotionPlanes] = useState<any[]>([]);
 
     useEffect(() => {
         Promise.all([
             import('@/database/tables/motions.json').then(m => m.default),
-            import('@/database/tables/motionPlanes.json').then(m => m.default),
+            import('@/database/tables/motionPaths.json').then(m => m.default),
         ]).then(([allMotions, planes]) => {
             const activeMotions = allMotions.filter((m: any) => m.is_active);
             setPrimaryMotions(activeMotions.filter((m: any) => m.parent_id === null));
@@ -544,7 +544,7 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
             tertiaryMuscles: [],
             primaryMotion: "",
             primaryMotionVariation: "",
-            motionPlane: "",
+            motionPath: "",
             cardioType: "",
             trainingFocus: "",
             weightEquipTags: [],
@@ -578,7 +578,7 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
             ...(editState.tertiaryMuscles && editState.tertiaryMuscles.length > 0 && { tertiaryMuscles: editState.tertiaryMuscles }),
             ...(editState.primaryMotion && { primaryMotion: editState.primaryMotion }),
             ...(editState.primaryMotionVariation && { primaryMotionVariation: editState.primaryMotionVariation }),
-            ...(editState.motionPlane && { motionPlane: editState.motionPlane }),
+            ...(editState.motionPath && { motionPath: editState.motionPath }),
             ...(editState.cardioType && { cardioType: editState.cardioType }),
             ...(editState.trainingFocus && { trainingFocus: editState.trainingFocus }),
             ...(editState.weightEquipTags.length > 0 && { weightEquipTags: editState.weightEquipTags.filter(Boolean) }),
@@ -978,7 +978,7 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                             ...prev,
                             primaryMotion: primaryMotion || '',
                             primaryMotionVariation: variation || '',
-                            motionPlane: plane || '',
+                            motionPath: plane || '',
                             ...(muscles && {
                                 primaryMuscles: muscles.primaryMuscles,
                                 secondaryMuscles: muscles.secondaryMuscles,
@@ -988,13 +988,13 @@ const EditExercise: React.FC<EditExerciseProps> = ({ isOpen, onClose, onSave, ca
                     }}
                     selectedPrimaryMotion={editState.primaryMotion}
                     selectedVariation={editState.primaryMotionVariation}
-                    selectedPlane={editState.motionPlane}
+                    selectedPlane={editState.motionPath}
                     primaryMuscles={editState.primaryMuscles}
                     secondaryMuscles={editState.secondaryMuscles}
                     tertiaryMuscles={editState.tertiaryMuscles || []}
                     primaryMotions={primaryMotions}
                     primaryMotionVariations={primaryMotionVariations}
-                    motionPlanes={motionPlanes}
+                    motionPaths={motionPaths}
                     onPrimaryMuscleToggle={handlePrimaryMuscleToggle}
                     onMakePrimary={handleMakePrimary}
                     secondaryMusclesEnabled={secondaryMusclesEnabled}

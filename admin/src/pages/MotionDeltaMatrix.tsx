@@ -25,15 +25,18 @@ interface MuscleRecord {
 
 // Tables that have delta_rules
 const DELTA_TABLES: { key: string; label: string }[] = [
-  { key: 'motionPlanes', label: 'Motion Planes' },
+  { key: 'motionPaths', label: 'Motion Paths' },
   { key: 'torsoAngles', label: 'Torso Angles' },
   { key: 'torsoOrientations', label: 'Torso Orientations' },
+  { key: 'resistanceOrigin', label: 'Resistance Origin' },
   { key: 'grips', label: 'Grips' },
   { key: 'gripWidths', label: 'Grip Widths' },
   { key: 'elbowRelationship', label: 'Elbow Relationship' },
+  { key: 'executionStyles', label: 'Execution Styles' },
   { key: 'footPositions', label: 'Foot Positions' },
   { key: 'stanceWidths', label: 'Stance Widths' },
   { key: 'stanceTypes', label: 'Stance Types' },
+  { key: 'loadPlacement', label: 'Load Placement' },
   { key: 'supportStructures', label: 'Support Structures' },
   { key: 'loadingAids', label: 'Loading Aids' },
   { key: 'rangeOfMotion', label: 'Range of Motion' },
@@ -42,6 +45,56 @@ const DELTA_TABLES: { key: string; label: string }[] = [
 ];
 
 const DELTA_TABLE_KEYS = DELTA_TABLES.map(t => t.key);
+
+// Map table keys to their groups
+const TABLE_GROUP_MAP: Record<string, string> = {
+  motionPaths: 'Trajectory & Posture',
+  torsoAngles: 'Trajectory & Posture',
+  torsoOrientations: 'Trajectory & Posture',
+  resistanceOrigin: 'Trajectory & Posture',
+  grips: 'Upper Body Mechanics',
+  gripWidths: 'Upper Body Mechanics',
+  elbowRelationship: 'Upper Body Mechanics',
+  executionStyles: 'Upper Body Mechanics',
+  footPositions: 'Lower Body Mechanics',
+  stanceWidths: 'Lower Body Mechanics',
+  stanceTypes: 'Lower Body Mechanics',
+  loadPlacement: 'Lower Body Mechanics',
+  supportStructures: 'Execution Variables',
+  loadingAids: 'Execution Variables',
+  rangeOfMotion: 'Execution Variables',
+  equipmentCategories: 'Equipment',
+  equipment: 'Equipment',
+};
+
+// Group DELTA_TABLES by their group and calculate colspans
+function getGroupedTableHeaders(): Array<{ group: string; startIdx: number; count: number }> {
+  const groups: Array<{ group: string; startIdx: number; count: number }> = [];
+  let currentGroup = '';
+  let startIdx = 0;
+  let count = 0;
+
+  DELTA_TABLES.forEach((table, idx) => {
+    const group = TABLE_GROUP_MAP[table.key] || 'Other';
+    if (group !== currentGroup) {
+      if (currentGroup && count > 0) {
+        groups.push({ group: currentGroup, startIdx, count });
+      }
+      currentGroup = group;
+      startIdx = idx;
+      count = 1;
+    } else {
+      count++;
+    }
+  });
+
+  // Add the last group
+  if (currentGroup && count > 0) {
+    groups.push({ group: currentGroup, startIdx, count });
+  }
+
+  return groups;
+}
 
 // A single relationship: one row from one table that has this motion in its delta_rules
 interface DeltaRelationship {
@@ -634,7 +687,7 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
     return selectedMotion ? motions.find(m => m.id === selectedMotion) ?? null : null;
   }, [selectedMotion, motions]);
 
-  // ─── Family planes logic (for MOTION_PLANES section) ───
+  // ─── Family paths logic (for MOTION_PATHS section) ───
   const familyMotions = useMemo(() => {
     if (!selectedMotion || !selectedMotionData) return [];
     const primaryId = selectedMotionData.parent_id || selectedMotion;
@@ -647,8 +700,8 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
     const familyIds = new Set(familyMotions.map(m => m.id));
     familyIds.delete(selectedMotion);
     
-    const motionPlanesRows = tableData['motionPlanes'] || [];
-    for (const plane of motionPlanesRows) {
+    const motionPathsRows = tableData['motionPaths'] || [];
+    for (const plane of motionPathsRows) {
       const rules = plane.delta_rules;
       if (!rules || typeof rules !== 'object' || Array.isArray(rules)) continue;
       for (const mid of Object.keys(rules)) {
@@ -664,10 +717,10 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
 
   const allFamilyPlaneInfo = useMemo(() => {
     if (!selectedMotion) return [];
-    const motionPlanesRows = tableData['motionPlanes'] || [];
+    const motionPathsRows = tableData['motionPaths'] || [];
     // Get relationships for selected motion to determine which planes are assigned to it
     const selectedMotionRelationships = getRelationshipsForMotion(selectedMotion);
-    const selectedSet = new Set((selectedMotionRelationships['motionPlanes'] || []).map(r => r.rowId));
+    const selectedSet = new Set((selectedMotionRelationships['motionPaths'] || []).map(r => r.rowId));
     
     const result: Array<{
       planeId: string;
@@ -678,7 +731,7 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
 
     // Add planes assigned to family motions
     for (const [planeId, info] of Object.entries(familyPlaneUsage)) {
-      const plane = motionPlanesRows.find(p => String(p.id) === planeId);
+      const plane = motionPathsRows.find(p => String(p.id) === planeId);
       result.push({
         planeId,
         planeLabel: plane ? String(plane.label ?? planeId) : planeId,
@@ -688,7 +741,7 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
     }
 
     // Add unassigned planes (not assigned to selected motion or any family motion)
-    for (const plane of motionPlanesRows) {
+    for (const plane of motionPathsRows) {
       const planeId = String(plane.id);
       if (!selectedSet.has(planeId) && !familyPlaneUsage[planeId]) {
         result.push({
@@ -705,8 +758,8 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
 
   const reassignPlane = useCallback(async (planeId: string, fromMotionId: string | null, toMotionId: string) => {
     try {
-      const motionPlanesRows = tableData['motionPlanes'] || [];
-      const plane = motionPlanesRows.find(p => String(p.id) === planeId);
+      const motionPathsRows = tableData['motionPaths'] || [];
+      const plane = motionPathsRows.find(p => String(p.id) === planeId);
       if (!plane) return;
 
       const newRules = (plane.delta_rules && typeof plane.delta_rules === 'object' && !Array.isArray(plane.delta_rules))
@@ -716,7 +769,7 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
       if (fromMotionId) delete newRules[fromMotionId];
       newRules[toMotionId] = newRules[toMotionId] ?? {};
 
-      await api.updateRow('motionPlanes', planeId, { delta_rules: newRules });
+      await api.updateRow('motionPaths', planeId, { delta_rules: newRules });
       toast.success('Reassigned plane');
       await loadData();
       onDataChange();
@@ -779,13 +832,13 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
         return cell;
       };
 
-      // Order: motion_id, motion_label, parent_id, muscle_targets, then delta tables (motionPlanes first)
-      const motionPlanesIdx = DELTA_TABLE_KEYS.indexOf('motionPlanes');
+      // Order: motion_id, motion_label, parent_id, muscle_targets, then delta tables (motionPaths first)
+      const motionPathsIdx = DELTA_TABLE_KEYS.indexOf('motionPaths');
       const otherTables = [...DELTA_TABLE_KEYS];
-      if (motionPlanesIdx >= 0) {
-        otherTables.splice(motionPlanesIdx, 1);
+      if (motionPathsIdx >= 0) {
+        otherTables.splice(motionPathsIdx, 1);
       }
-      const headers = ['motion_id', 'motion_label', 'parent_id', 'muscle_targets', ...(motionPlanesIdx >= 0 ? ['motionPlanes'] : []), ...otherTables];
+      const headers = ['motion_id', 'motion_label', 'parent_id', 'muscle_targets', ...(motionPathsIdx >= 0 ? ['motionPaths'] : []), ...otherTables];
       const rows = data.map(row =>
         headers.map(h => {
           const val = row[h];
@@ -817,10 +870,10 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
         }
         return cell;
       };
-      const motionPlanesIdx = DELTA_TABLE_KEYS.indexOf('motionPlanes');
+      const motionPathsIdx = DELTA_TABLE_KEYS.indexOf('motionPaths');
       const otherTables = [...DELTA_TABLE_KEYS];
-      if (motionPlanesIdx >= 0) otherTables.splice(motionPlanesIdx, 1);
-      const headers = ['motion_id', 'motion_label', 'parent_id', 'muscle_targets', ...(motionPlanesIdx >= 0 ? ['motionPlanes'] : []), ...otherTables];
+      if (motionPathsIdx >= 0) otherTables.splice(motionPathsIdx, 1);
+      const headers = ['motion_id', 'motion_label', 'parent_id', 'muscle_targets', ...(motionPathsIdx >= 0 ? ['motionPaths'] : []), ...otherTables];
       const rows = data.map(row =>
         headers.map(h => {
           const val = row[h];
@@ -874,7 +927,7 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
         }
       });
 
-      if (tableColMap.length === 0) { toast.error('No table columns found (expected column names like motionPlanes, grips, etc.)'); setImporting(false); return; }
+      if (tableColMap.length === 0) { toast.error('No table columns found (expected column names like motionPaths, grips, etc.)'); setImporting(false); return; }
 
       // Parse each TSV cell, handling quoted JSON
       const parseTsvRow = (line: string): string[] => {
@@ -1057,6 +1110,20 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
                   <thead className="bg-gray-50 border-b border-gray-200">
+                    {/* Group header row */}
+                    <tr>
+                      <th className="sticky left-0 z-30 bg-gray-50 border-r border-gray-200"></th>
+                      {getGroupedTableHeaders().map(({ group, count }, idx) => (
+                        <th
+                          key={`group-${idx}`}
+                          colSpan={count}
+                          className="px-2 py-1 text-center text-[10px] font-semibold text-gray-600 uppercase border-r border-gray-200 last:border-r-0 bg-gray-100"
+                        >
+                          {group}
+                        </th>
+                      ))}
+                    </tr>
+                    {/* Column header row */}
                     <tr>
                       <th className="sticky left-0 z-20 bg-gray-50 px-2 py-1.5 text-left text-xs font-semibold text-gray-700 uppercase border-r border-gray-200 min-w-[200px]">
                         Motion
@@ -1161,7 +1228,7 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
                 const rowsWithMotion = new Set(tableRelationships.map(r => r.rowId));
                 const availableRows = tableRows.filter(r => !rowsWithMotion.has(String(r.id)));
                 const isTableExpanded = expandedTables.has(tableKey);
-                const isMotionPlanes = tableKey === 'motionPlanes';
+                const isMotionPaths = tableKey === 'motionPaths';
 
                 return (
                   <div key={tableKey} className="border border-gray-200 rounded overflow-hidden">
@@ -1268,15 +1335,15 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
                           </div>
                         )}
 
-                        {/* Motion planes in this family section (only for motionPlanes table) */}
-                        {isMotionPlanes && allFamilyPlaneInfo.length > 0 && (
+                        {/* Motion paths in this family section (only for motionPaths table) */}
+                        {isMotionPaths && allFamilyPlaneInfo.length > 0 && (
                           <div className="border-t border-amber-200 bg-amber-50/30">
                             <div
                               className="px-2 py-1 flex items-center gap-1 cursor-pointer hover:bg-amber-100/50"
                               onClick={() => setFamilyPlanesExpanded(prev => !prev)}
                             >
                               <span className="text-[10px] text-gray-400">{familyPlanesExpanded ? '▼' : '▶'}</span>
-                              <span className="text-[10px] font-semibold text-gray-700">Motion planes in this family</span>
+                              <span className="text-[10px] font-semibold text-gray-700">Motion paths in this family</span>
                               <span className="text-[10px] text-gray-400 ml-auto">{allFamilyPlaneInfo.length}</span>
                             </div>
                             {familyPlanesExpanded && (
@@ -1349,11 +1416,11 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
                 <label className="block text-sm font-medium text-gray-700 mb-1">Expected format</label>
                 <p className="text-xs text-gray-500 mb-2">
                   Tab-separated with columns: <code className="bg-gray-100 px-1 rounded">motion_id</code>, <code className="bg-gray-100 px-1 rounded">motion_label</code> (optional), and one or more table columns
-                  (<code className="bg-gray-100 px-1 rounded">motionPlanes</code>, <code className="bg-gray-100 px-1 rounded">grips</code>, etc.).
+                  (<code className="bg-gray-100 px-1 rounded">motionPaths</code>, <code className="bg-gray-100 px-1 rounded">grips</code>, etc.).
                   Each table cell is a JSON object mapping row IDs to delta values:
                 </p>
                 <pre className="text-[10px] bg-gray-50 border border-gray-200 rounded p-2 overflow-x-auto text-gray-600">
-{`motion_id\tmotionPlanes\tgrips
+{`motion_id\tmotionPaths\tgrips
 CURL\t{"MID_MID":{"BICEPS":5},"HIGH_HIGH":"inherit"}\t{"PRONATED":{"BICEPS":-2}}`}
                 </pre>
               </div>

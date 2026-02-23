@@ -13,7 +13,7 @@ export interface TableField {
   /** For FK / FK[] fields: which field on the referenced table to display (default "label") */
   refLabelField?: string;
   /** For json fields: hint about the shape for specialized editors */
-  jsonShape?: 'muscle_targets' | 'delta_rules' | 'allowed_rules' | 'exercise_input_permissions' | 'motion_planes' | 'default_delta_configs' | 'free';
+  jsonShape?: 'muscle_targets' | 'delta_rules' | 'allowed_rules' | 'exercise_input_permissions' | 'motion_paths' | 'default_delta_configs' | 'free';
   /** Default value for new rows */
   defaultValue?: unknown;
   /** Optional display label (defaults to field name) */
@@ -28,7 +28,7 @@ export interface TableSchema {
   /** Human-readable name */
   label: string;
   /** Group for sidebar organization */
-  group: 'Exercise Setup' | 'Muscles & Motions' | 'Trajectory & Posture' | 'Upper Body Biomechanics' | 'Lower Body Mechanics' | 'Execution Variables' | 'Equipment';
+  group: 'Exercise Setup' | 'Muscles & Motions' | 'Trajectory & Posture' | 'Upper Body Mechanics' | 'Lower Body Mechanics' | 'Execution Variables' | 'Equipment';
   /** Primary key field (always "id") */
   idField: string;
   /** Field used for display labels in dropdowns */
@@ -145,16 +145,16 @@ const TABLE_DEFINITIONS: TableSchema[] = [
       { name: 'parent_id', type: 'fk', refTable: 'motions', refLabelField: 'label' },
       { name: 'upper_lower', type: 'string' },
       { name: 'muscle_targets', type: 'json', jsonShape: 'muscle_targets' },
-      { name: 'default_delta_configs', type: 'json', jsonShape: 'default_delta_configs', label: 'Motion planes', defaultValue: {} },
+      { name: 'default_delta_configs', type: 'json', jsonShape: 'default_delta_configs', label: 'Motion paths', defaultValue: {} },
       { name: 'common_names', type: 'string[]', defaultValue: [] },
       { name: 'short_description', type: 'string' },
     ]),
   },
   // ── Trajectory & Posture ────────────────────────────────────────
   {
-    key: 'motionPlanes',
-    file: 'motionPlanes.json',
-    label: 'Motion Planes',
+    key: 'motionPaths',
+    file: 'motionPaths.json',
+    label: 'Motion Paths',
     group: 'Trajectory & Posture',
     idField: 'id',
     labelField: 'label',
@@ -193,13 +193,26 @@ const TABLE_DEFINITIONS: TableSchema[] = [
       { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
     ]),
   },
+  {
+    key: 'resistanceOrigin',
+    file: 'resistanceOrigin.json',
+    label: 'Resistance Origin',
+    group: 'Trajectory & Posture',
+    idField: 'id',
+    labelField: 'label',
+    fields: baseFields([
+      { name: 'common_names', type: 'string[]', defaultValue: [] },
+      { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
+      { name: 'short_description', type: 'string' },
+    ]),
+  },
 
-  // ── Upper Body Biomechanics ─────────────────────────────────────
+  // ── Upper Body Mechanics ─────────────────────────────────────
   {
     key: 'grips',
     file: 'grips.json',
     label: 'Grips',
-    group: 'Upper Body Biomechanics',
+    group: 'Upper Body Mechanics',
     idField: 'id',
     labelField: 'label',
     fields: baseFields([
@@ -216,7 +229,7 @@ const TABLE_DEFINITIONS: TableSchema[] = [
     key: 'gripWidths',
     file: 'gripWidths.json',
     label: 'Grip Widths',
-    group: 'Upper Body Biomechanics',
+    group: 'Upper Body Mechanics',
     idField: 'id',
     labelField: 'label',
     fields: baseFields([
@@ -229,13 +242,26 @@ const TABLE_DEFINITIONS: TableSchema[] = [
     key: 'elbowRelationship',
     file: 'elbowRelationship.json',
     label: 'Elbow Relationship',
-    group: 'Upper Body Biomechanics',
+    group: 'Upper Body Mechanics',
     idField: 'id',
     labelField: 'label',
     fields: baseFields([
       { name: 'common_names', type: 'string[]', defaultValue: [] },
       { name: 'short_description', type: 'string' },
       { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
+    ]),
+  },
+  {
+    key: 'executionStyles',
+    file: 'executionStyles.json',
+    label: 'Execution Styles',
+    group: 'Upper Body Mechanics',
+    idField: 'id',
+    labelField: 'label',
+    fields: baseFields([
+      { name: 'common_names', type: 'string[]', defaultValue: [] },
+      { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
+      { name: 'short_description', type: 'string' },
     ]),
   },
 
@@ -277,6 +303,22 @@ const TABLE_DEFINITIONS: TableSchema[] = [
       { name: 'common_names', type: 'string[]', defaultValue: [] },
       { name: 'short_description', type: 'string' },
       { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
+    ]),
+  },
+  {
+    key: 'loadPlacement',
+    file: 'loadPlacement.json',
+    label: 'Load Placement',
+    group: 'Lower Body Mechanics',
+    idField: 'id',
+    labelField: 'label',
+    fields: baseFields([
+      { name: 'common_names', type: 'string[]', defaultValue: [] },
+      { name: 'load_category', type: 'string' },
+      { name: 'allows_secondary', type: 'boolean', defaultValue: false },
+      { name: 'is_valid_secondary', type: 'boolean', defaultValue: false },
+      { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
+      { name: 'short_description', type: 'string' },
     ]),
   },
 

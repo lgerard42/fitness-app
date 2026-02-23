@@ -687,6 +687,19 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
     }
   }, [key, columnWidths]);
 
+  // Default group-by: motions → muscles; else category_id if present; else parent_id if present; else parent_ids (e.g. muscles)
+  const defaultGroupByForTable = useMemo(() => {
+    if (!schema) return null;
+    if (key === 'motions') return 'muscles';
+    const hasCategoryId = schema.fields.some((f) => f.name === 'category_id');
+    const hasParentId = schema.fields.some((f) => f.name === 'parent_id');
+    const hasParentIds = schema.fields.some((f) => f.name === 'parent_ids');
+    if (hasCategoryId) return 'category_id';
+    if (hasParentId) return 'parent_id';
+    if (hasParentIds) return 'parent_ids';
+    return null;
+  }, [key, schema]);
+
   useEffect(() => {
     setEditRow(null);
     setIsNew(false);
@@ -698,11 +711,11 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
     setSortDir('asc');
     setDeleteConfirm(null);
     setMuscleTierFilter('ALL');
-    setGroupBy(null);
+    setGroupBy(defaultGroupByForTable);
     loadData();
     loadRefData();
     loadColumnSettings();
-  }, [key, loadData, loadRefData, loadColumnSettings]);
+  }, [key, defaultGroupByForTable, loadData, loadRefData, loadColumnSettings]);
 
   const applyFilter = (row: Record<string, unknown>, filter: FilterRule): boolean => {
     const field = schema?.fields.find((f) => f.name === filter.field);
@@ -1479,7 +1492,7 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
   ): Promise<{ inserted: number; updated: number; skipped: number; errors: string[] }> => {
     if (!key || !schema) return { inserted: 0, updated: 0, skipped: 0, errors: ['No table selected'] };
 
-    const needsSync = key === 'motions' || key === 'motionPlanes';
+    const needsSync = key === 'motions' || key === 'motionPaths';
 
     // If replace mode, delete all existing rows first
     if (mode === 'replace') {
@@ -1784,12 +1797,12 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
         );
       }
       if (field.jsonShape === 'default_delta_configs' && val && typeof val === 'object' && !Array.isArray(val)) {
-        const ddc = val as { motionPlanes?: string };
-        const def = ddc.motionPlanes ?? '—';
-        const summary = def === '—' ? 'No default plane' : `Default plane: ${def}\n(Plane options are defined on the Motion Planes table.)`;
+        const ddc = val as { motionPaths?: string };
+        const def = ddc.motionPaths ?? '—';
+        const summary = def === '—' ? 'No default path' : `Default path: ${def}\n(Path options are defined on the Motion Paths table.)`;
         return (
           <span className="text-xs cursor-help" title={summary}>
-            {def === '—' ? '—' : `motionPlanes: ${def}`}
+            {def === '—' ? '—' : `motionPaths: ${def}`}
           </span>
         );
       }

@@ -25,13 +25,13 @@ interface Motion {
   upper_lower_body?: string;
   short_description?: string;
   muscle_targets?: Record<string, any>;
-  default_delta_configs?: { motionPlanes?: string };
-  /** @deprecated Use default_delta_configs.motionPlanes */
-  motion_planes?: { default?: string; options?: string[] };
+  default_delta_configs?: { motionPaths?: string };
+  /** @deprecated Use default_delta_configs.motionPaths */
+  motion_paths?: { default?: string; options?: string[] };
   is_active: boolean;
 }
 
-interface MotionPlane {
+interface MotionPath {
   id: string;
   label: string;
   is_active: boolean;
@@ -55,7 +55,7 @@ interface MotionPickerModalProps {
   tertiaryMuscles: string[];
   primaryMotions: Motion[];
   primaryMotionVariations: Motion[];
-  motionPlanes: MotionPlane[];
+  motionPaths: MotionPath[];
   onPrimaryMuscleToggle: (muscle: string) => void;
   onMakePrimary: (muscle: string) => void;
   secondaryMusclesEnabled: boolean;
@@ -90,7 +90,7 @@ const MotionPickerModal: React.FC<MotionPickerModalProps> = ({
   tertiaryMuscles,
   primaryMotions,
   primaryMotionVariations,
-  motionPlanes,
+  motionPaths,
   onPrimaryMuscleToggle,
   onMakePrimary,
   secondaryMusclesEnabled,
@@ -453,7 +453,7 @@ const MotionPickerModal: React.FC<MotionPickerModalProps> = ({
     if (selectedPrimary && availableVariations.length === 1 && selectedVariation !== availableVariations[0].id) {
       const variation = availableVariations[0];
       const muscles = extractMuscleSelectionsFromTargets(variation.muscle_targets);
-      const defaultPlane = variation.default_delta_configs?.motionPlanes ?? variation.motion_planes?.default;
+      const defaultPlane = variation.default_delta_configs?.motionPaths ?? variation.motion_paths?.default;
       onSelect(selectedPrimary, variation.id, defaultPlane, muscles);
     }
   }, [selectedPrimary, availableVariations, selectedVariation, onSelect]);
@@ -484,7 +484,7 @@ const MotionPickerModal: React.FC<MotionPickerModalProps> = ({
       return;
     }
     const variation = primaryMotionVariations.find(v => v.id === variationId);
-    const defaultPlane = variation?.default_delta_configs?.motionPlanes ?? variation?.motion_planes?.default;
+    const defaultPlane = variation?.default_delta_configs?.motionPaths ?? variation?.motion_paths?.default;
 
     const muscles = variation ? extractMuscleSelectionsFromTargets(variation.muscle_targets) : undefined;
     onSelect(selectedPrimary, variationId, defaultPlane, muscles);
