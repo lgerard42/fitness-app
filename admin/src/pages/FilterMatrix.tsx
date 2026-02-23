@@ -13,7 +13,7 @@ type EquipmentFilter = 'all' | 'equipment' | 'attachments';
 
 const TABS: { key: MatrixTab; label: string; refTable: string; filterFn?: (row: Record<string, unknown>) => boolean }[] = [
   { key: 'GRIPS', label: 'Grips', refTable: 'grips', filterFn: (r) => r.grip_category !== 'Width' && r.parent_id == null },
-  { key: 'GRIP_WIDTHS', label: 'Grip Widths', refTable: 'grips', filterFn: (r) => r.grip_category === 'Width' },
+  { key: 'GRIP_WIDTHS', label: 'Grip Widths', refTable: 'gripWidths' },
   { key: 'SUPPORT_STRUCTURES', label: 'Support Structures', refTable: 'supportStructures' },
   { key: 'TORSO_ANGLES', label: 'Torso Angles', refTable: 'torsoAngles' },
 ];
@@ -68,6 +68,11 @@ export default function FilterMatrix({ onDataChange }: FilterMatrixProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [copySource, setCopySource] = useState('');
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importText, setImportText] = useState('');
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ updated: number; errors: string[] } | null>(null);
+  const [importTargetTab, setImportTargetTab] = useState<MatrixTab>(activeTab);
 
   const currentTabDef = TABS.find((t) => t.key === activeTab)!;
 
@@ -222,6 +227,187 @@ export default function FilterMatrix({ onDataChange }: FilterMatrixProps) {
     updateRow(String(targetRow.id), setConstraintArray(targetRow, activeTab, val ? [...val] : null));
   };
 
+  // ─── Export/Copy/Import ───
+  const buildExportData = useCallback((tab: MatrixTab = activeTab): Record<string, unknown>[] => {
+    return rows.map(row => {
+      const rowData: Record<string, unknown> = {
+        equipment_id: row.id,
+        equipment_label: row.label,
+      };
+      colOptions.forEach(opt => {
+        const optId = String(opt.id);
+        const arr = getConstraintArray(row, tab);
+        const checked = arr !== null && arr.includes(optId);
+        rowData[optId] = checked ? '1' : '0';
+      });
+      return rowData;
+    });
+  }, [rows, colOptions, activeTab]);
+
+  const handleCopyMatrix = useCallback(async () => {
+    try {
+      const data = buildExportData();
+      if (data.length === 0) { toast.error('No data to copy'); return; }
+
+      const escapeTsv = (cell: string): string => {
+        if (cell.includes('\t') || cell.includes('\n') || cell.includes('\r') || cell.includes('"')) {
+          return '"' + cell.replace(/"/g, '""') + '"';
+        }
+        return cell;
+      };
+
+      const headers = ['equipment_id', 'equipment_label', ...colOptions.map(o => String(o.id))];
+      const tsvRows = data.map(row =>
+        headers.map(h => {
+          const val = row[h];
+          return escapeTsv(val == null ? '' : String(val));
+        }).join('\t')
+      );
+
+      const tsv = [headers.join('\t'), ...tsvRows].join('\n');
+      await navigator.clipboard.writeText(tsv);
+      toast.success(`Copied ${data.length} equipment rows to clipboard`);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+      toast.error('Failed to copy to clipboard');
+    }
+  }, [buildExportData, colOptions]);
+
+  const handleDownloadCsv = useCallback(() => {
+    try {
+      const data = buildExportData();
+      if (data.length === 0) {
+        toast.error('No data to download');
+        return;
+      }
+      const escapeCsv = (cell: string): string => {
+        if (cell.includes(',') || cell.includes('\n') || cell.includes('\r') || cell.includes('"')) {
+          return '"' + cell.replace(/"/g, '""') + '"';
+        }
+        return cell;
+      };
+      const headers = ['equipment_id', 'equipment_label', ...colOptions.map(o => String(o.id))];
+      const csvRows = data.map(row =>
+        headers.map(h => {
+          const val = row[h];
+          return escapeCsv(val == null ? '' : String(val));
+        }).join(',')
+      );
+      const csv = [headers.join(','), ...csvRows].join('\r\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `filter-matrix-${activeTab.toLowerCase()}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`Downloaded ${data.length} equipment rows as CSV`);
+    } catch (err) {
+      console.error('Failed to download CSV:', err);
+      toast.error('Failed to download CSV');
+    }
+  }, [buildExportData, colOptions, activeTab]);
+
+  const handleImport = useCallback(async () => {
+    if (!importText.trim()) { toast.error('Paste data first'); return; }
+
+    setImporting(true);
+    setImportResult(null);
+
+    try {
+      // Detect delimiter (tab or comma)
+      const firstLine = importText.split('\n')[0];
+      const isTsv = firstLine.includes('\t');
+      const delimiter = isTsv ? '\t' : ',';
+
+      const lines = importText.split('\n').filter(l => l.trim());
+      if (lines.length < 2) { toast.error('Need at least a header row and one data row'); setImporting(false); return; }
+
+      // Parse header
+      const parseRow = (line: string): string[] => {
+        const cells: string[] = [];
+        let current = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i];
+          if (ch === '"') {
+            if (inQuotes && line[i + 1] === '"') { current += '"'; i++; }
+            else { inQuotes = !inQuotes; }
+          } else if (ch === delimiter && !inQuotes) {
+            cells.push(current.trim());
+            current = '';
+          } else {
+            current += ch;
+          }
+        }
+        cells.push(current.trim());
+        return cells;
+      };
+
+      const headerCells = parseRow(lines[0]);
+      const equipmentIdIdx = headerCells.findIndex(h => h.toLowerCase() === 'equipment_id');
+      const equipmentLabelIdx = headerCells.findIndex(h => h.toLowerCase() === 'equipment_label');
+      if (equipmentIdIdx < 0) { toast.error('Missing equipment_id column'); setImporting(false); return; }
+
+      const optionColumns = headerCells
+        .map((h, idx) => ({ header: h, idx }))
+        .filter(({ header }) => header.toLowerCase() !== 'equipment_id' && header.toLowerCase() !== 'equipment_label');
+
+      let updated = 0;
+      const errors: string[] = [];
+
+      for (let lineIdx = 1; lineIdx < lines.length; lineIdx++) {
+        const cells = parseRow(lines[lineIdx]);
+        const equipmentId = cells[equipmentIdIdx]?.trim();
+        if (!equipmentId) continue;
+
+        const equipmentRow = allRows.find(r => String(r.id) === equipmentId);
+        if (!equipmentRow) {
+          errors.push(`Row ${lineIdx + 1}: Equipment "${equipmentId}" not found`);
+          continue;
+        }
+
+        const checkedOptions: string[] = [];
+        optionColumns.forEach(({ header, idx }) => {
+          const cellVal = cells[idx]?.trim();
+          if (cellVal === '1' || cellVal === 'true' || cellVal === 'yes' || cellVal === 'checked') {
+            checkedOptions.push(header);
+          }
+        });
+
+        const currentVal = getConstraintArray(equipmentRow, importTargetTab);
+        const newVal = checkedOptions.length > 0 ? checkedOptions : null;
+        if (JSON.stringify(currentVal) !== JSON.stringify(newVal)) {
+          updateRow(equipmentId, setConstraintArray(equipmentRow, importTargetTab, newVal));
+          updated++;
+        }
+      }
+
+      setImportResult({ updated, errors });
+      if (updated > 0) {
+        toast.success(`Import complete: ${updated} equipment rows updated`);
+      } else if (errors.length > 0) {
+        toast.error(`Import completed with ${errors.length} errors`);
+      } else {
+        toast.info('No changes to import');
+      }
+    } catch (err) {
+      console.error('Import failed:', err);
+      toast.error('Failed to import data');
+      setImportResult({ updated: 0, errors: [String(err)] });
+    } finally {
+      setImporting(false);
+    }
+  }, [importText, importTargetTab, allRows, activeTab]);
+
+  useEffect(() => {
+    if (showImportModal) {
+      setImportTargetTab(activeTab);
+      setImportText('');
+      setImportResult(null);
+    }
+  }, [showImportModal, activeTab]);
+
   const totalEquipment = rows.length;
   const nullCount = rows.filter(isNullField).length;
   const activeEquipment = totalEquipment - nullCount;
@@ -230,10 +416,43 @@ export default function FilterMatrix({ onDataChange }: FilterMatrixProps) {
 
   return (
     <div className="p-6">
-      <h1 className="text-xl font-bold text-gray-800 mb-1">Filter Matrix Editor</h1>
-      <p className="text-sm text-gray-500 mb-4">
-        Configure modifier constraints for each piece of equipment.
-      </p>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h1 className="text-xl font-bold text-gray-800 mb-1">Filter Matrix Editor</h1>
+          <p className="text-sm text-gray-500">
+            Configure modifier constraints for each piece of equipment.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleDownloadCsv}
+            className="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 text-sm font-medium flex items-center gap-2"
+            title="Download matrix as CSV"
+          >
+            <svg className="w-5 h-5 text-green-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M3 3h18v18H3z" />
+              <path d="M3 9h18M3 15h18M9 3v18M15 3v18" />
+            </svg>
+            Download CSV
+          </button>
+          <button
+            onClick={handleCopyMatrix}
+            className="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 text-sm font-medium flex items-center gap-2"
+            title="Copy matrix to clipboard (TSV format)"
+          >
+            <span>📋</span>
+            Copy Matrix
+          </button>
+          <button
+            onClick={() => { setShowImportModal(true); setImportText(''); setImportResult(null); }}
+            className="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 text-sm font-medium flex items-center gap-2"
+            title="Import modifier constraints from pasted data"
+          >
+            <span>📥</span>
+            Import
+          </button>
+        </div>
+      </div>
 
       <div className="flex flex-wrap gap-3 mb-4 items-center">
         <div className="flex gap-1 bg-gray-100 rounded p-0.5">
@@ -433,6 +652,76 @@ export default function FilterMatrix({ onDataChange }: FilterMatrixProps) {
           </span>
         </div>
       </div>
+
+      {/* Import Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] flex flex-col">
+            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900">Import Filter Matrix</h2>
+              <button onClick={() => { setShowImportModal(false); setImportText(''); setImportResult(null); }} className="text-gray-400 hover:text-gray-600">✕</button>
+            </div>
+            <div className="p-4 flex-1 overflow-y-auto">
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Import to:</label>
+                <select
+                  value={importTargetTab}
+                  onChange={(e) => setImportTargetTab(e.target.value as MatrixTab)}
+                  className="w-full px-3 py-2 border rounded bg-white border-gray-300 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {TABS.map(tab => (
+                    <option key={tab.key} value={tab.key}>{tab.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Paste CSV/TSV data:</label>
+                <textarea
+                  value={importText}
+                  onChange={(e) => setImportText(e.target.value)}
+                  className="w-full h-48 px-3 py-2 border rounded font-mono text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="equipment_id	equipment_label	OPTION_ID_1	OPTION_ID_2&#10;EQUIP_1	Equipment Name	1	0"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Format: First row is headers (<code className="bg-gray-100 px-1 rounded">equipment_id</code>, <code className="bg-gray-100 px-1 rounded">equipment_label</code>, then option IDs).
+                  <br />
+                  Values: <code className="bg-gray-100 px-1 rounded">1</code> or <code className="bg-gray-100 px-1 rounded">true</code> = checked, <code className="bg-gray-100 px-1 rounded">0</code> or <code className="bg-gray-100 px-1 rounded">false</code> = unchecked.
+                </p>
+              </div>
+              {importResult && (
+                <div className={`p-3 rounded-lg text-sm ${importResult.errors.length > 0 ? 'bg-yellow-50 border border-yellow-200' : 'bg-green-50 border border-green-200'}`}>
+                  <div className="font-medium mb-1">{importResult.updated} equipment rows updated</div>
+                  {importResult.errors.length > 0 && (
+                    <div className="mt-2">
+                      <div className="text-xs font-medium text-yellow-700">{importResult.errors.length} errors:</div>
+                      <ul className="mt-1 text-xs text-yellow-600 list-disc list-inside space-y-0.5 max-h-32 overflow-y-auto">
+                        {importResult.errors.map((err, idx) => (
+                          <li key={idx}>{err}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="p-4 border-t border-gray-200 flex items-center justify-end gap-2">
+              <button
+                onClick={() => { setShowImportModal(false); setImportText(''); setImportResult(null); }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleImport}
+                disabled={importing || !importText.trim()}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {importing ? 'Importing...' : 'Import'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
