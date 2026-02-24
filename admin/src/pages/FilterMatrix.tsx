@@ -2,21 +2,148 @@ import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { api, type TableSchema } from '../api';
 
+// Simple markdown parser for descriptions (handles **bold** and `code`)
+function renderMarkdown(text: string): React.ReactNode {
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let key = 0;
+
+  // Find all markdown patterns (bold and code)
+  const matches: Array<{ start: number; end: number; content: string; type: 'bold' | 'code' }> = [];
+  
+  // Match **bold**
+  let boldMatch;
+  const boldRegex = /\*\*(.*?)\*\*/g;
+  while ((boldMatch = boldRegex.exec(text)) !== null) {
+    matches.push({
+      start: boldMatch.index,
+      end: boldMatch.index + boldMatch[0].length,
+      content: boldMatch[1],
+      type: 'bold',
+    });
+  }
+
+  // Match `code`
+  let codeMatch;
+  const codeRegex = /`([^`]+)`/g;
+  while ((codeMatch = codeRegex.exec(text)) !== null) {
+    matches.push({
+      start: codeMatch.index,
+      end: codeMatch.index + codeMatch[0].length,
+      content: codeMatch[1],
+      type: 'code',
+    });
+  }
+
+  // Sort by position and remove overlaps (prefer earlier matches)
+  matches.sort((a, b) => a.start - b.start);
+  const filteredMatches: typeof matches = [];
+  for (const match of matches) {
+    const overlaps = filteredMatches.some(
+      (m) => match.start < m.end && match.end > m.start
+    );
+    if (!overlaps) {
+      filteredMatches.push(match);
+    }
+  }
+
+  // Build React elements
+  filteredMatches.forEach((match) => {
+    // Add text before match
+    if (match.start > lastIndex) {
+      const beforeText = text.slice(lastIndex, match.start);
+      if (beforeText) {
+        parts.push(<React.Fragment key={key++}>{beforeText}</React.Fragment>);
+      }
+    }
+
+    // Add matched element
+    if (match.type === 'bold') {
+      parts.push(<strong key={key++}>{match.content}</strong>);
+    } else {
+      parts.push(
+        <code key={key++} className="bg-gray-100 px-1 rounded text-xs font-mono">
+          {match.content}
+        </code>
+      );
+    }
+
+    lastIndex = match.end;
+  });
+
+  // Add remaining text
+  if (lastIndex < text.length) {
+    const remainingText = text.slice(lastIndex);
+    parts.push(<React.Fragment key={key++}>{remainingText}</React.Fragment>);
+  }
+
+  return parts.length > 0 ? parts : text;
+}
+
 interface FilterMatrixProps {
   schemas: TableSchema[];
   onDataChange: () => void;
 }
 
-type MatrixTab = 'GRIPS' | 'GRIP_WIDTHS' | 'SUPPORT_STRUCTURES' | 'TORSO_ANGLES';
-type ViewMode = 'equipment' | 'option';
+type MatrixTab =
+  | 'MOTION_PATHS' | 'TORSO_ANGLES' | 'TORSO_ORIENTATIONS' | 'RESISTANCE_ORIGIN'
+  | 'GRIPS' | 'GRIP_WIDTHS' | 'ELBOW_RELATIONSHIP' | 'EXECUTION_STYLES'
+  | 'FOOT_POSITIONS' | 'STANCE_WIDTHS' | 'STANCE_TYPES' | 'LOAD_PLACEMENT'
+  | 'SUPPORT_STRUCTURES' | 'LOADING_AIDS' | 'RANGE_OF_MOTION';
+
 type EquipmentFilter = 'all' | 'equipment' | 'attachments';
 
-const TABS: { key: MatrixTab; label: string; refTable: string; filterFn?: (row: Record<string, unknown>) => boolean }[] = [
-  { key: 'GRIPS', label: 'Grips', refTable: 'grips', filterFn: (r) => r.grip_category !== 'Width' && r.parent_id == null },
-  { key: 'GRIP_WIDTHS', label: 'Grip Widths', refTable: 'gripWidths' },
-  { key: 'SUPPORT_STRUCTURES', label: 'Support Structures', refTable: 'supportStructures' },
-  { key: 'TORSO_ANGLES', label: 'Torso Angles', refTable: 'torsoAngles' },
+interface TabDef {
+  key: MatrixTab;
+  label: string;
+  refTable: string;
+  filterFn?: (row: Record<string, unknown>) => boolean;
+}
+
+interface TabGroup {
+  group: string;
+  tabs: TabDef[];
+}
+
+const TAB_GROUPS: TabGroup[] = [
+  {
+    group: 'Trajectory & Posture',
+    tabs: [
+      { key: 'MOTION_PATHS', label: 'Motion Paths', refTable: 'motionPaths' },
+      { key: 'TORSO_ANGLES', label: 'Torso Angles', refTable: 'torsoAngles' },
+      { key: 'TORSO_ORIENTATIONS', label: 'Torso Orientations', refTable: 'torsoOrientations' },
+      { key: 'RESISTANCE_ORIGIN', label: 'Resistance Origin', refTable: 'resistanceOrigin' },
+    ],
+  },
+  {
+    group: 'Upper Body',
+    tabs: [
+      { key: 'GRIPS', label: 'Grips', refTable: 'grips', filterFn: (r) => r.grip_category !== 'Width' && r.parent_id == null },
+      { key: 'GRIP_WIDTHS', label: 'Grip Widths', refTable: 'gripWidths' },
+      { key: 'ELBOW_RELATIONSHIP', label: 'Elbow Rel.', refTable: 'elbowRelationship' },
+      { key: 'EXECUTION_STYLES', label: 'Exec. Styles', refTable: 'executionStyles' },
+    ],
+  },
+  {
+    group: 'Lower Body',
+    tabs: [
+      { key: 'FOOT_POSITIONS', label: 'Foot Positions', refTable: 'footPositions' },
+      { key: 'STANCE_WIDTHS', label: 'Stance Widths', refTable: 'stanceWidths' },
+      { key: 'STANCE_TYPES', label: 'Stance Types', refTable: 'stanceTypes' },
+      { key: 'LOAD_PLACEMENT', label: 'Load Placement', refTable: 'loadPlacement' },
+    ],
+  },
+  {
+    group: 'Execution',
+    tabs: [
+      { key: 'SUPPORT_STRUCTURES', label: 'Support Struct.', refTable: 'supportStructures' },
+      { key: 'LOADING_AIDS', label: 'Loading Aids', refTable: 'loadingAids' },
+      { key: 'RANGE_OF_MOTION', label: 'Range of Motion', refTable: 'rangeOfMotion' },
+    ],
+  },
 ];
+
+const ALL_TABS: TabDef[] = TAB_GROUPS.flatMap(g => g.tabs);
 
 function getConstraintArray(row: Record<string, unknown>, key: MatrixTab): string[] | null {
   const mc = row.modifier_constraints;
@@ -58,13 +185,19 @@ function rowHasChanges(row: Record<string, unknown>, saved: Record<string, unkno
   return a !== b;
 }
 
-export default function FilterMatrix({ onDataChange }: FilterMatrixProps) {
+interface CategoryGroup {
+  categoryId: string;
+  categoryLabel: string;
+  rows: Record<string, unknown>[];
+}
+
+export default function FilterMatrix({ schemas, onDataChange }: FilterMatrixProps) {
   const [equipFilter, setEquipFilter] = useState<EquipmentFilter>('all');
   const [activeTab, setActiveTab] = useState<MatrixTab>('GRIPS');
-  const [viewMode, setViewMode] = useState<ViewMode>('equipment');
   const [allRows, setAllRows] = useState<Record<string, unknown>[]>([]);
   const [savedRows, setSavedRows] = useState<Record<string, unknown>[]>([]);
   const [colOptions, setColOptions] = useState<Record<string, unknown>[]>([]);
+  const [categories, setCategories] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [copySource, setCopySource] = useState('');
@@ -73,8 +206,10 @@ export default function FilterMatrix({ onDataChange }: FilterMatrixProps) {
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ updated: number; errors: string[] } | null>(null);
   const [importTargetTab, setImportTargetTab] = useState<MatrixTab>(activeTab);
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
 
-  const currentTabDef = TABS.find((t) => t.key === activeTab)!;
+  const currentTabDef = ALL_TABS.find((t) => t.key === activeTab)!;
+  const currentSchema = schemas.find(s => s.key === currentTabDef.refTable);
 
   const rows = useMemo(() => {
     if (equipFilter === 'equipment') return allRows.filter(r => !r.is_attachment);
@@ -89,10 +224,44 @@ export default function FilterMatrix({ onDataChange }: FilterMatrixProps) {
     });
   }, [allRows, savedRows]);
 
+  const groupedRows = useMemo((): CategoryGroup[] => {
+    const catMap = new Map<string, { label: string; sortOrder: number }>();
+    categories.forEach(c => {
+      catMap.set(String(c.id), {
+        label: String(c.label ?? c.id),
+        sortOrder: typeof c.sort_order === 'number' ? c.sort_order : 999,
+      });
+    });
+
+    const byCategory = new Map<string, Record<string, unknown>[]>();
+    rows.forEach(row => {
+      const catId = row.category_id ? String(row.category_id) : '__UNCATEGORIZED__';
+      if (!byCategory.has(catId)) byCategory.set(catId, []);
+      byCategory.get(catId)!.push(row);
+    });
+
+    return Array.from(byCategory.entries())
+      .sort((a, b) => {
+        if (a[0] === '__UNCATEGORIZED__') return 1;
+        if (b[0] === '__UNCATEGORIZED__') return -1;
+        const orderA = catMap.get(a[0])?.sortOrder ?? 999;
+        const orderB = catMap.get(b[0])?.sortOrder ?? 999;
+        return orderA - orderB;
+      })
+      .map(([catId, catRows]) => ({
+        categoryId: catId,
+        categoryLabel: catId === '__UNCATEGORIZED__' ? 'Uncategorized' : (catMap.get(catId)?.label ?? catId),
+        rows: catRows,
+      }));
+  }, [rows, categories]);
+
   const loadEquip = useCallback(async () => {
     setLoading(true);
     try {
-      const equipData = await api.getTable('equipment');
+      const [equipData, catData] = await Promise.all([
+        api.getTable('equipment'),
+        api.getTable('equipmentCategories'),
+      ]);
       const data = Array.isArray(equipData) ? (equipData as Record<string, unknown>[]) : [];
       const normalized = data.map(r => {
         if (typeof r.modifier_constraints === 'string') {
@@ -102,6 +271,7 @@ export default function FilterMatrix({ onDataChange }: FilterMatrixProps) {
       });
       setAllRows(normalized);
       setSavedRows(normalized.map(r => ({ ...r, modifier_constraints: { ...(r.modifier_constraints as Record<string, unknown>) } })));
+      setCategories(Array.isArray(catData) ? catData as Record<string, unknown>[] : []);
     } catch (err) {
       console.error('Failed to load equipment:', err);
       toast.error('Failed to load data');
@@ -203,23 +373,6 @@ export default function FilterMatrix({ onDataChange }: FilterMatrixProps) {
     updateRow(String(row.id), setConstraintArray(row, activeTab, []));
   };
 
-  const selectAllForColumn = (optionId: string) => {
-    setAllRows(prev => prev.map(row => {
-      const current = getConstraintArray(row, activeTab);
-      if (current === null) return row;
-      if (current.includes(optionId)) return row;
-      return setConstraintArray(row, activeTab, [...current, optionId]);
-    }));
-  };
-
-  const clearAllForColumn = (optionId: string) => {
-    setAllRows(prev => prev.map(row => {
-      const current = getConstraintArray(row, activeTab);
-      if (!current || !current.includes(optionId)) return row;
-      return setConstraintArray(row, activeTab, current.filter(v => v !== optionId));
-    }));
-  };
-
   const copyRulesFrom = (sourceId: string, targetRow: Record<string, unknown>) => {
     const sourceRow = allRows.find(r => r.id === sourceId);
     if (!sourceRow) return;
@@ -315,7 +468,6 @@ export default function FilterMatrix({ onDataChange }: FilterMatrixProps) {
     setImportResult(null);
 
     try {
-      // Detect delimiter (tab or comma)
       const firstLine = importText.split('\n')[0];
       const isTsv = firstLine.includes('\t');
       const delimiter = isTsv ? '\t' : ',';
@@ -323,7 +475,6 @@ export default function FilterMatrix({ onDataChange }: FilterMatrixProps) {
       const lines = importText.split('\n').filter(l => l.trim());
       if (lines.length < 2) { toast.error('Need at least a header row and one data row'); setImporting(false); return; }
 
-      // Parse header
       const parseRow = (line: string): string[] => {
         const cells: string[] = [];
         let current = '';
@@ -346,7 +497,6 @@ export default function FilterMatrix({ onDataChange }: FilterMatrixProps) {
 
       const headerCells = parseRow(lines[0]);
       const equipmentIdIdx = headerCells.findIndex(h => h.toLowerCase() === 'equipment_id');
-      const equipmentLabelIdx = headerCells.findIndex(h => h.toLowerCase() === 'equipment_label');
       if (equipmentIdIdx < 0) { toast.error('Missing equipment_id column'); setImporting(false); return; }
 
       const optionColumns = headerCells
@@ -389,7 +539,7 @@ export default function FilterMatrix({ onDataChange }: FilterMatrixProps) {
       } else if (errors.length > 0) {
         toast.error(`Import completed with ${errors.length} errors`);
       } else {
-        toast.info('No changes to import');
+        toast('No changes to import');
       }
     } catch (err) {
       console.error('Import failed:', err);
@@ -398,7 +548,7 @@ export default function FilterMatrix({ onDataChange }: FilterMatrixProps) {
     } finally {
       setImporting(false);
     }
-  }, [importText, importTargetTab, allRows, activeTab]);
+  }, [importText, importTargetTab, allRows]);
 
   useEffect(() => {
     if (showImportModal) {
@@ -413,6 +563,69 @@ export default function FilterMatrix({ onDataChange }: FilterMatrixProps) {
   const activeEquipment = totalEquipment - nullCount;
   const totalCells = activeEquipment * colOptions.length;
   const checkedCells = rows.reduce((sum, row) => sum + getCheckedCount(row), 0);
+
+  const renderEquipmentRow = (row: Record<string, unknown>) => {
+    const nulled = isNullField(row);
+    const count = getCheckedCount(row);
+    const total = colOptions.length;
+    const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+    return (
+      <tr key={String(row.id)} className="border-b hover:bg-gray-50">
+        <td className="px-3 py-1.5 font-medium text-gray-800 sticky left-0 bg-white whitespace-nowrap z-10">
+          {String(row.label)}
+          {Boolean(row.is_attachment) && <span className="ml-1 text-xs text-purple-500">(att)</span>}
+        </td>
+        <td className="px-2 py-1.5 text-center">
+          <input type="checkbox" checked={nulled} onChange={() => toggleNull(row)} title="Set as null (not applicable)" className="rounded text-amber-500" />
+        </td>
+        <td className="px-2 py-1.5 text-center">
+          {nulled ? <span className="text-gray-300">--</span> : (
+            <span className={`font-medium ${pct === 100 ? 'text-green-600' : pct === 0 ? 'text-gray-300' : 'text-blue-600'}`}>{count}/{total}</span>
+          )}
+        </td>
+        {colOptions.map((col) => (
+          <td
+            key={String(col.id)}
+            className={`p-0 text-center cursor-pointer select-none ${nulled ? 'opacity-20 cursor-default' : isChecked(row, String(col.id)) ? 'bg-blue-100' : 'hover:bg-blue-50'}`}
+            onClick={() => { if (!nulled) toggleCell(row, String(col.id)); }}
+          >
+            <input
+              type="checkbox"
+              checked={isChecked(row, String(col.id))}
+              onChange={() => toggleCell(row, String(col.id))}
+              disabled={nulled}
+              className={`w-5 h-5 rounded pointer-events-none ${nulled ? 'opacity-20' : 'text-blue-600'}`}
+              tabIndex={-1}
+            />
+          </td>
+        ))}
+        <td className="px-2 py-1.5 text-center space-x-1">
+          <button onClick={() => selectAllForRow(row)} className="text-blue-500 hover:underline" disabled={nulled}>All</button>
+          <button onClick={() => clearAllForRow(row)} className="text-gray-400 hover:underline" disabled={nulled}>None</button>
+          <button
+            onClick={() => { if (copySource) copyRulesFrom(copySource, row); }}
+            className={`${copySource ? 'text-green-600 hover:underline' : 'text-gray-300 cursor-default'}`}
+            disabled={!copySource || nulled}
+            title={copySource ? `Paste from ${copySource}` : 'Select a source first'}
+          >Paste</button>
+        </td>
+      </tr>
+    );
+  };
+
+  const renderColumnHeaders = (isSticky: boolean) => (
+    <tr className={isSticky ? 'bg-gray-50 border-b' : 'bg-gray-50 border-b border-t-2 border-t-gray-300'}>
+      <th className={`px-3 py-2 text-left font-medium text-gray-600 sticky left-0 ${isSticky ? 'bg-gray-50 z-10' : 'bg-gray-50 z-10'} min-w-[180px]`}>Equipment</th>
+      <th className="px-2 py-2 text-center font-medium text-gray-400 min-w-[44px]">N/A</th>
+      <th className="px-2 py-2 text-center font-medium text-blue-500 min-w-[50px]">Count</th>
+      {colOptions.map((col) => (
+        <th key={String(col.id)} className="px-2 py-2 text-center font-medium text-gray-600 min-w-[80px] whitespace-nowrap" title={String(col.id)}>
+          {String(col.label)}
+        </th>
+      ))}
+      <th className="px-2 py-2 text-center font-medium text-gray-400 min-w-[120px]">Quick</th>
+    </tr>
+  );
 
   return (
     <div className="p-6">
@@ -469,27 +682,6 @@ export default function FilterMatrix({ onDataChange }: FilterMatrixProps) {
           ))}
         </div>
 
-        <div className="h-6 w-px bg-gray-300" />
-
-        <div className="flex gap-1 bg-gray-100 rounded p-0.5">
-          <button
-            onClick={() => setViewMode('equipment')}
-            className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-              viewMode === 'equipment' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Equipment View
-          </button>
-          <button
-            onClick={() => setViewMode('option')}
-            className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-              viewMode === 'option' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Option View
-          </button>
-        </div>
-
         <div className="ml-auto flex gap-3 text-xs text-gray-500">
           <span>{totalEquipment} equipment</span>
           <span>{colOptions.length} options</span>
@@ -500,21 +692,68 @@ export default function FilterMatrix({ onDataChange }: FilterMatrixProps) {
         </div>
       </div>
 
-      <div className="flex gap-1 mb-4 border-b">
-        {TABS.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-              activeTab === tab.key
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+      {/* Two-tier Tab Bar */}
+      <div className="mb-4 flex flex-col gap-1">
+        {/* Top bar: group selector */}
+        <div className="flex gap-1 bg-gray-100 rounded-lg p-0.5 justify-center" style={{ width: '600px' }}>
+          {TAB_GROUPS.map((group) => {
+            const isActive = group.tabs.some(t => t.key === activeTab);
+            return (
+              <button
+                key={group.group}
+                onClick={() => { if (!isActive) setActiveTab(group.tabs[0].key); }}
+                className={`flex-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap text-center ${
+                  isActive
+                    ? 'bg-blue-400 text-white shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                {group.group}
+              </button>
+            );
+          })}
+        </div>
+        {/* Bottom bar: table selector within active group */}
+        <div className="flex gap-1 bg-gray-100 rounded-lg p-0.5 justify-center" style={{ width: '600px' }}>
+          {TAB_GROUPS.find(g => g.tabs.some(t => t.key === activeTab))?.tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap text-center ${
+                activeTab === tab.key
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
+
+      {/* Table Description */}
+      {currentSchema?.description && (
+        <div className="mb-4 border border-gray-200 rounded-lg bg-gray-50 overflow-hidden">
+          <button
+            onClick={() => setDescriptionExpanded(!descriptionExpanded)}
+            className="w-full px-4 py-2 flex items-center justify-between hover:bg-gray-100 transition-colors"
+          >
+            <span className="text-sm font-medium text-gray-700">
+              About {currentSchema.label}
+            </span>
+            <span className="text-gray-400 text-xs">
+              {descriptionExpanded ? '▼' : '▶'}
+            </span>
+          </button>
+          {descriptionExpanded && (
+            <div className="px-4 py-3 border-t border-gray-200 bg-white">
+              <div className="text-sm text-gray-600 whitespace-pre-wrap">
+                {renderMarkdown(currentSchema.description)}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {hasChanges && !loading && (
         <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between">
@@ -530,107 +769,28 @@ export default function FilterMatrix({ onDataChange }: FilterMatrixProps) {
 
       {loading ? (
         <div className="text-gray-400">Loading matrix...</div>
-      ) : viewMode === 'equipment' ? (
-        <div className="overflow-x-auto border rounded-lg">
-          <table className="text-xs">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="px-3 py-2 text-left font-medium text-gray-600 sticky left-0 bg-gray-50 min-w-[180px] z-10">Equipment</th>
-                <th className="px-2 py-2 text-center font-medium text-gray-400 min-w-[44px]">N/A</th>
-                <th className="px-2 py-2 text-center font-medium text-blue-500 min-w-[50px]">Count</th>
-                {colOptions.map((col) => (
-                  <th key={String(col.id)} className="px-2 py-2 text-center font-medium text-gray-600 min-w-[80px] whitespace-nowrap group" title={String(col.id)}>
-                    <div>{String(col.label)}</div>
-                    <div className="flex justify-center gap-1 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => selectAllForColumn(String(col.id))} className="text-blue-500 hover:underline">all</button>
-                      <button onClick={() => clearAllForColumn(String(col.id))} className="text-gray-400 hover:underline">none</button>
-                    </div>
-                  </th>
-                ))}
-                <th className="px-2 py-2 text-center font-medium text-gray-400 min-w-[120px]">Quick</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => {
-                const nulled = isNullField(row);
-                const count = getCheckedCount(row);
-                const total = colOptions.length;
-                const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-                return (
-                  <tr key={String(row.id)} className="border-b hover:bg-gray-50">
-                    <td className="px-3 py-1.5 font-medium text-gray-800 sticky left-0 bg-white whitespace-nowrap z-10">
-                      {String(row.label)}
-                      {row.is_attachment && <span className="ml-1 text-xs text-purple-500">(att)</span>}
-                    </td>
-                    <td className="px-2 py-1.5 text-center">
-                      <input type="checkbox" checked={nulled} onChange={() => toggleNull(row)} title="Set as null (not applicable)" className="rounded text-amber-500" />
-                    </td>
-                    <td className="px-2 py-1.5 text-center">
-                      {nulled ? <span className="text-gray-300">--</span> : (
-                        <span className={`font-medium ${pct === 100 ? 'text-green-600' : pct === 0 ? 'text-gray-300' : 'text-blue-600'}`}>{count}/{total}</span>
-                      )}
-                    </td>
-                    {colOptions.map((col) => (
-                      <td key={String(col.id)} className="px-2 py-1.5 text-center">
-                        <input type="checkbox" checked={isChecked(row, String(col.id))} onChange={() => toggleCell(row, String(col.id))} disabled={nulled} className={`rounded ${nulled ? 'opacity-20' : 'text-blue-600'}`} />
-                      </td>
-                    ))}
-                    <td className="px-2 py-1.5 text-center space-x-1">
-                      <button onClick={() => selectAllForRow(row)} className="text-blue-500 hover:underline" disabled={nulled}>All</button>
-                      <button onClick={() => clearAllForRow(row)} className="text-gray-400 hover:underline" disabled={nulled}>None</button>
-                      <button
-                        onClick={() => { if (copySource) copyRulesFrom(copySource, row); }}
-                        className={`${copySource ? 'text-green-600 hover:underline' : 'text-gray-300 cursor-default'}`}
-                        disabled={!copySource || nulled}
-                        title={copySource ? `Paste from ${copySource}` : 'Select a source first'}
-                      >Paste</button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
       ) : (
         <div className="overflow-x-auto border rounded-lg">
           <table className="text-xs">
             <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="px-3 py-2 text-left font-medium text-gray-600 sticky left-0 bg-gray-50 min-w-[180px] z-10">{currentTabDef.label}</th>
-                <th className="px-2 py-2 text-center font-medium text-blue-500 min-w-[50px]">Used By</th>
-                {rows.map((row) => (
-                  <th key={String(row.id)} className="px-2 py-2 text-center font-medium text-gray-600 min-w-[80px] whitespace-nowrap" title={String(row.id)}>
-                    {String(row.label)}
-                  </th>
-                ))}
-              </tr>
+              {renderColumnHeaders(true)}
             </thead>
             <tbody>
-              {colOptions.map((opt) => {
-                const optId = String(opt.id);
-                const usedBy = getEquipmentCountForOption(optId);
-                return (
-                  <tr key={optId} className="border-b hover:bg-gray-50">
-                    <td className="px-3 py-1.5 font-medium text-gray-800 sticky left-0 bg-white whitespace-nowrap z-10">
-                      {String(opt.label)}
-                      <span className="text-gray-400 text-xs ml-1">{optId}</span>
+              {groupedRows.map((group, groupIdx) => (
+                <React.Fragment key={group.categoryId}>
+                  {groupIdx > 0 && renderColumnHeaders(false)}
+                  <tr className="bg-gray-100 border-b">
+                    <td
+                      colSpan={colOptions.length + 4}
+                      className="px-3 py-1.5 font-bold text-gray-700 text-xs uppercase tracking-wide sticky left-0 bg-gray-100 z-10"
+                    >
+                      {group.categoryLabel}
+                      <span className="ml-2 font-normal text-gray-400 normal-case tracking-normal">({group.rows.length})</span>
                     </td>
-                    <td className="px-2 py-1.5 text-center">
-                      <span className={`font-medium ${usedBy === rows.length ? 'text-green-600' : usedBy === 0 ? 'text-gray-300' : 'text-blue-600'}`}>
-                        {usedBy}/{rows.length}
-                      </span>
-                    </td>
-                    {rows.map((row) => {
-                      const nulled = isNullField(row);
-                      return (
-                        <td key={String(row.id)} className="px-2 py-1.5 text-center">
-                          <input type="checkbox" checked={isChecked(row, optId)} onChange={() => toggleCell(row, optId)} disabled={nulled} className={`rounded ${nulled ? 'opacity-20' : 'text-blue-600'}`} />
-                        </td>
-                      );
-                    })}
                   </tr>
-                );
-              })}
+                  {group.rows.map(renderEquipmentRow)}
+                </React.Fragment>
+              ))}
             </tbody>
           </table>
         </div>
@@ -669,8 +829,12 @@ export default function FilterMatrix({ onDataChange }: FilterMatrixProps) {
                   onChange={(e) => setImportTargetTab(e.target.value as MatrixTab)}
                   className="w-full px-3 py-2 border rounded bg-white border-gray-300 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  {TABS.map(tab => (
-                    <option key={tab.key} value={tab.key}>{tab.label}</option>
+                  {TAB_GROUPS.map(group => (
+                    <optgroup key={group.group} label={group.group}>
+                      {group.tabs.map(tab => (
+                        <option key={tab.key} value={tab.key}>{tab.label}</option>
+                      ))}
+                    </optgroup>
                   ))}
                 </select>
               </div>
