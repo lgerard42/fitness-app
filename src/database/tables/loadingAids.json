@@ -68,32 +68,12 @@
     "common_names": [
       "Lifting Belt",
       "Core Support",
-      "Prone Brace"
+      "Core Brace"
     ],
-    "delta_rules": {
-      "SQUAT_REGULAR": {
-        "CORE_DEEP": 0.15,
-        "BACK_LOWER": -0.1
-      },
-      "SQUAT_FRONT": {
-        "CORE_DEEP": 0.15,
-        "BACK_LOWER": -0.1
-      },
-      "HINGE_STD": {
-        "CORE_DEEP": 0.15,
-        "BACK_LOWER": -0.1
-      },
-      "HINGE_STRAIGHT": {
-        "CORE_DEEP": 0.15,
-        "BACK_LOWER": -0.1
-      },
-      "PRESS_OVERHEAD": {
-        "CORE_DEEP": 0.1
-      }
-    },
-    "short_description": "Increases intra-abdominal pressure. Boosts deep core engagement (bracing) while providing a safety margin for the lower back.",
-    "sort_order": 2,
-    "icon": "",
+    "delta_rules": [],
+    "short_description": "Weight belt for core bracing on heavy lifts",
+    "sort_order": 620,
+    "icon": "🛡️",
     "is_active": true
   },
   {

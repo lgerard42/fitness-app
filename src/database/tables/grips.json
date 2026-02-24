@@ -650,5 +650,25 @@
     "is_active": true,
     "rotation_path": null,
     "icon": null
+  },
+  {
+    "id": "HOOK_GRIP",
+    "label": "Hook Grip",
+    "parent_id": "null",
+    "grip_category": "Other",
+    "rotation_path": {},
+    "common_names": [
+      "Hook Grip",
+      "Deadlift Hook",
+      "Thumb-Under Grip",
+      "Olympic Hook",
+      "Powerlifting Hook"
+    ],
+    "is_dynamic": false,
+    "delta_rules": [],
+    "short_description": "Thumb locked under fingers for heavy pulls",
+    "sort_order": 190,
+    "icon": "🤏",
+    "is_active": true
   }
 ]

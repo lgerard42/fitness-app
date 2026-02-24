@@ -547,19 +547,24 @@
     "parent_ids": [
       "LEGS"
     ],
-    "label": "Inner Thighs",
+    "label": "Adductors",
     "common_names": [
-      "Inner Thighs",
       "Adductors",
-      "Groin"
+      "Inner Thighs",
+      "Groin",
+      "Inner Thigh"
     ],
-    "technical_name": "Musculi Adductores",
-    "short_description": "The muscles pulling the legs together.",
-    "function": "Hip adduction (pulling the femurs toward the midline).",
-    "location": "The medial (inside) portion of the thigh.",
-    "triggers": "Sumo squats, lateral lunges, and adductor machines.",
-    "sort_order": 28,
-    "is_active": true
+    "technical_name": "Adductor group (magnus, longus, brevis)",
+    "short_description": "Brings the legs toward the midline",
+    "function": "Hip adduction & pelvic stabilization",
+    "location": "Inner upper thigh / groin",
+    "triggers": "Sumo stance, side lunges, cable adductions",
+    "sort_order": 42,
+    "is_active": true,
+    "upper_lower": [
+      "LOWER"
+    ],
+    "icon": "null"
   },
   {
     "id": "THIGHS_OUTER",
@@ -1272,20 +1277,26 @@
   {
     "id": "ROTATOR_CUFF",
     "parent_ids": [
-      "SHOULDERS",
-      "BACK_UPPER"
+      "SHOULDERS"
     ],
     "label": "Rotator Cuff",
     "common_names": [
-      "Cuff",
-      "Stabilizers"
+      "Rotator Cuff",
+      "Rotator Cuff Group",
+      "Shoulder Stabilizers",
+      "Cuff Muscles"
     ],
-    "technical_name": "Articulatio Humeri",
-    "short_description": "The group of deep muscles stabilizing the shoulder joint.",
-    "function": "Keeping the head of the humerus firmly within the shoulder socket.",
-    "location": "Deep beneath the deltoids and on the scapula.",
-    "triggers": "External/Internal rotations and heavy overhead stability.",
-    "is_active": true
+    "technical_name": "Rotator cuff muscles",
+    "short_description": "Group of 4 muscles that stabilize the shoulder joint",
+    "function": "Shoulder rotation & dynamic stabilization",
+    "location": "Around the shoulder joint",
+    "triggers": "External/internal rotations, face pulls",
+    "is_active": true,
+    "upper_lower": [
+      "UPPER"
+    ],
+    "sort_order": 28,
+    "icon": "null"
   },
   {
     "id": "SUPRASPINATUS",
@@ -1420,6 +1431,82 @@
     "location": "The lower half of the calf, down to the Achilles tendon.",
     "triggers": "Seated calf raises or bent-knee standing raises.",
     "sort_order": 38,
+    "is_active": true
+  },
+  {
+    "id": "TIBIALIS_ANTERIOR",
+    "parent_ids": [
+      "SHINS"
+    ],
+    "label": "Tibialis Anterior",
+    "common_names": [
+      "Tibialis Anterior",
+      "Shin Muscle",
+      "Dorsiflexor",
+      "Front Shin"
+    ],
+    "technical_name": "Tibialis anterior",
+    "short_description": "Primary muscle for lifting the foot upward",
+    "function": "Dorsiflexion & inversion of the ankle",
+    "location": "Anterior lower leg (shin)",
+    "triggers": "Dorsiflexion, shin raises, uphill walking",
+    "upper_lower": [
+      "LOWER"
+    ],
+    "sort_order": 85,
+    "icon": "null",
+    "is_active": true
+  },
+  {
+    "id": "NECK_FLEXORS",
+    "label": "Neck Flexors",
+    "parent_ids": [
+      "NECK"
+    ],
+    "upper_lower": [
+      "UPPER"
+    ],
+    "common_names": [
+      "Anterior Neck",
+      "Front Neck",
+      "Neck Flexors",
+      "SCM",
+      "Sternocleidomastoid",
+      "Neck Curl Target"
+    ],
+    "technical_name": "Sternocleidomastoid",
+    "short_description": "Primary anterior neck for flexion and harness curls",
+    "function": "Cervical flexion",
+    "location": "Anterior neck",
+    "triggers": "Neck flexion",
+    "sort_order": 310,
+    "icon": "🦒",
+    "is_active": true
+  },
+  {
+    "id": "NECK_EXTENSORS",
+    "label": "Neck Extensors",
+    "parent_ids": [
+      "NECK"
+    ],
+    "upper_lower": [
+      "UPPER"
+    ],
+    "common_names": [
+      "Posterior Neck",
+      "Rear Neck",
+      "Neck Extensors",
+      "Cervical Extensors",
+      "Splenius",
+      "Neck Harness Target"
+    ],
+    "technical_name": "Cervical extensors (splenius)",
+    "short_description": "Posterior neck for extensions and harness work",
+    "function": "Cervical extension",
+    "location": "Posterior neck",
+    "triggers": "Neck extension",
+    "sort_order": 320,
+    "icon": "🦒",
     "is_active": true
   }
 ]

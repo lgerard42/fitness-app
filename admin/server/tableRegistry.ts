@@ -143,7 +143,7 @@ const TABLE_DEFINITIONS: TableSchema[] = [
     labelField: 'label',
     fields: baseFields([
       { name: 'parent_id', type: 'fk', refTable: 'motions', refLabelField: 'label' },
-      { name: 'upper_lower', type: 'string' },
+      { name: 'upper_lower', type: 'string[]', defaultValue: [] },
       { name: 'muscle_targets', type: 'json', jsonShape: 'muscle_targets' },
       { name: 'default_delta_configs', type: 'json', jsonShape: 'default_delta_configs', label: 'Motion paths', defaultValue: {} },
       { name: 'common_names', type: 'string[]', defaultValue: [] },

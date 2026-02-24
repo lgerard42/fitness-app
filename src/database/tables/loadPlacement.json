@@ -1,1 +1,240 @@
-[{"id":"POSTERIOR_HIGH","label":"Upper Back","common_names":["High Bar","Traps","Yoke","Back Squat"],"load_category":"BODY_SUPPORTED","allows_secondary":false,"is_valid_secondary":false,"delta_rules":{},"short_description":"Load sits on the traps. Both hands are required to stabilize. SQUAT_REGULAR home base.","sort_order":0,"icon":null,"is_active":true},{"id":"ANTERIOR_RACK","label":"Front Rack","common_names":["Front Barbell","Clavicle Load","Front Squat"],"load_category":"BODY_SUPPORTED","allows_secondary":false,"is_valid_secondary":false,"delta_rules":{"SQUAT_REGULAR":{"QUADS":0.2,"CORE_DEEP":0.2,"BACK_UPPER":0.2,"GLUTES":-0.1},"SQUAT_FRONT":{},"LUNGE_STATIC":{"QUADS":0.15,"CORE_DEEP":0.15,"BACK_UPPER":0.15}},"short_description":"Bar rests on the anterior deltoids. Forces upright posture, shifting load to quads and upper back. SQUAT_FRONT home base.","sort_order":1,"icon":null,"is_active":true},{"id":"ANTERIOR_CLOSE","label":"Front (Held)","common_names":["Goblet","Zercher","Chest Hold"],"load_category":"HAND_HELD","allows_secondary":false,"is_valid_secondary":true,"delta_rules":{"SQUAT_REGULAR":{"QUADS":0.15,"CORE_DEEP":0.15,"BICEP_INNER":0.1},"LUNGE_STATIC":{"CORE_DEEP":0.1}},"short_description":"Goblet/Zercher style. Hands are actively holding the weight against the chest.","sort_order":2,"icon":null,"is_active":true},{"id":"ANTERIOR_EXTENDED","label":"Front (Extended)","common_names":["Counterbalance","Reach Load","Plate Hold"],"load_category":"HAND_HELD","allows_secondary":false,"is_valid_secondary":true,"delta_rules":{"SQUAT_REGULAR":{"CORE_DEEP":0.35,"DELTS_FRONT":0.25,"BACK_LOWER":-0.2}},"short_description":"Counterbalance hold. Massive anterior core demand. Perfect secondary load for Belt Squats.","sort_order":3,"icon":null,"is_active":true},{"id":"PELVIC","label":"Waist / Hips","common_names":["Belt Squat","Hip Belt","Dip Belt"],"load_category":"BODY_SUPPORTED","allows_secondary":true,"is_valid_secondary":true,"delta_rules":{"SQUAT_REGULAR":{"BACK_LOWER":-0.6,"CORE_DEEP":-0.4,"BACK_UPPER":-0.3},"HINGE_STD":{"BACK_LOWER":-0.8,"TRAPS_UPPER":-0.7}},"short_description":"Belt Squat. Removes axial spinal loading. Hands are free, allowing secondary loads.","sort_order":4,"icon":null,"is_active":true},{"id":"TORSO_WEARABLE","label":"Torso (Vest)","common_names":["Weighted Vest","Body Armor","Ruck"],"load_category":"BODY_SUPPORTED","allows_secondary":true,"is_valid_secondary":true,"delta_rules":{"SQUAT_REGULAR":{"CORE_DEEP":0.15,"BACK_UPPER":0.1},"LUNGE_STEP":{"CORE_DEEP":0.15}},"short_description":"Weighted vest. Adds mass without occupying hands. Can be primary or secondary.","sort_order":5,"icon":null,"is_active":true},{"id":"LATERAL_HANGING","label":"Sides (Hands)","common_names":["Farmer's Carry","Suitcase","Dumbbells at Side"],"load_category":"HAND_HELD","allows_secondary":false,"is_valid_secondary":true,"delta_rules":{"SQUAT_REGULAR":{"FOREARM_BOTTOM":0.4,"TRAPS_UPPER":0.2,"BACK_LOWER":-0.1},"HINGE_STD":{}},"short_description":"Farmer's carry style. Hands are occupied. Lowers center of gravity.","sort_order":6,"icon":null,"is_active":true},{"id":"OVERHEAD","label":"Overhead","common_names":["OHS","Waiter's Hold","Locked Out"],"load_category":"HAND_HELD","allows_secondary":false,"is_valid_secondary":false,"delta_rules":{"SQUAT_REGULAR":{"CORE_DEEP":0.4,"TRAPS_UPPER":0.3,"DELTS_SIDE":0.2}},"short_description":"Locked out overhead. Requires full body coordination. Cannot safely mix with other placements.","sort_order":7,"icon":null,"is_active":true},{"id":"AXIAL_INTERNAL","label":"Leg-Isolated","common_names":["Leg Press","Machine Supported","Hack Squat"],"load_category":"MACHINE_SUPPORTED","allows_secondary":false,"is_valid_secondary":false,"delta_rules":{"SQUAT_REGULAR":{"BACK_LOWER":-0.9,"CORE_DEEP":-0.8,"BACK_UPPER":-0.5}},"short_description":"Leg Press/Hack Squat machine. The machine supports the weight entirely.","sort_order":8,"icon":null,"is_active":true}]
+[
+  {
+    "id": "POSTERIOR_HIGH",
+    "label": "Upper Back",
+    "common_names": [
+      "High Bar",
+      "Traps",
+      "Yoke",
+      "Back Squat"
+    ],
+    "load_category": "BODY_SUPPORTED",
+    "allows_secondary": false,
+    "is_valid_secondary": false,
+    "delta_rules": {},
+    "short_description": "Load sits on the traps. Both hands are required to stabilize. SQUAT_REGULAR home base.",
+    "sort_order": 0,
+    "icon": null,
+    "is_active": true
+  },
+  {
+    "id": "ANTERIOR_RACK",
+    "label": "Front Rack",
+    "common_names": [
+      "Front Barbell",
+      "Clavicle Load",
+      "Front Squat"
+    ],
+    "load_category": "BODY_SUPPORTED",
+    "allows_secondary": false,
+    "is_valid_secondary": false,
+    "delta_rules": {
+      "SQUAT_REGULAR": {
+        "QUADS": 0.2,
+        "CORE_DEEP": 0.2,
+        "BACK_UPPER": 0.2,
+        "GLUTES": -0.1
+      },
+      "SQUAT_FRONT": {},
+      "LUNGE_STATIC": {
+        "QUADS": 0.15,
+        "CORE_DEEP": 0.15,
+        "BACK_UPPER": 0.15
+      }
+    },
+    "short_description": "Bar rests on the anterior deltoids. Forces upright posture, shifting load to quads and upper back. SQUAT_FRONT home base.",
+    "sort_order": 1,
+    "icon": null,
+    "is_active": true
+  },
+  {
+    "id": "ANTERIOR_CLOSE",
+    "label": "Front (Held)",
+    "common_names": [
+      "Goblet",
+      "Zercher",
+      "Chest Hold"
+    ],
+    "load_category": "HAND_HELD",
+    "allows_secondary": false,
+    "is_valid_secondary": true,
+    "delta_rules": {
+      "SQUAT_REGULAR": {
+        "QUADS": 0.15,
+        "CORE_DEEP": 0.15,
+        "BICEP_INNER": 0.1
+      },
+      "LUNGE_STATIC": {
+        "CORE_DEEP": 0.1
+      }
+    },
+    "short_description": "Goblet/Zercher style. Hands are actively holding the weight against the chest.",
+    "sort_order": 2,
+    "icon": null,
+    "is_active": true
+  },
+  {
+    "id": "ANTERIOR_EXTENDED",
+    "label": "Front (Extended)",
+    "common_names": [
+      "Counterbalance",
+      "Reach Load",
+      "Plate Hold"
+    ],
+    "load_category": "HAND_HELD",
+    "allows_secondary": false,
+    "is_valid_secondary": true,
+    "delta_rules": {
+      "SQUAT_REGULAR": {
+        "CORE_DEEP": 0.35,
+        "DELTS_FRONT": 0.25,
+        "BACK_LOWER": -0.2
+      }
+    },
+    "short_description": "Counterbalance hold. Massive anterior core demand. Perfect secondary load for Belt Squats.",
+    "sort_order": 3,
+    "icon": null,
+    "is_active": true
+  },
+  {
+    "id": "PELVIC",
+    "label": "Waist / Hips",
+    "common_names": [
+      "Belt Squat",
+      "Hip Belt",
+      "Dip Belt"
+    ],
+    "load_category": "BODY_SUPPORTED",
+    "allows_secondary": true,
+    "is_valid_secondary": true,
+    "delta_rules": {
+      "SQUAT_REGULAR": {
+        "BACK_LOWER": -0.6,
+        "CORE_DEEP": -0.4,
+        "BACK_UPPER": -0.3
+      },
+      "HINGE_STD": {
+        "BACK_LOWER": -0.8,
+        "TRAPS_UPPER": -0.7
+      }
+    },
+    "short_description": "Belt Squat. Removes axial spinal loading. Hands are free, allowing secondary loads.",
+    "sort_order": 4,
+    "icon": null,
+    "is_active": true
+  },
+  {
+    "id": "TORSO_WEARABLE",
+    "label": "Torso (Vest)",
+    "common_names": [
+      "Weighted Vest",
+      "Body Armor",
+      "Ruck"
+    ],
+    "load_category": "BODY_SUPPORTED",
+    "allows_secondary": true,
+    "is_valid_secondary": true,
+    "delta_rules": {
+      "SQUAT_REGULAR": {
+        "CORE_DEEP": 0.15,
+        "BACK_UPPER": 0.1
+      },
+      "LUNGE_STEP": {
+        "CORE_DEEP": 0.15
+      }
+    },
+    "short_description": "Weighted vest. Adds mass without occupying hands. Can be primary or secondary.",
+    "sort_order": 5,
+    "icon": null,
+    "is_active": true
+  },
+  {
+    "id": "LATERAL_HANGING",
+    "label": "Sides (Hands)",
+    "common_names": [
+      "Farmer's Carry",
+      "Suitcase",
+      "Dumbbells at Side"
+    ],
+    "load_category": "HAND_HELD",
+    "allows_secondary": false,
+    "is_valid_secondary": true,
+    "delta_rules": {
+      "SQUAT_REGULAR": {
+        "FOREARM_BOTTOM": 0.4,
+        "TRAPS_UPPER": 0.2,
+        "BACK_LOWER": -0.1
+      },
+      "HINGE_STD": {}
+    },
+    "short_description": "Farmer's carry style. Hands are occupied. Lowers center of gravity.",
+    "sort_order": 6,
+    "icon": null,
+    "is_active": true
+  },
+  {
+    "id": "OVERHEAD",
+    "label": "Overhead",
+    "common_names": [
+      "OHS",
+      "Waiter's Hold",
+      "Locked Out"
+    ],
+    "load_category": "HAND_HELD",
+    "allows_secondary": false,
+    "is_valid_secondary": false,
+    "delta_rules": {
+      "SQUAT_REGULAR": {
+        "CORE_DEEP": 0.4,
+        "TRAPS_UPPER": 0.3,
+        "DELTS_SIDE": 0.2
+      }
+    },
+    "short_description": "Locked out overhead. Requires full body coordination. Cannot safely mix with other placements.",
+    "sort_order": 7,
+    "icon": null,
+    "is_active": true
+  },
+  {
+    "id": "AXIAL_INTERNAL",
+    "label": "Leg-Isolated",
+    "common_names": [
+      "Leg Press",
+      "Machine Supported",
+      "Hack Squat"
+    ],
+    "load_category": "MACHINE_SUPPORTED",
+    "allows_secondary": false,
+    "is_valid_secondary": false,
+    "delta_rules": {
+      "SQUAT_REGULAR": {
+        "BACK_LOWER": -0.9,
+        "CORE_DEEP": -0.8,
+        "BACK_UPPER": -0.5
+      }
+    },
+    "short_description": "Leg Press/Hack Squat machine. The machine supports the weight entirely.",
+    "sort_order": 8,
+    "icon": null,
+    "is_active": true
+  },
+  {
+    "id": "POSTERIOR_MID",
+    "label": "Mid Back / Low-Bar",
+    "load_category": "BODY_SUPPORTED",
+    "common_names": [
+      "Low-Bar Squat",
+      "Low-Bar Position",
+      "Mid-Back Bar Position",
+      "Rear Delt Shelf",
+      "Low-Bar Good Morning"
+    ],
+    "allows_secondary": false,
+    "is_valid_secondary": false,
+    "delta_rules": [],
+    "short_description": "Low bar across rear delts/mid traps",
+    "sort_order": 220,
+    "icon": "📍",
+    "is_active": true
+  }
+]

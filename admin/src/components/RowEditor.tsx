@@ -194,13 +194,13 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
       );
     }
 
-    // Special handling for upper_lower on MOTIONS table (use simple toggle)
+    // Special handling for upper_lower on MOTIONS table (use toggle)
     if (schema.key === 'motions' && field.name === 'upper_lower') {
-      const upperLowerValue = String(value ?? '');
+      const upperLowerValue = Array.isArray(value) ? (value as string[]) : [];
       return (
         <div key={field.name}>
           {label}
-          <UpperLowerToggleSimple
+          <UpperLowerToggle
             value={upperLowerValue}
             onChange={(v) => update(field.name, v)}
           />
@@ -684,7 +684,9 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
                       }
                     }
                     
-                    const upperLowerValue = String(data[upperLowerField.name] ?? '');
+                    const upperLowerValue = Array.isArray(data[upperLowerField.name]) 
+                      ? (data[upperLowerField.name] as string[]) 
+                      : [];
                     const displayLabel = labelField.label ?? labelField.name;
                     result.push(
                       <div key="label-upper_lower-row" className="flex items-start gap-4">
@@ -702,7 +704,7 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
                             {upperLowerField.required && <span className="text-red-500 ml-0.5">*</span>}
                             <span className="text-xs text-gray-400 ml-2">{upperLowerField.type}</span>
                           </label>
-                          <UpperLowerToggleSimple
+                          <UpperLowerToggle
                             value={upperLowerValue}
                             onChange={(v) => update(upperLowerField.name, v)}
                           />
