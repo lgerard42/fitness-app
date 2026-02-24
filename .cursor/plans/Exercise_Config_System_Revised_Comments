@@ -1,0 +1,48 @@
+# Exercise Config System — Revised Plan Comments
+
+## Context
+
+After Gemini and Grok produced [exercise_config_finalization_741200db.plan.md](.cursor/plans/exercise_config_finalization_741200db.plan.md), the following prompt was sent to Opus 4.6 to get a critical opinion. The revised plan [exercise_config_finalization_c367a42b.plan.md](.cursor/plans/exercise_config_finalization_c367a42b.plan.md) applies these suggestions.
+
+---
+
+## Prompt
+
+> In the context of our exercise config/scoring system, what is your personal opinion on the plan?
+
+---
+
+## Opus 4.6 Response
+
+### What's genuinely strong about this plan
+
+- **Sequencing is correct.** Phase 1 (shared engine) before Phase 2 (admin upgrades) before Phase 3 (mobile composer) is the only order that avoids rework. Building the scoring engine first means admin and mobile both consume the same truth, and you never have to rip out duplicated logic later. That's the single most important decision in the whole document and it's right.
+
+- **The composability architecture itself is excellent.** The idea that an exercise is a computation (motion + deltas) rather than a row is genuinely differentiated. Most fitness apps can't do what this system can do because they'd need 10,000+ exercise rows to cover the same combinatorial space. Your ~28 motions + 17 modifier tables cover that space mathematically. That's a real competitive advantage.
+
+- **The "no duplicated biomechanics logic" guardrail is the single most valuable guardrail.** The current codebase has zero shared packages, zero Zod validation, and the admin and mobile are entirely disconnected codebases that just happen to read the same JSON files. If you built the mobile composer without Phase 1, you'd inevitably hardcode dead-zone logic into React Native components, and it would drift from admin within weeks.
+
+### Where to push back or flag concerns
+
+1. **The plan is over-engineered for its current stage.** There are no tests in the repo (jest is installed but no test files exist). There is no `/packages/shared` directory. The admin has no Zod. The mobile app stores exercises in AsyncStorage as plain JSON with no validation. The gap between where the codebase is and where this plan wants it to be is enormous. The plan reads like it was written for a 5-person team with CI/CD, not for what appears to be a solo or very small team. Things like "weekly parity checks starting Week 2," a "canonicalization spec doc," a "scoring version manifest," "error/diagnostic event schema" — these are all correct in theory but risk becoming process overhead that slows down the actual work.  
+   **Suggestion:** Ruthlessly prioritize. The scoring engine (`resolveDeltas` + `computeActivation`) and the constraint evaluator are the only two things that must exist before anything else matters. Ship those two files with basic tests first. The canonicalization spec, version manifest, and diagnostic schemas can come after you have a working engine.
+
+2. **Phase 2 scope is misleading — most of it already exists.** The plan lists "Filter Matrix, Motion Delta Matrix, Relationship Graph" as Phase 2 deliverables, but these are already built and functional in the admin. What Phase 2 actually needs is: (a) wire these existing tools to use the shared engine from Phase 1 instead of doing their own JSON parsing, (b) add the new features (undo, dry-run, trace panel, QA dashboard). The plan should distinguish "already built, needs integration" from "needs to be built from scratch."
+
+3. **The monorepo prerequisite could become a trap.** Setting up `/packages/shared` that's consumable by Express, Vite (admin frontend), and Metro (Expo) simultaneously is non-trivial. Metro's module resolution is notoriously finicky with monorepo symlinks. Consider whether a simpler approach — e.g. a shared source folder with path aliases rather than a full published package — might get you to a working state faster while deferring the "proper" monorepo setup.
+
+4. **The mobile refactor prerequisite is gated wrong.** The plan says "before Phase 3," but the `indexWorkoutTemplate.tsx` refactor (4100+ lines) is such a large task that if you defer it until after Phase 2, you'll have a long gap where the scoring engine exists but can't be used anywhere users actually see it. Consider starting the refactor in parallel with Phase 1 — it doesn't depend on the scoring engine at all; it's purely structural.
+
+5. **Canonical hashing may be premature.** The plan puts significant emphasis on deterministic canonical hashing for exercise identity. That only matters if you need to de-duplicate exercises across sessions or build progression tracking that links "the same lift" over time. If the current app already tracks exercises by `exerciseId` (library item) + per-workout instances, canonical hashing is a nice-to-have, not a blocker. Ship the composer without it and add hashing when you actually build progression tracking.
+
+6. **The plan doesn't address the biggest practical risk: data completeness.** The Motion Delta Matrix already shows that many motion × modifier cells are empty. The scoring engine can be mathematically perfect, but if 60% of the delta rules are empty `{}` or missing, users will see flat/identical scores for most modifier choices and the "app understands kinesiology" moment won't land. A data-authoring sprint to fill in critical delta coverage should be called out explicitly, probably as a parallel workstream during Phase 2.
+
+### Bottom line
+
+The architecture and the sequencing are sound. The composability model is genuinely good. But the plan reads like a specification for a mature engineering org, and the codebase reads like an early-stage solo project. The risk isn't getting the architecture wrong — it's getting bogged down in infrastructure (monorepo tooling, canonicalization specs, diagnostic schemas, version manifests) before shipping the two things that actually matter: the scoring function and the constraint evaluator. Take this plan, cut it to about 40% of its current scope for a "v1" pass, ship that, and then layer on the guardrails as the system proves itself.
+
+---
+
+## Result
+
+The **revised plan** ([exercise_config_finalization_c367a42b.plan.md](.cursor/plans/exercise_config_finalization_c367a42b.plan.md)) incorporates these Opus 4.6 adjustments into the original roadmap.
