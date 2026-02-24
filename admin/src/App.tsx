@@ -7,6 +7,7 @@ import TableEditor from './pages/TableEditor';
 import FilterMatrix from './pages/FilterMatrix';
 import RelationshipGraph from './pages/RelationshipGraph';
 import MotionDeltaMatrix from './pages/MotionDeltaMatrix';
+import ScoringPanel from './pages/ScoringPanel';
 import { api, type TableInfo, type SchemaResponse } from './api';
 
 export default function App() {
@@ -66,6 +67,7 @@ export default function App() {
             element={<MotionDeltaMatrix schemas={schemaData?.tables ?? []} onDataChange={reload} />}
           />
           <Route path="/graph" element={<RelationshipGraph />} />
+          <Route path="/scoring" element={<ScoringPanel />} />
         </Routes>
       </main>
     </div>

@@ -47,6 +47,12 @@ todos:
   - id: phase3-v11-hashing
     content: "Phase 3 v1.1 (deferred): Canonical hashing + computed config cache + version-manifest cache invalidation (only when building progression tracking)"
     status: pending
+  - id: todo-1771950604788-r6fa8u3cw
+    content: once done the chnages above, make sure the backend is updated accordingly with the recent changes.
+    status: pending
+  - id: todo-1771950673576-8yp6si5pu
+    content: Add unit test suits for the chnages we have done in this plan and test them and show me the test results. if there are any bugs present , fix them too.
+    status: pending
 isProject: false
 ---
 
@@ -197,7 +203,7 @@ erDiagram
 ### Approach
 
 - Create `shared/` at repo root with the scoring engine, constraint evaluator, types, and schemas
-- Configure `tsconfig.json` path aliases (`@shared/*`) in admin and mobile
+- Configure `tsconfig.json` path aliases (`@shared/`*) in admin and mobile
 - For admin (Vite): add alias in `vite.config.ts`
 - For mobile (Expo/Metro): add alias in `metro.config.js` and `tsconfig.json`
 - Upgrade to full workspaces/Turborepo only after the shared code stabilizes and a proper build step is justified

@@ -15,11 +15,18 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "noEmit": true
+    "noEmit": true,
+    "baseUrl": "..",
+    "paths": {
+      "@shared/*": [
+        "shared/*"
+      ]
+    }
   },
   "include": [
     "src",
-    "server"
+    "server",
+    "../shared"
   ],
   "extends": "expo/tsconfig.base"
 }

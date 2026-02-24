@@ -56,6 +56,15 @@ export default function Sidebar({ tables, groups }: SidebarProps) {
         </NavLink>
 
         <NavLink
+          to="/scoring"
+          className={({ isActive }) =>
+            `block px-3 py-2 rounded text-sm ${isActive ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-800'}`
+          }
+        >
+          Scoring Engine
+        </NavLink>
+
+        <NavLink
           to="/graph"
           className={({ isActive }) =>
             `block px-3 py-2 rounded text-sm ${isActive ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-800'}`
