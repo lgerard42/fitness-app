@@ -216,7 +216,7 @@ async function createTables(db: SQLite.SQLiteDatabase) {
     );
   `);
 
-  // MOTIONS table (unified hierarchy replacing primary_motions + primary_motion_variations)
+  // MOTIONS table
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS motions (
       id TEXT PRIMARY KEY,
@@ -684,9 +684,6 @@ async function migrateToV16(db: SQLite.SQLiteDatabase) {
 
     await addCol('primary_motions', 'motion_paths', '{}');
     await addCol('primary_motions', 'icon');
-    await addCol('primary_motion_variations', 'motion_paths', '{}');
-    await addCol('primary_motion_variations', 'primary_motion_key');
-    await addCol('primary_motion_variations', 'icon');
     await addCol('motion_paths', 'icon');
     await addCol('grip_types', 'grip_category');
     await addCol('grip_types', 'delta_rules', '{}');
@@ -773,14 +770,14 @@ async function migrateToV18(db: SQLite.SQLiteDatabase) {
 
     // Migrate data from old tables to new merged structure
     // First, get all existing data
-    const mainCats = await db.getAllAsync<{ id: string; label: string; common_names: string; short_description: string; sort_order: number; is_active: number }>(
-      'SELECT id, label, common_names, short_description, sort_order, is_active FROM equipment_categories'
+    const mainCats = await db.getAllAsync<{ id: string; label: string; common_names: string; short_description: string; sort_order: number; is_active: number; icon?: string }>(
+      'SELECT id, label, common_names, short_description, sort_order, is_active, icon FROM equipment_categories'
     );
-    const supportCats = await db.getAllAsync<{ id: string; label: string; common_names: string; short_description: string; sort_order: number; is_active: number }>(
-      'SELECT id, label, common_names, short_description, sort_order, is_active FROM support_equipment_categories'
+    const supportCats = await db.getAllAsync<{ id: string; label: string; common_names: string; short_description: string; sort_order: number; is_active: number; icon?: string }>(
+      'SELECT id, label, common_names, short_description, sort_order, is_active, icon FROM support_equipment_categories'
     );
-    const weightsCats = await db.getAllAsync<{ id: string; label: string; common_names: string; short_description: string; sort_order: number; is_active: number }>(
-      'SELECT id, label, common_names, short_description, sort_order, is_active FROM weights_equipment_categories'
+    const weightsCats = await db.getAllAsync<{ id: string; label: string; common_names: string; short_description: string; sort_order: number; is_active: number; icon?: string }>(
+      'SELECT id, label, common_names, short_description, sort_order, is_active, icon FROM weights_equipment_categories'
     );
 
     // Map old IDs to new IDs
@@ -1001,7 +998,7 @@ async function migrateToV20(db: SQLite.SQLiteDatabase) {
       }
     } catch { /* table may not exist */ }
 
-    // Migrate primary_motion_variations rows (parent_id = primary_motion_key)
+    // Migrate  rows (parent_id = primary_motion_key)
     try {
       const variations = await db.getAllAsync<Record<string, unknown>>('SELECT * FROM primary_motion_variations');
       for (const row of variations) {
