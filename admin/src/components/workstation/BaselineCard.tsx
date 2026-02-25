@@ -31,28 +31,29 @@ export default function BaselineCard({
 
   return (
     <div className="border border-gray-200 rounded bg-white">
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-200 bg-gray-50">
-        <h4 className="text-xs font-bold text-gray-900 flex-1">
+      <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-gray-200 bg-gray-50">
+        <h4 className="text-[11px] font-bold text-gray-900 flex-1 truncate">
           Baseline Muscle Targets
-          <span className="font-normal text-gray-500 ml-1">-- {motionLabel}</span>
+          <span className="font-normal text-gray-500 ml-1">— {motionLabel}</span>
         </h4>
         {dirty && (
-          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-100 text-yellow-800 font-medium">
+          <span className="text-[9px] px-1 py-0.5 rounded-full bg-yellow-100 text-yellow-800 font-medium flex-shrink-0">
             unsaved
           </span>
         )}
         <button
           onClick={onSave}
           disabled={disabled || !dirty}
-          className="text-[10px] bg-blue-600 text-white rounded px-2.5 py-1 hover:bg-blue-700 disabled:opacity-50 font-medium"
+          className="text-[9px] bg-blue-600 text-white rounded px-2 py-0.5 hover:bg-blue-700 disabled:opacity-50 font-medium flex-shrink-0"
         >
           Save Baseline
         </button>
       </div>
-      <div className="p-3 max-h-[400px] overflow-y-auto">
+      <div className="p-1.5 max-h-[320px] overflow-y-auto">
         <MuscleTargetTree
           value={muscleTargets as Record<string, unknown>}
           onChange={(v) => onChange(v as unknown as MuscleTargets)}
+          compact
         />
       </div>
     </div>

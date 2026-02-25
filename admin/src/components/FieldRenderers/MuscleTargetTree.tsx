@@ -4,6 +4,8 @@ import { api } from '../../api';
 interface MuscleTargetTreeProps {
   value: Record<string, unknown>;
   onChange: (v: Record<string, unknown>) => void;
+  /** When true, use smaller typography and spacing (e.g. for Baseline card in Matrix V2) */
+  compact?: boolean;
 }
 
 interface MuscleOption {
@@ -28,7 +30,7 @@ function parsePids(m: Record<string, unknown>): string[] {
  *   Level 3: Tertiary Muscles (e.g. INNER_BICEP) filtered by parent secondary
  *   Each node has a _score number input.
  */
-export default function MuscleTargetTree({ value, onChange }: MuscleTargetTreeProps) {
+export default function MuscleTargetTree({ value, onChange, compact = false }: MuscleTargetTreeProps) {
   const [allMuscles, setAllMuscles] = useState<Record<string, unknown>[]>([]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
@@ -171,9 +173,11 @@ export default function MuscleTargetTree({ value, onChange }: MuscleTargetTreePr
       }
     }, [currentScore, isFocused]);
 
+    const inputSize = compact ? 'w-12 px-0.5 py-0 text-[10px]' : 'w-16 px-1 py-0.5 text-xs';
+
     if (computed) {
       return (
-        <span className="w-16 px-1 py-0.5 bg-gray-100 rounded text-xs text-center text-gray-500 italic inline-block"
+        <span className={`${compact ? 'w-12 px-0.5 py-0 text-[10px]' : 'w-16 px-1 py-0.5 text-xs'} bg-gray-100 rounded text-center text-gray-500 italic inline-block`}
           title="Auto-computed from children">{currentScore}</span>
       );
     }
@@ -202,7 +206,7 @@ export default function MuscleTargetTree({ value, onChange }: MuscleTargetTreePr
             e.currentTarget.blur();
           }
         }}
-        className="w-16 px-1 py-0.5 border rounded text-xs text-center focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        className={`${inputSize} border rounded text-center focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
       />
     );
   };
@@ -211,7 +215,7 @@ export default function MuscleTargetTree({ value, onChange }: MuscleTargetTreePr
   const unusedPrimaries = primaryMuscles.filter((pm) => !activePrimaries.includes(pm.id));
 
   return (
-    <div className="border rounded p-3 space-y-2 bg-gray-50">
+    <div className={`border rounded bg-gray-50 ${compact ? 'p-1.5 space-y-1' : 'p-3 space-y-2'}`}>
       {activePrimaries.map((primaryId) => {
         const primaryNode = data[primaryId] as Record<string, unknown> | undefined;
         if (!primaryNode || typeof primaryNode !== 'object') return null;
@@ -225,28 +229,28 @@ export default function MuscleTargetTree({ value, onChange }: MuscleTargetTreePr
 
         return (
           <div key={primaryId} className="border rounded bg-white">
-            <div className="flex items-center gap-2 px-3 py-2 bg-red-50">
+            <div className={`flex items-center bg-red-50 ${compact ? 'px-2 py-1 gap-1.5' : 'px-3 py-2 gap-2'}`}>
               <button
                 type="button"
                 onClick={() => toggleExpanded(primaryId)}
-                className="text-xs text-gray-500 w-4"
+                className={`text-gray-500 flex-shrink-0 ${compact ? 'text-[10px] w-3' : 'text-xs w-4'}`}
               >
                 {isExpanded ? '▼' : '▶'}
               </button>
-              <span className="font-medium text-sm text-red-800">{primaryLabel}</span>
-              <span className="text-xs text-gray-400">_score:</span>
+              <span className={`font-medium text-red-800 truncate ${compact ? 'text-[11px]' : 'text-sm'}`}>{primaryLabel}</span>
+              <span className={compact ? 'text-[10px] text-gray-400' : 'text-xs text-gray-400'}>_score:</span>
               <ScoreInput path={[primaryId]} currentScore={primaryScore} computed={secondaryKeys.length > 0} />
               <button
                 type="button"
                 onClick={() => removeKey([primaryId])}
-                className="ml-auto text-xs text-red-400 hover:text-red-600"
+                className={`ml-auto text-red-400 hover:text-red-600 flex-shrink-0 ${compact ? 'text-[10px]' : 'text-xs'}`}
               >
-                Remove
+                {compact ? '✕' : 'Remove'}
               </button>
             </div>
 
             {isExpanded && (
-              <div className="pl-6 pr-3 py-2 space-y-1.5">
+              <div className={compact ? 'pl-4 pr-1.5 py-1 space-y-0.5' : 'pl-6 pr-3 py-2 space-y-1.5'}>
                 {secondaryKeys.map((secondaryId) => {
                   const secondaryNode = primaryNode[secondaryId] as Record<string, unknown> | undefined;
                   if (!secondaryNode || typeof secondaryNode !== 'object') return null;
@@ -262,42 +266,42 @@ export default function MuscleTargetTree({ value, onChange }: MuscleTargetTreePr
                   const hasTertiaries = tertiaryKeys.length > 0;
 
                   return (
-                    <div key={secondaryId} className="border rounded bg-gray-50">
-                      <div className="flex items-center gap-2 px-2 py-1.5 bg-red-50">
+                    <div key={secondaryId} className={`border rounded bg-gray-50 ${compact ? 'rounded-sm' : ''}`}>
+                      <div className={`flex items-center gap-1.5 bg-red-50 ${compact ? 'px-1.5 py-0.5' : 'px-2 py-1.5'}`}>
                         {hasTertiaries ? (
                           <button
                             type="button"
                             onClick={() => toggleExpanded(subKey)}
-                            className="text-xs text-gray-500 w-4"
+                            className={`text-gray-500 flex-shrink-0 ${compact ? 'text-[10px] w-3' : 'text-xs w-4'}`}
                           >
                             {isSubExpanded ? '▼' : '▶'}
                           </button>
                         ) : (
-                          <span className="text-[10px] text-gray-400 w-4 flex items-center justify-center">●</span>
+                          <span className={`text-gray-400 flex items-center justify-center flex-shrink-0 ${compact ? 'text-[8px] w-3' : 'text-[10px] w-4'}`}>●</span>
                         )}
-                        <span className="text-sm text-red-800">{secondaryLabel}</span>
-                        <span className="text-xs text-gray-400">_score:</span>
+                        <span className={`text-red-800 truncate ${compact ? 'text-[11px]' : 'text-sm'}`}>{secondaryLabel}</span>
+                        <span className={compact ? 'text-[10px] text-gray-400' : 'text-xs text-gray-400'}>_score:</span>
                         <ScoreInput path={[primaryId, secondaryId]} currentScore={secondaryScore} computed={tertiaryKeys.length > 0} />
                         <button
                           type="button"
                           onClick={() => removeKey([primaryId, secondaryId])}
-                          className="ml-auto text-xs text-red-400 hover:text-red-600"
+                          className={`ml-auto text-red-400 hover:text-red-600 flex-shrink-0 ${compact ? 'text-[10px]' : 'text-xs'}`}
                         >
                           x
                         </button>
                       </div>
 
                       {hasTertiaries && isSubExpanded && (
-                        <div className="pl-6 pr-2 py-1.5 space-y-1">
+                        <div className={compact ? 'pl-4 pr-1 py-0.5 space-y-0.5' : 'pl-6 pr-2 py-1.5 space-y-1'}>
                           {tertiaryKeys.map((tertiaryId) => {
                             const tertiaryNode = secondaryNode[tertiaryId] as Record<string, unknown> | undefined;
                             const tertiaryScore = (tertiaryNode?._score as number) ?? 0;
                             const tertiaryLabel = getLabel(tertiaryId);
 
                             return (
-                              <div key={tertiaryId} className="flex items-center gap-2 px-2 py-1 bg-red-50 rounded">
-                                <span className="text-xs text-red-800">{tertiaryLabel}</span>
-                                <span className="text-xs text-gray-400">_score:</span>
+                              <div key={tertiaryId} className={`flex items-center gap-1.5 bg-red-50 rounded ${compact ? 'px-1.5 py-0.5' : 'px-2 py-1'}`}>
+                                <span className={`text-red-800 truncate ${compact ? 'text-[10px]' : 'text-xs'}`}>{tertiaryLabel}</span>
+                                <span className={compact ? 'text-[10px] text-gray-400' : 'text-xs text-gray-400'}>_score:</span>
                                 <ScoreInput
                                   path={[primaryId, secondaryId, tertiaryId]}
                                   currentScore={tertiaryScore}
@@ -305,7 +309,7 @@ export default function MuscleTargetTree({ value, onChange }: MuscleTargetTreePr
                                 <button
                                   type="button"
                                   onClick={() => removeKey([primaryId, secondaryId, tertiaryId])}
-                                  className="ml-auto text-xs text-red-400 hover:text-red-600"
+                                  className={`ml-auto text-red-400 hover:text-red-600 flex-shrink-0 ${compact ? 'text-[10px]' : 'text-xs'}`}
                                 >
                                   x
                                 </button>
@@ -319,7 +323,7 @@ export default function MuscleTargetTree({ value, onChange }: MuscleTargetTreePr
                                 if (e.target.value) addTertiary(primaryId, secondaryId, e.target.value);
                                 e.target.value = '';
                               }}
-                              className="text-xs px-2 py-1 border border-red-300 rounded text-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+                              className={`border border-red-300 rounded text-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 ${compact ? 'text-[10px] px-1.5 py-0.5' : 'text-xs px-2 py-1'}`}
                               defaultValue=""
                             >
                               <option value="">+ Add tertiary...</option>
@@ -340,7 +344,7 @@ export default function MuscleTargetTree({ value, onChange }: MuscleTargetTreePr
                       if (e.target.value) addSecondary(primaryId, e.target.value);
                       e.target.value = '';
                     }}
-                    className="text-xs px-2 py-1 border border-red-300 rounded text-gray-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+                    className={`border border-red-300 rounded text-gray-500 focus:outline-none focus:ring-1 focus:ring-red-500 ${compact ? 'text-[10px] px-1.5 py-0.5' : 'text-xs px-2 py-1'}`}
                     defaultValue=""
                   >
                     <option value="">+ Add secondary...</option>
@@ -361,7 +365,7 @@ export default function MuscleTargetTree({ value, onChange }: MuscleTargetTreePr
             if (e.target.value) addPrimary(e.target.value);
             e.target.value = '';
           }}
-          className="text-sm px-2 py-1.5 border border-red-300 rounded text-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+          className={`border border-red-300 rounded text-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 ${compact ? 'text-[10px] px-1.5 py-0.5' : 'text-sm px-2 py-1.5'}`}
           defaultValue=""
         >
           <option value="">+ Add primary muscle...</option>
