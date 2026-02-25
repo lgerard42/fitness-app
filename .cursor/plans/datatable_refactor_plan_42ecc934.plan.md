@@ -4,67 +4,67 @@ overview: Official execution plan to migrate the 20+ reference/config data table
 todos:
   - id: phase0-docker
     content: "Phase 0: Create root docker-compose.yml (Postgres + backend) and env templates"
-    status: in_progress
+    status: completed
   - id: phase0-flags
     content: "Phase 0: Create feature flag module (src/config/featureFlags.ts) with USE_BACKEND_REFERENCE=false"
-    status: pending
+    status: completed
   - id: phase0-ci
     content: "Phase 0: Add CI placeholder jobs for parity tests"
-    status: pending
+    status: completed
   - id: phase1-drizzle-schema
     content: "Phase 1: Create Drizzle schema for all 20 reference tables with natural PKs, FKs, is_active, source_type"
-    status: pending
+    status: completed
   - id: phase1-metadata-triggers
     content: "Phase 1: Create reference_metadata table + statement-level triggers on all 20 tables"
-    status: pending
+    status: completed
   - id: phase1-indexes
     content: "Phase 1: Add FK indexes + active-row read optimization indexes"
-    status: pending
+    status: completed
   - id: phase1-migrations
     content: "Phase 1: Generate and commit Drizzle migrations"
-    status: pending
+    status: completed
   - id: phase2-validators
     content: "Phase 2: Build seed pre-validation (FK refs, duplicate PKs, missing required fields)"
-    status: pending
+    status: completed
   - id: phase2-seed-pipeline
     content: "Phase 2: Build transactional seed pipeline with topological order and upsert-only logic"
-    status: pending
+    status: completed
   - id: phase2-deprecation
     content: "Phase 2: Implement guarded deprecation (source_type='seed' only) with empty-source safety checks"
-    status: pending
+    status: completed
   - id: phase3-version-endpoint
     content: "Phase 3: Build GET /api/v1/reference/version endpoint"
-    status: pending
+    status: completed
   - id: phase3-bootstrap-endpoint
     content: "Phase 3: Build GET /api/v1/reference/bootstrap endpoint (active-only, deterministic sort, wrapper metadata)"
-    status: pending
+    status: completed
   - id: phase3-granular-endpoint
     content: "Phase 3: Build GET /api/v1/reference/:table granular endpoint"
-    status: pending
+    status: completed
   - id: phase4-provider-interface
     content: "Phase 4: Define ReferenceDataProvider interface and factory"
-    status: pending
+    status: completed
   - id: phase4-local-provider
     content: "Phase 4: Create LocalJsonSqliteProvider wrapping current behavior"
-    status: pending
+    status: completed
   - id: phase4-remote-provider
     content: "Phase 4: Create RemotePostgresProvider with AsyncStorage warm cache and version checking"
-    status: pending
+    status: completed
   - id: phase4-service-refactor
     content: "Phase 4: Refactor exerciseConfigService to consume provider (facade pattern)"
-    status: pending
+    status: completed
   - id: phase5-parity-harness
     content: "Phase 5: Build parity harness -- normalize, compare, actionable diff output"
-    status: pending
+    status: completed
   - id: phase5-ci-integration
     content: "Phase 5: Integrate parity harness into CI"
-    status: pending
+    status: completed
   - id: phase6-smoke-tests
     content: "Phase 6: Run smoke tests (library browse, exercise edit, workout selection, scoring lookups) in flag OFF/ON/offline modes"
-    status: pending
+    status: completed
   - id: phase6-rollout-playbook
     content: "Phase 6: Document cutover/rollback playbook and execute controlled rollout"
-    status: pending
+    status: completed
 isProject: false
 ---
 

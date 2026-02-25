@@ -5,9 +5,17 @@ import {
   useContext,
   useState,
   useCallback,
+  useEffect,
   type ReactNode,
 } from "react";
 import type { UserProfile } from "@/types";
+import {
+  apiLogin,
+  apiGetProfile,
+  getToken,
+  getSavedUser,
+  clearAuth,
+} from "./api";
 
 interface AuthState {
   user: UserProfile | null;
@@ -19,27 +27,40 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
-const MOCK_USER: UserProfile = {
-  id: "user-1",
-  name: "Alex Johnson",
-  email: "alex@example.com",
-  avatarUrl: undefined,
-  createdAt: "2024-06-01T00:00:00Z",
-  updatedAt: new Date().toISOString(),
-};
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const login = useCallback(async (_email: string, _password: string) => {
+  useEffect(() => {
+    const token = getToken();
+    if (!token) {
+      setIsLoading(false);
+      return;
+    }
+    const cached = getSavedUser();
+    if (cached) setUser(cached);
+
+    apiGetProfile()
+      .then((profile) => setUser(profile))
+      .catch(() => {
+        clearAuth();
+        setUser(null);
+      })
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  const login = useCallback(async (email: string, password: string) => {
     setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    setUser(MOCK_USER);
-    setIsLoading(false);
+    try {
+      const profile = await apiLogin(email, password);
+      setUser(profile);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   const logout = useCallback(() => {
+    clearAuth();
     setUser(null);
   }, []);
 

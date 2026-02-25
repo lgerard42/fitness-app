@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Ruler, TrendingDown, TrendingUp } from "lucide-react";
-import { getUserData } from "@/lib/mockData";
+import { useDashboard } from "@/lib/dashboard-context";
 import { formatDate } from "@/lib/utils";
-import type { DashboardData } from "@/types";
 import ChartCard from "@/components/dashboard/ChartCard";
 import {
   LineChart,
@@ -17,13 +15,9 @@ import {
 } from "@/components/dashboard/Charts";
 
 export default function MeasurementsPage() {
-  const [data, setData] = useState<DashboardData | null>(null);
+  const { data, isLoading } = useDashboard();
 
-  useEffect(() => {
-    getUserData().then(setData);
-  }, []);
-
-  if (!data) {
+  if (isLoading || !data) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />

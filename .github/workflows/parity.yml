@@ -1,0 +1,65 @@
+name: Reference Data Parity
+
+on:
+  push:
+    branches: [dev, main]
+    paths:
+      - 'src/database/tables/**'
+      - 'backend/src/seed/**'
+      - 'backend/src/parity/**'
+      - 'backend/src/drizzle/**'
+  pull_request:
+    branches: [dev, main]
+
+jobs:
+  parity-check:
+    name: Seed + Parity Harness
+    runs-on: ubuntu-latest
+    # Parity harness is implemented. Gate: requires Postgres + seed + harness to pass.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: onlyfit
+          POSTGRES_PASSWORD: onlyfit
+          POSTGRES_DB: onlyfit
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U onlyfit"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Run migrations
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://onlyfit:onlyfit@localhost:5432/onlyfit
+        run: npx drizzle-kit push
+
+      - name: Run seed
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://onlyfit:onlyfit@localhost:5432/onlyfit
+          TABLES_DIR: ../src/database/tables
+        run: npx tsx src/seed/seedPipeline.ts
+
+      - name: Run parity harness
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://onlyfit:onlyfit@localhost:5432/onlyfit
+          TABLES_DIR: ../src/database/tables
+        run: npx tsx src/parity/parityHarness.ts

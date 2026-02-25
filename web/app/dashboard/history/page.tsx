@@ -1,24 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ChevronDown, ChevronRight, Calendar, Trophy } from "lucide-react";
-import { getUserData } from "@/lib/mockData";
+import { useDashboard } from "@/lib/dashboard-context";
 import { formatDate, getExercisesFromItems } from "@/lib/utils";
-import type { DashboardData, Workout } from "@/types";
+import type { Workout } from "@/types";
 import Badge from "@/components/ui/Badge";
 
 export default function HistoryPage() {
-  const [data, setData] = useState<DashboardData | null>(null);
+  const { data, isLoading } = useDashboard();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [dateFilter, setDateFilter] = useState<"all" | "7d" | "30d" | "90d">(
     "all"
   );
 
-  useEffect(() => {
-    getUserData().then(setData);
-  }, []);
-
-  if (!data) {
+  if (isLoading || !data) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />

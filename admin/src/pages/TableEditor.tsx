@@ -700,6 +700,13 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
     return null;
   }, [key, schema]);
 
+  const loadDataRef = React.useRef(loadData);
+  const loadRefDataRef = React.useRef(loadRefData);
+  const loadColumnSettingsRef = React.useRef(loadColumnSettings);
+  React.useEffect(() => { loadDataRef.current = loadData; }, [loadData]);
+  React.useEffect(() => { loadRefDataRef.current = loadRefData; }, [loadRefData]);
+  React.useEffect(() => { loadColumnSettingsRef.current = loadColumnSettings; }, [loadColumnSettings]);
+
   useEffect(() => {
     setEditRow(null);
     setIsNew(false);
@@ -712,10 +719,12 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
     setDeleteConfirm(null);
     setMuscleTierFilter('ALL');
     setGroupBy(defaultGroupByForTable);
-    loadData();
-    loadRefData();
-    loadColumnSettings();
-  }, [key, defaultGroupByForTable, loadData, loadRefData, loadColumnSettings]);
+    loadDataRef.current();
+    loadRefDataRef.current();
+    loadColumnSettingsRef.current();
+    // Only re-run when the selected table changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, defaultGroupByForTable]);
 
   const applyFilter = (row: Record<string, unknown>, filter: FilterRule): boolean => {
     const field = schema?.fields.find((f) => f.name === filter.field);

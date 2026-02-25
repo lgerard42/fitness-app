@@ -1,12 +1,58 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { BRAND, NAV_ITEMS } from "@/constants";
 import Button from "@/components/ui/Button";
 import BrandIcon from "@/components/ui/BrandIcon";
 import { cn } from "@/lib/utils";
+
+function NavLink({
+  href,
+  className,
+  children,
+  onClick,
+}: {
+  href: string;
+  className?: string;
+  children: React.ReactNode;
+  onClick?: () => void;
+}) {
+  const pathname = usePathname();
+  const isHash = href.startsWith("#");
+
+  const handleClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (isHash) {
+        e.preventDefault();
+        if (pathname !== "/") {
+          window.location.href = `/${href}`;
+          return;
+        }
+        const el = document.querySelector(href);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+      onClick?.();
+    },
+    [href, isHash, pathname, onClick]
+  );
+
+  if (isHash) {
+    return (
+      <a href={href} className={className} onClick={handleClick}>
+        {children}
+      </a>
+    );
+  }
+
+  return (
+    <Link href={href} className={className} onClick={onClick}>
+      {children}
+    </Link>
+  );
+}
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -42,7 +88,7 @@ export default function Navbar() {
 
         <div className="hidden md:flex items-center gap-8">
           {NAV_ITEMS.map((item) => (
-            <Link
+            <NavLink
               key={item.label}
               href={item.href}
               className={cn(
@@ -53,7 +99,7 @@ export default function Navbar() {
               )}
             >
               {item.label}
-            </Link>
+            </NavLink>
           ))}
           <Link href="/dashboard">
             <Button
@@ -81,14 +127,14 @@ export default function Navbar() {
       {mobileOpen && (
         <div className="md:hidden bg-white border-b border-gray-100 px-4 pb-4">
           {NAV_ITEMS.map((item) => (
-            <Link
+            <NavLink
               key={item.label}
               href={item.href}
               className="block py-3 text-sm font-medium text-gray-600 hover:text-primary"
               onClick={() => setMobileOpen(false)}
             >
               {item.label}
-            </Link>
+            </NavLink>
           ))}
           <Link href="/dashboard" onClick={() => setMobileOpen(false)}>
             <Button size="sm" className="w-full mt-2">

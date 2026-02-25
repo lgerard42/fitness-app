@@ -11,10 +11,16 @@ export default function LoginForm() {
   const { login, isLoading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await login(email || "demo@example.com", password || "demo");
+    setError("");
+    try {
+      await login(email, password);
+    } catch (err: any) {
+      setError(err.message || "Login failed");
+    }
   };
 
   return (
@@ -40,7 +46,7 @@ export default function LoginForm() {
             id="email"
             label="Email"
             type="email"
-            placeholder="demo@example.com"
+            placeholder="alex@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
@@ -48,15 +54,20 @@ export default function LoginForm() {
             id="password"
             label="Password"
             type="password"
-            placeholder="Enter any password"
+            placeholder="password123"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
+          {error && (
+            <p className="text-sm text-red-500 text-center bg-red-50 rounded-lg py-2">
+              {error}
+            </p>
+          )}
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? "Signing in..." : "Sign In"}
           </Button>
           <p className="text-xs text-gray-400 text-center">
-            This is a demo. Enter any email and password.
+            Demo: alex@example.com / password123
           </p>
         </form>
       </div>

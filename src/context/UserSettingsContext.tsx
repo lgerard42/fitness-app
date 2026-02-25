@@ -1,5 +1,7 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { FEATURE_FLAGS } from '@/config/featureFlags';
+import { fetchSettings as apiFetchSettings, updateSettings as apiUpdateSettings } from '@/api/profile';
 import type { UserSettings } from '@/types/workout';
 
 const DEFAULT_SETTINGS: UserSettings = {
@@ -38,6 +40,18 @@ export const UserSettingsProvider = ({ children }: UserSettingsProviderProps) =>
           const parsed = JSON.parse(raw) as Partial<UserSettings>;
           setSettings(prev => ({ ...prev, ...parsed }));
         }
+
+        if (FEATURE_FLAGS.USE_BACKEND_USERDATA) {
+          try {
+            const remote = await apiFetchSettings();
+            if (remote) {
+              setSettings(prev => ({ ...prev, ...remote }));
+              console.log("[sync] loaded settings from backend");
+            }
+          } catch (err) {
+            console.warn("[sync] settings fetch failed:", (err as Error).message);
+          }
+        }
       } catch (e) {
         console.error('Failed to load user settings', e);
       } finally {
@@ -55,6 +69,12 @@ export const UserSettingsProvider = ({ children }: UserSettingsProviderProps) =>
 
   const updateSettings = useCallback((partial: Partial<UserSettings>) => {
     setSettings(prev => ({ ...prev, ...partial }));
+
+    if (FEATURE_FLAGS.USE_BACKEND_USERDATA) {
+      apiUpdateSettings(partial).catch(err =>
+        console.warn("[sync] failed to push settings:", (err as Error).message)
+      );
+    }
   }, []);
 
   return (

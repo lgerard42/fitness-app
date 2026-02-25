@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import {
   Dumbbell,
   Flame,
@@ -8,7 +7,7 @@ import {
   Trophy,
   Target,
 } from "lucide-react";
-import { getUserData } from "@/lib/mockData";
+import { useDashboard } from "@/lib/dashboard-context";
 import {
   calculateTotalVolume,
   calculateStreak,
@@ -16,7 +15,6 @@ import {
   formatDate,
   getExercisesFromItems,
 } from "@/lib/utils";
-import type { DashboardData } from "@/types";
 import StatCard from "@/components/dashboard/StatCard";
 import ChartCard from "@/components/dashboard/ChartCard";
 import {
@@ -32,13 +30,9 @@ import {
 } from "@/components/dashboard/Charts";
 
 export default function DashboardOverview() {
-  const [data, setData] = useState<DashboardData | null>(null);
+  const { data, isLoading } = useDashboard();
 
-  useEffect(() => {
-    getUserData().then(setData);
-  }, []);
-
-  if (!data) {
+  if (isLoading || !data) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />

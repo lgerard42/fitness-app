@@ -1,0 +1,40 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: onlyfit-db
+    restart: unless-stopped
+    ports:
+      - "${PG_PORT:-5432}:5432"
+    environment:
+      POSTGRES_USER: ${PG_USER:-onlyfit}
+      POSTGRES_PASSWORD: ${PG_PASSWORD:-onlyfit}
+      POSTGRES_DB: ${PG_DB:-onlyfit}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USER:-onlyfit}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: onlyfit-api
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-4000}:4000"
+    environment:
+      DATABASE_URL: postgresql://${PG_USER:-onlyfit}:${PG_PASSWORD:-onlyfit}@postgres:5432/${PG_DB:-onlyfit}
+      REFERENCE_DATA_SOURCE: ${REFERENCE_DATA_SOURCE:-json}
+      TABLES_DIR: /app/tables
+      PORT: 4000
+    volumes:
+      - ./src/database/tables:/app/tables:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:

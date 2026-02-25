@@ -1,51 +1,35 @@
 /**
- * Central schema registry for all JSON tables.
+ * Central schema registry for all reference tables.
  * Drives the admin UI: forms, dropdowns, validation, and relationship resolution.
  */
-import { TABLE_DESCRIPTIONS } from './tableDescriptions.js';
+import { TABLE_DESCRIPTIONS } from './tableDescriptions';
+import { TABLE_KEY_TO_PG } from '../drizzle/schema/referenceTables';
 
 export interface TableField {
   name: string;
   type: 'string' | 'number' | 'boolean' | 'string[]' | 'json' | 'fk' | 'fk[]';
   required?: boolean;
-  /** For FK / FK[] fields: which table to reference */
   refTable?: string;
-  /** For FK / FK[] fields: which field on the referenced table to display (default "label") */
   refLabelField?: string;
-  /** For json fields: hint about the shape for specialized editors */
   jsonShape?: 'muscle_targets' | 'delta_rules' | 'allowed_rules' | 'exercise_input_permissions' | 'motion_paths' | 'default_delta_configs' | 'free';
-  /** Default value for new rows */
   defaultValue?: unknown;
-  /** Optional display label (defaults to field name) */
   label?: string;
 }
 
 export interface TableSchema {
-  /** Key used in API routes, e.g. "gripTypes" */
   key: string;
-  /** Filename relative to the tables directory */
   file: string;
-  /** Human-readable name */
+  pgTable: string;
   label: string;
-  /** Group for sidebar organization */
   group: 'Exercise Setup' | 'Muscles & Motions' | 'Trajectory & Posture' | 'Upper Body Mechanics' | 'Lower Body Mechanics' | 'Execution Variables' | 'Equipment';
-  /** Primary key field (always "id") */
   idField: string;
-  /** Field used for display labels in dropdowns */
   labelField: string;
-  /** Field definitions */
   fields: TableField[];
-  /** Which field to sort by (default: "sort_order") */
   sortField?: string;
-  /** True for key-value map tables like equipmentIcons */
   isKeyValueMap?: boolean;
-  /** If set, this table is shown indented under this parent table in the sidebar */
   parentTableKey?: string;
-  /** Human-readable description for the table (purpose, dependencies, dependents). */
   description?: string;
 }
-
-// ─── Shared field patterns ───────────────────────────────────────────
 
 const baseFields = (extra: TableField[] = []): TableField[] => [
   { name: 'id', type: 'string', required: true },
@@ -64,64 +48,23 @@ const standardFields = (extra: TableField[] = []): TableField[] =>
     ...extra,
   ]);
 
-const subLabelFields = (extra: TableField[] = []): TableField[] =>
-  baseFields([
-    { name: 'sub_label', type: 'string' },
-    { name: 'common_names', type: 'string[]', defaultValue: [] },
-    { name: 'short_description', type: 'string' },
-    ...extra,
-  ]);
-
-const subLabelFieldsNoIcon = (extra: TableField[] = []): TableField[] =>
-  baseFields([
-    { name: 'sub_label', type: 'string' },
-    { name: 'common_names', type: 'string[]', defaultValue: [] },
-    { name: 'short_description', type: 'string' },
-    ...extra,
-  ]);
-
-// ─── Table definitions ───────────────────────────────────────────────
-
 const TABLE_DEFINITIONS: TableSchema[] = [
-  // ── Exercise Setup ──────────────────────────────────────────────
   {
-    key: 'exerciseCategories',
-    file: 'exerciseCategories.json',
-    label: 'Exercise Categories',
-    group: 'Exercise Setup',
-    idField: 'id',
-    labelField: 'label',
-    fields: standardFields([
-      { name: 'exercise_input_permissions', type: 'json', jsonShape: 'exercise_input_permissions' },
-    ]),
+    key: 'exerciseCategories', file: 'exerciseCategories.json', label: 'Exercise Categories',
+    group: 'Exercise Setup', idField: 'id', labelField: 'label',
+    fields: standardFields([{ name: 'exercise_input_permissions', type: 'json', jsonShape: 'exercise_input_permissions' }]),
   },
   {
-    key: 'cardioTypes',
-    file: 'cardioTypes.json',
-    label: 'Cardio Types',
-    group: 'Exercise Setup',
-    idField: 'id',
-    labelField: 'label',
-    fields: standardFields(),
+    key: 'cardioTypes', file: 'cardioTypes.json', label: 'Cardio Types',
+    group: 'Exercise Setup', idField: 'id', labelField: 'label', fields: standardFields(),
   },
   {
-    key: 'trainingFocus',
-    file: 'trainingFocus.json',
-    label: 'Training Focus',
-    group: 'Exercise Setup',
-    idField: 'id',
-    labelField: 'label',
-    fields: standardFields(),
+    key: 'trainingFocus', file: 'trainingFocus.json', label: 'Training Focus',
+    group: 'Exercise Setup', idField: 'id', labelField: 'label', fields: standardFields(),
   },
-
-  // ── Muscles & Motions ────────────────────────────────────────────
   {
-    key: 'muscles',
-    file: 'muscles.json',
-    label: 'Muscles',
-    group: 'Muscles & Motions',
-    idField: 'id',
-    labelField: 'label',
+    key: 'muscles', file: 'muscles.json', label: 'Muscles',
+    group: 'Muscles & Motions', idField: 'id', labelField: 'label',
     fields: baseFields([
       { name: 'parent_ids', type: 'fk[]', refTable: 'muscles', refLabelField: 'label' },
       { name: 'common_names', type: 'string[]', defaultValue: [] },
@@ -133,14 +76,9 @@ const TABLE_DEFINITIONS: TableSchema[] = [
       { name: 'upper_lower', type: 'string[]', defaultValue: [] },
     ]),
   },
-
   {
-    key: 'motions',
-    file: 'motions.json',
-    label: 'Motions',
-    group: 'Muscles & Motions',
-    idField: 'id',
-    labelField: 'label',
+    key: 'motions', file: 'motions.json', label: 'Motions',
+    group: 'Muscles & Motions', idField: 'id', labelField: 'label',
     fields: baseFields([
       { name: 'parent_id', type: 'fk', refTable: 'motions', refLabelField: 'label' },
       { name: 'upper_lower', type: 'string[]', defaultValue: [] },
@@ -150,14 +88,9 @@ const TABLE_DEFINITIONS: TableSchema[] = [
       { name: 'short_description', type: 'string' },
     ]),
   },
-  // ── Trajectory & Posture ────────────────────────────────────────
   {
-    key: 'motionPaths',
-    file: 'motionPaths.json',
-    label: 'Motion Paths',
-    group: 'Trajectory & Posture',
-    idField: 'id',
-    labelField: 'label',
+    key: 'motionPaths', file: 'motionPaths.json', label: 'Motion Paths',
+    group: 'Trajectory & Posture', idField: 'id', labelField: 'label',
     fields: baseFields([
       { name: 'common_names', type: 'string[]', defaultValue: [] },
       { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
@@ -165,12 +98,8 @@ const TABLE_DEFINITIONS: TableSchema[] = [
     ]),
   },
   {
-    key: 'torsoAngles',
-    file: 'torsoAngles.json',
-    label: 'Torso Angles',
-    group: 'Trajectory & Posture',
-    idField: 'id',
-    labelField: 'label',
+    key: 'torsoAngles', file: 'torsoAngles.json', label: 'Torso Angles',
+    group: 'Trajectory & Posture', idField: 'id', labelField: 'label',
     fields: baseFields([
       { name: 'common_names', type: 'string[]', defaultValue: [] },
       { name: 'short_description', type: 'string' },
@@ -180,12 +109,8 @@ const TABLE_DEFINITIONS: TableSchema[] = [
     ]),
   },
   {
-    key: 'torsoOrientations',
-    file: 'torsoOrientations.json',
-    label: 'Torso Orientations',
-    group: 'Trajectory & Posture',
-    idField: 'id',
-    labelField: 'label',
+    key: 'torsoOrientations', file: 'torsoOrientations.json', label: 'Torso Orientations',
+    group: 'Trajectory & Posture', idField: 'id', labelField: 'label',
     parentTableKey: 'torsoAngles',
     fields: baseFields([
       { name: 'common_names', type: 'string[]', defaultValue: [] },
@@ -194,27 +119,17 @@ const TABLE_DEFINITIONS: TableSchema[] = [
     ]),
   },
   {
-    key: 'resistanceOrigin',
-    file: 'resistanceOrigin.json',
-    label: 'Resistance Origin',
-    group: 'Trajectory & Posture',
-    idField: 'id',
-    labelField: 'label',
+    key: 'resistanceOrigin', file: 'resistanceOrigin.json', label: 'Resistance Origin',
+    group: 'Trajectory & Posture', idField: 'id', labelField: 'label',
     fields: baseFields([
       { name: 'common_names', type: 'string[]', defaultValue: [] },
       { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
       { name: 'short_description', type: 'string' },
     ]),
   },
-
-  // ── Upper Body Mechanics ─────────────────────────────────────
   {
-    key: 'grips',
-    file: 'grips.json',
-    label: 'Grips',
-    group: 'Upper Body Mechanics',
-    idField: 'id',
-    labelField: 'label',
+    key: 'grips', file: 'grips.json', label: 'Grips',
+    group: 'Upper Body Mechanics', idField: 'id', labelField: 'label',
     fields: baseFields([
       { name: 'parent_id', type: 'fk', refTable: 'grips', refLabelField: 'label' },
       { name: 'is_dynamic', type: 'boolean', defaultValue: false },
@@ -226,12 +141,8 @@ const TABLE_DEFINITIONS: TableSchema[] = [
     ]),
   },
   {
-    key: 'gripWidths',
-    file: 'gripWidths.json',
-    label: 'Grip Widths',
-    group: 'Upper Body Mechanics',
-    idField: 'id',
-    labelField: 'label',
+    key: 'gripWidths', file: 'gripWidths.json', label: 'Grip Widths',
+    group: 'Upper Body Mechanics', idField: 'id', labelField: 'label',
     fields: baseFields([
       { name: 'common_names', type: 'string[]', defaultValue: [] },
       { name: 'short_description', type: 'string' },
@@ -239,12 +150,8 @@ const TABLE_DEFINITIONS: TableSchema[] = [
     ]),
   },
   {
-    key: 'elbowRelationship',
-    file: 'elbowRelationship.json',
-    label: 'Elbow Relationship',
-    group: 'Upper Body Mechanics',
-    idField: 'id',
-    labelField: 'label',
+    key: 'elbowRelationship', file: 'elbowRelationship.json', label: 'Elbow Relationship',
+    group: 'Upper Body Mechanics', idField: 'id', labelField: 'label',
     fields: baseFields([
       { name: 'common_names', type: 'string[]', defaultValue: [] },
       { name: 'short_description', type: 'string' },
@@ -252,27 +159,17 @@ const TABLE_DEFINITIONS: TableSchema[] = [
     ]),
   },
   {
-    key: 'executionStyles',
-    file: 'executionStyles.json',
-    label: 'Execution Styles',
-    group: 'Upper Body Mechanics',
-    idField: 'id',
-    labelField: 'label',
+    key: 'executionStyles', file: 'executionStyles.json', label: 'Execution Styles',
+    group: 'Upper Body Mechanics', idField: 'id', labelField: 'label',
     fields: baseFields([
       { name: 'common_names', type: 'string[]', defaultValue: [] },
       { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
       { name: 'short_description', type: 'string' },
     ]),
   },
-
-  // ── Lower Body Mechanics ──────────────────────────────────────
   {
-    key: 'footPositions',
-    file: 'footPositions.json',
-    label: 'Foot Positions',
-    group: 'Lower Body Mechanics',
-    idField: 'id',
-    labelField: 'label',
+    key: 'footPositions', file: 'footPositions.json', label: 'Foot Positions',
+    group: 'Lower Body Mechanics', idField: 'id', labelField: 'label',
     fields: baseFields([
       { name: 'common_names', type: 'string[]', defaultValue: [] },
       { name: 'short_description', type: 'string' },
@@ -280,12 +177,8 @@ const TABLE_DEFINITIONS: TableSchema[] = [
     ]),
   },
   {
-    key: 'stanceWidths',
-    file: 'stanceWidths.json',
-    label: 'Stance Widths',
-    group: 'Lower Body Mechanics',
-    idField: 'id',
-    labelField: 'label',
+    key: 'stanceWidths', file: 'stanceWidths.json', label: 'Stance Widths',
+    group: 'Lower Body Mechanics', idField: 'id', labelField: 'label',
     fields: baseFields([
       { name: 'common_names', type: 'string[]', defaultValue: [] },
       { name: 'short_description', type: 'string' },
@@ -293,12 +186,8 @@ const TABLE_DEFINITIONS: TableSchema[] = [
     ]),
   },
   {
-    key: 'stanceTypes',
-    file: 'stanceTypes.json',
-    label: 'Stance Types',
-    group: 'Lower Body Mechanics',
-    idField: 'id',
-    labelField: 'label',
+    key: 'stanceTypes', file: 'stanceTypes.json', label: 'Stance Types',
+    group: 'Lower Body Mechanics', idField: 'id', labelField: 'label',
     fields: baseFields([
       { name: 'common_names', type: 'string[]', defaultValue: [] },
       { name: 'short_description', type: 'string' },
@@ -306,12 +195,8 @@ const TABLE_DEFINITIONS: TableSchema[] = [
     ]),
   },
   {
-    key: 'loadPlacement',
-    file: 'loadPlacement.json',
-    label: 'Load Placement',
-    group: 'Lower Body Mechanics',
-    idField: 'id',
-    labelField: 'label',
+    key: 'loadPlacement', file: 'loadPlacement.json', label: 'Load Placement',
+    group: 'Lower Body Mechanics', idField: 'id', labelField: 'label',
     fields: baseFields([
       { name: 'common_names', type: 'string[]', defaultValue: [] },
       { name: 'load_category', type: 'string' },
@@ -321,15 +206,9 @@ const TABLE_DEFINITIONS: TableSchema[] = [
       { name: 'short_description', type: 'string' },
     ]),
   },
-
-  // ── Execution Variables ──────────────────────────────────────────
   {
-    key: 'supportStructures',
-    file: 'supportStructures.json',
-    label: 'Support Structures',
-    group: 'Execution Variables',
-    idField: 'id',
-    labelField: 'label',
+    key: 'supportStructures', file: 'supportStructures.json', label: 'Support Structures',
+    group: 'Execution Variables', idField: 'id', labelField: 'label',
     fields: baseFields([
       { name: 'common_names', type: 'string[]', defaultValue: [] },
       { name: 'short_description', type: 'string' },
@@ -337,12 +216,8 @@ const TABLE_DEFINITIONS: TableSchema[] = [
     ]),
   },
   {
-    key: 'loadingAids',
-    file: 'loadingAids.json',
-    label: 'Loading Aids',
-    group: 'Execution Variables',
-    idField: 'id',
-    labelField: 'label',
+    key: 'loadingAids', file: 'loadingAids.json', label: 'Loading Aids',
+    group: 'Execution Variables', idField: 'id', labelField: 'label',
     fields: baseFields([
       { name: 'common_names', type: 'string[]', defaultValue: [] },
       { name: 'short_description', type: 'string' },
@@ -350,27 +225,17 @@ const TABLE_DEFINITIONS: TableSchema[] = [
     ]),
   },
   {
-    key: 'rangeOfMotion',
-    file: 'rangeOfMotion.json',
-    label: 'Range of Motion',
-    group: 'Execution Variables',
-    idField: 'id',
-    labelField: 'label',
+    key: 'rangeOfMotion', file: 'rangeOfMotion.json', label: 'Range of Motion',
+    group: 'Execution Variables', idField: 'id', labelField: 'label',
     fields: baseFields([
       { name: 'common_names', type: 'string[]', defaultValue: [] },
       { name: 'short_description', type: 'string' },
       { name: 'delta_rules', type: 'json', jsonShape: 'delta_rules' },
     ]),
   },
-
-  // ── Equipment ────────────────────────────────────────────────────
   {
-    key: 'equipmentCategories',
-    file: 'equipmentCategories.json',
-    label: 'Equipment Categories',
-    group: 'Equipment',
-    idField: 'id',
-    labelField: 'label',
+    key: 'equipmentCategories', file: 'equipmentCategories.json', label: 'Equipment Categories',
+    group: 'Equipment', idField: 'id', labelField: 'label',
     fields: baseFields([
       { name: 'parent_id', type: 'fk', refTable: 'equipmentCategories', refLabelField: 'label' },
       { name: 'common_names', type: 'string[]', defaultValue: [] },
@@ -378,12 +243,8 @@ const TABLE_DEFINITIONS: TableSchema[] = [
     ]),
   },
   {
-    key: 'equipment',
-    file: 'equipment.json',
-    label: 'Equipment',
-    group: 'Equipment',
-    idField: 'id',
-    labelField: 'label',
+    key: 'equipment', file: 'equipment.json', label: 'Equipment',
+    group: 'Equipment', idField: 'id', labelField: 'label',
     fields: baseFields([
       { name: 'category_id', type: 'fk', refTable: 'equipmentCategories', refLabelField: 'label' },
       { name: 'common_names', type: 'string[]', defaultValue: [] },
@@ -395,13 +256,8 @@ const TABLE_DEFINITIONS: TableSchema[] = [
     ]),
   },
   {
-    key: 'equipmentIcons',
-    file: 'equipmentIcons.json',
-    label: 'Equipment Icons',
-    group: 'Equipment',
-    idField: 'id',
-    labelField: 'id',
-    isKeyValueMap: true,
+    key: 'equipmentIcons', file: 'equipmentIcons.json', label: 'Equipment Icons',
+    group: 'Equipment', idField: 'id', labelField: 'id', isKeyValueMap: true,
     fields: [
       { name: 'id', type: 'string', required: true },
       { name: 'value', type: 'string', required: true },
@@ -409,18 +265,16 @@ const TABLE_DEFINITIONS: TableSchema[] = [
   },
 ];
 
-/** Registry with descriptions merged in for the admin UI */
 export const TABLE_REGISTRY: TableSchema[] = TABLE_DEFINITIONS.map((t) => ({
   ...t,
+  pgTable: TABLE_KEY_TO_PG[t.key] || t.key,
   description: TABLE_DESCRIPTIONS[t.key],
 }));
 
-/** Lookup a schema by key */
 export function getSchema(key: string): TableSchema | undefined {
   return TABLE_REGISTRY.find((t) => t.key === key);
 }
 
-/** Get all groups for sidebar (order = first appearance in TABLE_REGISTRY) */
 export function getGroups(): string[] {
   const seen = new Set<string>();
   return TABLE_REGISTRY.filter((t) => {
@@ -428,4 +282,10 @@ export function getGroups(): string[] {
     seen.add(t.group);
     return true;
   }).map((t) => t.group);
+}
+
+export function getPgColumns(schema: TableSchema): string[] {
+  const cols = schema.fields.map((f) => f.name);
+  cols.push("source_type");
+  return cols;
 }

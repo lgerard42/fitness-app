@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { Trophy } from "lucide-react";
-import { getUserData } from "@/lib/mockData";
+import { useDashboard } from "@/lib/dashboard-context";
 import { formatDate } from "@/lib/utils";
-import type { DashboardData, ExerciseStats } from "@/types";
+import type { ExerciseStats } from "@/types";
 import ChartCard from "@/components/dashboard/ChartCard";
 import Badge from "@/components/ui/Badge";
 import {
@@ -29,12 +29,8 @@ const exerciseOptions: { id: string; label: string }[] = [
 ];
 
 export default function AnalyticsPage() {
-  const [data, setData] = useState<DashboardData | null>(null);
+  const { data } = useDashboard();
   const [selectedExercise, setSelectedExercise] = useState("bench-press");
-
-  useEffect(() => {
-    getUserData().then(setData);
-  }, []);
 
   const stats: ExerciseStats | null = data?.exerciseStats[selectedExercise] || null;
 

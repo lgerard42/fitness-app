@@ -18,7 +18,7 @@ import {
     SINGLE_DOUBLE_OPTIONS_BY_ID,
 } from '@/constants/data';
 import { usePrimaryToSecondaryMap, useAttachments, useSingleDoubleEquipmentLabels, useTertiaryMuscles, useSecondaryMuscles, useGripTypes, useGripWidths } from '@/database/useExerciseConfig';
-import { getMusclesByParent } from '@/database/exerciseConfigService';
+import { getMusclesByParent } from '@/database/configFacade';
 import Chip from './Chip';
 import CustomDropdown from './CustomDropdown';
 import EquipmentPickerModal from './EquipmentPickerModal';

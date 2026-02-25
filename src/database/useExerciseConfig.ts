@@ -1,9 +1,13 @@
 /**
  * React hooks for accessing exercise configuration data
- * Provides cached, reactive access to database queries
+ * Provides cached, reactive access to database queries.
+ *
+ * All data-fetching functions come from configFacade, which routes
+ * through the backend API when USE_BACKEND_REFERENCE is enabled,
+ * or through local SQLite when the flag is OFF.
  */
 import { useState, useEffect } from 'react';
-import * as SQLite from 'expo-sqlite';
+import { FEATURE_FLAGS } from '../config/featureFlags';
 import {
   getExerciseCategories,
   getCardioTypes,
@@ -30,9 +34,7 @@ import {
   type Muscle,
   type TrainingFocus,
   type Grip,
-} from './exerciseConfigService';
-
-let dbInstance: SQLite.SQLiteDatabase | null = null;
+} from './configFacade';
 let categoriesCache: ExerciseCategory[] | null = null;
 let equipmentSectionsCache: { title: string; data: EquipmentPickerItem[] }[] | null = null;
 let equipmentLabelsCache: string[] | null = null;
@@ -53,14 +55,18 @@ let primaryToSecondaryMapCache: Record<string, string[]> | null = null;
 let gripTypesCache: Grip[] | null = null;
 let gripWidthsCache: Grip[] | null = null;
 
+let dbInitialised = false;
+
 /**
- * Initialize database (call once at app startup)
+ * Initialize the local SQLite database (call once at app startup).
+ * When USE_BACKEND_REFERENCE is enabled, this is a no-op because all
+ * reference data comes from the backend via configFacade.
  */
 export async function initExerciseConfigDatabase(): Promise<void> {
-  if (!dbInstance) {
-    const { initDatabase } = await import('./initDatabase');
-    dbInstance = await initDatabase();
-  }
+  if (FEATURE_FLAGS.USE_BACKEND_REFERENCE || dbInitialised) return;
+  const { initDatabase } = await import('./initDatabase');
+  await initDatabase();
+  dbInitialised = true;
 }
 
 /**

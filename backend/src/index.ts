@@ -12,6 +12,12 @@ import measurementRoutes from "./routes/measurements";
 import goalRoutes from "./routes/goals";
 import referenceRoutes from "./routes/reference";
 import scoringRoutes from "./routes/scoring";
+import referenceV1Routes from "./routes/referenceV1";
+import dashboardRoutes from "./routes/dashboard";
+import personalRecordRoutes from "./routes/personalRecords";
+import adminTablesRouter from "./admin/routes/tables";
+import adminSchemaRouter from "./admin/routes/schema";
+import adminScoringRouter from "./admin/routes/scoring";
 
 const app = express();
 
@@ -32,6 +38,12 @@ app.use("/api/measurements", measurementRoutes);
 app.use("/api/goals", goalRoutes);
 app.use("/api/reference", referenceRoutes);
 app.use("/api/scoring", scoringRoutes);
+app.use("/api/v1/reference", referenceV1Routes);
+app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/personal-records", personalRecordRoutes);
+app.use("/api/admin/tables", adminTablesRouter);
+app.use("/api/admin/schema", adminSchemaRouter);
+app.use("/api/admin/scoring", adminScoringRouter);
 
 // Error handler (must be last)
 app.use(errorHandler);

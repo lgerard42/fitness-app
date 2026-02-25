@@ -3,6 +3,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { EXERCISE_LIBRARY, migrateExercise, migrateAssistedMachine, formatDuration } from '@/constants/data';
 import { getEffectiveWeight } from '@/utils/workoutHelpers';
 import { initExerciseConfigDatabase } from '@/database/useExerciseConfig';
+import { FEATURE_FLAGS } from '@/config/featureFlags';
+import { autoLogin } from '@/api/client';
+import { fetchWorkouts, createWorkout as apiCreateWorkout } from '@/api/workouts';
+import { fetchExercises, createExercise as apiCreateExercise, updateExercise as apiUpdateExercise } from '@/api/exercises';
 import type { Workout, Exercise, ExerciseLibraryItem, ExerciseStatsMap, ExerciseStats } from '@/types/workout';
 
 interface WorkoutContextValue {
@@ -29,11 +33,10 @@ const STORAGE_KEYS = {
   STATS: 'exercise_stats'
 };
 
-// Sanitize workout data to ensure exercises is always an array
 const sanitizeWorkout = (workout: Workout): Workout => {
   if (!workout.exercises || !Array.isArray(workout.exercises)) {
-    console.warn('⚠️ Sanitizing workout with invalid exercises:', { 
-      id: workout.id, 
+    console.warn('Sanitizing workout with invalid exercises:', {
+      id: workout.id,
       exercisesType: typeof workout.exercises,
       exercisesIsArray: Array.isArray(workout.exercises)
     });
@@ -56,9 +59,10 @@ export const WorkoutProvider = ({ children }: WorkoutProviderProps) => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Initialize exercise configuration database
-        await initExerciseConfigDatabase();
-        
+        if (!FEATURE_FLAGS.USE_BACKEND_REFERENCE) {
+          await initExerciseConfigDatabase();
+        }
+
         const [history, library, active, stats] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEYS.HISTORY),
           AsyncStorage.getItem(STORAGE_KEYS.LIBRARY),
@@ -73,14 +77,28 @@ export const WorkoutProvider = ({ children }: WorkoutProviderProps) => {
         }
         if (active) {
           const parsedActive = JSON.parse(active) as Workout;
-          console.log('📱 Loading active workout:', { 
-            id: parsedActive.id, 
-            exercisesIsArray: Array.isArray(parsedActive.exercises),
-            exercisesLength: parsedActive.exercises?.length 
-          });
           setActiveWorkout(sanitizeWorkout(parsedActive));
         }
         if (stats) setExerciseStats(JSON.parse(stats) as ExerciseStatsMap);
+
+        if (FEATURE_FLAGS.USE_BACKEND_USERDATA) {
+          try {
+            await autoLogin();
+            const [remoteWorkouts, remoteExercises] = await Promise.all([
+              fetchWorkouts(),
+              fetchExercises(),
+            ]);
+            if (remoteWorkouts.length > 0) {
+              setWorkoutHistory(remoteWorkouts);
+            }
+            if (remoteExercises.length > 0) {
+              setExercisesLibrary(remoteExercises);
+            }
+            console.log("[sync] loaded workouts:", remoteWorkouts.length, "exercises:", remoteExercises.length);
+          } catch (err) {
+            console.warn("[sync] backend fetch failed, using cached data:", (err as Error).message);
+          }
+        }
       } catch (e) {
         console.error("Failed to load data", e);
       } finally {
@@ -199,6 +217,12 @@ export const WorkoutProvider = ({ children }: WorkoutProviderProps) => {
 
     setWorkoutHistory([finishedWorkout, ...workoutHistory]);
     setActiveWorkout(null);
+
+    if (FEATURE_FLAGS.USE_BACKEND_USERDATA) {
+      apiCreateWorkout(finishedWorkout).catch(err =>
+        console.warn("[sync] failed to push workout:", (err as Error).message)
+      );
+    }
   };
 
   const cancelWorkout = () => {
@@ -209,6 +233,13 @@ export const WorkoutProvider = ({ children }: WorkoutProviderProps) => {
     const newId = newExercise.id || `e${Date.now()}`;
     const exerciseToAdd = migrateAssistedMachine({ ...newExercise, id: newId });
     setExercisesLibrary([exerciseToAdd, ...exercisesLibrary]);
+
+    if (FEATURE_FLAGS.USE_BACKEND_USERDATA) {
+      apiCreateExercise(exerciseToAdd).catch(err =>
+        console.warn("[sync] failed to push exercise:", (err as Error).message)
+      );
+    }
+
     return newId;
   };
 
@@ -216,6 +247,12 @@ export const WorkoutProvider = ({ children }: WorkoutProviderProps) => {
     setExercisesLibrary(exercisesLibrary.map(ex =>
       ex.id === exerciseId ? migrateAssistedMachine({ ...ex, ...updates }) : ex
     ));
+
+    if (FEATURE_FLAGS.USE_BACKEND_USERDATA) {
+      apiUpdateExercise(exerciseId, updates).catch(err =>
+        console.warn("[sync] failed to update exercise:", (err as Error).message)
+      );
+    }
   };
 
   return (
