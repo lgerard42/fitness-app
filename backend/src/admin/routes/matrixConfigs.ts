@@ -66,10 +66,11 @@ router.get("/:id", async (req: Request, res: Response) => {
 // ─── Update draft config ────────────────────────────────────────────
 router.put("/:id", async (req: Request, res: Response) => {
   try {
-    const { config_json, notes } = req.body;
+    const { config_json, notes, force } = req.body;
     const config = await matrixConfigService.update(req.params.id, {
       config_json,
       notes,
+      force: force === true,
     });
     if (!config) {
       res.status(404).json({ error: "Config not found" });
@@ -88,13 +89,14 @@ router.put("/:id", async (req: Request, res: Response) => {
 // ─── Soft-delete config ─────────────────────────────────────────────
 router.delete("/:id", async (req: Request, res: Response) => {
   try {
-    const result = await matrixConfigService.softDelete(req.params.id);
+    const force = req.query.force === "true";
+    const result = await matrixConfigService.softDelete(req.params.id, force);
     if (!result.ok) {
       const status = result.error?.includes("active") ? 409 : 404;
       res.status(status).json({ error: result.error });
       return;
     }
-    res.json({ ok: true });
+    res.json({ ok: true, was_active: result.was_active });
   } catch (err) {
     res.status(500).json({ error: `Failed to delete config: ${err}` });
   }
@@ -146,6 +148,46 @@ router.get("/resolve/:motionId", async (req: Request, res: Response) => {
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: `Failed to resolve config: ${err}` });
+  }
+});
+
+// ─── Sync delta_rules for a specific motion ────────────────────────
+router.post("/sync-deltas/:motionId", async (req: Request, res: Response) => {
+  try {
+    const result = await matrixConfigService.syncDeltasForMotion(req.params.motionId);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: `Failed to sync deltas: ${err}` });
+  }
+});
+
+// ─── Batch sync all motions referenced in delta_rules ───────────────
+router.post("/sync-deltas", async (req: Request, res: Response) => {
+  try {
+    const result = await matrixConfigService.syncAllDeltaMotions();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: `Failed to batch sync deltas: ${err}` });
+  }
+});
+
+// ─── Ensure drafts for all motions ───────────────────────────────────
+router.post("/ensure-drafts", async (_req: Request, res: Response) => {
+  try {
+    const result = await matrixConfigService.ensureDraftsForAllMotions();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: `Failed to ensure drafts: ${err}` });
+  }
+});
+
+// ─── Deduplicate: demote extra actives + fix version collisions ─────
+router.post("/deduplicate", async (_req: Request, res: Response) => {
+  try {
+    const result = await matrixConfigService.deduplicateConfigs();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: `Failed to deduplicate: ${err}` });
   }
 });
 

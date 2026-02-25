@@ -135,7 +135,6 @@ export function useWorkstationState(
 
     try {
       await api.updateRow(tableKey, rowId, { delta_rules: updatedDeltaRules });
-      // Update local modifier table data to reflect the save
       setModifierTableData(prev => ({
         ...prev,
         [tableKey]: {
@@ -148,6 +147,10 @@ export function useWorkstationState(
         next.delete(key);
         return next;
       });
+      // Sync delta_rules to active Matrix V2 config
+      try {
+        await api.syncDeltasForMotion(selectedMotionId);
+      } catch { /* best-effort */ }
       toast.success(`Delta saved: ${tableKey}.${rowId}`);
       return true;
     } catch (err: any) {

@@ -14,6 +14,24 @@ import {
   handleFKCleanupPg,
   cleanMotionDeltaRules,
 } from "../pgCrud";
+import { matrixConfigService } from "../../services/matrixConfigService";
+
+/**
+ * After a row with delta_rules is saved, sync each referenced motion
+ * so it has an active Matrix V2 config with up-to-date allowed_row_ids.
+ */
+async function syncDeltaRulesIfPresent(body: Record<string, unknown>): Promise<void> {
+  const dr = body.delta_rules;
+  if (!dr || typeof dr !== "object" || Array.isArray(dr)) return;
+  const motionIds = Object.keys(dr as Record<string, unknown>);
+  for (const mid of motionIds) {
+    try {
+      await matrixConfigService.syncDeltasForMotion(mid);
+    } catch (err) {
+      console.warn(`[tables] syncDeltasForMotion(${mid}) failed:`, err);
+    }
+  }
+}
 
 const router = Router();
 
@@ -73,6 +91,12 @@ router.put("/:key", async (req: Request, res: Response) => {
       rows = req.body;
     }
     await upsertFullTable(schema.pgTable, columns, rows);
+
+    // Post-save: sync delta_rules from upserted rows
+    for (const row of rows) {
+      syncDeltaRulesIfPresent(row).catch(() => {});
+    }
+
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: `Failed to write ${schema.key}: ${err}` });
@@ -98,6 +122,15 @@ router.post("/:key/rows", async (req: Request, res: Response) => {
       res.status(409).json({ error: `Row with id "${newRow.id}" already exists` }); return;
     }
     const inserted = await insertRow(schema.pgTable, columns, newRow);
+
+    // Post-insert: sync delta_rules if present on new row
+    syncDeltaRulesIfPresent(newRow).catch(() => {});
+
+    // Auto-create a placeholder draft config when a new motion is added
+    if (schema.key === "motions" && newRow.id) {
+      matrixConfigService.ensureDraftForMotion(newRow.id).catch(() => {});
+    }
+
     res.json({ ok: true, row: inserted });
   } catch (err) {
     res.status(500).json({ error: `Failed to add row: ${err}` });
@@ -118,6 +151,10 @@ router.put("/:key/rows/:id", async (req: Request, res: Response) => {
     }
     const updated = await updateRow(schema.pgTable, columns, rowId, req.body);
     if (!updated) { res.status(404).json({ error: `Row "${rowId}" not found` }); return; }
+
+    // Post-save: sync delta_rules → Matrix V2 configs (fire-and-forget)
+    syncDeltaRulesIfPresent(req.body).catch(() => {});
+
     res.json({ ok: true, row: updated });
   } catch (err) {
     res.status(500).json({ error: `Failed to update row: ${err}` });
@@ -146,6 +183,7 @@ router.delete("/:key/rows/:id", async (req: Request, res: Response) => {
 
     if (schema.key === "motions") {
       await cleanMotionDeltaRules(rowId);
+      await matrixConfigService.deleteConfigsForMotion(rowId);
     }
 
     const deleted = await softDeleteRow(schema.pgTable, rowId);
@@ -195,6 +233,12 @@ router.post("/bulk-matrix", async (req: Request, res: Response) => {
   try {
     const columns = getPgColumns(schema);
     await bulkUpdateRows(schema.pgTable, columns, updates);
+
+    // Post-save: sync delta_rules from any updated rows
+    for (const rowData of Object.values(updates)) {
+      syncDeltaRulesIfPresent(rowData).catch(() => {});
+    }
+
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: `Bulk update failed: ${err}` });

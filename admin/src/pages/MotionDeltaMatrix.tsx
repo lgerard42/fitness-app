@@ -280,15 +280,22 @@ function InlineDeltaEditor({
 }) {
   const tree = useMemo(() => buildTreeFromFlat(delta, allMuscles), [delta, allMuscles]);
   const primaries = allMuscles.filter(m => !m.parent_ids || m.parent_ids.length === 0);
+  const getSecondariesFor = (pId: string) => allMuscles.filter(m => m.parent_ids && m.parent_ids.includes(pId));
+  const getTertiariesFor = (sId: string) => allMuscles.filter(m => m.parent_ids && m.parent_ids.includes(sId));
 
   const updateScore = (muscleId: string, value: number) => {
-    const newFlat = { ...delta, [muscleId]: value };
-    onSave(newFlat);
+    onSave({ ...delta, [muscleId]: value });
   };
 
   const removeMuscle = (muscleId: string) => {
     const newFlat = { ...delta };
     delete newFlat[muscleId];
+    const children = allMuscles.filter(m => m.parent_ids && m.parent_ids.includes(muscleId));
+    for (const c of children) {
+      delete newFlat[c.id];
+      const grandchildren = allMuscles.filter(m => m.parent_ids && m.parent_ids.includes(c.id));
+      for (const gc of grandchildren) delete newFlat[gc.id];
+    }
     onSave(newFlat);
   };
 
@@ -296,11 +303,9 @@ function InlineDeltaEditor({
     onSave({ ...delta, [muscleId]: 0 });
   };
 
-  const usedPrimaries = new Set<string>();
-  Object.keys(delta).forEach(id => usedPrimaries.add(findPrimaryFor(id, allMuscles)));
-
-  const availablePrimaries = primaries.filter(p => !usedPrimaries.has(p.id));
   const pKeys = Object.keys(tree).filter(k => k !== '_score');
+  const activePrimaryIds = new Set(pKeys);
+  const unusedPrimaries = primaries.filter(p => !activePrimaryIds.has(p.id));
 
   return (
     <div className="space-y-1">
@@ -311,49 +316,53 @@ function InlineDeltaEditor({
         const pNode = tree[pId] as TreeNode;
         const pLabel = getMuscleLabel(allMuscles, pId);
         const sKeys = Object.keys(pNode).filter(k => k !== '_score');
+        const pIsComputed = sKeys.length > 0;
+        const availSec = getSecondariesFor(pId).filter(s => !sKeys.includes(s.id));
 
         return (
           <div key={pId} className="border border-gray-200 rounded p-1 bg-gray-50">
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] font-semibold text-gray-700">{pLabel}</span>
-              {sKeys.length === 0 && (
-                <>
-                  <input
-                    type="number"
-                    value={pNode._score}
-                    onChange={e => updateScore(pId, parseFloat(e.target.value) || 0)}
-                    className="w-14 text-[10px] border border-gray-300 rounded px-0.5 py-0 text-right"
-                    step="0.1"
-                  />
-                  <button onClick={() => removeMuscle(pId)} className="text-red-400 hover:text-red-600 text-[10px] ml-auto">×</button>
-                </>
+              {pIsComputed ? (
+                <span className="text-[10px] text-gray-400 italic ml-auto" title="Auto-computed from children">{pNode._score}</span>
+              ) : (
+                <input
+                  type="number"
+                  value={pNode._score}
+                  onChange={e => updateScore(pId, parseFloat(e.target.value) || 0)}
+                  className="w-14 text-[10px] border border-gray-300 rounded px-0.5 py-0 text-right"
+                  step="0.1"
+                />
               )}
+              <button onClick={() => removeMuscle(pId)} className="text-red-400 hover:text-red-600 text-[10px] ml-auto">×</button>
             </div>
-            {sKeys.length > 0 && (
+            {(sKeys.length > 0 || availSec.length > 0) && (
               <div className="pl-2 mt-0.5 space-y-0.5 border-l border-gray-200 ml-0.5">
                 {sKeys.map(sId => {
                   const sNode = pNode[sId] as TreeNode;
                   const sLabel = getMuscleLabel(allMuscles, sId);
                   const tKeys = Object.keys(sNode).filter(k => k !== '_score');
+                  const sIsComputed = tKeys.length > 0;
+                  const availTer = getTertiariesFor(sId).filter(t => !tKeys.includes(t.id));
 
                   return (
                     <div key={sId}>
                       <div className="flex items-center gap-1.5">
                         <span className="text-[10px] text-gray-600">{sLabel}</span>
-                        {tKeys.length === 0 && (
-                          <>
-                            <input
-                              type="number"
-                              value={sNode._score}
-                              onChange={e => updateScore(sId, parseFloat(e.target.value) || 0)}
-                              className="w-14 text-[10px] border border-gray-300 rounded px-0.5 py-0 text-right"
-                              step="0.1"
-                            />
-                            <button onClick={() => removeMuscle(sId)} className="text-red-400 hover:text-red-600 text-[10px] ml-auto">×</button>
-                          </>
+                        {sIsComputed ? (
+                          <span className="text-[10px] text-gray-400 italic" title="Auto-computed from children">{sNode._score}</span>
+                        ) : (
+                          <input
+                            type="number"
+                            value={sNode._score}
+                            onChange={e => updateScore(sId, parseFloat(e.target.value) || 0)}
+                            className="w-14 text-[10px] border border-gray-300 rounded px-0.5 py-0 text-right"
+                            step="0.1"
+                          />
                         )}
+                        <button onClick={() => removeMuscle(sId)} className="text-red-400 hover:text-red-600 text-[10px] ml-auto">×</button>
                       </div>
-                      {tKeys.length > 0 && (
+                      {(tKeys.length > 0 || availTer.length > 0) && (
                         <div className="pl-2 mt-0.5 space-y-0 border-l border-gray-200 ml-0.5">
                           {tKeys.map(tId => {
                             const tNode = sNode[tId] as TreeNode;
@@ -372,29 +381,37 @@ function InlineDeltaEditor({
                               </div>
                             );
                           })}
+                          {availTer.length > 0 && (
+                            <select onChange={e => { if (e.target.value) addMuscle(e.target.value); e.target.value = ''; }}
+                              className="w-full text-[10px] border border-gray-300 rounded px-1 py-0.5 text-gray-600 bg-white mt-0.5" defaultValue="">
+                              <option value="">+ tertiary...</option>
+                              {availTer.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+                            </select>
+                          )}
                         </div>
                       )}
                     </div>
                   );
                 })}
+                {availSec.length > 0 && (
+                  <select onChange={e => { if (e.target.value) addMuscle(e.target.value); e.target.value = ''; }}
+                    className="w-full text-[10px] border border-gray-300 rounded px-1 py-0.5 text-gray-600 bg-white mt-0.5" defaultValue="">
+                    <option value="">+ secondary...</option>
+                    {availSec.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                  </select>
+                )}
               </div>
             )}
           </div>
         );
       })}
-      {/* Add muscle dropdown */}
-      <select
-        onChange={e => { if (e.target.value) addMuscle(e.target.value); e.target.value = ''; }}
-        className="w-full text-[10px] border border-gray-300 rounded px-1 py-0.5 text-gray-600 bg-white mt-0.5"
-        defaultValue=""
-      >
-        <option value="">+ Add muscle...</option>
-        {allMuscles.map(m => (
-          <option key={m.id} value={m.id} disabled={m.id in delta}>
-            {m.label} ({getMuscleLevel(m.id, allMuscles)})
-          </option>
-        ))}
-      </select>
+      {unusedPrimaries.length > 0 && (
+        <select onChange={e => { if (e.target.value) addMuscle(e.target.value); e.target.value = ''; }}
+          className="w-full text-[10px] border border-gray-300 rounded px-1 py-0.5 text-gray-600 bg-white mt-0.5" defaultValue="">
+          <option value="">+ muscle group...</option>
+          {unusedPrimaries.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+        </select>
+      )}
     </div>
   );
 }
@@ -409,10 +426,17 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
   const [selectedMotion, setSelectedMotion] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
-  const [expandedTables, setExpandedTables] = useState<Set<string>>(new Set(DELTA_TABLE_KEYS)); // All tables expanded by default
+  const [expandedTables, setExpandedTables] = useState<Set<string>>(new Set(DELTA_TABLE_KEYS));
   const [familyPlanesExpanded, setFamilyPlanesExpanded] = useState(false);
   const [cellTooltip, setCellTooltip] = useState<{ motionId: string; tableKey: string; left: number; top: number } | null>(null);
   const cellTooltipHideTimeoutRef = useRef<number | null>(null);
+  const [v2RefreshKey, setV2RefreshKey] = useState(0);
+
+  // ─── Side-panel draft buffering (no auto-save) ───
+  const REMOVE_SENTINEL = '__remove__' as const;
+  const [panelDraftOverrides, setPanelDraftOverrides] = useState<Record<string, Record<string, number> | 'inherit' | typeof REMOVE_SENTINEL>>({});
+  const [panelDraftAdds, setPanelDraftAdds] = useState<{ tableKey: string; rowId: string; rowLabel: string }[]>([]);
+  const panelDirty = Object.keys(panelDraftOverrides).length > 0 || panelDraftAdds.length > 0;
 
   const loadData = useCallback(async () => {
     try {
@@ -603,70 +627,155 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
 
   useEffect(() => () => clearCellTooltipHideTimeout(), [clearCellTooltipHideTimeout]);
 
-  // Save delta_rules for a motion on a specific row in a specific table
+  const syncMotionConfig = useCallback(async (motionId: string) => {
+    try {
+      await api.syncDeltasForMotion(motionId);
+      const motion = motions.find(m => String(m.id) === motionId);
+      if (motion?.parent_id) {
+        await api.syncDeltasForMotion(String(motion.parent_id));
+      }
+      setV2RefreshKey(k => k + 1);
+    } catch (err) {
+      console.warn('Could not sync deltas to Matrix V2 config:', err);
+    }
+  }, [motions]);
+
   const saveDelta = useCallback(async (tableKey: string, rowId: string, motionId: string, newMotionValue: Record<string, number> | "inherit") => {
     try {
       const tableRows = tableData[tableKey] || [];
       const row = tableRows.find(r => String(r.id) === rowId);
       if (!row) return;
-      
+
       const currentDr = (row.delta_rules && typeof row.delta_rules === 'object' && !Array.isArray(row.delta_rules))
         ? { ...(row.delta_rules as Record<string, unknown>) }
         : {};
       currentDr[motionId] = newMotionValue;
-      
+
       await api.updateRow(tableKey, rowId, { delta_rules: currentDr });
       await loadData();
+      await syncMotionConfig(motionId);
       onDataChange();
     } catch (err) {
       console.error('Failed to save delta:', err);
       toast.error('Failed to save');
     }
-  }, [tableData, loadData, onDataChange]);
+  }, [tableData, loadData, onDataChange, syncMotionConfig]);
 
-  // Remove this motion from a row's delta_rules
   const removeDelta = useCallback(async (tableKey: string, rowId: string, motionId: string) => {
     try {
       const tableRows = tableData[tableKey] || [];
       const row = tableRows.find(r => String(r.id) === rowId);
       if (!row) return;
-      
+
       const currentDr = (row.delta_rules && typeof row.delta_rules === 'object' && !Array.isArray(row.delta_rules))
         ? { ...(row.delta_rules as Record<string, unknown>) }
         : {};
       delete currentDr[motionId];
-      
+
       await api.updateRow(tableKey, rowId, { delta_rules: currentDr });
       toast.success('Removed rule');
       await loadData();
+      await syncMotionConfig(motionId);
       onDataChange();
     } catch (err) {
       console.error('Failed to remove delta:', err);
       toast.error('Failed to remove');
     }
-  }, [tableData, loadData, onDataChange]);
+  }, [tableData, loadData, onDataChange, syncMotionConfig]);
 
-  // Add this motion to a new row's delta_rules (empty object)
   const addDelta = useCallback(async (tableKey: string, rowId: string, motionId: string) => {
     try {
       const tableRows = tableData[tableKey] || [];
       const row = tableRows.find(r => String(r.id) === rowId);
       if (!row) return;
-      
+
       const currentDr = (row.delta_rules && typeof row.delta_rules === 'object' && !Array.isArray(row.delta_rules))
         ? { ...(row.delta_rules as Record<string, unknown>) }
         : {};
       currentDr[motionId] = {};
-      
+
       await api.updateRow(tableKey, rowId, { delta_rules: currentDr });
       toast.success('Added rule');
       await loadData();
+      await syncMotionConfig(motionId);
       onDataChange();
     } catch (err) {
       console.error('Failed to add delta:', err);
       toast.error('Failed to add');
     }
-  }, [tableData, loadData, onDataChange]);
+  }, [tableData, loadData, onDataChange, syncMotionConfig]);
+
+  // ─── Panel draft helpers ───
+  const draftSetDelta = useCallback((tableKey: string, rowId: string, value: Record<string, number> | 'inherit') => {
+    setPanelDraftOverrides(prev => ({ ...prev, [`${tableKey}::${rowId}`]: value }));
+  }, []);
+
+  const draftRemoveDelta = useCallback((tableKey: string, rowId: string) => {
+    setPanelDraftOverrides(prev => ({ ...prev, [`${tableKey}::${rowId}`]: REMOVE_SENTINEL }));
+  }, [REMOVE_SENTINEL]);
+
+  const draftAddDelta = useCallback((tableKey: string, rowId: string) => {
+    const tableRows = tableData[tableKey] || [];
+    const row = tableRows.find(r => String(r.id) === rowId);
+    if (!row) return;
+    setPanelDraftAdds(prev => [...prev, { tableKey, rowId, rowLabel: String(row.label ?? row.id) }]);
+    setPanelDraftOverrides(prev => ({ ...prev, [`${tableKey}::${rowId}`]: {} }));
+  }, [tableData]);
+
+  const handleSavePanel = useCallback(async () => {
+    if (!selectedMotion) return;
+    try {
+      const addedRowsByTable: Record<string, string[]> = {};
+
+      for (const [key, value] of Object.entries(panelDraftOverrides)) {
+        const [tableKey, rowId] = key.split('::');
+        const tableRows = tableData[tableKey] || [];
+        const row = tableRows.find(r => String(r.id) === rowId);
+        if (!row) continue;
+
+        const currentDr = (row.delta_rules && typeof row.delta_rules === 'object' && !Array.isArray(row.delta_rules))
+          ? { ...(row.delta_rules as Record<string, unknown>) }
+          : {};
+
+        if (value === REMOVE_SENTINEL) {
+          delete currentDr[selectedMotion];
+        } else {
+          currentDr[selectedMotion] = value;
+          if (panelDraftAdds.some(a => a.tableKey === tableKey && a.rowId === rowId)) {
+            if (!addedRowsByTable[tableKey]) addedRowsByTable[tableKey] = [];
+            addedRowsByTable[tableKey].push(rowId);
+          }
+        }
+        await api.updateRow(tableKey, rowId, { delta_rules: currentDr });
+      }
+
+      // Sync delta_rules to active Matrix V2 config (auto-create if none exists)
+      try {
+        await api.syncDeltasForMotion(selectedMotion);
+        const motion = motions.find(m => String(m.id) === selectedMotion);
+        if (motion?.parent_id) {
+          await api.syncDeltasForMotion(String(motion.parent_id));
+        }
+      } catch (syncErr) {
+        console.warn('Could not sync deltas to Matrix V2 config:', syncErr);
+      }
+
+      setPanelDraftOverrides({});
+      setPanelDraftAdds([]);
+      await loadData();
+      setV2RefreshKey(k => k + 1);
+      onDataChange();
+      toast.success('Changes saved');
+    } catch (err) {
+      console.error('Failed to save panel changes:', err);
+      toast.error('Failed to save changes');
+    }
+  }, [selectedMotion, panelDraftOverrides, panelDraftAdds, REMOVE_SENTINEL, tableData, motions, loadData, onDataChange]);
+
+  const handleDiscardPanel = useCallback(() => {
+    setPanelDraftOverrides({});
+    setPanelDraftAdds([]);
+  }, []);
 
   const toggleCard = useCallback((cardKey: string) => {
     setExpandedCards(prev => {
@@ -1083,7 +1192,7 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
               Delta Rules
             </button>
             <button
-              onClick={() => setActiveTab('v2_config')}
+              onClick={() => { setActiveTab('v2_config'); setV2RefreshKey(k => k + 1); }}
               className={`text-sm font-medium pb-1 border-b-2 transition-colors ${
                 activeTab === 'v2_config'
                   ? 'border-blue-600 text-blue-700'
@@ -1127,7 +1236,7 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
 
       {activeTab === 'v2_config' ? (
         <div className="flex-1 overflow-hidden">
-          <MatrixV2ConfigPanel motions={motions} />
+          <MatrixV2ConfigPanel motions={motions} refreshKey={v2RefreshKey} />
         </div>
       ) : (
       <div className="flex-1 flex overflow-hidden">
@@ -1183,7 +1292,13 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
                         <tr
                           key={motionId}
                           className={`hover:bg-blue-50 cursor-pointer ${isSelected ? 'bg-blue-100' : ''}`}
-                          onClick={() => { setSelectedMotion(motionId); setExpandedCards(new Set()); }}
+                          onClick={() => {
+                            if (panelDirty && !confirm('You have unsaved changes. Discard them?')) return;
+                            setSelectedMotion(motionId);
+                            setExpandedCards(new Set());
+                            setPanelDraftOverrides({});
+                            setPanelDraftAdds([]);
+                          }}
                         >
                           <td
                             className={`sticky left-0 z-10 px-2 py-1 border-r border-gray-200 ${isSelected ? 'bg-blue-100' : 'bg-white'}`}
@@ -1245,18 +1360,55 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
                   <h2 className="text-sm font-semibold text-gray-900">{selectedMotionData.label}</h2>
                   <p className="text-[10px] text-gray-500 mt-0.5">{selectedMotion}</p>
                 </div>
-                <button onClick={() => setSelectedMotion(null)} className="text-gray-400 hover:text-gray-600 text-sm">✕</button>
+                <div className="flex items-center gap-1.5">
+                  {panelDirty && (
+                    <>
+                      <button onClick={handleSavePanel}
+                        className="px-2 py-0.5 text-[10px] font-medium bg-blue-600 text-white rounded hover:bg-blue-700">
+                        Save
+                      </button>
+                      <button onClick={handleDiscardPanel}
+                        className="px-2 py-0.5 text-[10px] font-medium bg-gray-200 text-gray-700 rounded hover:bg-gray-300">
+                        Discard
+                      </button>
+                    </>
+                  )}
+                  <button onClick={() => {
+                    if (panelDirty && !confirm('You have unsaved changes. Discard them?')) return;
+                    setSelectedMotion(null);
+                    setPanelDraftOverrides({});
+                    setPanelDraftAdds([]);
+                  }} className="text-gray-400 hover:text-gray-600 text-sm">✕</button>
+                </div>
               </div>
+              {panelDirty && (
+                <div className="mt-1 text-[9px] text-amber-600 font-medium">Unsaved changes</div>
+              )}
             </div>
 
             <div className="p-2 space-y-2">
               {DELTA_TABLE_KEYS.map(tableKey => {
-                const tableRelationships = relationships[tableKey] || [];
+                const origRelationships = relationships[tableKey] || [];
                 const tableRows = tableData[tableKey] || [];
-                const rowsWithMotion = new Set(tableRelationships.map(r => r.rowId));
-                const availableRows = tableRows.filter(r => !rowsWithMotion.has(String(r.id)));
                 const isTableExpanded = expandedTables.has(tableKey);
                 const isMotionPaths = tableKey === 'motionPaths';
+
+                const effectiveRels = origRelationships
+                  .filter(r => panelDraftOverrides[`${tableKey}::${r.rowId}`] !== REMOVE_SENTINEL)
+                  .map(r => {
+                    const ck = `${tableKey}::${r.rowId}`;
+                    if (ck in panelDraftOverrides) {
+                      return { ...r, motionValue: panelDraftOverrides[ck] as Record<string, number> | 'inherit' };
+                    }
+                    return r;
+                  });
+                const addedRels = panelDraftAdds
+                  .filter(a => a.tableKey === tableKey && !origRelationships.some(r => r.rowId === a.rowId))
+                  .map(a => ({ tableKey, rowId: a.rowId, rowLabel: a.rowLabel, motionValue: (panelDraftOverrides[`${tableKey}::${a.rowId}`] || {}) as Record<string, number> | 'inherit' }));
+                const allRels = [...effectiveRels, ...addedRels];
+
+                const rowsWithMotion = new Set(allRels.map(r => r.rowId));
+                const availableRows = tableRows.filter(r => !rowsWithMotion.has(String(r.id)));
 
                 return (
                   <div key={tableKey} className="border border-gray-200 rounded overflow-hidden">
@@ -1269,18 +1421,18 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
                         <h3 className="text-[10px] font-semibold text-gray-700 uppercase">{getTableLabel(tableKey)}</h3>
                       </div>
                       <span className="text-[10px] text-gray-400">
-                        {tableRelationships.length} rule{tableRelationships.length !== 1 ? 's' : ''}
+                        {allRels.length} rule{allRels.length !== 1 ? 's' : ''}
                       </span>
                     </div>
 
                     {isTableExpanded && (
                       <>
                         <div className="divide-y divide-gray-100">
-                          {tableRelationships.length === 0 && (
+                          {allRels.length === 0 && (
                             <div className="px-2 py-1 text-[10px] text-gray-400 italic">No rules for this motion</div>
                           )}
 
-                          {tableRelationships.map(rel => {
+                          {allRels.map(rel => {
                         const cardKey = `${tableKey}::${rel.rowId}`;
                         const isExpanded = expandedCards.has(cardKey);
                         const isInherit = rel.motionValue === "inherit";
@@ -1304,7 +1456,7 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
                                 <input
                                   type="checkbox"
                                   checked={isInherit}
-                                  onChange={() => saveDelta(tableKey, rel.rowId, selectedMotion!, isInherit ? {} : "inherit")}
+                                  onChange={() => draftSetDelta(tableKey, rel.rowId, isInherit ? {} : "inherit")}
                                   className="w-3 h-3 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                                 />
                                 <span className="text-[9px] text-gray-500">Inherit</span>
@@ -1317,7 +1469,7 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
                                 <span className="text-[10px] text-red-500 flex-shrink-0">empty</span>
                               )}
                               <button
-                                onClick={() => removeDelta(tableKey, rel.rowId, selectedMotion!)}
+                                onClick={() => draftRemoveDelta(tableKey, rel.rowId)}
                                 className="text-red-300 hover:text-red-500 text-xs flex-shrink-0 ml-0.5"
                                 title="Remove this motion from this row's delta_rules"
                               >
@@ -1330,7 +1482,7 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
                                 <InlineDeltaEditor
                                   delta={deltaObj}
                                   allMuscles={muscles}
-                                  onSave={(newDelta) => saveDelta(tableKey, rel.rowId, selectedMotion!, newDelta)}
+                                  onSave={(newDelta) => draftSetDelta(tableKey, rel.rowId, newDelta)}
                                 />
                               </div>
                             )}
@@ -1349,7 +1501,7 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
                         {availableRows.length > 0 && (
                           <div className="border-t border-gray-100 px-2 py-1">
                             <select
-                              onChange={e => { if (e.target.value) addDelta(tableKey, e.target.value, selectedMotion!); e.target.value = ''; }}
+                              onChange={e => { if (e.target.value) draftAddDelta(tableKey, e.target.value); e.target.value = ''; }}
                               className="w-full text-[10px] border border-gray-300 rounded px-1.5 py-1 text-gray-600 bg-white"
                               defaultValue=""
                             >

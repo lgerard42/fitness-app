@@ -820,8 +820,18 @@ export default function DeltaRulesField({ value, onChange }: DeltaRulesFieldProp
               )}
               {isExp && isInherit && (
                 <div className={sp.deltaRules.expandedContent}>
-                  <div className="p-4 text-sm text-gray-600 italic">
-                    This motion inherits delta rules from its parent and does not require explicit modifiers.
+                  <div className="px-4 pt-3 pb-1 text-sm text-green-700 italic font-medium">
+                    Inherited — delta rules come from parent motion
+                  </div>
+                  <div className={sp.deltaRules.scoresRow}>
+                    <div className={sp.deltaRules.scoresColumnReadOnly}>
+                      <div className={sp.deltaRules.sectionLabel}>Base Muscle Scores</div>
+                      <ReadOnlyMuscleTree
+                        targets={(motion?.muscle_targets as Record<string, unknown>) || {}}
+                        allMuscles={allMuscles}
+                        deltaScores={{}}
+                      />
+                    </div>
                   </div>
                 </div>
               )}

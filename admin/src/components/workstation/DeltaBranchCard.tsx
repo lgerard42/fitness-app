@@ -24,6 +24,7 @@ interface DeltaBranchCardProps {
   localOverride: Record<string, number> | 'inherit' | undefined;
   onDeltaChange: (tableKey: string, rowId: string, value: Record<string, number> | 'inherit') => void;
   onSave: (tableKey: string, rowId: string) => Promise<boolean>;
+  inlineAssignment?: React.ReactNode;
 }
 
 function getMuscleLabel(allMuscles: MuscleRecord[], id: string): string {
@@ -53,6 +54,7 @@ export default function DeltaBranchCard({
   localOverride,
   onDeltaChange,
   onSave,
+  inlineAssignment,
 }: DeltaBranchCardProps) {
   const [allMuscles, setAllMuscles] = useState<MuscleRecord[]>([]);
   const [expanded, setExpanded] = useState(false);
@@ -65,8 +67,10 @@ export default function DeltaBranchCard({
 
   const deltaRules: DeltaRules = modifierRow.delta_rules || {};
   const currentEntry = localOverride !== undefined ? localOverride : deltaRules[motionId];
-  const isInheritMode = currentEntry === 'inherit' || currentEntry === undefined;
   const isChildMotion = !!parentMotionId;
+  const isInheritMode = isChildMotion
+    ? (currentEntry === 'inherit' || currentEntry === undefined)
+    : false;
 
   // Resolve what the parent's delta looks like (for inherit display)
   const parentDelta = useMemo(() => {
@@ -90,6 +94,13 @@ export default function DeltaBranchCard({
     }
     return {};
   }, [isInheritMode, currentEntry, parentDelta]);
+
+  const resolvedSourceChip = useMemo(() => {
+    if (!isChildMotion && (currentEntry === undefined || currentEntry === 'inherit')) {
+      return { type: 'custom' as const, fromLabel: motionLabel };
+    }
+    return null;
+  }, [isChildMotion, currentEntry, motionLabel]);
 
   const resolvedSource = useMemo(() => {
     const resolved = resolveSingleDelta(
@@ -128,6 +139,12 @@ export default function DeltaBranchCard({
   const handleRemoveMuscle = (muscleId: string) => {
     const current = typeof currentEntry === 'object' && currentEntry !== null ? { ...currentEntry as Record<string, number> } : {};
     delete current[muscleId];
+    const children = allMuscles.filter(m => m.parent_ids && m.parent_ids.includes(muscleId));
+    for (const c of children) {
+      delete current[c.id];
+      const grandchildren = allMuscles.filter(m => m.parent_ids && m.parent_ids.includes(c.id));
+      for (const gc of grandchildren) delete current[gc.id];
+    }
     onDeltaChange(tableKey, rowId, current);
   };
 
@@ -137,30 +154,79 @@ export default function DeltaBranchCard({
     onDeltaChange(tableKey, rowId, current);
   };
 
+  const primaryMuscles = useMemo(() => allMuscles.filter(m => !m.parent_ids || m.parent_ids.length === 0), [allMuscles]);
+  const getSecondariesFor = (pId: string) => allMuscles.filter(m => m.parent_ids && m.parent_ids.includes(pId));
+  const getTertiariesFor = (sId: string) => allMuscles.filter(m => m.parent_ids && m.parent_ids.includes(sId));
+
+  const deltaTree = useMemo(() => {
+    const tree: Record<string, { score: number; children: Record<string, { score: number; children: Record<string, number> }> }> = {};
+    for (const [id, score] of Object.entries(effectiveDeltas)) {
+      const m = allMuscles.find(mu => mu.id === id);
+      if (!m) continue;
+      const level = getMuscleLevel(id, allMuscles);
+      if (level === 'primary') {
+        if (!tree[id]) tree[id] = { score, children: {} };
+        else tree[id].score = score;
+      } else if (level === 'secondary') {
+        const pId = m.parent_ids![0];
+        if (!tree[pId]) tree[pId] = { score: 0, children: {} };
+        tree[pId].children[id] = { score, children: {} };
+      } else {
+        const parent = allMuscles.find(mu => mu.id === m.parent_ids![0]);
+        const sId = m.parent_ids![0];
+        const pId = parent?.parent_ids?.[0] || '';
+        if (!tree[pId]) tree[pId] = { score: 0, children: {} };
+        if (!tree[pId].children[sId]) tree[pId].children[sId] = { score: 0, children: {} };
+        tree[pId].children[sId].children[id] = score;
+      }
+    }
+    return tree;
+  }, [effectiveDeltas, allMuscles]);
+
   const hasDeltas = Object.keys(effectiveDeltas).length > 0;
 
   return (
-    <div className="border border-gray-200 rounded bg-white text-[10px]">
+    <div className="border border-red-200 rounded bg-white text-[10px]">
       <div
-        className="flex items-center gap-1.5 px-2 py-1.5 cursor-pointer hover:bg-gray-50"
+        className="flex items-center gap-1.5 px-2 py-1.5 cursor-pointer hover:bg-red-50"
         onClick={() => setExpanded(!expanded)}
       >
-        <span className="text-gray-400">{expanded ? '▼' : '▶'}</span>
+        <span className="text-red-400">{expanded ? '▼' : '▶'}</span>
         <span className="font-medium text-gray-800">{rowLabel}</span>
 
-        {/* Source chip */}
-        {resolvedSource && (
-          <span className={`px-1.5 py-0.5 rounded border text-[9px] ${
-            resolvedSource.type === 'inherited'
-              ? 'bg-amber-50 border-amber-200 text-amber-700'
-              : 'bg-blue-50 border-blue-200 text-blue-700'
-          }`}>
-            {resolvedSource.type === 'inherited'
-              ? `Inherited from ${resolvedSource.fromLabel}`
-              : `Custom for ${resolvedSource.fromLabel}`
-            }
-          </span>
+        {inlineAssignment && (
+          <span onClick={e => e.stopPropagation()}>{inlineAssignment}</span>
         )}
+
+        {isChildMotion && (
+          <label className="flex items-center gap-1 cursor-pointer text-[9px] text-gray-500" onClick={e => e.stopPropagation()}>
+            <input
+              type="checkbox"
+              checked={isInheritMode}
+              onChange={handleToggleInherit}
+              className="rounded border-gray-300 w-3 h-3"
+            />
+            Inherit
+          </label>
+        )}
+
+        {/* Source chip */}
+        {(() => {
+          const src = resolvedSourceChip || resolvedSource;
+          if (!src) return null;
+          return (
+            <span className={`px-1.5 py-0.5 rounded border text-[9px] ${
+              src.type === 'inherited'
+                ? 'bg-amber-50 border-amber-200 text-amber-700'
+                : 'bg-blue-50 border-blue-200 text-blue-700'
+            }`}>
+              {src.type === 'inherited'
+                ? `Inherited from ${src.fromLabel}`
+                : `Custom for ${src.fromLabel}`
+              }
+            </span>
+          );
+        })()}
 
         {dirty && (
           <span className="px-1 py-0.5 rounded-full bg-yellow-100 text-yellow-800 font-medium text-[9px]">
@@ -176,25 +242,10 @@ export default function DeltaBranchCard({
       </div>
 
       {expanded && (
-        <div className="border-t border-gray-200 px-2 py-2 space-y-1.5">
-          {/* Inherit toggle for child motions */}
-          {isChildMotion && (
-            <div className="flex items-center gap-2 pb-1.5 border-b border-gray-100">
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={isInheritMode}
-                  onChange={handleToggleInherit}
-                  className="rounded border-gray-300 w-3 h-3"
-                />
-                <span className="text-gray-600">Inherit from parent</span>
-              </label>
-            </div>
-          )}
+        <div className="border-t border-red-200 px-2 py-2 space-y-1.5">
 
           {/* Delta scores */}
           {isInheritMode ? (
-            // Read-only view of inherited deltas
             <div className="space-y-0.5">
               {Object.keys(effectiveDeltas).length === 0 ? (
                 <div className="text-gray-400 italic py-1">No deltas (home base)</div>
@@ -210,48 +261,100 @@ export default function DeltaBranchCard({
                     </div>
                   ))
               )}
-              {isInheritMode && <div className="text-[9px] text-amber-600 italic mt-1">Read-only (inherited)</div>}
+              <div className="text-[9px] text-amber-600 italic mt-1">Read-only (inherited)</div>
             </div>
           ) : (
-            // Editable delta scores
-            <div className="space-y-0.5">
-              {Object.entries(effectiveDeltas)
-                .sort(([, a], [, b]) => Math.abs(b) - Math.abs(a))
-                .map(([muscleId, delta]) => (
-                  <div key={muscleId} className="flex items-center gap-1.5 py-0.5">
-                    <span className="flex-1 truncate text-gray-700">{getMuscleLabel(allMuscles, muscleId)}</span>
-                    <input
-                      type="number"
-                      value={delta}
-                      onChange={(e) => handleScoreChange(muscleId, parseFloat(e.target.value) || 0)}
-                      step="0.05"
-                      className="w-16 px-1 py-0.5 border border-gray-300 rounded text-right font-mono text-[10px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                    />
-                    <button
-                      onClick={() => handleRemoveMuscle(muscleId)}
-                      className="text-red-400 hover:text-red-600"
-                    >
-                      x
-                    </button>
-                  </div>
-                ))}
-              {Object.keys(effectiveDeltas).length === 0 && (
+            <div className="space-y-1">
+              {Object.keys(deltaTree).length === 0 && (
                 <div className="text-gray-400 italic py-1">No deltas (home base)</div>
               )}
-              <select
-                onChange={(e) => { if (e.target.value) handleAddMuscle(e.target.value); e.target.value = ''; }}
-                className="w-full border border-gray-300 rounded px-1 py-0.5 text-gray-600 bg-white mt-1"
-                defaultValue=""
-              >
-                <option value="">+ Add muscle...</option>
-                {allMuscles
-                  .filter(m => !(m.id in effectiveDeltas))
-                  .map(m => (
-                    <option key={m.id} value={m.id}>
-                      {m.label} ({getMuscleLevel(m.id, allMuscles)})
-                    </option>
-                  ))}
-              </select>
+              {Object.entries(deltaTree).map(([pId, pNode]) => {
+                const pLabel = getMuscleLabel(allMuscles, pId);
+                const sKeys = Object.keys(pNode.children);
+                const pIsComputed = sKeys.length > 0;
+                const availSec = getSecondariesFor(pId).filter(s => !sKeys.includes(s.id));
+
+                return (
+                  <div key={pId} className="border border-gray-200 rounded p-1 bg-gray-50">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-semibold text-gray-700">{pLabel}</span>
+                      {pIsComputed ? (
+                        <span className="text-gray-400 italic ml-auto" title="Auto-computed from children">{pNode.score}</span>
+                      ) : (
+                        <input type="number" value={pNode.score}
+                          onChange={e => handleScoreChange(pId, parseFloat(e.target.value) || 0)}
+                          step="0.05" className="w-16 px-1 py-0.5 border border-gray-300 rounded text-center font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                      )}
+                      <button onClick={() => handleRemoveMuscle(pId)} className="text-red-400 hover:text-red-600 ml-auto">×</button>
+                    </div>
+                    {(sKeys.length > 0 || availSec.length > 0) && (
+                      <div className="pl-2 mt-0.5 space-y-0.5 border-l border-gray-200 ml-0.5">
+                        {sKeys.map(sId => {
+                          const sNode = pNode.children[sId];
+                          const sLabel = getMuscleLabel(allMuscles, sId);
+                          const tKeys = Object.keys(sNode.children);
+                          const sIsComputed = tKeys.length > 0;
+                          const availTer = getTertiariesFor(sId).filter(t => !tKeys.includes(t.id));
+
+                          return (
+                            <div key={sId}>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-gray-600">{sLabel}</span>
+                                {sIsComputed ? (
+                                  <span className="text-gray-400 italic" title="Auto-computed">{sNode.score}</span>
+                                ) : (
+                                  <input type="number" value={sNode.score}
+                                    onChange={e => handleScoreChange(sId, parseFloat(e.target.value) || 0)}
+                                    step="0.05" className="w-16 px-1 py-0.5 border border-gray-300 rounded text-center font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                                )}
+                                <button onClick={() => handleRemoveMuscle(sId)} className="text-red-400 hover:text-red-600 ml-auto">×</button>
+                              </div>
+                              {(tKeys.length > 0 || availTer.length > 0) && (
+                                <div className="pl-2 mt-0.5 space-y-0 border-l border-gray-200 ml-0.5">
+                                  {tKeys.map(tId => (
+                                    <div key={tId} className="flex items-center gap-1.5">
+                                      <span className="text-gray-500">{getMuscleLabel(allMuscles, tId)}</span>
+                                      <input type="number" value={sNode.children[tId]}
+                                        onChange={e => handleScoreChange(tId, parseFloat(e.target.value) || 0)}
+                                        step="0.05" className="w-16 px-1 py-0.5 border border-gray-300 rounded text-center font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                                      <button onClick={() => handleRemoveMuscle(tId)} className="text-red-400 hover:text-red-600 ml-auto">×</button>
+                                    </div>
+                                  ))}
+                                  {availTer.length > 0 && (
+                                    <select onChange={e => { if (e.target.value) handleAddMuscle(e.target.value); e.target.value = ''; }}
+                                      className="w-40 border border-gray-300 rounded px-1 py-0.5 text-gray-600 bg-white mt-0.5" defaultValue="">
+                                      <option value="">+ tertiary...</option>
+                                      {availTer.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+                                    </select>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                        {availSec.length > 0 && (
+                          <select onChange={e => { if (e.target.value) handleAddMuscle(e.target.value); e.target.value = ''; }}
+                            className="w-40 border border-gray-300 rounded px-1 py-0.5 text-gray-600 bg-white mt-0.5" defaultValue="">
+                            <option value="">+ secondary...</option>
+                            {availSec.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                          </select>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {(() => {
+                const activePIds = new Set(Object.keys(deltaTree));
+                const unused = primaryMuscles.filter(p => !activePIds.has(p.id));
+                return unused.length > 0 ? (
+                  <select onChange={e => { if (e.target.value) handleAddMuscle(e.target.value); e.target.value = ''; }}
+                    className="w-40 border border-gray-300 rounded px-1 py-0.5 text-gray-600 bg-white mt-1" defaultValue="">
+                    <option value="">+ muscle group...</option>
+                    {unused.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+                  </select>
+                ) : null;
+              })()}
             </div>
           )}
 
