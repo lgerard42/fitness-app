@@ -1,3 +1,5 @@
+export * from "./matrixV2";
+
 // ─── Muscle Targets ──────────────────────────────────────────────────
 // Hierarchical muscle scoring from motions.json
 // Each node has _score and may nest child muscles

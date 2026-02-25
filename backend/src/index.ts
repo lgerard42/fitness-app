@@ -18,6 +18,7 @@ import personalRecordRoutes from "./routes/personalRecords";
 import adminTablesRouter from "./admin/routes/tables";
 import adminSchemaRouter from "./admin/routes/schema";
 import adminScoringRouter from "./admin/routes/scoring";
+import adminMatrixConfigsRouter from "./admin/routes/matrixConfigs";
 
 const app = express();
 
@@ -44,6 +45,7 @@ app.use("/api/personal-records", personalRecordRoutes);
 app.use("/api/admin/tables", adminTablesRouter);
 app.use("/api/admin/schema", adminSchemaRouter);
 app.use("/api/admin/scoring", adminScoringRouter);
+app.use("/api/admin/matrix-configs", adminMatrixConfigsRouter);
 
 // Error handler (must be last)
 app.use(errorHandler);

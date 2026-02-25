@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom';
 import { api, type TableSchema } from '../api';
 import toast from 'react-hot-toast';
+import MatrixV2ConfigPanel from './MatrixV2ConfigPanel';
 
 interface MotionDeltaMatrixProps {
   schemas: TableSchema[];
@@ -401,6 +402,7 @@ function InlineDeltaEditor({
 // ─── Main component ───
 
 export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixProps) {
+  const [activeTab, setActiveTab] = useState<'delta_rules' | 'v2_config'>('delta_rules');
   const [motions, setMotions] = useState<MotionRecord[]>([]);
   const [tableData, setTableData] = useState<Record<string, Record<string, unknown>[]>>({});
   const [muscles, setMuscles] = useState<MuscleRecord[]>([]);
@@ -1069,9 +1071,30 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
       <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Motion Delta Matrix</h1>
-          <p className="text-sm text-gray-600 mt-1">View and compare delta_rules across all tables for each motion</p>
+          <div className="flex items-center gap-4 mt-2">
+            <button
+              onClick={() => setActiveTab('delta_rules')}
+              className={`text-sm font-medium pb-1 border-b-2 transition-colors ${
+                activeTab === 'delta_rules'
+                  ? 'border-blue-600 text-blue-700'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Delta Rules
+            </button>
+            <button
+              onClick={() => setActiveTab('v2_config')}
+              className={`text-sm font-medium pb-1 border-b-2 transition-colors ${
+                activeTab === 'v2_config'
+                  ? 'border-blue-600 text-blue-700'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Matrix V2 Config
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+        {activeTab === 'delta_rules' && <div className="flex items-center gap-2">
           <button
             onClick={handleDownloadCsv}
             className="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 text-sm font-medium flex items-center gap-2"
@@ -1099,9 +1122,14 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
             <span>📥</span>
             Import
           </button>
-        </div>
+        </div>}
       </div>
 
+      {activeTab === 'v2_config' ? (
+        <div className="flex-1 overflow-hidden">
+          <MatrixV2ConfigPanel motions={motions} />
+        </div>
+      ) : (
       <div className="flex-1 flex overflow-hidden">
         {/* Matrix table */}
         <div className={`flex-1 overflow-auto transition-all ${selectedMotion ? '' : ''}`}>
@@ -1398,6 +1426,7 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
           </div>
         )}
       </div>
+      )}
 
       {/* Import Modal */}
       {showImportModal && (
