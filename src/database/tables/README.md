@@ -7,12 +7,12 @@
 
 ## Local Folder Notes
 
-These JSON files are the **source of truth** for exercise configuration data. They are:
+These remaining JSON files are used for direct imports by specific components:
 
-- **Visible** in Cursor's file explorer
-- **Editable** directly in the editor
-- **Loaded** into SQLite when the app initializes
+- `equipmentIcons.json` -- equipment icon (base64) lookup by ID, used by `configFacade.ts`
+- `muscles.json` -- muscle data, directly imported by `MotionPickerModal.tsx`
+- `equipment.json` -- equipment data, used by `constants/data.js` for legacy migration
+- `motions.json` -- motion data, directly imported by `EditExercise.tsx`
+- `motionPaths.json` -- motion path data, directly imported by `EditExercise.tsx`
 
-**Icons:** For any row that has an `icon` column, the icon shown in the app must be **retrieved from the table** (or from the DB seeded from these files). Do not hard-code icon lookups by label or id elsewhere; use the row's `icon` value.
-
-Edit these files to change the data. After changing them, you may need to delete the app and reinstall (or bump `DATABASE_VERSION` in `initDatabase.ts`) so the database is re-seeded.
+All reference data is primarily served from the PostgreSQL backend via `configFacade.ts` and the `RemotePostgresProvider`.

@@ -3,8 +3,18 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react-native';
 import { WorkoutProvider, useWorkout } from './WorkoutContext';
 
-jest.mock('@/database/useExerciseConfig', () => ({
-  initExerciseConfigDatabase: jest.fn(() => Promise.resolve()),
+// Mock API so context loads with empty state and completes loading
+jest.mock('@/api/client', () => ({
+  autoLogin: jest.fn(() => Promise.resolve()),
+}));
+jest.mock('@/api/workouts', () => ({
+  fetchWorkouts: jest.fn(() => Promise.resolve([])),
+  createWorkout: jest.fn(() => Promise.resolve({})),
+}));
+jest.mock('@/api/exercises', () => ({
+  fetchExercises: jest.fn(() => Promise.resolve([])),
+  createExercise: jest.fn(() => Promise.resolve({})),
+  updateExercise: jest.fn(() => Promise.resolve({})),
 }));
 
 const TestConsumer = () => {
