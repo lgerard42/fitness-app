@@ -329,7 +329,7 @@ graph TD
 | Interface | Purpose |
 |---|---|
 | `MatrixConfigJson` | The main `config_json` payload shape: `meta`, `tables`, `rules`, `extensions` |
-| `TableConfig` | Per-modifier-table settings: `applicability`, `allowed_row_ids`, `default_row_id`, `null_noop_allowed`, `local_rules` |
+| `TableConfig` | Per-modifier-table settings: `applicability`, `allowed_row_ids`, `default_row_id`, `null_noop_allowed`, `local_rules`, plus optional extended fields (see below) |
 | `LocalRule` | A rule scoped to one table: conditionally hides, disables, or filters rows based on another table's selection |
 | `GlobalRule` | A cross-table rule: partitions, exclusivity constraints, invalid combinations |
 | `RuleTombstone` | A marker that removes an inherited group rule at the motion level |
@@ -353,6 +353,18 @@ graph TD
 | `filter_row_ids` | Shows only the rows in `target_row_ids` |
 
 Each rule has a **condition** (`{ table, operator, value }`) that checks another table's current selection.
+
+### Extended TableConfig Fields (Optional)
+
+The following optional fields on `TableConfig` support workstation-specific authoring. All are validated by the structural layer (Zod) and preserved on save/activate.
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| `one_per_group` | `boolean` | When true, each allowed row can be assigned to exactly one motion in the current motion family. Used for "1 row per group" constraint authoring. |
+| `row_motion_assignments` | `Record<string, string>` | Maps row ID → motion ID for tables with `one_per_group` enabled. Stored in config; delta scores remain in modifier row `delta_rules`. |
+| `angle_range` | `{ min, max, step, default }` | For `torsoAngles` only. Bounds are derived from assigned angle row IDs (e.g. DEG_NEG_15 → -15); min/max constrained to lowest−10 and highest+10 degrees. |
+| `secondary_overrides` | `Record<string, boolean>` | For `loadPlacement` only. Override `allows_secondary` per row (true→false). Rows with native `allows_secondary === false` cannot be set true. |
+| `valid_secondary_ids` | `string[]` | For `loadPlacement` when a row allows secondary. Subset of rows with `is_valid_secondary === true` that are valid as secondary placements; user can deselect. |
 
 **Global rules** span multiple tables:
 
@@ -399,7 +411,7 @@ Validates the JSON shape using Zod schemas:
 
 - Required top-level keys: `meta`, `tables`, `rules`, `extensions`
 - No unknown top-level keys (`strict()` mode)
-- Each table config has required fields: `applicability`, `allowed_row_ids`, `default_row_id`, `null_noop_allowed`
+- Each table config has required fields: `applicability`, `allowed_row_ids`, `default_row_id`, `null_noop_allowed`; optional fields (validated when present): `one_per_group`, `row_motion_assignments`, `angle_range`, `secondary_overrides`, `valid_secondary_ids`
 - Rule schemas: valid `action` enums, valid `operator` enums, `rule_id` present
 - Table keys must be from the known 15 modifier tables
 
@@ -574,19 +586,16 @@ The existing `MotionDeltaMatrix.tsx` page now has two tabs:
 │                       │                                          │
 │ ┌───────────────────┐ │ ┌──────────────────────────────────────┐ │
 │ │ Scope Picker      │ │ │ Toolbar                              │ │
-│ │ [Group ▼][PRESS ▼]│ │ │ Group: Press  draft v1   Notes...   │ │
-│ │ [New Draft]       │ │ │ [Save] [Validate] [Activate] [Clone]│ │
-│ ├───────────────────┤ │ │ [Preview] [Export] [Import]          │ │
-│ │ Config List       │ │ ├──────────────────────┬───────────────┤ │
-│ │                   │ │ │ Table Config Panels  │ Validation /  │ │
-│ │ Press     [active]│ │ │                      │ Preview Panel │ │
-│ │  motion_group  v2 │ │ │ ☑ Torso Angles  ▼   │ (280px)       │ │
-│ │                   │ │ │   [DEG_0] [DEG_30]   │               │ │
-│ │ Flat Press [draft]│ │ │   Default: [DEG_0 ▼] │ Errors: 0     │ │
-│ │  motion  v1       │ │ │                      │ Warnings: 1   │ │
-│ │                   │ │ │ ☑ Grips          ▶   │               │ │
-│ │                   │ │ │ ☐ Foot Positions ▶   │ Resolved JSON │ │
-│ │                   │ │ │ ...                  │ preview...    │ │
+│ │ [Primary Motion ▼]│ │ │ Primary Motion: Press  draft v1       │ │
+│ │ [Motion ▼]        │ │ │ [Save][Validate][Activate][Clone]     │ │
+│ │ [New Draft]       │ │ │ [Preview][Export][Import][Save&Next]  │ │
+│ ├───────────────────┤ │ ├──────────────────────┬───────────────┤ │
+│ │ Motion Context    │ │ │ Modifier Table Config│ Validation /  │ │
+│ │ Config List      │ │ │ (grouped, collapsible)│ Preview      │ │
+│ │ Preview As       │ │ │ ▶ Trajectory & Posture│ (280px)       │ │
+│ │                   │ │ │ ▼ Upper Body: Grips  │               │ │
+│ │                   │ │ │   Default ▼  Rows    │               │ │
+│ │                   │ │ │   Allow 1/group ☐    │               │ │
 │ └───────────────────┘ │ └──────────────────────┴───────────────┘ │
 └──────────────────────────────────────────────────────────────────┘
 ```
@@ -595,41 +604,71 @@ The existing `MotionDeltaMatrix.tsx` page now has two tabs:
 
 | Component | Location | Purpose |
 |---|---|---|
-| Scope Picker | Left sidebar top | Select `motion_group` or `motion`, then pick the specific ID |
-| Config List | Left sidebar | Shows all configs with status badges, version numbers, validation status |
-| Toolbar | Main area top | Save Draft, Validate, Activate, Clone, Preview, Export, Import |
-| Table Config Cards | Main center | One card per modifier table with applicability toggle, row picker, default picker |
-| Validation Panel | Right sidebar | Shows errors/warnings/info with severity badges and suggested fixes |
-| Resolved Preview | Right sidebar | Shows raw JSON of the resolver output with provenance metadata |
+| Scope Picker | Left sidebar top | First dropdown: **Primary Motion** (group) or **Motion**. Second: scope ID; when Motion, options are nested by parent (optgroups). |
+| Motion Context | Left sidebar | Select which motion in the family drives baseline, delta editing, and simulation. |
+| Config List | Left sidebar | Shows all configs with status badges, version numbers, validation status. |
+| Toolbar | Main area top | Save Draft, Validate, Activate, Clone, Preview, Export, Import, Save & Next. |
+| Modifier Table Config | Main center | **Grouped** by category (Trajectory & Posture, Upper Body, Lower Body, Execution Variables); each group and each table card is collapsible. See below. |
+| Validation Panel | Right sidebar | Errors/warnings/info with severity badges and suggested fixes. |
+| Resolved Preview | Right sidebar | Raw JSON of resolver output with provenance; plus Simulation Preview, Diff vs Active. |
+
+### Modifier Table Configuration (Workstation)
+
+- **Grouping and collapse:** Tables are grouped into four categories (Trajectory & Posture, Upper Body Mechanics, Lower Body Mechanics, Execution Variables). Each group has a collapsible header; each table card within is independently expandable/collapsible.
+- **Scope label:** The first scope dropdown is labeled **Primary Motion** (not "Group") when selecting a motion group. The second dropdown, when "Motion" is selected, shows **nested motions** via optgroups: parent as group label, children as options (e.g. FLY → FLY_FLAT, FLY_INCLINE).
+- **Order and layout:** **Default / Home-Base** appears **above** Allowed Rows. If a table has **>10 options** or **parent-child hierarchy** (e.g. grips), allowed rows are shown **vertically** (stacked) with child rows indented (└). Otherwise rows are wrapped horizontally.
+- **Parent-child visibility:** For tables with `parent_id` (e.g. grips): **child rows are only shown if their parent is in the allowed list**. Unselecting a parent hides its children from the picker.
+- **Allow 1 row per group:** Optional checkbox per table. When enabled, the **motion family** (parent + children by `parent_id`) is shown; each allowed row is assigned to exactly one family motion via dropdown. Assignments stored in `row_motion_assignments`; inline delta editing uses `DeltaBranchCard` and writes to modifier row `delta_rules`.
+- **Torso Angles / Orientations:** Torso Orientations card is **disabled** when no allowed Torso Angle row has `allow_torso_orientations === true`. For Torso Angles, an **Angle Range** editor (min, max, step, default) is shown; bounds are derived from assigned angle IDs (lowest−10° to highest+10°), stored in `TableConfig.angle_range`.
+- **Load Placement secondary:** For rows with `allows_secondary === true`, a toggle can override to false (`secondary_overrides`). If kept true, rows with `is_valid_secondary === true` can be deselected as valid secondaries (`valid_secondary_ids`). Rows with `allows_secondary === false` are read-only.
 
 ### Key UI Behaviors
 
-- **Active configs are read-only** -- checkboxes and buttons are disabled when viewing an active config
-- **Status badges** -- green for active, yellow for draft
-- **Validation badges** -- green for valid, red for error, yellow for warning
-- **Row buttons** -- blue when allowed, gray when excluded; click to toggle
-- **Expand/collapse** -- click a table card header to show/hide its row picker and default selector
+- **Active configs are read-only** — checkboxes and buttons are disabled when viewing an active config.
+- **Status badges** — green for active, yellow for draft.
+- **Validation badges** — green for valid, red for error, yellow for warning.
+- **Row buttons** — blue when allowed, gray when excluded; vertical stack when >10 rows or hierarchical.
+- **Expand/collapse** — group headers and table card headers each toggle; table cards show Default first, then Allowed Rows, then optional Angle Range / Load Placement secondary / Allow 1 row per group, then Inherited Rules and Delta Scoring.
 
 ---
 
 ## 11. Import / Export
 
-### Export
+### Export (API and UI)
 
-`GET /api/admin/matrix-configs/export/:id` returns a deterministic JSON file with sorted keys. The response has `Content-Disposition: attachment` headers for direct download.
+**API:** `GET /api/admin/matrix-configs/export/:id` returns a deterministic JSON file with sorted keys and `Content-Disposition: attachment` for direct download. Payload includes metadata (`scope_type`, `scope_id`, `status`, `schema_version`, `config_version`) plus the full `config_json`.
 
-Export includes: metadata (`scope_type`, `scope_id`, `status`, `schema_version`, `config_version`) plus the full `config_json`.
+**UI Export modal (Export button):** The admin panel shows a modal with three options:
 
-### Import
+| Option | Behavior |
+|--------|----------|
+| **Full JSON** | Same as API: downloads the full config as a `.json` file (current behavior). |
+| **Table (TSV)** | Builds a **table format** client-side: one row per motion in the **current scope family** (parent + children by `parent_id`). Columns: `MOTION_ID`, `MUSCLE_TARGETS` (JSON), then one column per modifier table key; each table cell is a JSON object `{ config, deltas }` for that table as it applies to that motion. Downloaded as `.tsv` for Excel. |
+| **Copy Table to Clipboard** | Same table structure as above, tab-separated, copied to clipboard for pasting into Excel or sheets. |
 
-`POST /api/admin/matrix-configs/import` accepts `{ data, mode }`. Required in `data`: `config_json`, `scope_type`, `scope_id`. Optional: `notes`. Other fields (id, status, config_version) are ignored; a new id is generated on create.
+Table export scope: only motions in the **current scope** (the motion family when editing a group, or the single motion when editing a motion config).
 
-- `mode: "preview"` — runs structural validation only, returns `{ preview: data, validation: structural, imported: false }` without ever saving.
-- Any other mode (e.g. `"create"`): run structural validation; if `!structural.can_activate` (any structural errors), return `{ preview: data, validation: structural, imported: false }` without saving. If structural passes, create new draft, run full validation (referential + semantic), return `{ config, validation: fullValidation, imported: true }`.
+### Import (API and UI)
+
+**API:** `POST /api/admin/matrix-configs/import` accepts `{ data, mode }`. Required in `data`: `config_json`, `scope_type`, `scope_id`. Optional: `notes`. Other fields are ignored; a new id is generated on create.
+
+- `mode: "preview"` — structural validation only, returns `{ preview: data, validation: structural, imported: false }` without saving.
+- Any other mode (e.g. `"create"`): structural validation; if errors, return preview without saving; otherwise create draft, run full validation, return `{ config, validation, imported: true }`.
+
+**UI Import modal (Import button):** Three options:
+
+| Option | Behavior |
+|--------|----------|
+| **Upload JSON** | File input (`.json`). Parses and sends to import API as above; creates new draft or shows validation. |
+| **Upload CSV / TSV** | File input (`.csv`, `.tsv`, `.txt`). Expects the **table format** (header: MOTION_ID, MUSCLE_TARGETS, then modifier table keys; rows = motion rows). After parsing, shows confirmation: **"Import to current motion: [label]?"** — import applies to the **currently selected motion context**. Parsed table row for that motion ID (or first row if no match) is applied: `muscle_targets` and per-table config/deltas are merged into current editing state. |
+| **Paste Table** | Textarea for pasted tab-separated data (same format as Copy Table). Same confirmation and mapping as Upload CSV/TSV; no file, data pasted from clipboard. |
+
+For table import there is no config ID in the table; the UI clarifies that data will be imported **into the current motion** (whichever motion is selected in Motion Context).
 
 ### Round-Trip Stability
 
-Export uses `sortObjectKeys()` for deterministic key ordering. Import uses `generateRuleId()` for stable rule IDs. Together, export → import → export produces identical JSON.
+- **JSON:** Export uses `sortObjectKeys()` for deterministic key ordering. Import keeps `rule_id` from file. Export → import → export produces identical JSON (new id/timestamps on create).
+- **Table:** Table export/import is a separate format for spreadsheet use; round-trip (export table → paste → import) applies to the current scope and current motion context.
 
 ---
 
@@ -798,8 +837,8 @@ This section explains how to use the Matrix V2 Config panel in plain language, s
 **Goal:** Set up shared defaults for a motion family (like all Pressing exercises).
 
 1. In the **left sidebar**, you'll see two dropdowns:
-   - **First dropdown:** Choose `Group` (for a whole family) or `Motion` (for a specific exercise)
-   - **Second dropdown:** Pick the motion or group name (e.g., "Press")
+   - **First dropdown:** Choose **Primary Motion** (for a whole family) or **Motion** (for a specific exercise)
+   - **Second dropdown:** Pick the primary or group name (e.g., "Press"), or if Motion is selected, pick from **nested options** (parents as groups, e.g. FLY with FLY_FLAT, FLY_INCLINE under it)
 
 2. Click **New Draft**. A blank draft config appears.
 
@@ -809,20 +848,27 @@ This section explains how to use the Matrix V2 Config panel in plain language, s
 
 ### Configuring Modifier Tables
 
+Modifier tables are **grouped** (Trajectory & Posture, Upper Body Mechanics, Lower Body Mechanics, Execution Variables). Click a group header to expand/collapse it; then expand a table card to configure it.
+
 For each modifier table, you can:
 
 **Turn it on or off:**
-- **Check the checkbox** next to the table name to mark it as **applicable** (this motion uses this modifier)
-- **Uncheck it** to mark it as **not applicable** (this motion does not use this modifier at all -- it will be hidden from the user)
+- **Check the checkbox** next to the table name to mark it as **applicable**
+- **Uncheck it** to mark it as **not applicable** (table will be hidden from the user)
+
+**Set a default (shown first):**
+- Use the **Default / Home-Base** dropdown to pick which row should be pre-selected; it must be one of the allowed rows
 
 **Pick allowed rows:**
 - Click the **expand arrow** (▼) next to a table name to see its rows
-- Click the **row buttons** to toggle them on (blue) or off (gray)
+- Click the **row buttons** to toggle them on (blue) or off (gray). If the table has many rows or parent/child structure (e.g. Grips with ROTATING and its children), rows are shown in a **vertical list**; **child rows only appear if their parent is allowed**
 - Only the blue rows will be available for selection in the app
 
-**Set a default:**
-- Use the **Default / Home-Base dropdown** to pick which row should be pre-selected
-- The default must be one of the allowed rows
+**Optional: Allow 1 row per group** — Check this to assign each allowed row to exactly one motion in the current family; you can then edit delta scores per row for that motion.
+
+**Torso Angles:** Use the Angle Range fields (min, max, step, default) if needed; bounds are based on the angles you allowed. **Torso Orientations** is disabled if no selected torso angle allows orientations.
+
+**Load Placement:** For rows that allow secondary placement, you can override to disable or pick which rows count as valid secondaries.
 
 ---
 
@@ -880,10 +926,10 @@ You can't edit active configs directly. Instead:
 
 ### Adding Motion-Level Overrides
 
-Group configs set family-wide defaults. To override for a specific motion:
+Primary Motion (group) configs set family-wide defaults. To override for a specific motion:
 
 1. Switch the first dropdown to **Motion**
-2. Select the specific motion (e.g., "Incline Press")
+2. In the second dropdown, select the specific motion (e.g., under "Press" you might see "Incline Press", "Decline Press"; options are **nested by parent**)
 3. Click **New Draft**
 4. Only configure the tables that differ from the group
    - Example: For Incline Press, change Torso Angles to only allow DEG_30 and DEG_45
@@ -893,15 +939,15 @@ Group configs set family-wide defaults. To override for a specific motion:
 
 ### Importing and Exporting
 
-**Export a config:**
-1. Select a config in the left sidebar
-2. Click **Export** -- a JSON file downloads
+**Export:** Click **Export** in the toolbar. A modal offers:
+- **Full JSON** — download the complete config as a `.json` file (same as before)
+- **Table (TSV)** — download a motion × modifier table spreadsheet (MOTION_ID, MUSCLE_TARGETS, one column per table) for the current scope family
+- **Copy Table to Clipboard** — same table as tab-separated text for pasting into Excel
 
-**Import a config:**
-1. Click **Import** in the toolbar
-2. Select a `.json` file from your computer
-3. The system validates it and creates a new draft
-4. Review validation results before activating
+**Import:** Click **Import** in the toolbar. A modal offers:
+- **Upload JSON** — choose a `.json` file; the system validates and creates a new draft (or shows validation issues)
+- **Upload CSV / TSV** — choose a table-format file; you'll be asked to confirm "Import to current motion: [label]?" and data is applied to the **currently selected motion**
+- **Paste Table** — paste tab-separated table data into the box, then click Import; same confirmation and current-motion targeting
 
 ---
 
@@ -915,8 +961,8 @@ Group configs set family-wide defaults. To override for a specific motion:
 | **Activate** | Makes the config live (errors must be zero) | When ready for production |
 | **Clone** | Copies a config into a new draft | When editing an active config |
 | **Preview** | Shows the merged resolver output | To verify what the system will use |
-| **Export** | Downloads the config as a JSON file | For backup or sharing |
-| **Import** | Uploads a JSON config file as a new draft | For restoring or importing shared configs |
+| **Export** | Opens modal: Full JSON download, Table TSV download, or Copy table to clipboard | For backup, sharing, or Excel |
+| **Import** | Opens modal: Upload JSON, Upload CSV/TSV, or Paste table | For restoring configs or importing table data into current motion |
 
 ---
 
@@ -1013,7 +1059,7 @@ Group has `local_rules: [{ rule_id: "r1", action: "filter_row_ids", condition: {
 
 | Layer | Responsibility (exact) |
 |-------|------------------------|
-| **Layer 1 (Structural)** | Zod schema: `meta`, `tables`, `rules`, `extensions` required; strict (no unknown top-level). Table keys must be in `MODIFIER_TABLE_KEYS`. Each table: `applicability`, `allowed_row_ids`, `default_row_id`, `null_noop_allowed`; optional `local_rules`, `selection_required`, `selection_mode`, `ui_hints`. Rules: `rule_id` required, valid action/type enums, condition with `table`, `operator`, `value`. |
+| **Layer 1 (Structural)** | Zod schema: `meta`, `tables`, `rules`, `extensions` required; strict (no unknown top-level). Table keys must be in `MODIFIER_TABLE_KEYS`. Each table: required `applicability`, `allowed_row_ids`, `default_row_id`, `null_noop_allowed`; optional `local_rules`, `selection_required`, `selection_mode`, `ui_hints`, `one_per_group`, `row_motion_assignments`, `angle_range`, `secondary_overrides`, `valid_secondary_ids`. Rules: `rule_id` required, valid action/type enums, condition with `table`, `operator`, `value`. |
 | **Layer 2 (Referential)** | Requires DB context. Validates `scope_id` (motion or group exists in context). Validates every `allowed_row_id` and `default_row_id` exists in corresponding modifier table. Validates rule conditions and target_row_ids reference existing tables/rows. |
 | **Layer 3 (Semantic)** | Default in allowed list; no duplicate row IDs or rule IDs; inapplicable table coherence (warnings if inapplicable has rows/default/rules); applicable empty allowed rows (warning); global rule on inapplicable table (warning). |
 
@@ -1050,37 +1096,46 @@ Group has `local_rules: [{ rule_id: "r1", action: "filter_row_ids", condition: {
 
 **Round-trip:** Export → import (create) produces a new draft with same `config_json` and scope; IDs and timestamps are new. Round-trip stability for rule_id: export does not regenerate rule_id; import keeps rule_id from file. If rule_id was generated by `generateRuleId` before export, re-import keeps it.
 
+**UI table format (client-side):** Export modal can generate a **table** (TSV): columns MOTION_ID, MUSCLE_TARGETS, then one per modifier table; each cell is JSON `{ config, deltas }`. Scope = current scope family only. Import modal accepts **Upload CSV/TSV** or **Paste table**; parsing is client-side; user confirms "Import to current motion: [label]?" and data is applied to the currently selected motion context (no config ID in table). See Section 11.
+
 **Preview vs create:** `mode === "preview"` → return `{ preview: data, validation: structural, imported: false }` without saving. Any other mode with valid structural: create draft and return `{ config, validation: fullValidation, imported: true }`. If structural has errors and mode !== "preview", return `{ preview: data, validation: structural, imported: false }` (no create).
 
 ### I. Admin UI Authoring Reality
 
 | Feature | Status |
 |--------|--------|
-| Scope picker (group/motion + ID) | Implemented |
+| Scope picker (Primary Motion / Motion + ID) | Implemented. Label "Primary Motion" for group; Motion dropdown uses optgroups (parent → children). |
 | Config list with status/version | Implemented |
 | Create draft, Save, Validate, Activate, Clone | Implemented |
-| Per-table applicability, allowed rows, default | Implemented |
+| Modifier tables grouped by category | Implemented. Four collapsible groups: Trajectory & Posture, Upper Body, Lower Body, Execution Variables. |
+| Per-table applicability, default above allowed rows | Implemented. Default / Home-Base shown first; allowed rows below; vertical layout when >10 rows or hierarchical. |
+| Parent-child row visibility | Implemented. Child rows only shown when parent is in allowed list (e.g. ROTATING children only if ROTATING allowed). |
+| Allow 1 row per group | Implemented. Checkbox per table; family motion assignment dropdown per row; inline delta editing via DeltaBranchCard; stored in `row_motion_assignments`. |
+| Torso Orientations conditional disable | Implemented. Card disabled when no allowed Torso Angle has `allow_torso_orientations === true`. |
+| Torso Angles angle_range editor | Implemented. Min/max/step/default with bounds from assigned angles ±10°; stored in `TableConfig.angle_range`. |
+| Load Placement secondary config | Implemented. Override `allows_secondary` per row; select/deselect `valid_secondary_ids` when allows secondary. |
 | Preview (resolve API + show JSON) | Implemented |
-| Export / Import | Implemented |
-| **Motion context selector** | **Implemented.** Dropdown selects a motion within the scope family to drive baseline, delta, and simulation views. |
-| **Baseline card (muscle_targets)** | **Implemented.** Embeds `MuscleTargetTree` with Save Baseline button; writes only to motions table. |
-| **Delta branch editing per row** | **Implemented.** `DeltaBranchCard` per allowed row with inherit toggle, clone-on-branch, provenance chips, and per-row Save Delta Branch. |
-| **Client-side scoring simulation** | **Implemented.** Live recomputation using shared `resolveAllDeltas` + `computeActivation` with debounced updates. |
-| **Simulation preview** | **Implemented.** Base vs Effective table, Top-3 Impact, delta source provenance, realism advisory, coaching cues (stub), ROM summary. |
-| **Dirty indicators** | **Implemented.** `DirtyBadge` with per-domain tracking (baseline, config, delta branches). |
-| **Save & Next Motion** | **Implemented.** Saves all dirty domains then advances to next sibling motion. |
-| **Group preview context** | **Implemented.** "Preview as" dropdown to select which child motion to use for resolver preview. |
-| **Inherited rules in UI** | **Implemented.** Motion-scope configs show inherited group rules with [inherited] / [tombstoned] tags. |
-| **Compare to active** | **Implemented.** Diff panel shows tables added/removed, rows added/removed, defaults changed vs active config. |
-| **Rule authoring UI** | **Not implemented.** Rules are JSON/manual only; no UI to add/edit local or global rules or tombstones. |
-| **Preview mode** | UI passes `mode=draft_preview` when selected config is draft, else `active_only`. Resolver does not receive "current editing config ID." |
+| Export modal (JSON / Table TSV / Copy) | Implemented. Full JSON download, table-format TSV download, or copy table to clipboard (scope family only). |
+| Import modal (JSON / CSV / Paste) | Implemented. Upload JSON, upload CSV/TSV table, or paste table; table import targets current motion with confirmation. |
+| Motion context selector | Implemented. Dropdown selects a motion within the scope family to drive baseline, delta, and simulation views. |
+| Baseline card (muscle_targets) | Implemented. Embeds `MuscleTargetTree` with Save Baseline button; writes only to motions table. |
+| Delta branch editing per row | Implemented. `DeltaBranchCard` per allowed row with inherit toggle, clone-on-branch, provenance chips, and per-row Save Delta Branch. |
+| Client-side scoring simulation | Implemented. Live recomputation using shared `resolveAllDeltas` + `computeActivation` with debounced updates. |
+| Simulation preview | Implemented. Base vs Effective table, Top-3 Impact, delta source provenance, realism advisory, coaching cues (stub), ROM summary. |
+| Dirty indicators | Implemented. `DirtyBadge` with per-domain tracking (baseline, config, delta branches). |
+| Save & Next Motion | Implemented. Saves all dirty domains then advances to next sibling motion. |
+| Group preview context | Implemented. "Preview as" dropdown to select which child motion to use for resolver preview. |
+| Inherited rules in UI | Implemented. Motion-scope configs show inherited group rules with [inherited] / [tombstoned] tags. |
+| Compare to active | Implemented. Diff panel shows tables added/removed, rows added/removed, defaults changed vs active config. |
+| Rule authoring UI | Not implemented. Rules are JSON/manual only; no UI to add/edit local or global rules or tombstones. |
+| Preview mode | UI passes `mode=draft_preview` when selected config is draft, else `active_only`. Resolver does not receive "current editing config ID." |
 
 ### J. Operational / Coverage / Testing
 
 | Topic | Implemented behavior |
 |-------|----------------------|
 | **Pilot families in fixtures** | `shared/fixtures/pilotConfigs.ts`: Pressing (PRESS group + PRESS_INCLINE, PRESS_DECLINE overrides), Horizontal Pull (HORIZONTAL_ROW group + ROW_HIGH override). Motion IDs verified against motions data. |
-| **Test coverage** | `shared/__tests__/matrixV2.test.ts`: structural validation, referential validation, semantic validation, hashing (canonicalize, generateRuleId), lifecycle (activate supersede), resolver merge and tombstone behavior, golden-style outputs. No backend integration tests for routes or DB. |
+| **Test coverage** | `shared/__tests__/matrixV2.test.ts`: structural validation (including new TableConfig fields: one_per_group, row_motion_assignments, angle_range, secondary_overrides, valid_secondary_ids), referential validation, semantic validation, hashing (canonicalize, generateRuleId), lifecycle (activate supersede), resolver merge and tombstone behavior, golden-style outputs; **activation safety** (config and delta_rules format preserved); **parent-child row filtering**; **angle range bounds** computation; **table export format**; **CSV/paste import** round-trip parsing. No backend integration tests for routes or DB. |
 | **Coverage tracking** | Not implemented (no coverage gates or primitives in doc). |
 | **Local verification** | Run backend (e.g. port 4000), admin (e.g. port 5173); open Motion Delta Matrix → Matrix V2 Config tab; create/validate/activate a config; call `GET /api/admin/matrix-configs/resolve/:motionId?mode=active_only` for a motion with active config. |
 
@@ -1185,15 +1240,24 @@ Each save path has its own dirty indicator and explicit save button. The "Save &
 | `admin/src/components/workstation/SimulationPreview.tsx` | Live scoring preview panel |
 | `admin/src/components/workstation/DirtyBadge.tsx` | Dirty state indicator |
 
+### Modifier Table Configuration Overhaul (Implemented)
+
+The following extensions to the workstation are implemented and documented in Section 10 (Modifier Table Configuration) and Section 5 (Extended TableConfig Fields):
+
+- **TableConfig** in `shared/types/matrixV2.ts` includes optional: `one_per_group`, `row_motion_assignments`, `angle_range`, `secondary_overrides`, `valid_secondary_ids`. The structural validator (`shared/validators/matrixV2Validator.ts`) accepts and validates these fields; activation does not mutate modifier row `delta_rules` or strip these keys.
+- **Modifier rows** loaded for the panel include `parent_id`, `allow_torso_orientations`, `allows_secondary`, `is_valid_secondary` so the UI can apply parent-child filtering, torso-orientations gating, and load-placement secondary logic.
+- **Export/Import:** Table format (motion × modifier table with MOTION_ID, MUSCLE_TARGETS, one column per table) is built client-side; export scope is current scope family. Import (CSV or paste) maps into current motion with a confirmation dialog. See Section 11.
+- **Tests:** `shared/__tests__/matrixV2.test.ts` includes structural validation for new TableConfig fields, activation-safety (delta_rules and config shape preserved), parent-child filtering logic, angle-range bounds computation, table export format, and CSV/paste import round-trip parsing.
+
 ---
 
 ## 18. Known Gaps / Next Work
 
 - **Backend:** No DB UNIQUE constraint for "at most one active per (scope_type, scope_id)"; race possible. Resolver does not support multi-level group inheritance (only root group + motion). Preview does not accept a specific config ID.
 - **Shared:** Rule condition DSL is single-condition only; no cycle detection for rules. Hash collision handling not implemented.
-- **Admin UI:** No rule authoring UI (local/global/tombstone). Visual rule builder is a future phase. Coaching cues and ROM data in semantics dictionary are stubs pending biomechanics authoring.
+- **Admin UI:** No rule authoring UI (local/global/tombstone). Visual rule builder is a future phase. Coaching cues and ROM data in semantics dictionary are stubs pending biomechanics authoring. Modifier table grouping, Primary Motion label, nested motion dropdown, Default-above-rows, parent-child hiding, one-per-group, torso/load placement features, and export/import table modals are **implemented** (see Section 10 and 11).
 - **Simulation:** Simulation loads all modifier table data client-side; may need optimization for very large datasets (currently mitigated by loading only active rows and debouncing).
-- **Tests:** No API/route or DB integration tests for matrix configs; no coverage tracking.
+- **Tests:** Structural, referential, semantic, and new TableConfig/activation/parent-child/angle-range/export-import tests exist in `shared/__tests__/matrixV2.test.ts`. No API/route or DB integration tests for matrix configs; no coverage tracking.
 - **Docs:** Any behavior not yet implemented should remain explicitly marked "Not Yet Implemented" as code evolves.
 
 ---
@@ -1204,6 +1268,7 @@ Each save path has its own dirty indicator and explicit save button. The "Save &
 |------|-------------|
 | **motion** | A single exercise variation (row in `motions` table). Identified by `id`. Has at most one `parent_id`. |
 | **motion group** | A family of motions sharing a common root parent. The resolver derives the group for a motion by walking the single `parent_id` chain to the root. `scope_type = 'motion_group'` with `scope_id` = that root. |
+| **Primary Motion** | UI label used in the Matrix V2 workstation for the scope type `motion_group` (the first scope dropdown). Denotes that the config targets a motion family/root, not a single motion. |
 | **parent_id** | Foreign key on a motion to its single parent motion. Null for root motions. Strict single-parent; no multi-parent. |
 | **scope_type** | Either `'motion'` or `'motion_group'`. Determines whether the config applies to one motion or to a group (root). |
 | **scope_id** | The motion id or group (root) id targeted by the config. |

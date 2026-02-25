@@ -85,6 +85,11 @@ export interface TableConfig {
   selection_mode?: "single" | "multi";
   local_rules?: LocalRule[];
   ui_hints?: Record<string, unknown>;
+  one_per_group?: boolean;
+  row_motion_assignments?: Record<string, string>;
+  angle_range?: { min: number; max: number; step: number; default: number };
+  secondary_overrides?: Record<string, boolean>;
+  valid_secondary_ids?: string[];
 }
 
 // ─── Config JSON Payload ─────────────────────────────────────────────

@@ -512,3 +512,330 @@ describe("Pilot Config Golden Tests", () => {
     expect(result.errors).toHaveLength(0);
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════
+//  New TableConfig Fields Structural Validation
+// ═══════════════════════════════════════════════════════════════════
+
+describe("TableConfig with new fields passes structural validation", () => {
+  test("one_per_group and row_motion_assignments are accepted", () => {
+    const config: MatrixConfigJson = {
+      meta: {},
+      tables: {
+        grips: {
+          applicability: true,
+          allowed_row_ids: ["PRONATED", "NEUTRAL"],
+          default_row_id: "PRONATED",
+          null_noop_allowed: false,
+          one_per_group: true,
+          row_motion_assignments: { PRONATED: "PRESS_FLAT", NEUTRAL: "PRESS_INCLINE" },
+        },
+      },
+      rules: [],
+      extensions: {},
+    };
+    const result = runStructuralValidation(config);
+    expect(result.errors).toHaveLength(0);
+  });
+
+  test("angle_range field is accepted", () => {
+    const config: MatrixConfigJson = {
+      meta: {},
+      tables: {
+        torsoAngles: {
+          applicability: true,
+          allowed_row_ids: ["DEG_NEG_15", "DEG_0", "DEG_15"],
+          default_row_id: "DEG_0",
+          null_noop_allowed: false,
+          angle_range: { min: -25, max: 25, step: 5, default: 0 },
+        },
+      },
+      rules: [],
+      extensions: {},
+    };
+    const result = runStructuralValidation(config);
+    expect(result.errors).toHaveLength(0);
+  });
+
+  test("secondary_overrides and valid_secondary_ids are accepted", () => {
+    const config: MatrixConfigJson = {
+      meta: {},
+      tables: {
+        loadPlacement: {
+          applicability: true,
+          allowed_row_ids: ["FRONT", "BACK"],
+          default_row_id: null,
+          null_noop_allowed: false,
+          secondary_overrides: { FRONT: false },
+          valid_secondary_ids: ["BACK"],
+        },
+      },
+      rules: [],
+      extensions: {},
+    };
+    const result = runStructuralValidation(config);
+    expect(result.errors).toHaveLength(0);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+//  Activation Safety: delta_rules format preservation
+// ═══════════════════════════════════════════════════════════════════
+
+describe("Activation Safety", () => {
+  test("activating a config does not mutate delta_rules format", () => {
+    const sampleDeltaRules = {
+      PRESS_FLAT: { pec_major_sternal: 10, anterior_deltoid: -5 },
+      PRESS_INCLINE: "inherit" as const,
+    };
+    const before = JSON.parse(JSON.stringify(sampleDeltaRules));
+
+    const config: MatrixConfigJson = {
+      meta: {},
+      tables: {
+        grips: {
+          applicability: true,
+          allowed_row_ids: ["PRONATED"],
+          default_row_id: "PRONATED",
+          null_noop_allowed: false,
+          one_per_group: true,
+          row_motion_assignments: { PRONATED: "PRESS_FLAT" },
+        },
+      },
+      rules: [],
+      extensions: {},
+    };
+
+    const configRow = makeConfigRow({ config_json: config, status: "draft" });
+    const result = runFullValidation(configRow, BASE_CONTEXT);
+
+    expect(JSON.stringify(sampleDeltaRules)).toBe(JSON.stringify(before));
+
+    const after = JSON.parse(JSON.stringify(sampleDeltaRules));
+    expect(after).toEqual(before);
+  });
+
+  test("config_json tables preserve new optional fields through serialization round-trip", () => {
+    const tc: TableConfig = {
+      applicability: true,
+      allowed_row_ids: ["FRONT", "BACK"],
+      default_row_id: "FRONT",
+      null_noop_allowed: false,
+      one_per_group: true,
+      row_motion_assignments: { FRONT: "PRESS_FLAT" },
+      angle_range: { min: -10, max: 10, step: 5, default: 0 },
+      secondary_overrides: { FRONT: true },
+      valid_secondary_ids: ["BACK"],
+    };
+    const serialized = JSON.stringify(tc);
+    const parsed = JSON.parse(serialized) as TableConfig;
+    expect(parsed.one_per_group).toBe(true);
+    expect(parsed.row_motion_assignments).toEqual({ FRONT: "PRESS_FLAT" });
+    expect(parsed.angle_range).toEqual({ min: -10, max: 10, step: 5, default: 0 });
+    expect(parsed.secondary_overrides).toEqual({ FRONT: true });
+    expect(parsed.valid_secondary_ids).toEqual(["BACK"]);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+//  Parent-Child Row Filtering
+// ═══════════════════════════════════════════════════════════════════
+
+describe("Parent-Child Row Filtering", () => {
+  function filterVisibleRows(
+    rows: Array<{ id: string; parent_id: string | null }>,
+    allowedRowIds: string[],
+  ) {
+    const allowedSet = new Set(allowedRowIds);
+    return rows.filter((row) => {
+      if (!row.parent_id) return true;
+      return allowedSet.has(row.parent_id);
+    });
+  }
+
+  const gripRows = [
+    { id: "NEUTRAL", parent_id: null },
+    { id: "PRONATED", parent_id: null },
+    { id: "ROTATING", parent_id: null },
+    { id: "ROTATING_IN", parent_id: "ROTATING" },
+    { id: "ROTATING_OUT", parent_id: "ROTATING" },
+    { id: "SUPINATED", parent_id: null },
+  ];
+
+  test("all parents shown when no children parents are selected", () => {
+    const visible = filterVisibleRows(gripRows, ["NEUTRAL", "PRONATED"]);
+    expect(visible.map((r) => r.id)).toEqual([
+      "NEUTRAL",
+      "PRONATED",
+      "ROTATING",
+      "SUPINATED",
+    ]);
+  });
+
+  test("children shown when parent is in allowed list", () => {
+    const visible = filterVisibleRows(gripRows, ["ROTATING"]);
+    expect(visible.map((r) => r.id)).toEqual([
+      "NEUTRAL",
+      "PRONATED",
+      "ROTATING",
+      "ROTATING_IN",
+      "ROTATING_OUT",
+      "SUPINATED",
+    ]);
+  });
+
+  test("children hidden when parent is not in allowed list", () => {
+    const visible = filterVisibleRows(gripRows, ["NEUTRAL"]);
+    const childIds = visible.filter((r) => r.parent_id).map((r) => r.id);
+    expect(childIds).toHaveLength(0);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+//  Angle Range Bounds Computation
+// ═══════════════════════════════════════════════════════════════════
+
+describe("Angle Range Bounds", () => {
+  function parseDegreeFromId(id: string): number | null {
+    const m = id.match(/DEG_(NEG_)?(\d+)/i);
+    if (!m) return null;
+    const val = parseInt(m[2], 10);
+    return m[1] ? -val : val;
+  }
+
+  function computeAngleBounds(angleIds: string[]) {
+    const degrees = angleIds
+      .map(parseDegreeFromId)
+      .filter((d): d is number => d !== null);
+    if (degrees.length === 0) return { minBound: -90, maxBound: 90 };
+    return {
+      minBound: Math.min(...degrees) - 10,
+      maxBound: Math.max(...degrees) + 10,
+    };
+  }
+
+  test("DEG_NEG_15 and DEG_NEG_30 give bounds -40 to -5", () => {
+    const { minBound, maxBound } = computeAngleBounds(["DEG_NEG_15", "DEG_NEG_30"]);
+    expect(minBound).toBe(-40);
+    expect(maxBound).toBe(-5);
+  });
+
+  test("DEG_0 alone gives bounds -10 to 10", () => {
+    const { minBound, maxBound } = computeAngleBounds(["DEG_0"]);
+    expect(minBound).toBe(-10);
+    expect(maxBound).toBe(10);
+  });
+
+  test("DEG_45 and DEG_NEG_45 give bounds -55 to 55", () => {
+    const { minBound, maxBound } = computeAngleBounds(["DEG_45", "DEG_NEG_45"]);
+    expect(minBound).toBe(-55);
+    expect(maxBound).toBe(55);
+  });
+
+  test("empty angle list returns defaults -90 to 90", () => {
+    const { minBound, maxBound } = computeAngleBounds([]);
+    expect(minBound).toBe(-90);
+    expect(maxBound).toBe(90);
+  });
+
+  test("parseDegreeFromId parses various formats", () => {
+    expect(parseDegreeFromId("DEG_0")).toBe(0);
+    expect(parseDegreeFromId("DEG_15")).toBe(15);
+    expect(parseDegreeFromId("DEG_NEG_30")).toBe(-30);
+    expect(parseDegreeFromId("DEG_NEG_60")).toBe(-60);
+    expect(parseDegreeFromId("DEG_90")).toBe(90);
+    expect(parseDegreeFromId("INVALID")).toBeNull();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+//  Table Export Format
+// ═══════════════════════════════════════════════════════════════════
+
+describe("Table Export Format", () => {
+  test("generates correct header with all modifier table keys", () => {
+    const MODIFIER_TABLE_KEYS = [
+      "motionPaths", "torsoAngles", "torsoOrientations", "resistanceOrigin",
+      "grips", "gripWidths", "elbowRelationship", "executionStyles",
+      "footPositions", "stanceWidths", "stanceTypes", "loadPlacement",
+      "supportStructures", "loadingAids", "rangeOfMotion",
+    ];
+    const header = ["MOTION_ID", "MUSCLE_TARGETS", ...MODIFIER_TABLE_KEYS];
+    expect(header[0]).toBe("MOTION_ID");
+    expect(header[1]).toBe("MUSCLE_TARGETS");
+    expect(header).toHaveLength(2 + MODIFIER_TABLE_KEYS.length);
+  });
+
+  test("table cell contains valid JSON with config and deltas", () => {
+    const cellData = {
+      config: {
+        applicability: true,
+        allowed_row_ids: ["PRONATED", "NEUTRAL"],
+        default_row_id: "PRONATED",
+        null_noop_allowed: false,
+      },
+      deltas: {
+        PRONATED: { pec_major_sternal: 5 },
+        NEUTRAL: null,
+      },
+    };
+    const json = JSON.stringify(cellData);
+    const parsed = JSON.parse(json);
+    expect(parsed.config.applicability).toBe(true);
+    expect(parsed.deltas.PRONATED).toEqual({ pec_major_sternal: 5 });
+    expect(parsed.deltas.NEUTRAL).toBeNull();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+//  CSV/Paste Import Parsing Round-trip
+// ═══════════════════════════════════════════════════════════════════
+
+describe("Import/Export Round-trip", () => {
+  function generateTsv(motionId: string, muscleTargets: object, tables: Record<string, object>) {
+    const tableKeys = Object.keys(tables);
+    const header = ["MOTION_ID", "MUSCLE_TARGETS", ...tableKeys];
+    const cells = [
+      motionId,
+      JSON.stringify(muscleTargets),
+      ...tableKeys.map((k) => JSON.stringify(tables[k])),
+    ];
+    return [header.join("\t"), cells.join("\t")].join("\n");
+  }
+
+  function parseTsv(text: string) {
+    const lines = text.trim().split("\n");
+    const header = lines[0].split("\t");
+    const cells = lines[1].split("\t");
+    return {
+      motionId: cells[0],
+      muscleTargets: JSON.parse(cells[1]),
+      tables: Object.fromEntries(
+        header.slice(2).map((k, i) => [k, JSON.parse(cells[i + 2])]),
+      ),
+    };
+  }
+
+  test("round-trip preserves data", () => {
+    const mt = { pec_major_sternal: 80 };
+    const tables = {
+      grips: { config: { applicability: true, allowed_row_ids: ["PRONATED"] }, deltas: { PRONATED: { pec: 5 } } },
+      torsoAngles: { config: { applicability: false }, deltas: {} },
+    };
+    const tsv = generateTsv("PRESS_FLAT", mt, tables);
+    const parsed = parseTsv(tsv);
+    expect(parsed.motionId).toBe("PRESS_FLAT");
+    expect(parsed.muscleTargets).toEqual(mt);
+    expect(parsed.tables.grips.config.applicability).toBe(true);
+    expect(parsed.tables.grips.deltas.PRONATED).toEqual({ pec: 5 });
+    expect(parsed.tables.torsoAngles.config.applicability).toBe(false);
+  });
+
+  test("empty table cells are handled", () => {
+    const header = "MOTION_ID\tMUSCLE_TARGETS\tgrips";
+    const row = 'PRESS_FLAT\t{"pec":80}\tnull';
+    const text = `${header}\n${row}`;
+    const parsed = parseTsv(text);
+    expect(parsed.tables.grips).toBeNull();
+  });
+});

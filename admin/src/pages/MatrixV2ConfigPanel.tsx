@@ -40,6 +40,43 @@ const MODIFIER_TABLE_LABELS: Record<string, string> = {
   rangeOfMotion: 'Range of Motion',
 };
 
+const MODIFIER_TABLE_GROUPS: Array<{ label: string; tables: ModifierTableKey[] }> = [
+  { label: 'Trajectory & Posture', tables: ['motionPaths', 'torsoAngles', 'torsoOrientations', 'resistanceOrigin'] },
+  { label: 'Upper Body Mechanics', tables: ['grips', 'gripWidths', 'elbowRelationship', 'executionStyles'] },
+  { label: 'Lower Body Mechanics', tables: ['footPositions', 'stanceWidths', 'stanceTypes', 'loadPlacement'] },
+  { label: 'Execution Variables', tables: ['supportStructures', 'loadingAids', 'rangeOfMotion'] },
+];
+
+function parseDegreeFromId(id: string): number | null {
+  const m = id.match(/DEG_(NEG_)?(\d+)/i);
+  if (!m) return null;
+  const val = parseInt(m[2], 10);
+  return m[1] ? -val : val;
+}
+
+function buildMotionOptgroups(motions: Array<{ id: string; label: string; parent_id?: string | null }>) {
+  const parents = motions.filter(m => !m.parent_id);
+  const childMap = new Map<string, typeof motions>();
+  for (const m of motions) {
+    if (m.parent_id) {
+      const arr = childMap.get(m.parent_id) || [];
+      arr.push(m);
+      childMap.set(m.parent_id, arr);
+    }
+  }
+  const groups: Array<{ parent: typeof motions[0]; children: typeof motions }> = [];
+  const standalone: typeof motions = [];
+  for (const p of parents) {
+    const children = childMap.get(p.id);
+    if (children && children.length > 0) {
+      groups.push({ parent: p, children });
+    } else {
+      standalone.push(p);
+    }
+  }
+  return { groups, standalone };
+}
+
 function emptyConfigJson(): MatrixConfigJson {
   return { meta: {}, tables: {}, rules: [], extensions: {} };
 }
@@ -62,13 +99,17 @@ export default function MatrixV2ConfigPanel({ motions }: MatrixV2ConfigPanelProp
   const [validation, setValidation] = useState<ValidationResult | null>(null);
   const [resolverPreview, setResolverPreview] = useState<ResolverOutput | null>(null);
   const [loading, setLoading] = useState(false);
-  const [modifierRows, setModifierRows] = useState<Record<string, Array<{ id: string; label: string }>>>({});
+  const [modifierRows, setModifierRows] = useState<Record<string, Array<{ id: string; label: string; parent_id?: string | null; [k: string]: unknown }>>>({});
 
   const [scopeType, setScopeType] = useState<'motion' | 'motion_group'>('motion_group');
   const [scopeId, setScopeId] = useState('');
   const [notes, setNotes] = useState('');
   const [showResolverPreview, setShowResolverPreview] = useState(false);
   const [expandedTables, setExpandedTables] = useState<Set<string>>(new Set());
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(MODIFIER_TABLE_GROUPS.map(g => g.label)));
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importPasteText, setImportPasteText] = useState('');
 
   // ─── Simulation state ───
   const [simMode, setSimMode] = useState<'defaults' | 'custom'>('defaults');
@@ -177,11 +218,19 @@ export default function MatrixV2ConfigPanel({ motions }: MatrixV2ConfigPanelProp
   }, []);
 
   const loadModifierRows = useCallback(async () => {
-    const rows: Record<string, Array<{ id: string; label: string }>> = {};
+    const rows: Record<string, Array<{ id: string; label: string; parent_id?: string | null; [k: string]: unknown }>> = {};
     for (const key of MODIFIER_TABLE_KEYS) {
       try {
         const data = await api.getTable(key);
-        rows[key] = (data as any[]).map(r => ({ id: r.id, label: r.label }));
+        rows[key] = (data as any[]).map(r => ({
+          id: r.id,
+          label: r.label,
+          parent_id: r.parent_id ?? null,
+          allow_torso_orientations: r.allow_torso_orientations,
+          allows_secondary: r.allows_secondary,
+          is_valid_secondary: r.is_valid_secondary,
+          sort_order: r.sort_order ?? 0,
+        }));
       } catch {
         rows[key] = [];
       }
@@ -382,47 +431,6 @@ export default function MatrixV2ConfigPanel({ motions }: MatrixV2ConfigPanelProp
     }
   };
 
-  const handleExport = async () => {
-    if (!selectedConfigId) return;
-    try {
-      const data = await api.exportMatrixConfig(selectedConfigId);
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `matrix-config-${scopeType}-${scopeId}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (err: any) {
-      toast.error(err.message || 'Export failed');
-    }
-  };
-
-  const handleImport = async () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-      const text = await file.text();
-      try {
-        const data = JSON.parse(text);
-        const result = await api.importMatrixConfig(data, 'create');
-        if (result.imported) {
-          toast.success('Config imported');
-          await loadConfigs();
-          if (result.config) selectConfig(result.config);
-        } else {
-          setValidation(result.validation);
-          toast.error('Import has validation issues - review before saving');
-        }
-      } catch (err: any) {
-        toast.error(err.message || 'Import failed');
-      }
-    };
-    input.click();
-  };
 
   // ─── Save & Next Motion ───
   const handleSaveAndNext = async () => {
@@ -479,7 +487,210 @@ export default function MatrixV2ConfigPanel({ motions }: MatrixV2ConfigPanelProp
     setExpandedTables(next);
   };
 
+  const toggleGroupExpand = (group: string) => {
+    const next = new Set(expandedGroups);
+    if (next.has(group)) next.delete(group);
+    else next.add(group);
+    setExpandedGroups(next);
+  };
+
+  const updateTableConfig = useCallback((tableKey: ModifierTableKey, patch: Partial<TableConfig>) => {
+    if (!editingConfig) return;
+    const updated = { ...editingConfig };
+    const tc = updated.tables[tableKey] || emptyTableConfig();
+    updated.tables = { ...updated.tables, [tableKey]: { ...tc, ...patch } };
+    setEditingConfig(updated);
+  }, [editingConfig]);
+
+  const motionFamily = useMemo(() => {
+    if (!scopeId) return [];
+    const selectedMotion = motions.find(m => m.id === scopeId);
+    const primaryId = selectedMotion?.parent_id || scopeId;
+    const primary = motions.find(m => m.id === primaryId);
+    if (!primary) return [];
+    const children = motions.filter(m => m.parent_id === primaryId);
+    return [primary, ...children];
+  }, [scopeId, motions]);
+
   const isReadOnly = selectedConfig?.status === 'active';
+
+  // ─── Export helpers ───
+  const generateTableExport = useCallback(() => {
+    const family = motionFamily.length > 0 ? motionFamily : [motions.find(m => m.id === scopeId)].filter(Boolean) as typeof motions;
+    const tableKeys = MODIFIER_TABLE_KEYS as readonly string[];
+    const header = ['MOTION_ID', 'MUSCLE_TARGETS', ...tableKeys];
+    const rows = family.map(m => {
+      const motion = workstation.motionsMap[m.id];
+      const mt = motion?.muscle_targets ?? {};
+      const cells: string[] = [m.id, JSON.stringify(mt)];
+      for (const tk of tableKeys) {
+        const tc = editingConfig?.tables[tk as ModifierTableKey];
+        if (!tc || !tc.applicability) { cells.push(''); continue; }
+        const tableData: Record<string, unknown> = {};
+        for (const rid of tc.allowed_row_ids) {
+          const rowData = workstation.modifierTableData[tk]?.[rid];
+          if (!rowData) continue;
+          const delta = rowData.delta_rules?.[m.id];
+          tableData[rid] = delta ?? null;
+        }
+        cells.push(JSON.stringify({ config: tc, deltas: tableData }));
+      }
+      return cells;
+    });
+    return { header, rows };
+  }, [motionFamily, motions, scopeId, editingConfig, workstation.motionsMap, workstation.modifierTableData]);
+
+  const handleExportJson = async () => {
+    if (!selectedConfigId) return;
+    try {
+      const data = await api.exportMatrixConfig(selectedConfigId);
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `matrix-config-${scopeType}-${scopeId}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setShowExportModal(false);
+    } catch (err: any) {
+      toast.error(err.message || 'Export failed');
+    }
+  };
+
+  const handleExportTable = useCallback(() => {
+    const { header, rows } = generateTableExport();
+    const tsv = [header.join('\t'), ...rows.map(r => r.join('\t'))].join('\n');
+    const blob = new Blob([tsv], { type: 'text/tab-separated-values' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `matrix-table-${scopeType}-${scopeId}.tsv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setShowExportModal(false);
+  }, [generateTableExport, scopeType, scopeId]);
+
+  const handleCopyTable = useCallback(async () => {
+    const { header, rows } = generateTableExport();
+    const tsv = [header.join('\t'), ...rows.map(r => r.join('\t'))].join('\n');
+    try {
+      await navigator.clipboard.writeText(tsv);
+      toast.success('Table copied to clipboard');
+      setShowExportModal(false);
+    } catch {
+      toast.error('Failed to copy to clipboard');
+    }
+  }, [generateTableExport]);
+
+  // ─── Import helpers ───
+  const parseTableImport = useCallback((text: string) => {
+    const lines = text.trim().split('\n');
+    if (lines.length < 2) throw new Error('Table must have at least a header and one data row');
+    const header = lines[0].split('\t');
+    const motionIdIdx = header.findIndex(h => h === 'MOTION_ID');
+    const mtIdx = header.findIndex(h => h === 'MUSCLE_TARGETS');
+    if (motionIdIdx < 0 || mtIdx < 0) throw new Error('Missing MOTION_ID or MUSCLE_TARGETS column');
+
+    const tableColMap: Record<string, number> = {};
+    for (let i = 0; i < header.length; i++) {
+      if (i !== motionIdIdx && i !== mtIdx) {
+        tableColMap[header[i]] = i;
+      }
+    }
+
+    const dataRows = lines.slice(1).map(line => {
+      const cells = line.split('\t');
+      return {
+        motionId: cells[motionIdIdx],
+        muscleTargets: cells[mtIdx] ? JSON.parse(cells[mtIdx]) : null,
+        tables: Object.fromEntries(
+          Object.entries(tableColMap).map(([key, idx]) => [key, cells[idx] ? JSON.parse(cells[idx]) : null])
+        ),
+      };
+    });
+    return dataRows;
+  }, []);
+
+  const applyTableImport = useCallback(async (text: string) => {
+    try {
+      const dataRows = parseTableImport(text);
+      if (!editingConfig || !workstation.selectedMotionId) {
+        toast.error('Select a motion context before importing');
+        return;
+      }
+      const targetMotionId = workstation.selectedMotionId;
+      const targetRow = dataRows.find(r => r.motionId === targetMotionId) || dataRows[0];
+      if (!targetRow) { toast.error('No data found to import'); return; }
+
+      if (targetRow.muscleTargets) {
+        workstation.setLocalBaseline(targetRow.muscleTargets);
+      }
+
+      const updated = { ...editingConfig };
+      for (const [tableKey, cellData] of Object.entries(targetRow.tables)) {
+        if (!cellData) continue;
+        const parsed = cellData as { config?: TableConfig; deltas?: Record<string, unknown> };
+        if (parsed.config) {
+          updated.tables = { ...updated.tables, [tableKey]: parsed.config };
+        }
+      }
+      setEditingConfig(updated);
+      toast.success(`Imported to motion: ${targetMotionId}`);
+      setShowImportModal(false);
+      setImportPasteText('');
+    } catch (err: any) {
+      toast.error(err.message || 'Import parse failed');
+    }
+  }, [editingConfig, workstation.selectedMotionId, parseTableImport, workstation.setLocalBaseline]);
+
+  const handleImportJson = async () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const text = await file.text();
+      try {
+        const data = JSON.parse(text);
+        const result = await api.importMatrixConfig(data, 'create');
+        if (result.imported) {
+          toast.success('Config imported');
+          await loadConfigs();
+          if (result.config) selectConfig(result.config);
+        } else {
+          setValidation(result.validation);
+          toast.error('Import has validation issues - review before saving');
+        }
+        setShowImportModal(false);
+      } catch (err: any) {
+        toast.error(err.message || 'Import failed');
+      }
+    };
+    input.click();
+  };
+
+  const handleImportCsv = async () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.csv,.tsv,.txt';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const text = await file.text();
+      if (confirm(`Import to current motion: ${workstation.selectedMotion?.label || workstation.selectedMotionId || 'none'}?`)) {
+        await applyTableImport(text);
+      }
+    };
+    input.click();
+  };
+
+  const handleImportPaste = async () => {
+    if (!importPasteText.trim()) { toast.error('Paste some data first'); return; }
+    if (confirm(`Import to current motion: ${workstation.selectedMotion?.label || workstation.selectedMotionId || 'none'}?`)) {
+      await applyTableImport(importPasteText);
+    }
+  };
 
   // ─── Render ───
   return (
@@ -494,7 +705,7 @@ export default function MatrixV2ConfigPanel({ motions }: MatrixV2ConfigPanelProp
               onChange={(e) => setScopeType(e.target.value as any)}
               className="text-xs border border-gray-300 rounded px-1 py-0.5 flex-1"
             >
-              <option value="motion_group">Group</option>
+              <option value="motion_group">Primary Motion</option>
               <option value="motion">Motion</option>
             </select>
             <select
@@ -503,11 +714,32 @@ export default function MatrixV2ConfigPanel({ motions }: MatrixV2ConfigPanelProp
               className="text-xs border border-gray-300 rounded px-1 py-0.5 flex-1"
             >
               <option value="">Select...</option>
-              {(scopeType === 'motion_group' ? groupOptions : motions.map(m => m.id)).map((id) => (
-                <option key={id} value={id}>
-                  {motions.find(m => m.id === id)?.label || id}
-                </option>
-              ))}
+              {scopeType === 'motion_group' ? (
+                groupOptions.map((id) => (
+                  <option key={id} value={id}>
+                    {motions.find(m => m.id === id)?.label || id}
+                  </option>
+                ))
+              ) : (
+                (() => {
+                  const { groups, standalone } = buildMotionOptgroups(motions);
+                  return (
+                    <>
+                      {standalone.map(m => (
+                        <option key={m.id} value={m.id}>{m.label}</option>
+                      ))}
+                      {groups.map(g => (
+                        <optgroup key={g.parent.id} label={g.parent.label}>
+                          <option value={g.parent.id}>{g.parent.label}</option>
+                          {g.children.map(c => (
+                            <option key={c.id} value={c.id}>&nbsp;&nbsp;{c.label}</option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </>
+                  );
+                })()
+              )}
             </select>
           </div>
           <button
@@ -608,7 +840,7 @@ export default function MatrixV2ConfigPanel({ motions }: MatrixV2ConfigPanelProp
             {/* ── Toolbar ── */}
             <div className="bg-white border-b border-gray-200 px-4 py-2 flex items-center gap-2 flex-wrap">
               <span className="text-xs text-gray-600 mr-2">
-                {scopeType === 'motion_group' ? 'Group' : 'Motion'}: <strong>{motions.find(m => m.id === scopeId)?.label || scopeId}</strong>
+                {scopeType === 'motion_group' ? 'Primary Motion' : 'Motion'}: <strong>{motions.find(m => m.id === scopeId)?.label || scopeId}</strong>
               </span>
               {selectedConfig && (
                 <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
@@ -646,11 +878,11 @@ export default function MatrixV2ConfigPanel({ motions }: MatrixV2ConfigPanelProp
                 className="text-xs bg-purple-600 text-white rounded px-3 py-1 hover:bg-purple-700 disabled:opacity-50">
                 Preview Config
               </button>
-              <button onClick={handleExport} disabled={loading}
+              <button onClick={() => setShowExportModal(true)} disabled={loading}
                 className="text-xs bg-gray-500 text-white rounded px-3 py-1 hover:bg-gray-600 disabled:opacity-50">
                 Export
               </button>
-              <button onClick={handleImport} disabled={loading}
+              <button onClick={() => setShowImportModal(true)} disabled={loading}
                 className="text-xs bg-gray-500 text-white rounded px-3 py-1 hover:bg-gray-600 disabled:opacity-50">
                 Import
               </button>
@@ -684,157 +916,403 @@ export default function MatrixV2ConfigPanel({ motions }: MatrixV2ConfigPanelProp
 
                 {/* Modifier Table Configuration */}
                 <h3 className="text-sm font-bold text-gray-900">Modifier Table Configuration</h3>
-                {MODIFIER_TABLE_KEYS.map(tableKey => {
-                  const tc = editingConfig.tables[tableKey];
-                  const isApplicable = tc?.applicability ?? false;
-                  const isExpanded = expandedTables.has(tableKey);
-                  const rows = modifierRows[tableKey] || [];
-                  // Inherited rule visibility: find group config rules for this table
-                  const groupConfig = scopeType === 'motion'
-                    ? configs.find(c => c.scope_type === 'motion_group' && c.status === 'active' && motions.find(m => m.id === scopeId)?.parent_id === c.scope_id)
-                    : null;
-                  const groupTableConfig = groupConfig?.config_json?.tables?.[tableKey as ModifierTableKey];
-                  const inheritedLocalRules = groupTableConfig?.local_rules || [];
-                  const localTombstones = new Set(
-                    (tc?.local_rules || []).filter((r: any) => r._tombstoned).map((r: any) => r.rule_id)
-                  );
-
+                {MODIFIER_TABLE_GROUPS.map(group => {
+                  const isGroupExpanded = expandedGroups.has(group.label);
                   return (
-                    <div key={tableKey} className="border border-gray-200 rounded bg-white">
+                    <div key={group.label} className="border border-gray-300 rounded bg-white">
                       <div
-                        className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-gray-50"
-                        onClick={() => toggleTableExpand(tableKey)}
+                        className="flex items-center gap-2 px-3 py-1.5 cursor-pointer hover:bg-gray-100 bg-gray-50"
+                        onClick={() => toggleGroupExpand(group.label)}
                       >
-                        <span className="text-xs text-gray-400">{isExpanded ? '▼' : '▶'}</span>
-                        <label className="flex items-center gap-1.5 cursor-pointer" onClick={e => e.stopPropagation()}>
-                          <input
-                            type="checkbox"
-                            checked={isApplicable}
-                            onChange={() => toggleTableApplicability(tableKey)}
-                            className="rounded border-gray-300"
-                            disabled={isReadOnly}
-                          />
-                          <span className="text-xs font-medium text-gray-800">
-                            {MODIFIER_TABLE_LABELS[tableKey] || tableKey}
-                          </span>
-                        </label>
-                        {isApplicable && (
-                          <span className="text-[10px] text-gray-500">
-                            {tc?.allowed_row_ids.length || 0} rows
-                            {tc?.default_row_id && ` | default: ${tc.default_row_id}`}
-                          </span>
-                        )}
+                        <span className="text-xs text-gray-500">{isGroupExpanded ? '▼' : '▶'}</span>
+                        <span className="text-xs font-bold text-gray-700">{group.label}</span>
+                        <span className="text-[10px] text-gray-400 ml-auto">
+                          {group.tables.filter(tk => editingConfig.tables[tk]?.applicability).length}/{group.tables.length} active
+                        </span>
                       </div>
+                      {isGroupExpanded && (
+                        <div className="border-t border-gray-200 space-y-0">
+                          {group.tables.map(tableKey => {
+                            const tc = editingConfig.tables[tableKey];
+                            const isApplicable = tc?.applicability ?? false;
+                            const isExpanded = expandedTables.has(tableKey);
+                            const rows = modifierRows[tableKey] || [];
+                            const hasHierarchy = rows.some(r => r.parent_id);
+                            const useVertical = rows.length > 10 || hasHierarchy;
+                            const allowedSet = new Set(tc?.allowed_row_ids || []);
 
-                      {isExpanded && isApplicable && tc && (
-                        <div className="border-t border-gray-200 px-3 py-2 space-y-2">
-                          {/* Allowed rows */}
-                          <div>
-                            <div className="text-[10px] font-medium text-gray-600 mb-1">Allowed Rows</div>
-                            <div className="flex flex-wrap gap-1">
-                              {rows.map(row => {
-                                const isAllowed = tc.allowed_row_ids.includes(row.id);
-                                return (
-                                  <button
-                                    key={row.id}
-                                    onClick={() => toggleAllowedRow(tableKey, row.id)}
-                                    disabled={isReadOnly}
-                                    className={`text-[10px] px-2 py-0.5 rounded border ${
-                                      isAllowed
-                                        ? 'bg-blue-100 border-blue-300 text-blue-800'
-                                        : 'bg-gray-50 border-gray-200 text-gray-500'
-                                    } hover:opacity-80 disabled:opacity-50`}
-                                  >
-                                    {row.label}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
+                            const visibleRows = rows.filter(row => {
+                              if (!row.parent_id) return true;
+                              return allowedSet.has(row.parent_id as string);
+                            });
 
-                          {/* Default */}
-                          <div>
-                            <div className="text-[10px] font-medium text-gray-600 mb-1">Default / Home-Base</div>
-                            <select
-                              value={tc.default_row_id || ''}
-                              onChange={(e) => setDefaultRow(tableKey, e.target.value || null)}
-                              disabled={isReadOnly}
-                              className="text-xs border border-gray-300 rounded px-2 py-1"
-                            >
-                              <option value="">None (no default)</option>
-                              {tc.allowed_row_ids.map(rid => {
-                                const row = rows.find(r => r.id === rid);
-                                return <option key={rid} value={rid}>{row?.label || rid}</option>;
-                              })}
-                            </select>
-                          </div>
+                            const groupConfig = scopeType === 'motion'
+                              ? configs.find(c => c.scope_type === 'motion_group' && c.status === 'active' && motions.find(m => m.id === scopeId)?.parent_id === c.scope_id)
+                              : null;
+                            const groupTableConfig = groupConfig?.config_json?.tables?.[tableKey as ModifierTableKey];
+                            const inheritedLocalRules = groupTableConfig?.local_rules || [];
+                            const localTombstones = new Set(
+                              (tc?.local_rules || []).filter((r: any) => r._tombstoned).map((r: any) => r.rule_id)
+                            );
 
-                          {/* Inherited Rules (when editing motion-scope config) */}
-                          {inheritedLocalRules.length > 0 && scopeType === 'motion' && (
-                            <div>
-                              <div className="text-[10px] font-medium text-gray-600 mb-1 mt-2 pt-2 border-t border-gray-100">
-                                Inherited Rules (from Group)
-                              </div>
-                              <div className="space-y-1">
-                                {inheritedLocalRules.map((rule: any, ri: number) => {
-                                  const isTombstoned = localTombstones.has(rule.rule_id);
-                                  return (
-                                    <div key={ri} className={`text-[10px] px-2 py-1 rounded border ${
-                                      isTombstoned
-                                        ? 'bg-red-50 border-red-200 text-red-500 line-through'
-                                        : 'bg-gray-50 border-gray-200 text-gray-600'
-                                    }`}>
-                                      <span className="font-mono text-[9px] text-gray-400 mr-1">{rule.rule_id?.substring(0, 8)}...</span>
-                                      <span>{rule.action}</span>
-                                      {rule.description && <span className="text-gray-400 ml-1">({rule.description})</span>}
-                                      {isTombstoned && (
-                                        <span className="ml-1 text-red-600 font-medium no-underline">[tombstoned]</span>
-                                      )}
-                                      {!isTombstoned && (
-                                        <span className="ml-1 text-amber-600 font-medium">[inherited]</span>
+                            const isTorsoOrientations = tableKey === 'torsoOrientations';
+                            const torsoAnglesConfig = editingConfig.tables['torsoAngles'];
+                            let torsoOrientationsDisabled = false;
+                            if (isTorsoOrientations && torsoAnglesConfig) {
+                              const torsoAngleRows = modifierRows['torsoAngles'] || [];
+                              const anyAllowOrientations = (torsoAnglesConfig.allowed_row_ids || []).some(rid => {
+                                const r = torsoAngleRows.find(row => row.id === rid);
+                                return r?.allow_torso_orientations === true;
+                              });
+                              if (!anyAllowOrientations) torsoOrientationsDisabled = true;
+                            }
+
+                            return (
+                              <div key={tableKey} className={`border-b border-gray-100 last:border-b-0 ${torsoOrientationsDisabled ? 'opacity-50' : ''}`}>
+                                <div
+                                  className="flex items-center gap-2 px-3 py-1.5 cursor-pointer hover:bg-gray-50"
+                                  onClick={() => toggleTableExpand(tableKey)}
+                                >
+                                  <span className="text-xs text-gray-400">{isExpanded ? '▼' : '▶'}</span>
+                                  <label className="flex items-center gap-1.5 cursor-pointer" onClick={e => e.stopPropagation()}>
+                                    <input
+                                      type="checkbox"
+                                      checked={isApplicable}
+                                      onChange={() => !torsoOrientationsDisabled && toggleTableApplicability(tableKey)}
+                                      className="rounded border-gray-300"
+                                      disabled={isReadOnly || torsoOrientationsDisabled}
+                                    />
+                                    <span className="text-xs font-medium text-gray-800">
+                                      {MODIFIER_TABLE_LABELS[tableKey] || tableKey}
+                                    </span>
+                                  </label>
+                                  {torsoOrientationsDisabled && (
+                                    <span className="text-[9px] text-orange-600 italic">No torso angles allow orientations</span>
+                                  )}
+                                  {isApplicable && !torsoOrientationsDisabled && (
+                                    <span className="text-[10px] text-gray-500">
+                                      {tc?.allowed_row_ids.length || 0} rows
+                                      {tc?.default_row_id && ` | default: ${tc.default_row_id}`}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {isExpanded && isApplicable && tc && !torsoOrientationsDisabled && (
+                                  <div className="border-t border-gray-100 px-3 py-2 space-y-2">
+                                    {/* Default / Home-Base (above allowed rows) */}
+                                    <div>
+                                      <div className="text-[10px] font-medium text-gray-600 mb-1">Default / Home-Base</div>
+                                      <select
+                                        value={tc.default_row_id || ''}
+                                        onChange={(e) => setDefaultRow(tableKey, e.target.value || null)}
+                                        disabled={isReadOnly}
+                                        className="text-xs border border-gray-300 rounded px-2 py-1"
+                                      >
+                                        <option value="">None (no default)</option>
+                                        {tc.allowed_row_ids.map(rid => {
+                                          const row = rows.find(r => r.id === rid);
+                                          return <option key={rid} value={rid}>{row?.label || rid}</option>;
+                                        })}
+                                      </select>
+                                    </div>
+
+                                    {/* Allowed rows */}
+                                    <div>
+                                      <div className="text-[10px] font-medium text-gray-600 mb-1">Allowed Rows</div>
+                                      <div className={useVertical ? 'flex flex-col gap-0.5' : 'flex flex-wrap gap-1'}>
+                                        {visibleRows.map(row => {
+                                          const isAllowed = allowedSet.has(row.id);
+                                          const isChild = !!row.parent_id;
+                                          return (
+                                            <button
+                                              key={row.id}
+                                              onClick={() => toggleAllowedRow(tableKey, row.id)}
+                                              disabled={isReadOnly}
+                                              className={`text-[10px] px-2 py-0.5 rounded border text-left ${
+                                                isChild ? 'ml-4 ' : ''
+                                              }${
+                                                isAllowed
+                                                  ? 'bg-blue-100 border-blue-300 text-blue-800'
+                                                  : 'bg-gray-50 border-gray-200 text-gray-500'
+                                              } hover:opacity-80 disabled:opacity-50`}
+                                            >
+                                              {isChild && <span className="text-gray-400 mr-1">└</span>}
+                                              {row.label}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+
+                                    {/* Torso Angles: Angle Range Editor */}
+                                    {tableKey === 'torsoAngles' && tc.allowed_row_ids.length > 0 && (() => {
+                                      const degrees = tc.allowed_row_ids
+                                        .map(parseDegreeFromId)
+                                        .filter((d): d is number => d !== null);
+                                      const minBound = degrees.length > 0 ? Math.min(...degrees) - 10 : -90;
+                                      const maxBound = degrees.length > 0 ? Math.max(...degrees) + 10 : 90;
+                                      const ar = tc.angle_range || { min: minBound, max: maxBound, step: 5, default: 0 };
+                                      return (
+                                        <div className="border-t border-gray-100 pt-2">
+                                          <div className="text-[10px] font-medium text-gray-600 mb-1">Angle Range</div>
+                                          <div className="grid grid-cols-4 gap-2">
+                                            {(['min', 'max', 'step', 'default'] as const).map(field => (
+                                              <div key={field}>
+                                                <label className="text-[9px] text-gray-500 block">{field}</label>
+                                                <input
+                                                  type="number"
+                                                  value={ar[field]}
+                                                  onChange={(e) => {
+                                                    let v = parseFloat(e.target.value) || 0;
+                                                    if (field === 'min') v = Math.max(v, minBound);
+                                                    if (field === 'max') v = Math.min(v, maxBound);
+                                                    updateTableConfig(tableKey, {
+                                                      angle_range: { ...ar, [field]: v },
+                                                    });
+                                                  }}
+                                                  disabled={isReadOnly}
+                                                  className="w-full text-[10px] border border-gray-300 rounded px-1.5 py-0.5"
+                                                />
+                                              </div>
+                                            ))}
+                                          </div>
+                                          <div className="text-[9px] text-gray-400 mt-1">
+                                            Bounds: {minBound}&deg; to {maxBound}&deg; (based on assigned angles &plusmn;10)
+                                          </div>
+                                        </div>
+                                      );
+                                    })()}
+
+                                    {/* Load Placement: Secondary Config */}
+                                    {tableKey === 'loadPlacement' && tc.allowed_row_ids.length > 0 && (() => {
+                                      const lpRows = modifierRows['loadPlacement'] || [];
+                                      const secOverrides = tc.secondary_overrides || {};
+                                      const validSecIds = tc.valid_secondary_ids ||
+                                        lpRows.filter(r => r.is_valid_secondary === true).map(r => r.id);
+                                      const allowedWithSecondary = tc.allowed_row_ids.filter(rid => {
+                                        const r = lpRows.find(row => row.id === rid);
+                                        return r?.allows_secondary === true;
+                                      });
+                                      if (allowedWithSecondary.length === 0) return null;
+                                      return (
+                                        <div className="border-t border-gray-100 pt-2">
+                                          <div className="text-[10px] font-medium text-gray-600 mb-1">Secondary Placement Config</div>
+                                          <div className="space-y-1.5">
+                                            {tc.allowed_row_ids.map(rid => {
+                                              const r = lpRows.find(row => row.id === rid);
+                                              if (!r) return null;
+                                              const nativeAllows = r.allows_secondary === true;
+                                              const effectiveAllows = nativeAllows && (secOverrides[rid] !== false);
+                                              return (
+                                                <div key={rid} className="text-[10px] border border-gray-200 rounded p-1.5">
+                                                  <div className="flex items-center gap-2">
+                                                    <span className="font-medium text-gray-700">{r.label}</span>
+                                                    {nativeAllows ? (
+                                                      <label className="flex items-center gap-1 cursor-pointer ml-auto">
+                                                        <input
+                                                          type="checkbox"
+                                                          checked={effectiveAllows}
+                                                          onChange={() => {
+                                                            const next = { ...secOverrides, [rid]: !effectiveAllows };
+                                                            updateTableConfig(tableKey, { secondary_overrides: next });
+                                                          }}
+                                                          disabled={isReadOnly}
+                                                          className="rounded border-gray-300"
+                                                        />
+                                                        <span className="text-[9px] text-gray-500">Allows secondary</span>
+                                                      </label>
+                                                    ) : (
+                                                      <span className="text-[9px] text-gray-400 ml-auto">No secondary</span>
+                                                    )}
+                                                  </div>
+                                                  {effectiveAllows && (
+                                                    <div className="mt-1 ml-2">
+                                                      <div className="text-[9px] text-gray-500 mb-0.5">Valid secondary placements:</div>
+                                                      <div className="flex flex-wrap gap-0.5">
+                                                        {lpRows.filter(sr => sr.is_valid_secondary === true).map(sr => {
+                                                          const isSelected = validSecIds.includes(sr.id);
+                                                          return (
+                                                            <button
+                                                              key={sr.id}
+                                                              onClick={() => {
+                                                                const next = isSelected
+                                                                  ? validSecIds.filter((id: string) => id !== sr.id)
+                                                                  : [...validSecIds, sr.id];
+                                                                updateTableConfig(tableKey, { valid_secondary_ids: next });
+                                                              }}
+                                                              disabled={isReadOnly}
+                                                              className={`text-[9px] px-1.5 py-0.5 rounded border ${
+                                                                isSelected
+                                                                  ? 'bg-green-100 border-green-300 text-green-800'
+                                                                  : 'bg-gray-50 border-gray-200 text-gray-400'
+                                                              }`}
+                                                            >
+                                                              {sr.label}
+                                                            </button>
+                                                          );
+                                                        })}
+                                                      </div>
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                        </div>
+                                      );
+                                    })()}
+
+                                    {/* Allow 1 Row Per Group */}
+                                    <div className="border-t border-gray-100 pt-2">
+                                      <label className="flex items-center gap-1.5 cursor-pointer">
+                                        <input
+                                          type="checkbox"
+                                          checked={tc.one_per_group ?? false}
+                                          onChange={() => updateTableConfig(tableKey, { one_per_group: !tc.one_per_group })}
+                                          disabled={isReadOnly}
+                                          className="rounded border-gray-300"
+                                        />
+                                        <span className="text-[10px] font-medium text-gray-700">Allow 1 row per group</span>
+                                      </label>
+                                      {tc.one_per_group && motionFamily.length > 0 && (
+                                        <div className="mt-2 space-y-1">
+                                          <div className="text-[9px] text-gray-500 mb-1">
+                                            Assign each row to a motion in this family:
+                                          </div>
+                                          {tc.allowed_row_ids.map(rowId => {
+                                            const rowLabel = rows.find(r => r.id === rowId)?.label || rowId;
+                                            const assignments = tc.row_motion_assignments || {};
+                                            const assignedMotionId = assignments[rowId] || '';
+                                            const takenMotionIds = new Set(
+                                              Object.entries(assignments)
+                                                .filter(([rid]) => rid !== rowId)
+                                                .map(([, mid]) => mid)
+                                            );
+                                            return (
+                                              <div key={rowId} className="border border-gray-200 rounded p-1.5">
+                                                <div className="flex items-center gap-2">
+                                                  <span className="text-[10px] font-medium text-gray-700 min-w-[80px]">{rowLabel}</span>
+                                                  <select
+                                                    value={assignedMotionId}
+                                                    onChange={(e) => {
+                                                      const next = { ...assignments, [rowId]: e.target.value };
+                                                      if (!e.target.value) delete next[rowId];
+                                                      updateTableConfig(tableKey, { row_motion_assignments: next });
+                                                    }}
+                                                    disabled={isReadOnly}
+                                                    className="text-[10px] border border-gray-300 rounded px-1 py-0.5 flex-1"
+                                                  >
+                                                    <option value="">Unassigned</option>
+                                                    {motionFamily.map(m => (
+                                                      <option
+                                                        key={m.id}
+                                                        value={m.id}
+                                                        disabled={takenMotionIds.has(m.id)}
+                                                      >
+                                                        {m.parent_id ? '  └ ' : ''}{m.label}
+                                                        {takenMotionIds.has(m.id) ? ' (taken)' : ''}
+                                                      </option>
+                                                    ))}
+                                                  </select>
+                                                </div>
+                                                {assignedMotionId && workstation.modifierTableData[tableKey]?.[rowId] && (
+                                                  <div className="mt-1">
+                                                    <DeltaBranchCard
+                                                      tableKey={tableKey}
+                                                      tableLabel={MODIFIER_TABLE_LABELS[tableKey] || tableKey}
+                                                      rowId={rowId}
+                                                      rowLabel={rowLabel}
+                                                      motionId={assignedMotionId}
+                                                      motionLabel={motionFamily.find(m => m.id === assignedMotionId)?.label || assignedMotionId}
+                                                      parentMotionId={motionFamily.find(m => m.id === assignedMotionId)?.parent_id || null}
+                                                      modifierRow={workstation.modifierTableData[tableKey][rowId]}
+                                                      motionsMap={workstation.motionsMap}
+                                                      modifierTableData={workstation.modifierTableData[tableKey] || {}}
+                                                      dirty={workstation.deltaDirtyKeys.has(`${tableKey}.${rowId}`)}
+                                                      localOverride={workstation.localDeltaOverrides[`${tableKey}.${rowId}`]}
+                                                      onDeltaChange={workstation.setLocalDelta}
+                                                      onSave={workstation.saveDeltaBranch}
+                                                    />
+                                                  </div>
+                                                )}
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
                                       )}
                                     </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
 
-                          {/* Delta Scoring Section */}
-                          {workstation.selectedMotionId && tc.allowed_row_ids.length > 0 && (
-                            <div>
-                              <div className="text-[10px] font-medium text-gray-600 mb-1 mt-2 pt-2 border-t border-gray-100">
-                                Delta Scoring
+                                    {/* Inherited Rules (when editing motion-scope config) */}
+                                    {inheritedLocalRules.length > 0 && scopeType === 'motion' && (
+                                      <div>
+                                        <div className="text-[10px] font-medium text-gray-600 mb-1 mt-2 pt-2 border-t border-gray-100">
+                                          Inherited Rules (from Group)
+                                        </div>
+                                        <div className="space-y-1">
+                                          {inheritedLocalRules.map((rule: any, ri: number) => {
+                                            const isTombstoned = localTombstones.has(rule.rule_id);
+                                            return (
+                                              <div key={ri} className={`text-[10px] px-2 py-1 rounded border ${
+                                                isTombstoned
+                                                  ? 'bg-red-50 border-red-200 text-red-500 line-through'
+                                                  : 'bg-gray-50 border-gray-200 text-gray-600'
+                                              }`}>
+                                                <span className="font-mono text-[9px] text-gray-400 mr-1">{rule.rule_id?.substring(0, 8)}...</span>
+                                                <span>{rule.action}</span>
+                                                {rule.description && <span className="text-gray-400 ml-1">({rule.description})</span>}
+                                                {isTombstoned && (
+                                                  <span className="ml-1 text-red-600 font-medium no-underline">[tombstoned]</span>
+                                                )}
+                                                {!isTombstoned && (
+                                                  <span className="ml-1 text-amber-600 font-medium">[inherited]</span>
+                                                )}
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Delta Scoring Section (only when not in 1-per-group mode) */}
+                                    {!tc.one_per_group && workstation.selectedMotionId && tc.allowed_row_ids.length > 0 && (
+                                      <div>
+                                        <div className="text-[10px] font-medium text-gray-600 mb-1 mt-2 pt-2 border-t border-gray-100">
+                                          Delta Scoring
+                                        </div>
+                                        <div className="space-y-1">
+                                          {tc.allowed_row_ids.map(rowId => {
+                                            const rowData = workstation.modifierTableData[tableKey]?.[rowId];
+                                            if (!rowData) return null;
+                                            const compositeKey = `${tableKey}.${rowId}`;
+                                            const rowLabel = rows.find(r => r.id === rowId)?.label || rowId;
+                                            return (
+                                              <DeltaBranchCard
+                                                key={compositeKey}
+                                                tableKey={tableKey}
+                                                tableLabel={MODIFIER_TABLE_LABELS[tableKey] || tableKey}
+                                                rowId={rowId}
+                                                rowLabel={rowLabel}
+                                                motionId={workstation.selectedMotionId!}
+                                                motionLabel={workstation.selectedMotion?.label || workstation.selectedMotionId!}
+                                                parentMotionId={workstation.selectedMotion?.parent_id || null}
+                                                modifierRow={rowData}
+                                                motionsMap={workstation.motionsMap}
+                                                modifierTableData={workstation.modifierTableData[tableKey] || {}}
+                                                dirty={workstation.deltaDirtyKeys.has(compositeKey)}
+                                                localOverride={workstation.localDeltaOverrides[compositeKey]}
+                                                onDeltaChange={workstation.setLocalDelta}
+                                                onSave={workstation.saveDeltaBranch}
+                                              />
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
-                              <div className="space-y-1">
-                                {tc.allowed_row_ids.map(rowId => {
-                                  const rowData = workstation.modifierTableData[tableKey]?.[rowId];
-                                  if (!rowData) return null;
-                                  const compositeKey = `${tableKey}.${rowId}`;
-                                  const rowLabel = rows.find(r => r.id === rowId)?.label || rowId;
-                                  return (
-                                    <DeltaBranchCard
-                                      key={compositeKey}
-                                      tableKey={tableKey}
-                                      tableLabel={MODIFIER_TABLE_LABELS[tableKey] || tableKey}
-                                      rowId={rowId}
-                                      rowLabel={rowLabel}
-                                      motionId={workstation.selectedMotionId!}
-                                      motionLabel={workstation.selectedMotion?.label || workstation.selectedMotionId!}
-                                      parentMotionId={workstation.selectedMotion?.parent_id || null}
-                                      modifierRow={rowData}
-                                      motionsMap={workstation.motionsMap}
-                                      modifierTableData={workstation.modifierTableData[tableKey] || {}}
-                                      dirty={workstation.deltaDirtyKeys.has(compositeKey)}
-                                      localOverride={workstation.localDeltaOverrides[compositeKey]}
-                                      onDeltaChange={workstation.setLocalDelta}
-                                      onSave={workstation.saveDeltaBranch}
-                                    />
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
+                            );
+                          })}
                         </div>
                       )}
                     </div>
@@ -976,6 +1454,93 @@ export default function MatrixV2ConfigPanel({ motions }: MatrixV2ConfigPanelProp
           </>
         )}
       </div>
+
+      {/* Export Modal */}
+      {showExportModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-4 w-96 space-y-3">
+            <h3 className="text-sm font-bold text-gray-900">Export Config</h3>
+            <div className="space-y-2">
+              <button
+                onClick={handleExportJson}
+                disabled={!selectedConfigId}
+                className="w-full text-left text-xs border border-gray-200 rounded p-2 hover:bg-gray-50 disabled:opacity-50"
+              >
+                <div className="font-medium text-gray-800">Full JSON</div>
+                <div className="text-gray-500 mt-0.5">Download complete config as JSON file</div>
+              </button>
+              <button
+                onClick={handleExportTable}
+                className="w-full text-left text-xs border border-gray-200 rounded p-2 hover:bg-gray-50"
+              >
+                <div className="font-medium text-gray-800">Table (TSV)</div>
+                <div className="text-gray-500 mt-0.5">Download motion x delta table for Excel</div>
+              </button>
+              <button
+                onClick={handleCopyTable}
+                className="w-full text-left text-xs border border-gray-200 rounded p-2 hover:bg-blue-50"
+              >
+                <div className="font-medium text-blue-800">Copy Table to Clipboard</div>
+                <div className="text-blue-600 mt-0.5">Tab-separated, paste directly into Excel</div>
+              </button>
+            </div>
+            <button
+              onClick={() => setShowExportModal(false)}
+              className="w-full text-xs text-gray-500 hover:text-gray-700 py-1"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Import Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-4 w-[480px] space-y-3">
+            <h3 className="text-sm font-bold text-gray-900">Import Config</h3>
+            <div className="space-y-2">
+              <button
+                onClick={handleImportJson}
+                className="w-full text-left text-xs border border-gray-200 rounded p-2 hover:bg-gray-50"
+              >
+                <div className="font-medium text-gray-800">Upload JSON</div>
+                <div className="text-gray-500 mt-0.5">Import a full config JSON file</div>
+              </button>
+              <button
+                onClick={handleImportCsv}
+                className="w-full text-left text-xs border border-gray-200 rounded p-2 hover:bg-gray-50"
+              >
+                <div className="font-medium text-gray-800">Upload CSV / TSV</div>
+                <div className="text-gray-500 mt-0.5">Import motion x delta table file (imports to current motion)</div>
+              </button>
+              <div className="border border-gray-200 rounded p-2">
+                <div className="text-xs font-medium text-gray-800 mb-1">Paste Table</div>
+                <div className="text-[10px] text-gray-500 mb-1">Paste tab-separated data (e.g. from Excel)</div>
+                <textarea
+                  value={importPasteText}
+                  onChange={(e) => setImportPasteText(e.target.value)}
+                  placeholder="Paste table data here..."
+                  className="w-full text-[10px] border border-gray-300 rounded p-1.5 h-24 font-mono resize-y"
+                />
+                <button
+                  onClick={handleImportPaste}
+                  disabled={!importPasteText.trim()}
+                  className="mt-1 text-xs bg-blue-600 text-white rounded px-3 py-1 hover:bg-blue-700 disabled:opacity-50"
+                >
+                  Import Pasted Data
+                </button>
+              </div>
+            </div>
+            <button
+              onClick={() => { setShowImportModal(false); setImportPasteText(''); }}
+              className="w-full text-xs text-gray-500 hover:text-gray-700 py-1"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

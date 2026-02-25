@@ -2,7 +2,7 @@
 
 **Canonical Source of Truth for Exercise Configuration + Baseline Scoring Architecture**  
 **Status:** Draft for review / lock  
-**Last Updated:** 2026-02-24  
+**Last Updated:** 2026-02-25  
 **Repository:** `fitness-app`  
 **Primary Scope:** Admin-authored biomechanics data model + baseline scoring compatibility (UBSE / delta-cascade architecture)  
 **Out of Scope:** Mobile UI implementation code, runtime frontend state wiring, final delta tuning values, composite/multi-phase sequence decomposition
@@ -1013,6 +1013,8 @@ Constraint/filter logic is not a substitute for canonical biomechanics modeling:
 * use constraints to prevent impossible combos
 * use motion/modifier tables to represent actual biomechanics semantics
 
+**Where constraint authoring lives:** The **Matrix V2 Config** system (see Cross-References) is the implementation of this layer. The Matrix V2 workstation is the primary authoring surface for motion-scoped and group-scoped modifier constraints (applicability, allowed rows, defaults, optional one-per-group row assignment, torso/load placement rules, and export/import). Authoring there does not change the canonical JSON contracts in this document (`muscle_targets`, `delta_rules`, `default_delta_configs`); it configures which modifier options apply and how they are presented per motion or motion family.
+
 ---
 
 # Part 5: Biomechanical Validation Conventions (Validation Layer, Not Schema Authority)
@@ -1262,6 +1264,7 @@ The following are intentionally deferred and should not block locking the archit
 
 - **Matrix V2 Config System:** See [`MATRIX_V2_CONFIG_OVERVIEW.md`](../../MATRIX_V2_CONFIG_OVERVIEW.md) for the complete Matrix V2 config system documentation, including the constraint resolver, validation stack, and API endpoints.
 - **Unified Authoring Workstation:** See [Section 17 of MATRIX_V2_CONFIG_OVERVIEW.md](../../MATRIX_V2_CONFIG_OVERVIEW.md#17-unified-authoring-workstation) for the V2 workstation that serves as the **primary authoring surface** for both constraint configuration and delta scoring. The workstation combines baseline `muscle_targets` editing, per-row `delta_rules` branch editing (with parent/child inheritance), and live client-side scoring simulation in a single unified panel.
+- **Modifier Table Configuration (V2 motions):** See [Section 10 (Modifier Table Configuration) of MATRIX_V2_CONFIG_OVERVIEW.md](../../MATRIX_V2_CONFIG_OVERVIEW.md#modifier-table-configuration-workstation) for how modifier tables are authored in the V2 Matrix for motions. This includes: scope labeled **Primary Motion** (motion group) vs **Motion** with nested dropdown by `parent_id`; modifier tables **grouped by category** (Trajectory & Posture, Upper Body, Lower Body, Execution Variables) with collapsible sections; **Default / Home-Base** above allowed rows; **parent-child row visibility** (e.g. grip children only when parent is allowed); **Allow 1 row per group** with family motion assignment and inline delta editing; **Torso Angles** angle-range editor and conditional **Torso Orientations** enable/disable; **Load Placement** secondary overrides and valid-secondary selection; **Export** (full JSON, table TSV, copy to clipboard) and **Import** (JSON, CSV/TSV, paste table) with current-motion targeting. These behaviors align with this document’s motion/modifier model and do not change the canonical `muscle_targets` / `delta_rules` / `default_delta_configs` contracts.
 - **Scoring Pipeline:** The client-side simulation in the workstation reuses the same shared scoring utilities (`shared/scoring/resolveDeltas.ts`, `shared/scoring/computeActivation.ts`) documented in Part 2 of this architecture.
 - **Score Policy:** `shared/policy/scorePolicy.ts` defines clamping, normalization, and missing key behavior used by both backend and client-side scoring.
 - **Realism Advisory:** `shared/policy/realismAdvisory.ts` provides informational realism flags (green/yellow/red) for simulation results.

@@ -58,6 +58,13 @@ const tableConfigSchema = z.object({
   selection_mode: z.enum(["single", "multi"]).optional(),
   local_rules: z.array(localRuleSchema).optional(),
   ui_hints: z.record(z.string(), z.unknown()).optional(),
+  one_per_group: z.boolean().optional(),
+  row_motion_assignments: z.record(z.string(), z.string()).optional(),
+  angle_range: z
+    .object({ min: z.number(), max: z.number(), step: z.number(), default: z.number() })
+    .optional(),
+  secondary_overrides: z.record(z.string(), z.boolean()).optional(),
+  valid_secondary_ids: z.array(z.string()).optional(),
 });
 
 const configMetaSchema = z.object({
