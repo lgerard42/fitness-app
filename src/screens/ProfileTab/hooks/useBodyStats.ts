@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { FEATURE_FLAGS } from '@/config/featureFlags';
 import {
   fetchMeasurements as apiFetchMeasurements,
   createMeasurement as apiCreateMeasurement,
@@ -22,16 +21,14 @@ export const useBodyStats = () => {
           setMeasurements(JSON.parse(raw) as BodyMeasurement[]);
         }
 
-        if (FEATURE_FLAGS.USE_BACKEND_USERDATA) {
-          try {
-            const remote = await apiFetchMeasurements();
-            if (remote.length > 0) {
-              setMeasurements(remote);
-              console.log("[sync] loaded measurements:", remote.length);
-            }
-          } catch (err) {
-            console.warn("[sync] measurements fetch failed:", (err as Error).message);
+        try {
+          const remote = await apiFetchMeasurements();
+          if (remote.length > 0) {
+            setMeasurements(remote);
+            console.log("[sync] loaded measurements:", remote.length);
           }
+        } catch (err) {
+          console.warn("[sync] measurements fetch failed:", (err as Error).message);
         }
       } catch (e) {
         console.error('Failed to load body measurements', e);
@@ -55,21 +52,17 @@ export const useBodyStats = () => {
     };
     setMeasurements(prev => [newMeasurement, ...prev]);
 
-    if (FEATURE_FLAGS.USE_BACKEND_USERDATA) {
-      apiCreateMeasurement(measurement).catch(err =>
-        console.warn("[sync] failed to push measurement:", (err as Error).message)
-      );
-    }
+    apiCreateMeasurement(measurement).catch(err =>
+      console.warn("[sync] failed to push measurement:", (err as Error).message)
+    );
   }, []);
 
   const deleteMeasurement = useCallback((id: string) => {
     setMeasurements(prev => prev.filter(m => m.id !== id));
 
-    if (FEATURE_FLAGS.USE_BACKEND_USERDATA) {
-      apiDeleteMeasurement(id).catch(err =>
-        console.warn("[sync] failed to delete measurement:", (err as Error).message)
-      );
-    }
+    apiDeleteMeasurement(id).catch(err =>
+      console.warn("[sync] failed to delete measurement:", (err as Error).message)
+    );
   }, []);
 
   const latestMeasurement = measurements.length > 0 ? measurements[0] : null;

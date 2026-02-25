@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { FEATURE_FLAGS } from '@/config/featureFlags';
 import {
   fetchProfile as apiFetchProfile,
   updateProfile as apiUpdateProfile,
@@ -31,27 +30,25 @@ export const useUserProfile = () => {
           setProfile(JSON.parse(raw) as UserProfile);
         }
 
-        if (FEATURE_FLAGS.USE_BACKEND_USERDATA) {
-          try {
-            const remote = await apiFetchProfile();
-            setProfile(prev => ({
-              ...DEFAULT_PROFILE,
-              id: remote.id,
-              createdAt: remote.createdAt,
-              updatedAt: remote.updatedAt,
-              ...prev,
-              name: remote.name,
-              email: remote.email,
-              phone: remote.phone ?? prev?.phone ?? '',
-              bio: remote.bio ?? prev?.bio ?? '',
-              dateOfBirth: remote.dateOfBirth ?? prev?.dateOfBirth,
-              bodyWeight: remote.bodyWeight ?? prev?.bodyWeight,
-              profilePictureUri: remote.profilePictureUri ?? prev?.profilePictureUri,
-            }));
-            console.log("[sync] loaded profile from backend");
-          } catch (err) {
-            console.warn("[sync] profile fetch failed:", (err as Error).message);
-          }
+        try {
+          const remote = await apiFetchProfile();
+          setProfile(prev => ({
+            ...DEFAULT_PROFILE,
+            id: remote.id,
+            createdAt: remote.createdAt,
+            updatedAt: remote.updatedAt,
+            ...prev,
+            name: remote.name,
+            email: remote.email,
+            phone: remote.phone ?? prev?.phone ?? '',
+            bio: remote.bio ?? prev?.bio ?? '',
+            dateOfBirth: remote.dateOfBirth ?? prev?.dateOfBirth,
+            bodyWeight: remote.bodyWeight ?? prev?.bodyWeight,
+            profilePictureUri: remote.profilePictureUri ?? prev?.profilePictureUri,
+          }));
+          console.log("[sync] loaded profile from backend");
+        } catch (err) {
+          console.warn("[sync] profile fetch failed:", (err as Error).message);
         }
       } catch (e) {
         console.error('Failed to load user profile', e);
@@ -87,11 +84,9 @@ export const useUserProfile = () => {
       };
     });
 
-    if (FEATURE_FLAGS.USE_BACKEND_USERDATA) {
-      apiUpdateProfile(updates).catch(err =>
-        console.warn("[sync] failed to push profile:", (err as Error).message)
-      );
-    }
+    apiUpdateProfile(updates).catch(err =>
+      console.warn("[sync] failed to push profile:", (err as Error).message)
+    );
   }, []);
 
   const setProfilePicture = useCallback((uri: string | null) => {

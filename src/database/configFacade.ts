@@ -1,21 +1,32 @@
 /**
- * Facade over exerciseConfigService that routes reads through the
- * ReferenceDataProvider when USE_BACKEND_REFERENCE is enabled.
- *
- * When the flag is OFF this module is a transparent pass-through --
- * every public function delegates directly to exerciseConfigService.
- *
- * When the flag is ON, bulk-read functions (getAll*, getTable) pull
- * from the cached bootstrap instead of hitting SQLite.  Functions
- * that do by-ID lookups or derive data still operate over the same
- * row arrays, just sourced from the provider rather than SQLite.
+ * Facade that provides typed access to exercise reference data
+ * via the backend bootstrap cache (RemotePostgresProvider).
  */
-import { FEATURE_FLAGS } from "../config/featureFlags";
 import { createReferenceProvider } from "./providers/factory";
 import type { BootstrapData } from "./providers/types";
+import type {
+  ExerciseCategory,
+  CardioType,
+  Muscle,
+  TrainingFocus,
+  EquipmentCategory,
+  Equipment,
+  Grip,
+  DeltaModifier,
+  EquipmentPickerItem,
+} from "./referenceTypes";
 
-import * as svc from "./exerciseConfigService";
-export * from "./exerciseConfigService";
+export type {
+  ExerciseCategory,
+  CardioType,
+  Muscle,
+  TrainingFocus,
+  EquipmentCategory,
+  Equipment,
+  Grip,
+  DeltaModifier,
+  EquipmentPickerItem,
+} from "./referenceTypes";
 
 let bootstrapCache: BootstrapData | null = null;
 
@@ -46,64 +57,52 @@ function parseJson<T>(jsonString: string | null | undefined, defaultValue: T): T
   }
 }
 
-/**
- * Invalidate in-memory cache so next call re-fetches.
- */
 export function invalidateBootstrapCache(): void {
   bootstrapCache = null;
 }
 
-// ── Base table overrides ────────────────────────────────────────────
+// ── Base table accessors ────────────────────────────────────────────
 
-export async function getExerciseCategories(): Promise<svc.ExerciseCategory[]> {
-  if (!FEATURE_FLAGS.USE_BACKEND_REFERENCE) return svc.getExerciseCategories();
+export async function getExerciseCategories(): Promise<ExerciseCategory[]> {
   const data = await ensureBootstrap();
-  return getTableRows<svc.ExerciseCategory>(data, "exerciseCategories");
+  return getTableRows<ExerciseCategory>(data, "exerciseCategories");
 }
 
 export async function getExerciseCategoryById(
   id: string
-): Promise<svc.ExerciseCategory | null> {
-  if (!FEATURE_FLAGS.USE_BACKEND_REFERENCE)
-    return svc.getExerciseCategoryById(id);
+): Promise<ExerciseCategory | null> {
   const rows = await getExerciseCategories();
   return findById(rows, id);
 }
 
-export async function getCardioTypes(): Promise<svc.CardioType[]> {
-  if (!FEATURE_FLAGS.USE_BACKEND_REFERENCE) return svc.getCardioTypes();
+export async function getCardioTypes(): Promise<CardioType[]> {
   const data = await ensureBootstrap();
-  return getTableRows<svc.CardioType>(data, "cardioTypes");
+  return getTableRows<CardioType>(data, "cardioTypes");
 }
 
-export async function getAllMuscles(): Promise<svc.Muscle[]> {
-  if (!FEATURE_FLAGS.USE_BACKEND_REFERENCE) return svc.getAllMuscles();
+export async function getAllMuscles(): Promise<Muscle[]> {
   const data = await ensureBootstrap();
-  return getTableRows<svc.Muscle>(data, "muscles");
+  return getTableRows<Muscle>(data, "muscles");
 }
 
-export async function getTrainingFocus(): Promise<svc.TrainingFocus[]> {
-  if (!FEATURE_FLAGS.USE_BACKEND_REFERENCE) return svc.getTrainingFocus();
+export async function getTrainingFocus(): Promise<TrainingFocus[]> {
   const data = await ensureBootstrap();
-  return getTableRows<svc.TrainingFocus>(data, "trainingFocus");
+  return getTableRows<TrainingFocus>(data, "trainingFocus");
 }
 
-export async function getAllGrips(): Promise<svc.Grip[]> {
-  if (!FEATURE_FLAGS.USE_BACKEND_REFERENCE) return svc.getAllGrips();
+export async function getAllGrips(): Promise<Grip[]> {
   const data = await ensureBootstrap();
-  return getTableRows<svc.Grip>(data, "grips");
+  return getTableRows<Grip>(data, "grips");
 }
 
-export async function getGripWidths(): Promise<svc.Grip[]> {
-  if (!FEATURE_FLAGS.USE_BACKEND_REFERENCE) return svc.getGripWidths();
+export async function getGripWidths(): Promise<Grip[]> {
   const data = await ensureBootstrap();
-  return getTableRows<svc.Grip>(data, "gripWidths");
+  return getTableRows<Grip>(data, "gripWidths");
 }
 
 export async function getDeltaModifiers(
-  table: Parameters<typeof svc.getDeltaModifiers>[0]
-): Promise<svc.DeltaModifier[]> {
-  if (!FEATURE_FLAGS.USE_BACKEND_REFERENCE) return svc.getDeltaModifiers(table);
+  table: 'foot_positions' | 'stance_types' | 'stance_widths' | 'torso_angles' | 'torso_orientations' | 'support_structures' | 'elbow_relationship' | 'loading_aids'
+): Promise<DeltaModifier[]> {
   const data = await ensureBootstrap();
   const keyMap: Record<string, string> = {
     foot_positions: "footPositions",
@@ -115,13 +114,12 @@ export async function getDeltaModifiers(
     elbow_relationship: "elbowRelationship",
     loading_aids: "loadingAids",
   };
-  return getTableRows<svc.DeltaModifier>(data, keyMap[table] || table);
+  return getTableRows<DeltaModifier>(data, keyMap[table] || table);
 }
 
-// ── Derived function overrides (avoid SQLite for tier/string/picker) ─
+// ── Derived functions ───────────────────────────────────────────────
 
-export async function getPrimaryMuscles(): Promise<svc.Muscle[]> {
-  if (!FEATURE_FLAGS.USE_BACKEND_REFERENCE) return svc.getPrimaryMuscles();
+export async function getPrimaryMuscles(): Promise<Muscle[]> {
   const allMuscles = await getAllMuscles();
   return allMuscles.filter(m => {
     const parents = parseJson<string[]>(m.parent_ids || '[]', []);
@@ -129,8 +127,7 @@ export async function getPrimaryMuscles(): Promise<svc.Muscle[]> {
   });
 }
 
-export async function getSecondaryMuscles(): Promise<svc.Muscle[]> {
-  if (!FEATURE_FLAGS.USE_BACKEND_REFERENCE) return svc.getSecondaryMuscles();
+export async function getSecondaryMuscles(): Promise<Muscle[]> {
   const allMuscles = await getAllMuscles();
   const primaryIds = new Set(
     allMuscles
@@ -143,8 +140,7 @@ export async function getSecondaryMuscles(): Promise<svc.Muscle[]> {
   });
 }
 
-export async function getTertiaryMuscles(): Promise<svc.Muscle[]> {
-  if (!FEATURE_FLAGS.USE_BACKEND_REFERENCE) return svc.getTertiaryMuscles();
+export async function getTertiaryMuscles(): Promise<Muscle[]> {
   const allMuscles = await getAllMuscles();
   const primaryIds = new Set(
     allMuscles
@@ -165,8 +161,7 @@ export async function getTertiaryMuscles(): Promise<svc.Muscle[]> {
   });
 }
 
-export async function getMusclesByParent(parentId: string): Promise<svc.Muscle[]> {
-  if (!FEATURE_FLAGS.USE_BACKEND_REFERENCE) return svc.getMusclesByParent(parentId);
+export async function getMusclesByParent(parentId: string): Promise<Muscle[]> {
   const allMuscles = await getAllMuscles();
   return allMuscles.filter(m => {
     const parents = parseJson<string[]>(m.parent_ids || '[]', []);
@@ -175,31 +170,26 @@ export async function getMusclesByParent(parentId: string): Promise<svc.Muscle[]
 }
 
 export async function getCategoriesAsStrings(): Promise<string[]> {
-  if (!FEATURE_FLAGS.USE_BACKEND_REFERENCE) return svc.getCategoriesAsStrings();
   const categories = await getExerciseCategories();
   return categories.map(c => c.label);
 }
 
 export async function getPrimaryMusclesAsStrings(): Promise<string[]> {
-  if (!FEATURE_FLAGS.USE_BACKEND_REFERENCE) return svc.getPrimaryMusclesAsStrings();
   const muscles = await getPrimaryMuscles();
   return muscles.map(m => m.label);
 }
 
 export async function getCardioTypesAsStrings(): Promise<string[]> {
-  if (!FEATURE_FLAGS.USE_BACKEND_REFERENCE) return svc.getCardioTypesAsStrings();
   const types = await getCardioTypes();
   return types.map(t => t.label);
 }
 
 export async function getTrainingFocusAsStrings(): Promise<string[]> {
-  if (!FEATURE_FLAGS.USE_BACKEND_REFERENCE) return svc.getTrainingFocusAsStrings();
   const focus = await getTrainingFocus();
   return focus.map(f => f.label);
 }
 
 export async function buildPrimaryToSecondaryMap(): Promise<Record<string, string[]>> {
-  if (!FEATURE_FLAGS.USE_BACKEND_REFERENCE) return svc.buildPrimaryToSecondaryMap();
   const primaries = await getPrimaryMuscles();
   const secondaries = await getSecondaryMuscles();
   const map: Record<string, string[]> = {};
@@ -218,15 +208,14 @@ export async function buildPrimaryToSecondaryMap(): Promise<Record<string, strin
   return map;
 }
 
-export async function getEquipmentPickerSections(): Promise<{ title: string; data: svc.EquipmentPickerItem[] }[]> {
-  if (!FEATURE_FLAGS.USE_BACKEND_REFERENCE) return svc.getEquipmentPickerSections();
+export async function getEquipmentPickerSections(): Promise<{ title: string; data: EquipmentPickerItem[] }[]> {
   const data = await ensureBootstrap();
-  const equipCats = getTableRows<svc.EquipmentCategory>(data, "equipmentCategories");
-  const equipment = getTableRows<svc.Equipment>(data, "equipment");
+  const equipCats = getTableRows<EquipmentCategory>(data, "equipmentCategories");
+  const equipment = getTableRows<Equipment>(data, "equipment");
   const subCats = equipCats
     .filter(c => c.parent_id)
     .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
-  const sections: { title: string; data: svc.EquipmentPickerItem[] }[] = [];
+  const sections: { title: string; data: EquipmentPickerItem[] }[] = [];
   for (const sub of subCats) {
     const items = equipment
       .filter(e => e.category_id === sub.id && !e.is_attachment)
@@ -240,9 +229,8 @@ export async function getEquipmentPickerSections(): Promise<{ title: string; dat
 }
 
 export async function getEquipmentLabels(): Promise<string[]> {
-  if (!FEATURE_FLAGS.USE_BACKEND_REFERENCE) return svc.getEquipmentLabels();
   const data = await ensureBootstrap();
-  const equipment = getTableRows<svc.Equipment>(data, "equipment");
+  const equipment = getTableRows<Equipment>(data, "equipment");
   return equipment
     .filter(e => !e.is_attachment)
     .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
@@ -250,9 +238,8 @@ export async function getEquipmentLabels(): Promise<string[]> {
 }
 
 export async function getAttachments(): Promise<{ id: string; label: string }[]> {
-  if (!FEATURE_FLAGS.USE_BACKEND_REFERENCE) return svc.getAttachments();
   const data = await ensureBootstrap();
-  const equipment = getTableRows<svc.Equipment>(data, "equipment");
+  const equipment = getTableRows<Equipment>(data, "equipment");
   return equipment
     .filter(e => e.is_attachment)
     .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
@@ -260,9 +247,8 @@ export async function getAttachments(): Promise<{ id: string; label: string }[]>
 }
 
 export async function getEquipmentIconsByLabel(): Promise<Record<string, string>> {
-  if (!FEATURE_FLAGS.USE_BACKEND_REFERENCE) return svc.getEquipmentIconsByLabel();
   const data = await ensureBootstrap();
-  const equipment = getTableRows<svc.Equipment>(data, "equipment");
+  const equipment = getTableRows<Equipment>(data, "equipment");
   const equipmentIcons = require('./tables/equipmentIcons.json') as Record<string, string>;
   const map: Record<string, string> = {};
   for (const e of equipment) {
@@ -273,17 +259,15 @@ export async function getEquipmentIconsByLabel(): Promise<Record<string, string>
 }
 
 export async function getSingleDoubleEquipmentLabels(): Promise<string[]> {
-  if (!FEATURE_FLAGS.USE_BACKEND_REFERENCE) return svc.getSingleDoubleEquipmentLabels();
   const data = await ensureBootstrap();
-  const equipment = getTableRows<svc.Equipment>(data, "equipment");
+  const equipment = getTableRows<Equipment>(data, "equipment");
   const ids = ['DUMBBELL', 'KETTLEBELL', 'PLATE', 'CHAINS', 'CABLE_STACK', 'WEIGHTS_OTHER'];
   return equipment
     .filter(e => ids.includes(e.id))
     .map(e => e.label);
 }
 
-export async function getGripTypes(): Promise<svc.Grip[]> {
-  if (!FEATURE_FLAGS.USE_BACKEND_REFERENCE) return svc.getGripTypes();
+export async function getGripTypes(): Promise<Grip[]> {
   const grips = await getAllGrips();
   return grips.filter(g => g.grip_category !== 'Width' && !g.parent_id);
 }

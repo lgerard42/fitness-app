@@ -1,13 +1,8 @@
 /**
- * React hooks for accessing exercise configuration data
- * Provides cached, reactive access to database queries.
- *
- * All data-fetching functions come from configFacade, which routes
- * through the backend API when USE_BACKEND_REFERENCE is enabled,
- * or through local SQLite when the flag is OFF.
+ * React hooks for accessing exercise configuration data.
+ * Provides cached, reactive access to reference data via the backend API.
  */
 import { useState, useEffect } from 'react';
-import { FEATURE_FLAGS } from '../config/featureFlags';
 import {
   getExerciseCategories,
   getCardioTypes,
@@ -35,6 +30,7 @@ import {
   type TrainingFocus,
   type Grip,
 } from './configFacade';
+
 let categoriesCache: ExerciseCategory[] | null = null;
 let equipmentSectionsCache: { title: string; data: EquipmentPickerItem[] }[] | null = null;
 let equipmentLabelsCache: string[] | null = null;
@@ -55,23 +51,6 @@ let primaryToSecondaryMapCache: Record<string, string[]> | null = null;
 let gripTypesCache: Grip[] | null = null;
 let gripWidthsCache: Grip[] | null = null;
 
-let dbInitialised = false;
-
-/**
- * Initialize the local SQLite database (call once at app startup).
- * When USE_BACKEND_REFERENCE is enabled, this is a no-op because all
- * reference data comes from the backend via configFacade.
- */
-export async function initExerciseConfigDatabase(): Promise<void> {
-  if (FEATURE_FLAGS.USE_BACKEND_REFERENCE || dbInitialised) return;
-  const { initDatabase } = await import('./initDatabase');
-  await initDatabase();
-  dbInitialised = true;
-}
-
-/**
- * Hook to get exercise categories
- */
 export function useExerciseCategories(): ExerciseCategory[] {
   const [categories, setCategories] = useState<ExerciseCategory[]>(categoriesCache || []);
 
@@ -90,9 +69,6 @@ export function useExerciseCategories(): ExerciseCategory[] {
   return categories;
 }
 
-/**
- * Hook to get categories as simple string array (legacy compatibility)
- */
 export function useCategoriesAsStrings(): string[] {
   const [categories, setCategories] = useState<string[]>(categoriesStringsCache || []);
 
@@ -111,9 +87,6 @@ export function useCategoriesAsStrings(): string[] {
   return categories;
 }
 
-/**
- * Hook to get cardio types
- */
 export function useCardioTypes(): CardioType[] {
   const [types, setTypes] = useState<CardioType[]>(cardioTypesCache || []);
 
@@ -132,9 +105,6 @@ export function useCardioTypes(): CardioType[] {
   return types;
 }
 
-/**
- * Hook to get cardio types as simple string array (legacy compatibility)
- */
 export function useCardioTypesAsStrings(): string[] {
   const [types, setTypes] = useState<string[]>(cardioTypesStringsCache || []);
 
@@ -153,9 +123,6 @@ export function useCardioTypesAsStrings(): string[] {
   return types;
 }
 
-/**
- * Hook to get all muscles
- */
 export function useAllMuscles(): Muscle[] {
   const [muscles, setMuscles] = useState<Muscle[]>(allMusclesCache || []);
 
@@ -174,9 +141,6 @@ export function useAllMuscles(): Muscle[] {
   return muscles;
 }
 
-/**
- * Hook to get primary muscles
- */
 export function usePrimaryMuscles(): Muscle[] {
   const [muscles, setMuscles] = useState<Muscle[]>(primaryMusclesCache || []);
 
@@ -195,9 +159,6 @@ export function usePrimaryMuscles(): Muscle[] {
   return muscles;
 }
 
-/**
- * Hook to get primary muscles as simple string array (legacy compatibility)
- */
 export function usePrimaryMusclesAsStrings(): string[] {
   const [muscles, setMuscles] = useState<string[]>(primaryMusclesStringsCache || []);
 
@@ -216,9 +177,6 @@ export function usePrimaryMusclesAsStrings(): string[] {
   return muscles;
 }
 
-/**
- * Hook to get secondary muscles
- */
 export function useSecondaryMuscles(): Muscle[] {
   const [muscles, setMuscles] = useState<Muscle[]>(secondaryMusclesCache || []);
 
@@ -237,9 +195,6 @@ export function useSecondaryMuscles(): Muscle[] {
   return muscles;
 }
 
-/**
- * Hook to get tertiary muscles
- */
 export function useTertiaryMuscles(): Muscle[] {
   const [muscles, setMuscles] = useState<Muscle[]>(tertiaryMusclesCache || []);
 
@@ -258,9 +213,6 @@ export function useTertiaryMuscles(): Muscle[] {
   return muscles;
 }
 
-/**
- * Hook to get training focus
- */
 export function useTrainingFocus(): TrainingFocus[] {
   const [focus, setFocus] = useState<TrainingFocus[]>(trainingFocusCache || []);
 
@@ -279,9 +231,6 @@ export function useTrainingFocus(): TrainingFocus[] {
   return focus;
 }
 
-/**
- * Hook to get training focus as simple string array (legacy compatibility)
- */
 export function useTrainingFocusAsStrings(): string[] {
   const [focus, setFocus] = useState<string[]>(trainingFocusStringsCache || []);
 
@@ -300,9 +249,6 @@ export function useTrainingFocusAsStrings(): string[] {
   return focus;
 }
 
-/**
- * Hook to get PRIMARY_TO_SECONDARY_MAP (legacy compatibility)
- */
 export function usePrimaryToSecondaryMap(): Record<string, string[]> {
   const [map, setMap] = useState<Record<string, string[]>>(primaryToSecondaryMapCache || {});
 
@@ -321,9 +267,6 @@ export function usePrimaryToSecondaryMap(): Record<string, string[]> {
   return map;
 }
 
-/**
- * Hook to get equipment picker sections (category -> equipment list)
- */
 export function useEquipmentPickerSections(): { title: string; data: EquipmentPickerItem[] }[] {
   const [sections, setSections] = useState<{ title: string; data: EquipmentPickerItem[] }[]>(equipmentSectionsCache || []);
 
@@ -342,9 +285,6 @@ export function useEquipmentPickerSections(): { title: string; data: EquipmentPi
   return sections;
 }
 
-/**
- * Hook to get equipment labels (flat list, non-attachments)
- */
 export function useEquipmentLabels(): string[] {
   const [labels, setLabels] = useState<string[]>(equipmentLabelsCache || []);
 
@@ -363,9 +303,6 @@ export function useEquipmentLabels(): string[] {
   return labels;
 }
 
-/**
- * Hook to get cable attachments (equipment items that are attachments)
- */
 export function useAttachments(): { id: string; label: string }[] {
   const [attachments, setAttachments] = useState<{ id: string; label: string }[]>(attachmentsCache || []);
 
@@ -384,9 +321,6 @@ export function useAttachments(): { id: string; label: string }[] {
   return attachments;
 }
 
-/**
- * Hook to get label -> icon (base64) map for equipment
- */
 export function useEquipmentIconsByLabel(): Record<string, string> {
   const [map, setMap] = useState<Record<string, string>>(equipmentIconsByLabelCache || {});
 
@@ -405,9 +339,6 @@ export function useEquipmentIconsByLabel(): Record<string, string> {
   return map;
 }
 
-/**
- * Hook to get single/double equipment labels
- */
 export function useSingleDoubleEquipmentLabels(): string[] {
   const [labels, setLabels] = useState<string[]>(singleDoubleEquipmentCache || []);
 
@@ -426,9 +357,6 @@ export function useSingleDoubleEquipmentLabels(): string[] {
   return labels;
 }
 
-/**
- * Hook to get grip types (non-width, no parent)
- */
 export function useGripTypes(): Grip[] {
   const [types, setTypes] = useState<Grip[]>(gripTypesCache || []);
 
@@ -447,9 +375,6 @@ export function useGripTypes(): Grip[] {
   return types;
 }
 
-/**
- * Hook to get grip widths
- */
 export function useGripWidths(): Grip[] {
   const [widths, setWidths] = useState<Grip[]>(gripWidthsCache || []);
 

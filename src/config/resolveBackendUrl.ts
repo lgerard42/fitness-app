@@ -1,5 +1,5 @@
 import Constants from "expo-constants";
-import { BACKEND_PORT, FEATURE_FLAGS } from "./featureFlags";
+import { BACKEND_PORT, REFERENCE_API_BASE_URL } from "./featureFlags";
 
 let resolved: string | null = null;
 
@@ -23,6 +23,6 @@ export function resolveBackendUrl(): string {
   } catch {
     // expo-constants unavailable (e.g. web build)
   }
-  resolved = FEATURE_FLAGS.REFERENCE_API_BASE_URL;
+  resolved = REFERENCE_API_BASE_URL;
   return resolved;
 }

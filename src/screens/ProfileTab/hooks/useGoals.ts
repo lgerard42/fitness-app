@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { FEATURE_FLAGS } from '@/config/featureFlags';
 import {
   fetchGoals as apiFetchGoals,
   createGoal as apiCreateGoal,
@@ -23,16 +22,14 @@ export const useGoals = () => {
           setGoals(JSON.parse(raw) as UserGoal[]);
         }
 
-        if (FEATURE_FLAGS.USE_BACKEND_USERDATA) {
-          try {
-            const remote = await apiFetchGoals();
-            if (remote.length > 0) {
-              setGoals(remote);
-              console.log("[sync] loaded goals:", remote.length);
-            }
-          } catch (err) {
-            console.warn("[sync] goals fetch failed:", (err as Error).message);
+        try {
+          const remote = await apiFetchGoals();
+          if (remote.length > 0) {
+            setGoals(remote);
+            console.log("[sync] loaded goals:", remote.length);
           }
+        } catch (err) {
+          console.warn("[sync] goals fetch failed:", (err as Error).message);
         }
       } catch (e) {
         console.error('Failed to load goals', e);
@@ -58,11 +55,9 @@ export const useGoals = () => {
     };
     setGoals(prev => [newGoal, ...prev]);
 
-    if (FEATURE_FLAGS.USE_BACKEND_USERDATA) {
-      apiCreateGoal(goal).catch(err =>
-        console.warn("[sync] failed to push goal:", (err as Error).message)
-      );
-    }
+    apiCreateGoal(goal).catch(err =>
+      console.warn("[sync] failed to push goal:", (err as Error).message)
+    );
   }, []);
 
   const toggleGoalCompleted = useCallback((id: string) => {
@@ -77,21 +72,17 @@ export const useGoals = () => {
       })
     );
 
-    if (FEATURE_FLAGS.USE_BACKEND_USERDATA) {
-      apiUpdateGoal(id, { completed: newCompleted }).catch(err =>
-        console.warn("[sync] failed to update goal:", (err as Error).message)
-      );
-    }
+    apiUpdateGoal(id, { completed: newCompleted }).catch(err =>
+      console.warn("[sync] failed to update goal:", (err as Error).message)
+    );
   }, []);
 
   const deleteGoal = useCallback((id: string) => {
     setGoals(prev => prev.filter(g => g.id !== id));
 
-    if (FEATURE_FLAGS.USE_BACKEND_USERDATA) {
-      apiDeleteGoal(id).catch(err =>
-        console.warn("[sync] failed to delete goal:", (err as Error).message)
-      );
-    }
+    apiDeleteGoal(id).catch(err =>
+      console.warn("[sync] failed to delete goal:", (err as Error).message)
+    );
   }, []);
 
   const strengthGoals = goals.filter(g => g.type === 'strength');
