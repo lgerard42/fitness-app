@@ -10,24 +10,24 @@ datasource db {
 // ─── Auth & Users ────────────────────────────────────────────────────
 
 model User {
-  id            String   @id @default(uuid())
-  email         String   @unique
-  passwordHash  String   @map("password_hash")
-  name          String
-  avatarUrl     String?  @map("avatar_url")
-  phone         String?
-  dateOfBirth   String?  @map("date_of_birth")
-  bio           String?
-  bodyWeight    Float?   @map("body_weight")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String
+  avatarUrl    String?  @map("avatar_url")
+  phone        String?
+  dateOfBirth  String?  @map("date_of_birth")
+  bio          String?
+  bodyWeight   Float?   @map("body_weight")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
-  refreshTokens  RefreshToken[]
-  settings       UserSettings?
-  workouts       Workout[]
-  exercises      ExerciseLibrary[]
-  measurements   BodyMeasurement[]
-  goals          UserGoal[]
+  refreshTokens   RefreshToken[]
+  settings        UserSettings?
+  workouts        Workout[]
+  exercises       ExerciseLibrary[]
+  measurements    BodyMeasurement[]
+  goals           UserGoal[]
   personalRecords PersonalRecord[]
 
   @@map("users")
@@ -46,15 +46,15 @@ model RefreshToken {
 }
 
 model UserSettings {
-  id                     String  @id @default(uuid())
-  userId                 String  @unique @map("user_id")
-  weightUnit             String  @default("lbs") @map("weight_unit")
-  distanceUnit           String  @default("US") @map("distance_unit")
-  weightCalcMode         String  @default("1x") @map("weight_calc_mode")
-  repsConfigMode         String  @default("1x") @map("reps_config_mode")
-  defaultRestTimerSeconds Int    @default(90) @map("default_rest_timer_seconds")
-  vibrateOnTimerFinish   Boolean @default(true) @map("vibrate_on_timer_finish")
-  keepScreenAwake        Boolean @default(true) @map("keep_screen_awake")
+  id                      String  @id @default(uuid())
+  userId                  String  @unique @map("user_id")
+  weightUnit              String  @default("lbs") @map("weight_unit")
+  distanceUnit            String  @default("US") @map("distance_unit")
+  weightCalcMode          String  @default("1x") @map("weight_calc_mode")
+  repsConfigMode          String  @default("1x") @map("reps_config_mode")
+  defaultRestTimerSeconds Int     @default(90) @map("default_rest_timer_seconds")
+  vibrateOnTimerFinish    Boolean @default(true) @map("vibrate_on_timer_finish")
+  keepScreenAwake         Boolean @default(true) @map("keep_screen_awake")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -64,19 +64,19 @@ model UserSettings {
 // ─── Exercise Library (user custom exercises) ────────────────────────
 
 model ExerciseLibrary {
-  id              String  @id @default(uuid())
-  userId          String  @map("user_id")
-  name            String
-  category        String  @default("Lifts")
-  assistedNegative Boolean @default(false) @map("assisted_negative")
-  config          Json?   @default("{}")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  id               String   @id @default(uuid())
+  userId           String   @map("user_id")
+  name             String
+  category         String   @default("Lifts")
+  assistedNegative Boolean  @default(false) @map("assisted_negative")
+  config           Json?    @default("{}")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
-  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  workoutExercises  WorkoutExercise[]
-  goals             UserGoal[]
-  personalRecords   PersonalRecord[]
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workoutExercises WorkoutExercise[]
+  goals            UserGoal[]
+  personalRecords  PersonalRecord[]
 
   @@map("exercise_library")
 }
@@ -111,15 +111,15 @@ model WorkoutExercise {
   notes        Json?   @default("[]")
 
   // Superset/group support
-  parentId     String? @map("parent_id")
-  groupType    String? @map("group_type")
+  parentId  String? @map("parent_id")
+  groupType String? @map("group_type")
 
   // Exercise config snapshot (weight calc mode, etc.)
-  config       Json?   @default("{}")
+  config Json? @default("{}")
 
-  workout  Workout          @relation(fields: [workoutId], references: [id], onDelete: Cascade)
-  exercise ExerciseLibrary? @relation(fields: [exerciseId], references: [id], onDelete: SetNull)
-  parent   WorkoutExercise? @relation("ExerciseGroup", fields: [parentId], references: [id], onDelete: Cascade)
+  workout  Workout           @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+  exercise ExerciseLibrary?  @relation(fields: [exerciseId], references: [id], onDelete: SetNull)
+  parent   WorkoutExercise?  @relation("ExerciseGroup", fields: [parentId], references: [id], onDelete: Cascade)
   children WorkoutExercise[] @relation("ExerciseGroup")
   sets     WorkoutSet[]
 
@@ -128,22 +128,22 @@ model WorkoutExercise {
 }
 
 model WorkoutSet {
-  id                 String  @id @default(uuid())
-  workoutExerciseId  String  @map("workout_exercise_id")
-  position           Int
-  type               String  @default("Working")
-  weight             String  @default("")
-  weight2            String? @default("")
-  reps               String  @default("")
-  reps2              String? @default("")
-  duration           String  @default("")
-  distance           String  @default("")
-  completed          Boolean @default(false)
-  isWarmup           Boolean @default(false) @map("is_warmup")
-  isDropset          Boolean @default(false) @map("is_dropset")
-  isFailure          Boolean @default(false) @map("is_failure")
-  restPeriodSeconds  Int?    @map("rest_period_seconds")
-  dropSetId          String? @map("drop_set_id")
+  id                String  @id @default(uuid())
+  workoutExerciseId String  @map("workout_exercise_id")
+  position          Int
+  type              String  @default("Working")
+  weight            String  @default("")
+  weight2           String? @default("")
+  reps              String  @default("")
+  reps2             String? @default("")
+  duration          String  @default("")
+  distance          String  @default("")
+  completed         Boolean @default(false)
+  isWarmup          Boolean @default(false) @map("is_warmup")
+  isDropset         Boolean @default(false) @map("is_dropset")
+  isFailure         Boolean @default(false) @map("is_failure")
+  restPeriodSeconds Int?    @map("rest_period_seconds")
+  dropSetId         String? @map("drop_set_id")
 
   workoutExercise WorkoutExercise @relation(fields: [workoutExerciseId], references: [id], onDelete: Cascade)
 
@@ -200,13 +200,13 @@ model UserGoal {
 // ─── Personal Records ────────────────────────────────────────────────
 
 model PersonalRecord {
-  id          String   @id @default(uuid())
-  userId      String   @map("user_id")
-  exerciseId  String   @map("exercise_id")
-  weight      Float
-  weightUnit  String   @default("lbs") @map("weight_unit")
-  achievedAt  DateTime @map("achieved_at")
-  createdAt   DateTime @default(now()) @map("created_at")
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  exerciseId String   @map("exercise_id")
+  weight     Float
+  weightUnit String   @default("lbs") @map("weight_unit")
+  achievedAt DateTime @map("achieved_at")
+  createdAt  DateTime @default(now()) @map("created_at")
 
   user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   exercise ExerciseLibrary @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
@@ -223,4 +223,380 @@ model AppConfig {
   value String
 
   @@map("app_config")
+}
+
+// ─── Source Type Enum ─────────────────────────────────────────────────
+
+enum SourceType {
+  seed
+  admin
+
+  @@map("source_type")
+}
+
+// ─── Reference Metadata (version tracking per table) ─────────────────
+
+model ReferenceMetadata {
+  tableName   String   @id @map("table_name")
+  versionSeq  BigInt   @default(0) @map("version_seq")
+  lastUpdated DateTime @default(now()) @map("last_updated") @db.Timestamptz
+
+  @@map("reference_metadata")
+}
+
+// ─── Reference Tables ────────────────────────────────────────────────
+
+model RefExerciseCategory {
+  id                       String     @id
+  label                    String
+  technicalName            String?    @map("technical_name")
+  commonNames              Json?      @default("[]") @map("common_names")
+  shortDescription         String?    @map("short_description")
+  exerciseInputPermissions Json?      @map("exercise_input_permissions")
+  sortOrder                Int        @default(0) @map("sort_order")
+  icon                     String?    @default("")
+  isActive                 Boolean    @default(true) @map("is_active")
+  sourceType               SourceType @default(seed) @map("source_type")
+
+  @@map("exercise_categories")
+}
+
+model RefCardioType {
+  id               String     @id
+  label            String
+  technicalName    String?    @map("technical_name")
+  commonNames      Json?      @default("[]") @map("common_names")
+  shortDescription String?    @map("short_description")
+  sortOrder        Int        @default(0) @map("sort_order")
+  icon             String?    @default("")
+  isActive         Boolean    @default(true) @map("is_active")
+  sourceType       SourceType @default(seed) @map("source_type")
+
+  @@map("cardio_types")
+}
+
+model RefTrainingFocus {
+  id               String     @id
+  label            String
+  technicalName    String?    @map("technical_name")
+  commonNames      Json?      @default("[]") @map("common_names")
+  shortDescription String?    @map("short_description")
+  sortOrder        Int        @default(0) @map("sort_order")
+  icon             String?    @default("")
+  isActive         Boolean    @default(true) @map("is_active")
+  sourceType       SourceType @default(seed) @map("source_type")
+
+  @@map("training_focus")
+}
+
+model RefMuscle {
+  id               String     @id
+  label            String
+  parentIds        Json?      @default("[]") @map("parent_ids")
+  commonNames      Json?      @default("[]") @map("common_names")
+  technicalName    String?    @map("technical_name")
+  shortDescription String?    @map("short_description")
+  function         String?
+  location         String?
+  triggers         String?
+  upperLower       Json?      @default("[]") @map("upper_lower")
+  sortOrder        Int        @default(0) @map("sort_order")
+  icon             String?    @default("")
+  isActive         Boolean    @default(true) @map("is_active")
+  sourceType       SourceType @default(seed) @map("source_type")
+
+  @@map("muscles")
+}
+
+model RefMotion {
+  id                  String     @id
+  label               String
+  parentId            String?    @map("parent_id")
+  upperLower          Json?      @default("[]") @map("upper_lower")
+  muscleTargets       Json?      @map("muscle_targets")
+  defaultDeltaConfigs Json?      @map("default_delta_configs")
+  commonNames         Json?      @default("[]") @map("common_names")
+  shortDescription    String?    @map("short_description")
+  sortOrder           Int        @default(0) @map("sort_order")
+  icon                String?    @default("")
+  isActive            Boolean    @default(true) @map("is_active")
+  sourceType          SourceType @default(seed) @map("source_type")
+
+  parent   RefMotion?  @relation("MotionParent", fields: [parentId], references: [id], onUpdate: Cascade, onDelete: Restrict)
+  children RefMotion[] @relation("MotionParent")
+
+  @@index([parentId])
+  @@map("motions")
+}
+
+model RefGrip {
+  id               String     @id
+  label            String
+  parentId         String?    @map("parent_id")
+  isDynamic        Boolean    @default(false) @map("is_dynamic")
+  gripCategory     String?    @map("grip_category")
+  rotationPath     Json?      @map("rotation_path")
+  commonNames      Json?      @default("[]") @map("common_names")
+  deltaRules       Json?      @map("delta_rules")
+  shortDescription String?    @map("short_description")
+  sortOrder        Int        @default(0) @map("sort_order")
+  icon             String?    @default("")
+  isActive         Boolean    @default(true) @map("is_active")
+  sourceType       SourceType @default(seed) @map("source_type")
+
+  parent   RefGrip?  @relation("GripParent", fields: [parentId], references: [id], onUpdate: Cascade, onDelete: Restrict)
+  children RefGrip[] @relation("GripParent")
+
+  @@index([parentId])
+  @@map("grips")
+}
+
+model RefEquipmentCategory {
+  id               String     @id
+  label            String
+  parentId         String?    @map("parent_id")
+  commonNames      Json?      @default("[]") @map("common_names")
+  shortDescription String?    @map("short_description")
+  sortOrder        Int        @default(0) @map("sort_order")
+  icon             String?    @default("")
+  isActive         Boolean    @default(true) @map("is_active")
+  sourceType       SourceType @default(seed) @map("source_type")
+
+  parent    RefEquipmentCategory?  @relation("EquipCatParent", fields: [parentId], references: [id], onUpdate: Cascade, onDelete: Restrict)
+  children  RefEquipmentCategory[] @relation("EquipCatParent")
+  equipment RefEquipment[]
+
+  @@index([parentId])
+  @@map("equipment_categories")
+}
+
+model RefMotionPath {
+  id               String     @id
+  label            String
+  commonNames      Json?      @default("[]") @map("common_names")
+  deltaRules       Json?      @map("delta_rules")
+  shortDescription String?    @map("short_description")
+  sortOrder        Int        @default(0) @map("sort_order")
+  icon             String?    @default("")
+  isActive         Boolean    @default(true) @map("is_active")
+  sourceType       SourceType @default(seed) @map("source_type")
+
+  @@map("motion_paths")
+}
+
+model RefTorsoAngle {
+  id                     String     @id
+  label                  String
+  commonNames            Json?      @default("[]") @map("common_names")
+  shortDescription       String?    @map("short_description")
+  deltaRules             Json?      @map("delta_rules")
+  angleRange             Json?      @map("angle_range")
+  allowTorsoOrientations Boolean    @default(false) @map("allow_torso_orientations")
+  sortOrder              Int        @default(0) @map("sort_order")
+  icon                   String?    @default("")
+  isActive               Boolean    @default(true) @map("is_active")
+  sourceType             SourceType @default(seed) @map("source_type")
+
+  @@map("torso_angles")
+}
+
+model RefTorsoOrientation {
+  id               String     @id
+  label            String
+  commonNames      Json?      @default("[]") @map("common_names")
+  shortDescription String?    @map("short_description")
+  deltaRules       Json?      @map("delta_rules")
+  sortOrder        Int        @default(0) @map("sort_order")
+  icon             String?    @default("")
+  isActive         Boolean    @default(true) @map("is_active")
+  sourceType       SourceType @default(seed) @map("source_type")
+
+  @@map("torso_orientations")
+}
+
+model RefResistanceOrigin {
+  id               String     @id
+  label            String
+  commonNames      Json?      @default("[]") @map("common_names")
+  deltaRules       Json?      @map("delta_rules")
+  shortDescription String?    @map("short_description")
+  sortOrder        Int        @default(0) @map("sort_order")
+  icon             String?    @default("")
+  isActive         Boolean    @default(true) @map("is_active")
+  sourceType       SourceType @default(seed) @map("source_type")
+
+  @@map("resistance_origin")
+}
+
+model RefGripWidth {
+  id               String     @id
+  label            String
+  commonNames      Json?      @default("[]") @map("common_names")
+  shortDescription String?    @map("short_description")
+  deltaRules       Json?      @map("delta_rules")
+  sortOrder        Int        @default(0) @map("sort_order")
+  icon             String?    @default("")
+  isActive         Boolean    @default(true) @map("is_active")
+  sourceType       SourceType @default(seed) @map("source_type")
+
+  @@map("grip_widths")
+}
+
+model RefElbowRelationship {
+  id               String     @id
+  label            String
+  commonNames      Json?      @default("[]") @map("common_names")
+  shortDescription String?    @map("short_description")
+  deltaRules       Json?      @map("delta_rules")
+  sortOrder        Int        @default(0) @map("sort_order")
+  icon             String?    @default("")
+  isActive         Boolean    @default(true) @map("is_active")
+  sourceType       SourceType @default(seed) @map("source_type")
+
+  @@map("elbow_relationship")
+}
+
+model RefExecutionStyle {
+  id               String     @id
+  label            String
+  commonNames      Json?      @default("[]") @map("common_names")
+  deltaRules       Json?      @map("delta_rules")
+  shortDescription String?    @map("short_description")
+  sortOrder        Int        @default(0) @map("sort_order")
+  icon             String?    @default("")
+  isActive         Boolean    @default(true) @map("is_active")
+  sourceType       SourceType @default(seed) @map("source_type")
+
+  @@map("execution_styles")
+}
+
+model RefFootPosition {
+  id               String     @id
+  label            String
+  commonNames      Json?      @default("[]") @map("common_names")
+  shortDescription String?    @map("short_description")
+  deltaRules       Json?      @map("delta_rules")
+  sortOrder        Int        @default(0) @map("sort_order")
+  icon             String?    @default("")
+  isActive         Boolean    @default(true) @map("is_active")
+  sourceType       SourceType @default(seed) @map("source_type")
+
+  @@map("foot_positions")
+}
+
+model RefStanceWidth {
+  id               String     @id
+  label            String
+  commonNames      Json?      @default("[]") @map("common_names")
+  shortDescription String?    @map("short_description")
+  deltaRules       Json?      @map("delta_rules")
+  sortOrder        Int        @default(0) @map("sort_order")
+  icon             String?    @default("")
+  isActive         Boolean    @default(true) @map("is_active")
+  sourceType       SourceType @default(seed) @map("source_type")
+
+  @@map("stance_widths")
+}
+
+model RefStanceType {
+  id               String     @id
+  label            String
+  commonNames      Json?      @default("[]") @map("common_names")
+  shortDescription String?    @map("short_description")
+  deltaRules       Json?      @map("delta_rules")
+  sortOrder        Int        @default(0) @map("sort_order")
+  icon             String?    @default("")
+  isActive         Boolean    @default(true) @map("is_active")
+  sourceType       SourceType @default(seed) @map("source_type")
+
+  @@map("stance_types")
+}
+
+model RefLoadPlacement {
+  id               String     @id
+  label            String
+  commonNames      Json?      @default("[]") @map("common_names")
+  loadCategory     String?    @map("load_category")
+  allowsSecondary  Boolean    @default(false) @map("allows_secondary")
+  isValidSecondary Boolean    @default(false) @map("is_valid_secondary")
+  deltaRules       Json?      @map("delta_rules")
+  shortDescription String?    @map("short_description")
+  sortOrder        Int        @default(0) @map("sort_order")
+  icon             String?    @default("")
+  isActive         Boolean    @default(true) @map("is_active")
+  sourceType       SourceType @default(seed) @map("source_type")
+
+  @@map("load_placement")
+}
+
+model RefSupportStructure {
+  id               String     @id
+  label            String
+  commonNames      Json?      @default("[]") @map("common_names")
+  shortDescription String?    @map("short_description")
+  deltaRules       Json?      @map("delta_rules")
+  sortOrder        Int        @default(0) @map("sort_order")
+  icon             String?    @default("")
+  isActive         Boolean    @default(true) @map("is_active")
+  sourceType       SourceType @default(seed) @map("source_type")
+
+  @@map("support_structures")
+}
+
+model RefLoadingAid {
+  id               String     @id
+  label            String
+  commonNames      Json?      @default("[]") @map("common_names")
+  shortDescription String?    @map("short_description")
+  deltaRules       Json?      @map("delta_rules")
+  sortOrder        Int        @default(0) @map("sort_order")
+  icon             String?    @default("")
+  isActive         Boolean    @default(true) @map("is_active")
+  sourceType       SourceType @default(seed) @map("source_type")
+
+  @@map("loading_aids")
+}
+
+model RefRangeOfMotion {
+  id               String     @id
+  label            String
+  commonNames      Json?      @default("[]") @map("common_names")
+  shortDescription String?    @map("short_description")
+  deltaRules       Json?      @map("delta_rules")
+  sortOrder        Int        @default(0) @map("sort_order")
+  icon             String?    @default("")
+  isActive         Boolean    @default(true) @map("is_active")
+  sourceType       SourceType @default(seed) @map("source_type")
+
+  @@map("range_of_motion")
+}
+
+model RefEquipment {
+  id                  String     @id
+  label               String
+  categoryId          String?    @map("category_id")
+  commonNames         Json?      @default("[]") @map("common_names")
+  shortDescription    String?    @map("short_description")
+  isAttachment        Boolean    @default(false) @map("is_attachment")
+  requiresAttachment  Boolean    @default(false) @map("requires_attachment")
+  maxInstances        Int        @default(1) @map("max_instances")
+  modifierConstraints Json?      @map("modifier_constraints")
+  sortOrder           Int        @default(0) @map("sort_order")
+  icon                String?    @default("")
+  isActive            Boolean    @default(true) @map("is_active")
+  sourceType          SourceType @default(seed) @map("source_type")
+
+  category RefEquipmentCategory? @relation(fields: [categoryId], references: [id], onUpdate: Cascade, onDelete: Restrict)
+
+  @@index([categoryId])
+  @@map("equipment")
+}
+
+model RefEquipmentIcon {
+  id         String     @id
+  value      String
+  isActive   Boolean    @default(true) @map("is_active")
+  sourceType SourceType @default(seed) @map("source_type")
+
+  @@map("equipment_icons")
 }

@@ -180,15 +180,14 @@ docker compose up -d postgres
 
 Wait for it to be healthy: `docker ps` should show `(healthy)`.
 
-### Step 2: Run database migrations and seed (first time only)
+### Step 2: Run database setup (first time only)
 
 ```bash
 cd backend
-npx prisma db push
-npx prisma db seed
-npm run drizzle:push
-npm run ref:seed
+npm run db:setup
 ```
+
+This single command runs: `prisma db push` (creates all tables) -> `prisma generate` -> triggers/indexes -> reference data seed -> user data seed.
 
 ### Step 3: Start the Backend
 
