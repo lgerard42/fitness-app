@@ -1258,6 +1258,17 @@ The following are intentionally deferred and should not block locking the archit
 
 ---
 
+# Cross-References
+
+- **Matrix V2 Config System:** See [`MATRIX_V2_CONFIG_OVERVIEW.md`](../../MATRIX_V2_CONFIG_OVERVIEW.md) for the complete Matrix V2 config system documentation, including the constraint resolver, validation stack, and API endpoints.
+- **Unified Authoring Workstation:** See [Section 17 of MATRIX_V2_CONFIG_OVERVIEW.md](../../MATRIX_V2_CONFIG_OVERVIEW.md#17-unified-authoring-workstation) for the V2 workstation that serves as the **primary authoring surface** for both constraint configuration and delta scoring. The workstation combines baseline `muscle_targets` editing, per-row `delta_rules` branch editing (with parent/child inheritance), and live client-side scoring simulation in a single unified panel.
+- **Scoring Pipeline:** The client-side simulation in the workstation reuses the same shared scoring utilities (`shared/scoring/resolveDeltas.ts`, `shared/scoring/computeActivation.ts`) documented in Part 2 of this architecture.
+- **Score Policy:** `shared/policy/scorePolicy.ts` defines clamping, normalization, and missing key behavior used by both backend and client-side scoring.
+- **Realism Advisory:** `shared/policy/realismAdvisory.ts` provides informational realism flags (green/yellow/red) for simulation results.
+- **Semantics Dictionary:** `shared/semantics/dictionary.ts` is a stub for per-modifier-table semantic descriptors, coaching cue templates, and ROM quality labels.
+
+---
+
 # Final Summary (Lock Conditions)
 
 This architecture is considered "locked" for foundation purposes when the team reaches agreement on:

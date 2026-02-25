@@ -43,8 +43,9 @@ Use these labels in the doc where clarity is needed. Default is **Implemented** 
 14. [File Map](#14-file-map)
 15. [User-Friendly Guide](#15-user-friendly-guide)
 16. [Implementation Reference (A–J)](#16-implementation-reference-aj)
-17. [Known Gaps / Next Work](#17-known-gaps--next-work)
-18. [Glossary / Terminology Lock](#18-glossary--terminology-lock)
+17. [Unified Authoring Workstation](#17-unified-authoring-workstation)
+18. [Known Gaps / Next Work](#18-known-gaps--next-work)
+19. [Glossary / Terminology Lock](#19-glossary--terminology-lock)
 
 ---
 
@@ -1059,12 +1060,20 @@ Group has `local_rules: [{ rule_id: "r1", action: "filter_row_ids", condition: {
 | Config list with status/version | Implemented |
 | Create draft, Save, Validate, Activate, Clone | Implemented |
 | Per-table applicability, allowed rows, default | Implemented |
-| Preview (resolve API + show JSON) | Implemented (motion scope: try/catch; group scope: **no try/catch** — API errors can appear to do nothing) |
+| Preview (resolve API + show JSON) | Implemented |
 | Export / Import | Implemented |
+| **Motion context selector** | **Implemented.** Dropdown selects a motion within the scope family to drive baseline, delta, and simulation views. |
+| **Baseline card (muscle_targets)** | **Implemented.** Embeds `MuscleTargetTree` with Save Baseline button; writes only to motions table. |
+| **Delta branch editing per row** | **Implemented.** `DeltaBranchCard` per allowed row with inherit toggle, clone-on-branch, provenance chips, and per-row Save Delta Branch. |
+| **Client-side scoring simulation** | **Implemented.** Live recomputation using shared `resolveAllDeltas` + `computeActivation` with debounced updates. |
+| **Simulation preview** | **Implemented.** Base vs Effective table, Top-3 Impact, delta source provenance, realism advisory, coaching cues (stub), ROM summary. |
+| **Dirty indicators** | **Implemented.** `DirtyBadge` with per-domain tracking (baseline, config, delta branches). |
+| **Save & Next Motion** | **Implemented.** Saves all dirty domains then advances to next sibling motion. |
+| **Group preview context** | **Implemented.** "Preview as" dropdown to select which child motion to use for resolver preview. |
+| **Inherited rules in UI** | **Implemented.** Motion-scope configs show inherited group rules with [inherited] / [tombstoned] tags. |
+| **Compare to active** | **Implemented.** Diff panel shows tables added/removed, rows added/removed, defaults changed vs active config. |
 | **Rule authoring UI** | **Not implemented.** Rules are JSON/manual only; no UI to add/edit local or global rules or tombstones. |
-| **Inherited rules / tombstones in UI** | **Not implemented.** Preview shows merged JSON; no dedicated view for "inherited vs overridden" or tombstone list. |
 | **Preview mode** | UI passes `mode=draft_preview` when selected config is draft, else `active_only`. Resolver does not receive "current editing config ID." |
-| **Compare to current (active)** | **Not implemented.** No load-active-and-diff or side-by-side. |
 
 ### J. Operational / Coverage / Testing
 
@@ -1077,17 +1086,119 @@ Group has `local_rules: [{ rule_id: "r1", action: "filter_row_ids", condition: {
 
 ---
 
-## 17. Known Gaps / Next Work
+## 17. Unified Authoring Workstation
+
+**Status: Implemented**
+
+The Matrix V2 Config panel has been extended into a **unified authoring workstation** that combines constraint configuration, baseline scoring, delta branch editing, and live scoring simulation in a single screen.
+
+### Architecture: Constraint Resolver vs. Scoring Simulation
+
+These are **distinct systems** with different responsibilities:
+
+| Concern | Constraint Resolver (Backend) | Scoring Simulation (Client-Side) |
+|---------|-------------------------------|----------------------------------|
+| Purpose | Merge group + motion configs into effective constraint config | Compute muscle activation from baseline + modifiers |
+| Location | `backend/src/services/matrixV2Resolver.ts` | `shared/scoring/resolveDeltas.ts` + `computeActivation.ts` |
+| Data source | `motion_matrix_configs` table | `motions.muscle_targets` + modifier row `delta_rules` |
+| Output | Effective table applicability, allowed rows, defaults, rules | `ActivationResult` (base scores, final scores, raw scores, applied deltas) |
+| API | `GET /matrix-configs/resolve/:motionId` | None (client-side only) |
+
+### Delta Branch Inheritance Model
+
+Motion-keyed entries in each modifier row's `delta_rules` JSONB field serve as "branches":
+
+- **Primary motion** (e.g., `PRESS`): Has an explicit `Record<muscleId, number>` entry in `delta_rules`
+- **Child motion** (e.g., `PRESS_INCLINE`): Either `"inherit"` (walks `parent_id` chain) or has its own custom override entry
+- Resolution via `resolveSingleDelta()` walks the `parent_id` chain when it encounters `"inherit"` or a missing entry
+
+The UI shows this via:
+- **Inherit toggle** on child motions: ON = read-only view of parent's deltas; OFF = editable custom override
+- **Clone-on-branch**: Toggling inherit OFF clones parent delta as starting point
+- **Provenance chips**: "Inherited from PRESS" vs. "Custom for PRESS_INCLINE"
+
+### Client-Side Live Scoring Simulation
+
+- Reuses `resolveAllDeltas` and `computeActivation` from `shared/scoring/`
+- Uses **local unsaved state** for both baseline edits and delta overrides
+- Debounced at ~150ms for responsive feedback
+- Two modes: "Simulate Defaults" (uses `default_row_id` from config) and "Custom Test Combo" (manual modifier selection)
+
+### Simulation Preview Output
+
+| Section | Description |
+|---------|-------------|
+| Top-3 Impact | Top 3 muscles by absolute delta shift, with delta bars |
+| Base vs Effective | Side-by-side flat muscle scores with delta indicators |
+| Delta Sources | Per-modifier provenance chips with inherited/custom tags |
+| Realism Advisory | Green/yellow/red badge based on score distribution sanity |
+| Coaching Cues | Merged cues from semantics dictionary (stub) |
+| ROM Summary | Per-modifier ROM quality flags from semantics dictionary |
+| Provenance | Chips showing data source (Local Unsaved / Saved / Draft Config) |
+
+### Localized Save Paths
+
+| Domain | API | Data Written |
+|--------|-----|-------------|
+| Baseline | `PUT /tables/motions/rows/:id` | `{ muscle_targets: ... }` |
+| Delta Branch | `PUT /tables/:modifierTable/rows/:rowId` | `{ delta_rules: ... }` (updated entry for current motion) |
+| Matrix Config | `PUT /matrix-configs/:id` | `{ config_json: ..., notes: ... }` |
+
+Each save path has its own dirty indicator and explicit save button. The "Save & Next Motion" accelerator fires all dirty saves then advances to the next sibling.
+
+### Workstation Layout
+
+```
++--------------------+--------------------------------+------------------------+
+| Left Sidebar       | Center Editing Area            | Right Preview          |
+| (272px)            |                                | (320px)                |
+|                    | [Toolbar: Save/Validate/etc]   |                        |
+| Scope Picker       |                                | Simulation Preview     |
+| Config List        | [Baseline Card]                |   Mode toggle          |
+|                    |                                |   Base vs Effective    |
+| Motion Context     | [Modifier Table Cards          |   Per-muscle deltas    |
+|   Selector         |  with delta editing]           |   Top-3 impact         |
+|                    |                                |   Realism advisory     |
+| Preview As         | [Matrix Config (tables/rows/   |   Coaching cues        |
+|   (group scope)    |  defaults/rules)]              |   ROM summary          |
+|                    |                                | Validation Panel       |
+|                    |                                | Diff vs Active         |
++--------------------+--------------------------------+------------------------+
+```
+
+### Shared Artifacts
+
+| File | Purpose |
+|------|---------|
+| `shared/policy/realismAdvisory.ts` | Realism flag evaluation (green/yellow/red) based on `ActivationResult` |
+| `shared/semantics/dictionary.ts` | Per-modifier-table semantic descriptors, coaching cue templates, ROM descriptors (stub) |
+| `shared/policy/scorePolicy.ts` | Score clamping, normalization, missing key behavior |
+
+### New Files
+
+| File | Purpose |
+|------|---------|
+| `admin/src/hooks/useWorkstationState.ts` | Unified state for selected motion, local baseline/delta edits, dirty tracking, localized saves |
+| `admin/src/hooks/useScoringSimulation.ts` | Client-side scoring simulation hook with debounced recomputation |
+| `admin/src/components/workstation/BaselineCard.tsx` | Baseline muscle_targets editor card |
+| `admin/src/components/workstation/DeltaBranchCard.tsx` | Per-row delta editor with inherit toggle and provenance |
+| `admin/src/components/workstation/SimulationPreview.tsx` | Live scoring preview panel |
+| `admin/src/components/workstation/DirtyBadge.tsx` | Dirty state indicator |
+
+---
+
+## 18. Known Gaps / Next Work
 
 - **Backend:** No DB UNIQUE constraint for "at most one active per (scope_type, scope_id)"; race possible. Resolver does not support multi-level group inheritance (only root group + motion). Preview does not accept a specific config ID.
 - **Shared:** Rule condition DSL is single-condition only; no cycle detection for rules. Hash collision handling not implemented.
-- **Admin UI:** No rule authoring UI (local/global/tombstone). No "compare to active" view. Preview for group scope can fail silently (missing try/catch).
+- **Admin UI:** No rule authoring UI (local/global/tombstone). Visual rule builder is a future phase. Coaching cues and ROM data in semantics dictionary are stubs pending biomechanics authoring.
+- **Simulation:** Simulation loads all modifier table data client-side; may need optimization for very large datasets (currently mitigated by loading only active rows and debouncing).
 - **Tests:** No API/route or DB integration tests for matrix configs; no coverage tracking.
 - **Docs:** Any behavior not yet implemented should remain explicitly marked "Not Yet Implemented" as code evolves.
 
 ---
 
-## 18. Glossary / Terminology Lock
+## 19. Glossary / Terminology Lock
 
 | Term | Definition |
 |------|-------------|
