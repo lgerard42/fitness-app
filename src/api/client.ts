@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { FEATURE_FLAGS } from "../config/featureFlags";
+import { resolveBackendUrl } from "../config/resolveBackendUrl";
 
 const TOKEN_KEY = "@auth:access_token";
 const REFRESH_KEY = "@auth:refresh_token";
@@ -10,7 +10,7 @@ const HARDCODED_PASSWORD = "password123";
 let memoryToken: string | null = null;
 
 export function getBaseUrl(): string {
-  return FEATURE_FLAGS.REFERENCE_API_BASE_URL;
+  return resolveBackendUrl();
 }
 
 export async function getToken(): Promise<string | null> {

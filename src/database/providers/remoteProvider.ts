@@ -8,7 +8,7 @@
  *   - Offline with cache: return stale cache (if allowStaleCache)
  */
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { FEATURE_FLAGS } from "../../config/featureFlags";
+import { resolveBackendUrl } from "../../config/resolveBackendUrl";
 import type {
   ReferenceDataProvider,
   BootstrapData,
@@ -23,8 +23,7 @@ export class RemotePostgresProvider implements ReferenceDataProvider {
   private cachedBootstrap: BootstrapData | null = null;
 
   constructor(baseUrl?: string) {
-    this.baseUrl =
-      baseUrl || FEATURE_FLAGS.REFERENCE_API_BASE_URL;
+    this.baseUrl = baseUrl || resolveBackendUrl();
   }
 
   async getVersion(): Promise<VersionInfo> {
