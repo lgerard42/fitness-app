@@ -1,15 +1,11 @@
-import { Router, Request, Response, NextFunction } from "express";
+import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../config/db";
 import { requireAuth } from "../middleware/auth";
+import { wrap } from "../middleware/asyncHandler";
 
 const router = Router();
 router.use(requireAuth);
-
-function wrap(fn: (req: Request, res: Response) => Promise<void>) {
-  return (req: Request, res: Response, next: NextFunction) =>
-    fn(req, res).catch(next);
-}
 
 const upsertSchema = z.object({
   exerciseId: z.string(),

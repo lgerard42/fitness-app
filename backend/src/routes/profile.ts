@@ -1,15 +1,16 @@
-import { Router, Request, Response, NextFunction } from "express";
+import { Router } from "express";
 import { z } from "zod";
-import { prisma } from "../config/db";
 import { requireAuth } from "../middleware/auth";
+import { wrap } from "../middleware/asyncHandler";
+import {
+  getProfile,
+  updateProfile,
+  getSettings,
+  updateSettings,
+} from "../services/profileService";
 
 const router = Router();
 router.use(requireAuth);
-
-function wrap(fn: (req: Request, res: Response) => Promise<void>) {
-  return (req: Request, res: Response, next: NextFunction) =>
-    fn(req, res).catch(next);
-}
 
 const updateProfileSchema = z.object({
   name: z.string().min(1).optional(),
@@ -33,16 +34,7 @@ const updateSettingsSchema = z.object({
 router.get(
   "/me",
   wrap(async (req, res) => {
-    const user = await prisma.user.findUnique({
-      where: { id: req.userId },
-      include: { settings: true },
-    });
-    if (!user) {
-      res.status(404).json({ error: "User not found" });
-      return;
-    }
-    const { passwordHash, ...profile } = user;
-    res.json(profile);
+    res.json(await getProfile(req.userId!));
   })
 );
 
@@ -50,22 +42,14 @@ router.put(
   "/me",
   wrap(async (req, res) => {
     const data = updateProfileSchema.parse(req.body);
-    const user = await prisma.user.update({
-      where: { id: req.userId },
-      data,
-    });
-    const { passwordHash, ...profile } = user;
-    res.json(profile);
+    res.json(await updateProfile(req.userId!, data));
   })
 );
 
 router.get(
   "/me/settings",
   wrap(async (req, res) => {
-    const settings = await prisma.userSettings.findUnique({
-      where: { userId: req.userId },
-    });
-    res.json(settings);
+    res.json(await getSettings(req.userId!));
   })
 );
 
@@ -73,12 +57,7 @@ router.put(
   "/me/settings",
   wrap(async (req, res) => {
     const data = updateSettingsSchema.parse(req.body);
-    const settings = await prisma.userSettings.upsert({
-      where: { userId: req.userId },
-      update: data,
-      create: { userId: req.userId!, ...data },
-    });
-    res.json(settings);
+    res.json(await updateSettings(req.userId!, data));
   })
 );
 

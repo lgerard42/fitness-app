@@ -1,7 +1,10 @@
 /**
- * Transactional seed pipeline for reference data.
+ * One-time migration script: seeds reference data from JSON files into Postgres.
  *
- * - Loads 23 JSON files in topological order
+ * After initial seeding, Postgres is the sole data source for reference data.
+ * This script is kept for re-seeding or resetting the database.
+ *
+ * - Loads JSON files in topological order
  * - Pre-validates all data
  * - Upserts inside a single transaction
  * - Deprecates stale seed-sourced rows (guarded)

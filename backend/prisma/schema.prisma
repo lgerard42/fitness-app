@@ -98,6 +98,7 @@ model Workout {
   exercises WorkoutExercise[]
 
   @@index([userId])
+  @@index([userId, startedAt])
   @@map("workouts")
 }
 
@@ -124,6 +125,7 @@ model WorkoutExercise {
   sets     WorkoutSet[]
 
   @@index([workoutId])
+  @@index([parentId])
   @@map("workout_exercises")
 }
 
@@ -194,6 +196,7 @@ model UserGoal {
   exercise ExerciseLibrary? @relation(fields: [exerciseId], references: [id], onDelete: SetNull)
 
   @@index([userId])
+  @@index([userId, createdAt])
   @@map("user_goals")
 }
 
@@ -213,6 +216,7 @@ model PersonalRecord {
 
   @@index([userId])
   @@index([exerciseId])
+  @@index([userId, exerciseId])
   @@map("personal_records")
 }
 

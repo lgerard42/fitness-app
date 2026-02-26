@@ -1,16 +1,16 @@
-import { Router, Request, Response, NextFunction } from "express";
+import { Router } from "express";
 import { z } from "zod";
-import { prisma } from "../config/db";
 import { requireAuth } from "../middleware/auth";
 import { paramId } from "../middleware/paramId";
+import { wrap } from "../middleware/asyncHandler";
+import {
+  listMeasurements,
+  createMeasurement,
+  deleteMeasurement,
+} from "../services/measurementService";
 
 const router = Router();
 router.use(requireAuth);
-
-function wrap(fn: (req: Request, res: Response) => Promise<void>) {
-  return (req: Request, res: Response, next: NextFunction) =>
-    fn(req, res).catch(next);
-}
 
 const measurementSchema = z.object({
   date: z.string(),
@@ -30,11 +30,7 @@ const measurementSchema = z.object({
 router.get(
   "/",
   wrap(async (req, res) => {
-    const measurements = await prisma.bodyMeasurement.findMany({
-      where: { userId: req.userId },
-      orderBy: { date: "desc" },
-    });
-    res.json(measurements);
+    res.json(await listMeasurements(req.userId!));
   })
 );
 
@@ -42,29 +38,14 @@ router.post(
   "/",
   wrap(async (req, res) => {
     const data = measurementSchema.parse(req.body);
-    const measurement = await prisma.bodyMeasurement.create({
-      data: {
-        userId: req.userId!,
-        ...data,
-        date: new Date(data.date),
-      },
-    });
-    res.status(201).json(measurement);
+    res.status(201).json(await createMeasurement(req.userId!, data));
   })
 );
 
 router.delete(
   "/:id",
   wrap(async (req, res) => {
-    const id = paramId(req);
-    const existing = await prisma.bodyMeasurement.findFirst({
-      where: { id, userId: req.userId },
-    });
-    if (!existing) {
-      res.status(404).json({ error: "Measurement not found" });
-      return;
-    }
-    await prisma.bodyMeasurement.delete({ where: { id } });
+    await deleteMeasurement(req.userId!, paramId(req));
     res.json({ ok: true });
   })
 );

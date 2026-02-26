@@ -1,16 +1,17 @@
-import { Router, Request, Response, NextFunction } from "express";
+import { Router } from "express";
 import { z } from "zod";
-import { prisma } from "../config/db";
 import { requireAuth } from "../middleware/auth";
 import { paramId } from "../middleware/paramId";
+import { wrap } from "../middleware/asyncHandler";
+import {
+  listGoals,
+  createGoal,
+  updateGoal,
+  deleteGoal,
+} from "../services/goalService";
 
 const router = Router();
 router.use(requireAuth);
-
-function wrap(fn: (req: Request, res: Response) => Promise<void>) {
-  return (req: Request, res: Response, next: NextFunction) =>
-    fn(req, res).catch(next);
-}
 
 const goalSchema = z.object({
   type: z.enum(["strength", "consistency"]),
@@ -23,12 +24,7 @@ const goalSchema = z.object({
 router.get(
   "/",
   wrap(async (req, res) => {
-    const goals = await prisma.userGoal.findMany({
-      where: { userId: req.userId },
-      orderBy: { createdAt: "desc" },
-      include: { exercise: { select: { id: true, name: true } } },
-    });
-    res.json(goals);
+    res.json(await listGoals(req.userId!));
   })
 );
 
@@ -36,48 +32,25 @@ router.post(
   "/",
   wrap(async (req, res) => {
     const data = goalSchema.parse(req.body);
-    const goal = await prisma.userGoal.create({
-      data: { userId: req.userId!, ...data },
-    });
-    res.status(201).json(goal);
+    res.status(201).json(await createGoal(req.userId!, data));
   })
 );
 
 router.put(
   "/:id",
   wrap(async (req, res) => {
-    const id = paramId(req);
-    const existing = await prisma.userGoal.findFirst({
-      where: { id, userId: req.userId },
-    });
-    if (!existing) {
-      res.status(404).json({ error: "Goal not found" });
-      return;
-    }
     const data = goalSchema
       .partial()
       .merge(z.object({ completed: z.boolean().optional() }))
       .parse(req.body);
-    const goal = await prisma.userGoal.update({
-      where: { id },
-      data,
-    });
-    res.json(goal);
+    res.json(await updateGoal(req.userId!, paramId(req), data));
   })
 );
 
 router.delete(
   "/:id",
   wrap(async (req, res) => {
-    const id = paramId(req);
-    const existing = await prisma.userGoal.findFirst({
-      where: { id, userId: req.userId },
-    });
-    if (!existing) {
-      res.status(404).json({ error: "Goal not found" });
-      return;
-    }
-    await prisma.userGoal.delete({ where: { id } });
+    await deleteGoal(req.userId!, paramId(req));
     res.json({ ok: true });
   })
 );

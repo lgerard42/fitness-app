@@ -12,11 +12,4 @@ export const config = {
     expiresIn: process.env.JWT_EXPIRES_IN || "15m",
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "7d",
   },
-  referenceDataSource: (process.env.REFERENCE_DATA_SOURCE || "json") as
-    | "json"
-    | "postgres",
-  tablesDir: path.resolve(
-    __dirname,
-    process.env.TABLES_DIR || "../../../src/database/tables"
-  ),
 };
