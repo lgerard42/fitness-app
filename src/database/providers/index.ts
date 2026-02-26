@@ -4,4 +4,4 @@ export type {
   VersionInfo,
 } from "./types";
 export { RemotePostgresProvider } from "./remoteProvider";
-export { createReferenceProvider, resetProvider } from "./factory";
+export { createReferenceProvider } from "./factory";

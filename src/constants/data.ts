@@ -1,9 +1,14 @@
+import type { ExerciseCategory, ExerciseLibraryItem } from '@/types/workout';
+
 // Legacy migration: equipment labels from equipment table (for migrateExercise when DB not yet loaded)
-const _equipment = require('../database/tables/equipment.json');
-export const LEGACY_EQUIPMENT_LABELS = _equipment.filter((r) => !r.is_attachment).map((r) => r.label);
+const _equipment: Array<{ label: string; is_attachment: boolean }> =
+  require('../database/tables/equipment.json');
+export const LEGACY_EQUIPMENT_LABELS: string[] = _equipment
+  .filter((r) => !r.is_attachment)
+  .map((r) => r.label);
 
 /** Generate option id: remove special chars, replace spaces with _, lowercase */
-export function toId(str) {
+export function toId(str: string | null | undefined): string {
   if (!str || typeof str !== 'string') return '';
   return str
     .replace(/[^a-zA-Z0-9\s]/g, ' ')
@@ -13,19 +18,21 @@ export function toId(str) {
     .toLowerCase();
 }
 
-// Single/Double toggle options: { id, label }
-export const SINGLE_DOUBLE_OPTIONS = [
+interface SelectOption {
+  id: string;
+  label: string;
+  sublabel?: string;
+}
+
+export const SINGLE_DOUBLE_OPTIONS: SelectOption[] = [
   { id: 'single', label: 'Single' },
   { id: 'double', label: 'Double' },
 ];
 
-// Grip Type and Grip Width options are now loaded from database via hooks
-// These are kept as empty arrays for backward compatibility - components should use hooks
-export const GRIP_TYPES = [];
-export const GRIP_WIDTHS = [];
+export const GRIP_TYPES: SelectOption[] = [];
+export const GRIP_WIDTHS: SelectOption[] = [];
 
-// Stance Type options: { id, label, sublabel? } — label = primary, sublabel = secondary line in UI
-export const STANCE_TYPES = [
+export const STANCE_TYPES: SelectOption[] = [
   { id: 'neutral_feet_forward', label: 'Neutral', sublabel: 'Feet Forward' },
   { id: 'toes_out_external_rotation', label: 'External Rotation', sublabel: 'Toes Out' },
   { id: 'toes_in_internal_rotation', label: 'Internal Rotation', sublabel: 'Toes In' },
@@ -33,8 +40,7 @@ export const STANCE_TYPES = [
   { id: 'other', label: 'Other' },
 ];
 
-// Stance Width options: { id, label }
-export const STANCE_WIDTHS = [
+export const STANCE_WIDTHS: SelectOption[] = [
   { id: 'extra_narrow', label: 'Extra Narrow' },
   { id: 'narrow', label: 'Narrow' },
   { id: 'shoulder_width', label: 'Shoulder Width' },
@@ -42,39 +48,37 @@ export const STANCE_WIDTHS = [
   { id: 'extra_wide', label: 'Extra Wide' },
 ];
 
-// Lookup by id for display - these should be built from database-loaded data in components
-// Keeping empty objects for backward compatibility
-export const GRIP_TYPES_BY_ID = {};
-export const GRIP_WIDTHS_BY_ID = {};
-export const STANCE_TYPES_BY_ID = Object.fromEntries(STANCE_TYPES.map(o => [o.id, o]));
-export const STANCE_WIDTHS_BY_ID = Object.fromEntries(STANCE_WIDTHS.map(o => [o.id, o]));
-export const SINGLE_DOUBLE_OPTIONS_BY_ID = Object.fromEntries(SINGLE_DOUBLE_OPTIONS.map(o => [o.id, o]));
+type OptionById = Record<string, SelectOption>;
+
+export const GRIP_TYPES_BY_ID: OptionById = {};
+export const GRIP_WIDTHS_BY_ID: OptionById = {};
+export const STANCE_TYPES_BY_ID: OptionById = Object.fromEntries(STANCE_TYPES.map(o => [o.id, o]));
+export const STANCE_WIDTHS_BY_ID: OptionById = Object.fromEntries(STANCE_WIDTHS.map(o => [o.id, o]));
+export const SINGLE_DOUBLE_OPTIONS_BY_ID: OptionById = Object.fromEntries(SINGLE_DOUBLE_OPTIONS.map(o => [o.id, o]));
 
 /** Build CABLE_ATTACHMENTS_BY_ID from cable attachments array (from useCableAttachments) */
-export function buildCableAttachmentsById(cableAttachments) {
+export function buildCableAttachmentsById(cableAttachments: SelectOption[] | null | undefined): OptionById {
   return Object.fromEntries((cableAttachments || []).map(o => [o.id, o]));
 }
 
-/**
- * Helper function to build GRIP_TYPES_BY_ID from database-loaded grip types
- */
-export function buildGripTypesById(gripTypes) {
+export function buildGripTypesById(gripTypes: SelectOption[]): OptionById {
   return Object.fromEntries(gripTypes.map(o => [o.id, { id: o.id, label: o.label }]));
 }
 
-/**
- * Helper function to build GRIP_WIDTHS_BY_ID from database-loaded grip widths
- */
-export function buildGripWidthsById(gripWidths) {
+export function buildGripWidthsById(gripWidths: SelectOption[]): OptionById {
   return Object.fromEntries(gripWidths.map(o => [o.id, { id: o.id, label: o.label }]));
 }
 
 /** Normalize saved value to option id (pass through if already id, else resolve legacy label). */
-export function optionIdFromLegacy(value, optionList, byId) {
+export function optionIdFromLegacy(
+  value: string | null | undefined,
+  optionList: SelectOption[],
+  byId?: OptionById,
+): string {
   if (!value) return '';
   const v = String(value);
   if (byId && byId[v]) return v;
-  
+
   const option = optionList.find(
     o => o.label === v ||
       (o.id && o.id.toLowerCase() === v.toLowerCase()) ||
@@ -84,20 +88,20 @@ export function optionIdFromLegacy(value, optionList, byId) {
   return option ? option.id : value;
 }
 
-// Id arrays for equipment mapping (values in EQUIPMENT_GRIP_STANCE_OPTIONS)
-// Using new IDs directly
+interface GripStanceConfig {
+  gripType: string[] | null;
+  gripWidth: string[] | null;
+  stanceType: string[] | null;
+  stanceWidth: string[] | null;
+}
+
 const GRIP_WIDTH_FULL_IDS = ['WIDTH_EXTRA_NARROW', 'WIDTH_NARROW', 'WIDTH_SHOULDER', 'WIDTH_WIDE', 'WIDTH_EXTRA_WIDE'];
 const STANCE_TYPE_FULL_IDS = STANCE_TYPES.map(o => o.id);
 const STANCE_WIDTH_FULL_IDS = STANCE_WIDTHS.map(o => o.id);
 const STANCE_TYPE_LEG_MACHINE_IDS = ['neutral_feet_forward', 'toes_out_external_rotation', 'other'];
 const STANCE_TYPE_TRAP_IDS = ['neutral_feet_forward', 'toes_out_external_rotation'];
 
-/**
- * Per-equipment options for Grip Type, Grip Width, Stance Type, Stance Width.
- * Values are arrays of option ids. null/undefined or empty array = field not applicable (do not show).
- */
-export const EQUIPMENT_GRIP_STANCE_OPTIONS = {
-  // Bars
+export const EQUIPMENT_GRIP_STANCE_OPTIONS: Record<string, GripStanceConfig> = {
   "Barbell": {
     gripType: ["GRIP_PRONATED", "GRIP_SUPINATED", "GRIP_ALTERNATING"],
     gripWidth: GRIP_WIDTH_FULL_IDS,
@@ -134,7 +138,6 @@ export const EQUIPMENT_GRIP_STANCE_OPTIONS = {
     stanceType: STANCE_TYPE_FULL_IDS,
     stanceWidth: STANCE_WIDTH_FULL_IDS,
   },
-  // Free-Weights
   "Dumbbell": {
     gripType: ["GRIP_PRONATED", "GRIP_SUPINATED", "GRIP_NEUTRAL", "GRIP_ALTERNATING", "GRIP_SEMI_PRONATED", "GRIP_SEMI_SUPINATED", "GRIP_ROTATING", "GRIP_OTHER"],
     gripWidth: GRIP_WIDTH_FULL_IDS,
@@ -189,7 +192,6 @@ export const EQUIPMENT_GRIP_STANCE_OPTIONS = {
     stanceType: STANCE_TYPE_FULL_IDS,
     stanceWidth: STANCE_WIDTH_FULL_IDS,
   },
-  // Machines
   "Assisted Machine": {
     gripType: ["GRIP_NEUTRAL", "GRIP_PRONATED", "GRIP_SEMI_PRONATED", "GRIP_SUPINATED", "GRIP_ALTERNATING", "GRIP_SEMI_SUPINATED", "GRIP_ROTATING"],
     gripWidth: GRIP_WIDTH_FULL_IDS,
@@ -214,14 +216,12 @@ export const EQUIPMENT_GRIP_STANCE_OPTIONS = {
     stanceType: STANCE_TYPE_LEG_MACHINE_IDS,
     stanceWidth: STANCE_WIDTH_FULL_IDS,
   },
-  // Cable
   "Cable": {
     gripType: ["GRIP_PRONATED", "GRIP_SUPINATED", "GRIP_NEUTRAL", "GRIP_ALTERNATING", "GRIP_SEMI_PRONATED", "GRIP_SEMI_SUPINATED", "GRIP_ROTATING", "GRIP_OTHER"],
     gripWidth: GRIP_WIDTH_FULL_IDS,
     stanceType: STANCE_TYPE_FULL_IDS,
     stanceWidth: STANCE_WIDTH_FULL_IDS,
   },
-  // Suspension
   "TRX / Suspension Trainer": {
     gripType: ["GRIP_NEUTRAL", "GRIP_ROTATING", "GRIP_SEMI_SUPINATED", "GRIP_ALTERNATING", "GRIP_SEMI_PRONATED", "GRIP_SUPINATED", "GRIP_PRONATED"],
     gripWidth: null,
@@ -234,7 +234,6 @@ export const EQUIPMENT_GRIP_STANCE_OPTIONS = {
     stanceType: STANCE_TYPE_FULL_IDS,
     stanceWidth: null,
   },
-  // Stability
   "Stability Ball": { gripType: null, gripWidth: null, stanceType: null, stanceWidth: null },
   "BOSU": {
     gripType: null,
@@ -249,7 +248,6 @@ export const EQUIPMENT_GRIP_STANCE_OPTIONS = {
     stanceType: STANCE_TYPE_FULL_IDS,
     stanceWidth: null,
   },
-  // Functional
   "Sled / Prowler": { gripType: null, gripWidth: null, stanceType: null, stanceWidth: null },
   "Log": { gripType: null, gripWidth: null, stanceType: null, stanceWidth: null },
   "Yoke": { gripType: null, gripWidth: null, stanceType: null, stanceWidth: null },
@@ -262,7 +260,6 @@ export const EQUIPMENT_GRIP_STANCE_OPTIONS = {
     stanceType: null,
     stanceWidth: STANCE_WIDTH_FULL_IDS,
   },
-  // Other
   "Other": {
     gripType: ["GRIP_PRONATED", "GRIP_SUPINATED", "GRIP_NEUTRAL", "GRIP_ALTERNATING", "GRIP_SEMI_PRONATED", "GRIP_SEMI_SUPINATED", "GRIP_ROTATING", "GRIP_OTHER"],
     gripWidth: null,
@@ -271,11 +268,7 @@ export const EQUIPMENT_GRIP_STANCE_OPTIONS = {
   },
 };
 
-/**
- * When Cable equipment has a Cable Attachment selected, use these options instead of base Cable.
- * Key = attachment id (uppercase from DB); value = same shape as EQUIPMENT_GRIP_STANCE_OPTIONS (arrays of ids).
- */
-export const CABLE_ATTACHMENT_GRIP_STANCE_OPTIONS = {
+export const CABLE_ATTACHMENT_GRIP_STANCE_OPTIONS: Record<string, GripStanceConfig> = {
   "ROPE": {
     gripType: ["GRIP_NEUTRAL", "GRIP_SEMI_SUPINATED", "GRIP_SEMI_PRONATED", "GRIP_ROTATING"],
     gripWidth: null,
@@ -368,16 +361,25 @@ export const CABLE_ATTACHMENT_GRIP_STANCE_OPTIONS = {
   },
 };
 
-export const HISTORY_DATA = [
+interface HistoryEntry {
+  id: number;
+  name: string;
+  date: string;
+  duration: string;
+  vol: string;
+  best: boolean;
+}
+
+export const HISTORY_DATA: HistoryEntry[] = [
   { id: 1, name: "Upper Body Power", date: "Today", duration: "45m", vol: "8,400kg", best: true },
   { id: 2, name: "Leg Hypertrophy", date: "Yesterday", duration: "1h 10m", vol: "12,500kg", best: false },
   { id: 3, name: "Push Day", date: "Mon, Oct 23", duration: "55m", vol: "9,200kg", best: false },
 ];
 
-export const EXERCISE_LIBRARY = [
-  { 
-    id: 'e1', 
-    name: 'Barbell Squat', 
+export const EXERCISE_LIBRARY: ExerciseLibraryItem[] = [
+  {
+    id: 'e1',
+    name: 'Barbell Squat',
     category: 'Lifts',
     primaryMuscles: ['Legs'],
     secondaryMuscles: ['Quads', 'Glutes'],
@@ -385,9 +387,9 @@ export const EXERCISE_LIBRARY = [
     cardioType: null,
     trainingFocus: null
   },
-  { 
-    id: 'e2', 
-    name: 'Bench Press', 
+  {
+    id: 'e2',
+    name: 'Bench Press',
     category: 'Lifts',
     primaryMuscles: ['Chest'],
     secondaryMuscles: ['Mid chest', 'Triceps'],
@@ -395,9 +397,9 @@ export const EXERCISE_LIBRARY = [
     cardioType: null,
     trainingFocus: null
   },
-  { 
-    id: 'e3', 
-    name: 'Deadlift', 
+  {
+    id: 'e3',
+    name: 'Deadlift',
     category: 'Lifts',
     primaryMuscles: ['Back', 'Legs'],
     secondaryMuscles: ['Lower back', 'Hamstrings', 'Glutes'],
@@ -405,9 +407,9 @@ export const EXERCISE_LIBRARY = [
     cardioType: null,
     trainingFocus: null
   },
-  { 
-    id: 'e4', 
-    name: 'Pull Up', 
+  {
+    id: 'e4',
+    name: 'Pull Up',
     category: 'Lifts',
     primaryMuscles: ['Back'],
     secondaryMuscles: ['Lats', 'Biceps'],
@@ -415,9 +417,9 @@ export const EXERCISE_LIBRARY = [
     cardioType: null,
     trainingFocus: null
   },
-  { 
-    id: 'e5', 
-    name: 'Dumbbell Shoulder Press', 
+  {
+    id: 'e5',
+    name: 'Dumbbell Shoulder Press',
     category: 'Lifts',
     primaryMuscles: ['Shoulders'],
     secondaryMuscles: ['Front delts', 'Triceps'],
@@ -425,9 +427,9 @@ export const EXERCISE_LIBRARY = [
     cardioType: null,
     trainingFocus: null
   },
-  { 
-    id: 'e6', 
-    name: 'Tricep Extension', 
+  {
+    id: 'e6',
+    name: 'Tricep Extension',
     category: 'Lifts',
     primaryMuscles: ['Arms'],
     secondaryMuscles: ['Triceps'],
@@ -437,19 +439,28 @@ export const EXERCISE_LIBRARY = [
   },
 ];
 
-export const migrateExercise = (ex) => {
+interface LegacyExercise {
+  category?: ExerciseCategory;
+  muscle?: string;
+  modalityTags?: string[];
+  equipment?: string;
+  weightEquipTags?: string[];
+  [key: string]: unknown;
+}
+
+export const migrateExercise = (ex: LegacyExercise): LegacyExercise => {
   if (ex.category) return ex;
-  let mappedCategory = "Lifts";
-  let mappedPrimaries = [];
-  if (["Chest", "Back", "Legs", "Shoulders", "Arms", "Core"].includes(ex.muscle)) {
-    mappedPrimaries = [ex.muscle];
+  let mappedCategory: ExerciseCategory = "Lifts";
+  let mappedPrimaries: string[] = [];
+  if (["Chest", "Back", "Legs", "Shoulders", "Arms", "Core"].includes(ex.muscle!)) {
+    mappedPrimaries = [ex.muscle!];
   } else {
     mappedCategory = "Lifts";
     mappedPrimaries = ["Other"];
   }
-  let mappedEquipTags = ex.modalityTags || []; 
+  let mappedEquipTags = ex.modalityTags || [];
   if (ex.equipment && mappedEquipTags.length === 0) {
-    const found = LEGACY_EQUIPMENT_LABELS.find(t => t.includes(ex.equipment) || ex.equipment?.includes?.(t));
+    const found = LEGACY_EQUIPMENT_LABELS.find(t => t.includes(ex.equipment!) || ex.equipment?.includes?.(t));
     if (found) mappedEquipTags = [found];
     else mappedEquipTags = ["Other"];
   }
@@ -465,14 +476,13 @@ export const migrateExercise = (ex) => {
 };
 
 /** Map legacy "Assisted Machine" to "Machine (Selectorized)" + assistedNegative (for old persisted data) */
-export const migrateAssistedMachine = (ex) => {
+export const migrateAssistedMachine = (ex: LegacyExercise): LegacyExercise => {
   const tags = ex.weightEquipTags || [];
   if (!tags.includes("Assisted Machine")) return ex;
-  // Assisted Machine is now its own equipment; keep as-is
   return ex;
 };
 
-export const formatDuration = (seconds) => {
+export const formatDuration = (seconds: number): string => {
   const hrs = Math.floor(seconds / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
   const secs = seconds % 60;

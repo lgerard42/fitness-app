@@ -9,6 +9,3 @@ export function createReferenceProvider(): ReferenceDataProvider {
   return provider;
 }
 
-export function resetProvider(): void {
-  provider = null;
-}

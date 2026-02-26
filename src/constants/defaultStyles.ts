@@ -1,19 +1,16 @@
-import { COLORS } from './colors';
-import { StyleSheet } from 'react-native';
+import { COLORS, type ColorShade } from './colors';
+import { StyleSheet, type ViewStyle, type TextStyle } from 'react-native';
 
-export const defaultSupersetColorScheme = COLORS.indigo;
+export const defaultSupersetColorScheme: ColorShade = COLORS.indigo;
 
-export const defaultHiitColorScheme = COLORS.burgundy;
+export const defaultHiitColorScheme: ColorShade = COLORS.burgundy;
 
 export const defaultPopupStyles = {
-    // Container
-    // Container sizes to content - absolutely positioned elements size to content by default
-    // Option rows use flexShrink: 0 and flexWrap: 'nowrap' to ensure content fits perfectly
     container: {
-        position: 'absolute',
+        position: 'absolute' as const,
         backgroundColor: COLORS.slate[700],
         borderRadius: 8,
-        minWidth: 200, // Minimum width to prevent collapse, container can grow to fit content
+        minWidth: 200,
         shadowColor: COLORS.slate[700],
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0.7,
@@ -24,10 +21,10 @@ export const defaultPopupStyles = {
         borderColor: COLORS.red[500],
     },
     containerLight: {
-        position: 'absolute',
+        position: 'absolute' as const,
         backgroundColor: COLORS.white,
         borderRadius: 8,
-        minWidth: 200, // Minimum width to prevent collapse, container can grow to fit content
+        minWidth: 200,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.25,
@@ -43,42 +40,40 @@ export const defaultPopupStyles = {
         elevation: 10,
     },
 
-    // Toggle rows (2+ options side by side)
     toggleRow: {
-        flexDirection: 'row',
+        flexDirection: 'row' as const,
         borderBottomWidth: 1,
         borderBottomColor: COLORS.slate[500],
-        position: 'relative',
-        flexShrink: 0, // Prevent row from shrinking
-        flexWrap: 'nowrap', // Prevent toggle options from wrapping to next line
+        position: 'relative' as const,
+        flexShrink: 0,
+        flexWrap: 'nowrap' as const,
     },
-    // Option toggle row (dark toggle style for popup options)
     optionToggleRow: {
-        flexDirection: 'row',
+        flexDirection: 'row' as const,
         padding: 4,
         margin: 0,
         borderRadius: 8,
         borderBottomWidth: 1,
         borderBottomColor: COLORS.slate[550],
-        flexShrink: 0, // Prevent row from shrinking
-        flexWrap: 'nowrap', // Prevent toggle options from wrapping to next line
+        flexShrink: 0,
+        flexWrap: 'nowrap' as const,
         opacity: 1,
     },
     optionToggleButtonsWrapper: {
-        flexDirection: 'row',
+        flexDirection: 'row' as const,
         backgroundColor: COLORS.slate[600],
         padding: 4,
         margin: 0,
         flex: 1,
-        width: '100%',
+        width: '100%' as const,
         borderRadius: 8,
         opacity: 1,
     },
     optionToggleButton: {
         flex: 1,
         paddingVertical: 8,
-        alignItems: 'center',
-        justifyContent: 'center',
+        alignItems: 'center' as const,
+        justifyContent: 'center' as const,
         borderRadius: 6,
         minHeight: 36,
     },
@@ -95,8 +90,8 @@ export const defaultPopupStyles = {
     },
     optionToggleText: {
         fontSize: 12,
-        fontWeight: 'bold',
-        flexShrink: 0, // Prevent text from shrinking
+        fontWeight: 'bold' as const,
+        flexShrink: 0,
     },
     optionToggleTextSelected: {
         color: COLORS.white,
@@ -104,7 +99,6 @@ export const defaultPopupStyles = {
     optionToggleTextUnselected: {
         color: COLORS.slate[300],
     },
-    // Warmup/Failure toggle specific colors
     optionToggleButtonSelectedWarmup: {
         backgroundColor: COLORS.orange[500],
     },
@@ -112,19 +106,19 @@ export const defaultPopupStyles = {
         backgroundColor: COLORS.red[500],
     },
     toggleLabelWrapper: {
-        position: 'absolute',
+        position: 'absolute' as const,
         top: 0,
         left: 0,
         right: 0,
-        alignItems: 'center',
-        justifyContent: 'center',
+        alignItems: 'center' as const,
+        justifyContent: 'center' as const,
         zIndex: 1,
-        pointerEvents: 'box-none',
+        pointerEvents: 'box-none' as const,
         backgroundColor: 'transparent',
     },
     toggleLabelContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
+        flexDirection: 'row' as const,
+        alignItems: 'center' as const,
         gap: 4,
         backgroundColor: COLORS.slate[700],
         padding: 2,
@@ -136,53 +130,50 @@ export const defaultPopupStyles = {
     },
     toggleLabelText: {
         fontSize: 10,
-        fontWeight: 'normal',
+        fontWeight: 'normal' as const,
         color: COLORS.slate[300],
         paddingTop: 0,
     },
     toggleOption: {
-        flexGrow: 1, // Allow to grow to fill space
-        flexShrink: 0, // Prevent toggle option from shrinking below content size
+        flexGrow: 1,
+        flexShrink: 0,
         paddingBottom: 12,
         paddingTop: 16,
         paddingHorizontal: 16,
-        alignItems: 'center',
-        justifyContent: 'center',
+        alignItems: 'center' as const,
+        justifyContent: 'center' as const,
     },
     toggleOptionBorder: {
         borderRightWidth: 1,
         borderRightColor: COLORS.slate[550],
     },
 
-    // Regular option rows
     optionRow: {
-        flexDirection: 'row',
-        alignItems: 'stretch',
+        flexDirection: 'row' as const,
+        alignItems: 'stretch' as const,
         padding: 0,
         borderBottomWidth: 1,
         borderBottomColor: COLORS.slate[550],
-        flexShrink: 0, // Prevent row from shrinking
-        flexWrap: 'nowrap', // Prevent options from wrapping to next line
+        flexShrink: 0,
+        flexWrap: 'nowrap' as const,
     },
     optionRowWithBorder: {
         borderRightWidth: 1,
         borderRightColor: COLORS.slate[600],
     },
 
-    // Individual options
     option: {
         paddingVertical: 12,
         paddingHorizontal: 16,
         borderBottomWidth: 1,
         borderBottomColor: COLORS.slate[550],
-        flexShrink: 0, // Prevent option from shrinking
+        flexShrink: 0,
     },
-    // Option inside a row container (no bottom border - row container handles it)
     optionInRow: {
         paddingVertical: 12,
         paddingHorizontal: 16,
-        borderBottomWidth: 0, // No bottom border - row container handles it
-        flexShrink: 0, // Prevent option from shrinking
+        borderBottomWidth: 0,
+        flexShrink: 0,
     },
     optionWithIcon: {
         paddingVertical: 12,
@@ -197,19 +188,18 @@ export const defaultPopupStyles = {
         borderBottomColor: COLORS.slate[550],
     },
     optionContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
+        flexDirection: 'row' as const,
+        alignItems: 'center' as const,
         gap: 8,
-        flexShrink: 0, // Prevent content from shrinking
-        flexWrap: 'nowrap', // Prevent wrapping
+        flexShrink: 0,
+        flexWrap: 'nowrap' as const,
     },
     optionFlex: {
-        flexGrow: 1, // Allow to grow to fill space
-        flexShrink: 1, // Allow to shrink, but text inside (flexShrink: 0) will prevent it from going too small
-        minWidth: 0, // Allow flex to work properly with text
+        flexGrow: 1,
+        flexShrink: 1,
+        minWidth: 0,
     },
 
-    // Icon-only options
     iconOnlyOption: {
         backgroundColor: COLORS.red[600],
         width: 50,
@@ -219,7 +209,6 @@ export const defaultPopupStyles = {
         opacity: 0.6,
     },
 
-    // Delete option (full option with text)
     optionDelete: {
         backgroundColor: COLORS.red[600],
     },
@@ -228,7 +217,6 @@ export const defaultPopupStyles = {
         opacity: 0.6,
     },
 
-    // Background colors
     optionBackground: {
         backgroundColor: COLORS.slate[700],
     },
@@ -246,44 +234,42 @@ export const defaultPopupStyles = {
         opacity: 0.6,
     },
 
-    // Text styles
     optionText: {
         fontSize: 14,
-        fontWeight: '600',
+        fontWeight: '600' as const,
         color: COLORS.white,
-        flexShrink: 0, // Prevent text from shrinking
+        flexShrink: 0,
     },
     optionTextLight: {
         fontSize: 14,
-        fontWeight: '600',
+        fontWeight: '600' as const,
         color: COLORS.slate[900],
-        flexShrink: 0, // Prevent text from shrinking
+        flexShrink: 0,
     },
     optionTextActive: {
         color: COLORS.white,
-        fontWeight: '600',
+        fontWeight: '600' as const,
     },
     optionTextInactive: {
         color: COLORS.slate[300],
     },
     toggleOptionText: {
         fontSize: 14,
-        fontWeight: '600',
+        fontWeight: '600' as const,
         color: COLORS.white,
-        flexShrink: 0, // Prevent toggle option text from shrinking
+        flexShrink: 0,
     },
     toggleOptionTextInactive: {
         color: COLORS.slate[300],
     },
     toggleOptionTextActive: {
         color: COLORS.white,
-        fontWeight: '600',
+        fontWeight: '600' as const,
     },
     optionTextDisabled: {
         opacity: 0.6,
     },
 
-    // Borders
     borderBottom: {
         borderBottomWidth: 1,
         borderBottomColor: COLORS.slate[550],
@@ -296,7 +282,6 @@ export const defaultPopupStyles = {
         borderRightColor: COLORS.slate[600],
     },
 
-    // Border radius
     borderRadius: 8,
     borderRadiusFirst: {
         borderTopLeftRadius: 8,
@@ -318,4 +303,4 @@ export const defaultPopupStyles = {
     borderRadiusLastRight: {
         borderBottomRightRadius: 8,
     },
-};
+} as const;

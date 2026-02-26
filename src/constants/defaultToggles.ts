@@ -1,8 +1,16 @@
 import { COLORS } from './colors';
-import { StyleSheet } from 'react-native';
 
-export const defaultToggleStyles = {
-    // Dark mode toggle styles (from SetRowHeadersInformation.tsx)
+type ToggleThemeStyles = {
+  container: Record<string, unknown>;
+  button: Record<string, unknown>;
+  buttonSelected: Record<string, unknown>;
+  buttonUnselected: Record<string, unknown>;
+  text: Record<string, unknown>;
+  textSelected: Record<string, unknown>;
+  textUnselected: Record<string, unknown>;
+};
+
+export const defaultToggleStyles: { dark: ToggleThemeStyles; light: ToggleThemeStyles } = {
     dark: {
         container: {
             flexDirection: 'row',
@@ -40,7 +48,6 @@ export const defaultToggleStyles = {
             color: COLORS.slate[400],
         },
     },
-    // Light mode toggle styles (from EditExercise.tsx)
     light: {
         container: {
             flexDirection: 'row',

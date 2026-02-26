@@ -1,4 +1,45 @@
-export const COLORS = {
+export type ColorShade = {
+  50: string;
+  100: string;
+  150: string;
+  200: string;
+  250: string;
+  300: string;
+  350: string;
+  400: string;
+  450: string;
+  500: string;
+  550: string;
+  600: string;
+  650: string;
+  700: string;
+  750: string;
+  800: string;
+  850: string;
+  900: string;
+};
+
+type Colors = {
+  slate: ColorShade;
+  blue: ColorShade;
+  indigo: ColorShade;
+  red: ColorShade;
+  green: ColorShade;
+  amber: ColorShade;
+  orange: ColorShade;
+  purple: ColorShade;
+  burgundy: ColorShade;
+  lightblue: ColorShade;
+  forestgreen: ColorShade;
+  gray: ColorShade;
+  teal: ColorShade;
+  beige: ColorShade;
+  white: string;
+  black: string;
+  transparent: string;
+};
+
+export const COLORS: Colors = {
   slate: {
     50: '#f8fafc',
     100: '#f1f5f9',
