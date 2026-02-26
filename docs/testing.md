@@ -12,9 +12,9 @@ This document describes how tests are organized and how to run them for each par
 | **Shared** | Jest | Same as Mobile (run from root) | `npm run test:ci` (includes shared) | ~198 |
 | **Backend** | Vitest | `backend/vitest.config.ts` | `cd backend && npm run test:ci` | 68 |
 | **Web** | Vitest + React Testing Library | `web/vitest.config.ts`, `web/vitest-setup.ts` | `cd web && npm run test:ci` | 24 |
-| **Admin** | — | — | — | 0 |
+| **Admin** | Vitest + React Testing Library | `admin/vitest.config.ts`, `admin/vitest-setup.ts` | `cd admin && npm run test:ci` | 88 |
 
-Mobile and Shared tests are run together from the **repo root**; Backend and Web are run from their own directories.
+Mobile and Shared tests are run together from the **repo root**; Backend, Web, and Admin are run from their own directories.
 
 ---
 
@@ -58,12 +58,24 @@ npm run test:ci   # single run
 - **Setup**: `web/vitest-setup.ts` (e.g. `@testing-library/jest-dom`).
 - **Coverage**: `lib/utils.ts`, UI components (e.g. Button), and any other added unit tests.
 
-### 2.4 Run Everything
+### 2.4 Admin
+
+```bash
+cd admin
+npm run test      # watch
+npm run test:ci   # single run
+```
+
+- **Scope**: `admin/src/**/*.test.{ts,tsx}`.
+- **Setup**: `admin/vitest-setup.ts` imports `@testing-library/jest-dom/vitest`.
+- **Coverage**: API client and all API modules (tables, schema, scoring, matrixConfigs), hooks (useWorkstationState, useScoringSimulation), FieldRenderer components (StringField, NumberField, BooleanField), and workstation components (DirtyBadge).
+
+### 2.5 Run Everything
 
 From repo root (example; adjust if you add a root-level script):
 
 ```bash
-npm run test:ci && cd backend && npm run test:ci && cd ../web && npm run test:ci
+npm run test:ci && cd backend && npm run test:ci && cd ../web && npm run test:ci && cd ../admin && npm run test:ci
 ```
 
 ---
@@ -87,6 +99,13 @@ npm run test:ci && cd backend && npm run test:ci && cd ../web && npm run test:ci
 - **Utils**: cn, formatDate, formatDuration, formatWeight, formatNumber, getExercisesFromItems, calculateTotalVolume, calculateStreak.
 - **UI**: Button (variants, click, disabled).
 
+### 3.4 Admin
+
+- **API client**: `request()` (success, error responses, URL building, JSON parsing fallbacks). All use mocked `fetch`.
+- **API modules**: tables (listTables, getTable, putTable, addRow, updateRow, deleteRow, syncTable, reorder, bulkUpdateMatrix), schema (getSchemas, getSchema, getRelationships, getFKRefs, validate), scoring (computeScoring, traceScoring, evaluateConstraints, runLinter, getManifest), matrixConfigs (full CRUD, validate, activate, clone, resolve, export, import, sync-deltas, deduplicate, ensure-drafts). All use mocked `request`.
+- **Hooks**: useWorkstationState (selection, baseline dirty tracking, save/error, delta overrides, dirty domains, clearAllDirty), useScoringSimulation (debounced compute, error handling, provenance chips).
+- **Components**: StringField (input/textarea, onChange), NumberField (value, step, onChange), BooleanField (toggle, onChange), DirtyBadge (visibility, count, domain labels).
+
 ---
 
 ## 4. E2E (Mobile)
@@ -108,6 +127,7 @@ E2E requires the app to be running on a device/emulator and the backend to be av
 - **Mobile/Shared**: Add `*.test.ts` or `*.test.tsx` under `src/` or `shared/`; Jest will pick them up. Use `jest.mock()` for API/AsyncStorage where needed.
 - **Backend**: Add `*.test.ts` under `backend/src/` (e.g. next to the module or in `__tests__/`). Use `vi.mock()` for Prisma (see `backend/src/test/setup.ts`).
 - **Web**: Add `*.test.ts` or `*.test.tsx` under `web/`; Vitest will pick them up. Use testing-library for components.
+- **Admin**: Add `*.test.ts` or `*.test.tsx` under `admin/src/` (e.g. next to the module in `__tests__/`). Use `vi.mock()` for the API layer or `fetch`. Use testing-library for React components.
 
 ---
 
