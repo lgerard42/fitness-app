@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { api, type TableSchema, type TableField, type FKRef } from '../api';
+import { findRootMuscleId, asFlatMuscleTargets } from '../../../shared/utils/muscleGrouping';
 import RowEditor from '../components/RowEditor';
 import ColumnSettings from '../components/ColumnSettings';
 import FilterBar, { type FilterRule } from '../components/FilterBar';
@@ -917,25 +918,20 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
 
     // Group by field if specified
     if (groupBy && schema) {
-      // Special handling for grouping by muscles on MOTIONS table
+      // Special handling for grouping by muscles on MOTIONS table (nested: primary -> secondary -> motions)
       if (groupBy === 'muscles' && key === 'motions') {
         const muscles = refData['muscles'] || [];
-        const muscleMap = new Map(muscles.map((m: Record<string, unknown>) => [String(m.id ?? ''), m]));
+        const muscleMap = new Map(muscles.map((m: Record<string, unknown>) => [String(m.id ?? ''), m as { id: string; label?: string; parent_ids?: string[] }]));
         
-        // Helper to get primary (root) muscle with highest total score from flat muscle_targets
-        const findRoot = (muscleId: string): string => {
-          const m = muscleMap.get(muscleId) as { parent_ids?: string[] } | undefined;
-          if (!m || !m.parent_ids || m.parent_ids.length === 0) return muscleId;
-          return findRoot(m.parent_ids[0]);
-        };
+        const findRoot = (muscleId: string): string =>
+          findRootMuscleId(muscleId, muscleMap);
+        
+        // Fallback: root with highest aggregated score from flat muscle_targets
         const getPrimaryMuscleForMotion = (motion: Record<string, unknown>): string | null => {
-          const targets = motion.muscle_targets as Record<string, unknown> | undefined;
-          if (!targets || typeof targets !== 'object') return null;
-          const musclesList = muscles as Array<{ id: string; parent_ids?: string[] }>;
-          if (musclesList.length === 0) return null;
+          const flat = asFlatMuscleTargets(motion.muscle_targets);
+          if (Object.keys(flat).length === 0) return null;
           const byRoot: Record<string, number> = {};
-          for (const [muscleId, score] of Object.entries(targets)) {
-            if (typeof score !== 'number') continue;
+          for (const [muscleId, score] of Object.entries(flat)) {
             const rootId = findRoot(muscleId);
             byRoot[rootId] = (byRoot[rootId] ?? 0) + score;
           }
@@ -944,100 +940,100 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
           return entries.reduce((best, cur) => (cur[1] > best[1] ? cur : best))[0];
         };
         
-        // Group motions by their primary muscle
-        const muscleGroups = new Map<string | null, Record<string, unknown>[]>();
+        const getEffectiveGroupingId = (motion: Record<string, unknown>): string | null =>
+          (motion.muscle_grouping_id != null && motion.muscle_grouping_id !== '')
+            ? String(motion.muscle_grouping_id)
+            : getPrimaryMuscleForMotion(motion);
+        
+        // Group by (rootId, effectiveId) -> motions
+        const rootToSecondaryToMotions = new Map<string, Map<string, Record<string, unknown>[]>>();
         
         result.forEach(motion => {
-          const primaryMuscleId = getPrimaryMuscleForMotion(motion);
-          if (!muscleGroups.has(primaryMuscleId)) {
-            muscleGroups.set(primaryMuscleId, []);
+          const effectiveId = getEffectiveGroupingId(motion);
+          const rootId = effectiveId ? findRoot(effectiveId) : null;
+          const r = rootId ?? '__none__';
+          if (!rootToSecondaryToMotions.has(r)) {
+            rootToSecondaryToMotions.set(r, new Map());
           }
-          muscleGroups.get(primaryMuscleId)!.push(motion);
+          const secMap = rootToSecondaryToMotions.get(r)!;
+          const s = effectiveId ?? '__none__';
+          if (!secMap.has(s)) secMap.set(s, []);
+          secMap.get(s)!.push(motion);
         });
         
-        // Sort groups by muscle label, then sort motions within each group
+        const getLabel = (id: string): string => {
+          if (id === '__none__') return 'No Primary Muscle';
+          const m = muscleMap.get(id);
+          return String(m?.label ?? m?.id ?? id ?? 'Unknown');
+        };
+        
         const grouped: Record<string, unknown>[] = [];
-        const sortedGroups = Array.from(muscleGroups.entries()).sort((a, b) => {
-          if (a[0] === null) return 1;
-          if (b[0] === null) return -1;
-          const muscleA = muscleMap.get(a[0]);
-          const muscleB = muscleMap.get(b[0]);
-          const labelA = String(muscleA?.label ?? muscleA?.id ?? a[0] ?? '');
-          const labelB = String(muscleB?.label ?? muscleB?.id ?? b[0] ?? '');
-          return labelA.localeCompare(labelB);
-        });
+        const sortedRoots = Array.from(rootToSecondaryToMotions.keys()).sort((a, b) =>
+          getLabel(a).localeCompare(getLabel(b))
+        );
         
-        sortedGroups.forEach(([muscleId, motions]) => {
-          // Add section header row for this muscle
-          const muscle = muscleId ? muscleMap.get(muscleId) : null;
-          const muscleLabel = muscleId 
-            ? String(muscle?.label ?? muscle?.id ?? muscleId ?? 'Unknown')
-            : 'No Primary Muscle';
-          grouped.push({ 
-            _isSectionHeader: true, 
-            _sectionLabel: muscleLabel,
-            _groupLevel: 0 
-          });
-          
-          // Group motions by parent_id within this muscle section
+        const addMotionRows = (
+          motions: Record<string, unknown>[],
+          baseLevel: number
+        ) => {
           const parentMotions: Record<string, unknown>[] = [];
           const childMotionsMap = new Map<string, Record<string, unknown>[]>();
-          
           motions.forEach(motion => {
             const parentId = motion.parent_id;
             if (!parentId || parentId === '' || parentId === null) {
-              // This is a parent motion
               parentMotions.push(motion);
             } else {
-              // This is a child motion
               const parentIdStr = String(parentId);
-              if (!childMotionsMap.has(parentIdStr)) {
-                childMotionsMap.set(parentIdStr, []);
-              }
+              if (!childMotionsMap.has(parentIdStr)) childMotionsMap.set(parentIdStr, []);
               childMotionsMap.get(parentIdStr)!.push(motion);
             }
           });
-          
-          // Sort parent motions
-          parentMotions.sort((a, b) => {
-            const aLabel = String(a[schema.labelField] ?? a[schema.idField] ?? '');
-            const bLabel = String(b[schema.labelField] ?? b[schema.idField] ?? '');
-            return aLabel.localeCompare(bLabel);
-          });
-          
-          // Add parent motions first (level 0), followed by their children
+          parentMotions.sort((a, b) =>
+            String(a[schema.labelField] ?? a[schema.idField] ?? '').localeCompare(String(b[schema.labelField] ?? b[schema.idField] ?? ''))
+          );
           parentMotions.forEach(parentMotion => {
-            const parentId = String(parentMotion[schema.idField] ?? '');
-            grouped.push({ ...parentMotion, _groupLevel: 0 });
-            
-            // Add children of this parent (level 1) and remove them from the map
-            const children = childMotionsMap.get(parentId) || [];
-            if (children.length > 0) {
-              children.sort((a, b) => {
-                const aLabel = String(a[schema.labelField] ?? a[schema.idField] ?? '');
-                const bLabel = String(b[schema.labelField] ?? b[schema.idField] ?? '');
-                return aLabel.localeCompare(bLabel);
-              });
-              
-              children.forEach(child => {
-                grouped.push({ ...child, _groupLevel: 1 });
-              });
-              
-              // Remove from map so they're not added again as orphans
-              childMotionsMap.delete(parentId);
-            }
+            const pid = String(parentMotion[schema.idField] ?? '');
+            grouped.push({ ...parentMotion, _groupLevel: baseLevel });
+            const children = childMotionsMap.get(pid) || [];
+            children.sort((a, b) =>
+              String(a[schema.labelField] ?? a[schema.idField] ?? '').localeCompare(String(b[schema.labelField] ?? b[schema.idField] ?? ''))
+            );
+            children.forEach(child => grouped.push({ ...child, _groupLevel: baseLevel + 1 }));
+            childMotionsMap.delete(pid);
           });
+          childMotionsMap.forEach(children => {
+            children.sort((a, b) =>
+              String(a[schema.labelField] ?? a[schema.idField] ?? '').localeCompare(String(b[schema.labelField] ?? b[schema.idField] ?? ''))
+            );
+            children.forEach(child => grouped.push({ ...child, _groupLevel: baseLevel }));
+          });
+        };
+        
+        sortedRoots.forEach(rootId => {
+          grouped.push({
+            _isSectionHeader: true,
+            _sectionLabel: getLabel(rootId),
+            _groupLevel: 0,
+          });
+          const secMap = rootToSecondaryToMotions.get(rootId)!;
+          const sortedSecondaries = Array.from(secMap.entries()).sort((a, b) =>
+            getLabel(a[0]).localeCompare(getLabel(b[0]))
+          );
+          const hasNestedSecondaries = sortedSecondaries.some(([eid]) => eid !== rootId);
           
-          // Add any orphaned child motions (parent not in this muscle group)
-          childMotionsMap.forEach((children, parentId) => {
-            children.sort((a, b) => {
-              const aLabel = String(a[schema.labelField] ?? a[schema.idField] ?? '');
-              const bLabel = String(b[schema.labelField] ?? b[schema.idField] ?? '');
-              return aLabel.localeCompare(bLabel);
-            });
-            children.forEach(child => {
-              grouped.push({ ...child, _groupLevel: 0 });
-            });
+          sortedSecondaries.forEach(([effectiveId, motions]) => {
+            if (hasNestedSecondaries && effectiveId !== rootId) {
+              // Show secondary header only when there are real sub-groups
+              grouped.push({
+                _isSectionHeader: true,
+                _sectionLabel: getLabel(effectiveId),
+                _groupLevel: 1,
+              });
+              addMotionRows(motions, 2);
+            } else {
+              // No secondary header: motions sit directly under primary
+              addMotionRows(motions, 0);
+            }
           });
         });
         
@@ -2202,9 +2198,10 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
                 const isDragged = draggedRowId === rowId;
                 const isSectionHeader = (row._isSectionHeader as boolean) || false;
                 
-                // Render section header row
+                // Render section header row (nested: _groupLevel 0 = primary, 1 = secondary)
                 if (isSectionHeader) {
                   const sectionLabel = String(row._sectionLabel ?? '');
+                  const headerLevel = (row._groupLevel as number) ?? 0;
                   return (
                     <tr 
                       key={`header-${idx}`} 
@@ -2214,6 +2211,7 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
                       <td 
                         colSpan={visibleCols.length + (key === 'muscles' ? 2 : 1)}
                         className="px-4 py-2 font-semibold text-gray-700 text-sm uppercase tracking-wider"
+                        style={{ paddingLeft: `${16 + headerLevel * 24}px` }}
                       >
                         {sectionLabel}
                       </td>

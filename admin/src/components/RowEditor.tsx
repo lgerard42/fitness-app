@@ -12,6 +12,7 @@ import MuscleTargetTree from './FieldRenderers/MuscleTargetTree';
 import ExerciseInputPermissionsField from './FieldRenderers/ExerciseInputPermissionsField';
 import MuscleHierarchyField from './FieldRenderers/MuscleHierarchyField';
 import MotionConfigTree from './FieldRenderers/MotionConfigTree';
+import MuscleGroupingDropdown from './FieldRenderers/MuscleGroupingDropdown';
 import MotionPathsField from './FieldRenderers/MotionPathsField';
 import DeltaRulesField from './FieldRenderers/DeltaRulesField';
 import UpperLowerToggle from './FieldRenderers/UpperLowerToggle';
@@ -263,6 +264,22 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
         );
 
       case 'fk':
+        // Muscle Grouping dropdown on motions: options from muscle_targets (score > 0.5) + ancestors, grouped by primary/secondary
+        if (isMotionTable && field.name === 'muscle_grouping_id') {
+          return (
+            <div key={field.name}>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Muscle Grouping
+              </label>
+              <MuscleGroupingDropdown
+                muscleTargets={(data.muscle_targets as Record<string, unknown>) || {}}
+                muscles={refData['muscles'] || []}
+                value={value != null && value !== '' ? String(value) : undefined}
+                onChange={(v) => update('muscle_grouping_id', v === '' ? null : v)}
+              />
+            </div>
+          );
+        }
         // Use MotionConfigTree for the anchor field on motion tables
         if (isMotionTable && field.name === hierarchyAnchor) {
           const fieldNames = MOTION_HIERARCHY_FIELDS[schema.key] || [];

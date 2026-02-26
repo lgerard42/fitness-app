@@ -80,7 +80,7 @@ const TABLE_COLUMNS: Record<string, string[]> = {
   cardio_types: ["id", "label", "technical_name", "common_names", "short_description", "sort_order", "icon", "is_active", "source_type"],
   training_focus: ["id", "label", "technical_name", "common_names", "short_description", "sort_order", "icon", "is_active", "source_type"],
   muscles: ["id", "label", "parent_ids", "common_names", "technical_name", "short_description", "function", "location", "triggers", "upper_lower", "sort_order", "icon", "is_active", "source_type"],
-  motions: ["id", "label", "parent_id", "upper_lower", "muscle_targets", "default_delta_configs", "common_names", "short_description", "sort_order", "icon", "is_active", "source_type"],
+  motions: ["id", "label", "parent_id", "upper_lower", "muscle_targets", "muscle_grouping_id", "default_delta_configs", "common_names", "short_description", "sort_order", "icon", "is_active", "source_type"],
   grips: ["id", "label", "parent_id", "is_dynamic", "grip_category", "rotation_path", "common_names", "delta_rules", "short_description", "sort_order", "icon", "is_active", "source_type"],
   equipment_categories: ["id", "label", "parent_id", "common_names", "short_description", "sort_order", "icon", "is_active", "source_type"],
   motion_paths: ["id", "label", "common_names", "delta_rules", "short_description", "sort_order", "icon", "is_active", "source_type"],

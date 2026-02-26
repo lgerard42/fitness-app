@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom';
 import { api, type TableSchema } from '../api';
 import toast from 'react-hot-toast';
+import { findRootMuscleId, asFlatMuscleTargets } from '../../../shared/utils/muscleGrouping';
 import MatrixV2ConfigPanel from './MatrixV2ConfigPanel';
 
 interface MotionDeltaMatrixProps {
@@ -470,79 +471,96 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  // Fallback: root with highest aggregated score from flat muscle_targets
   const getPrimaryMuscleForMotion = useCallback((motion: MotionRecord): string | null => {
-    const targets = motion.muscle_targets as Record<string, unknown> | undefined;
-    if (!targets || typeof targets !== 'object') return null;
-    const primaryMuscleIds = Object.keys(targets).filter(k => k !== '_score');
-    if (primaryMuscleIds.length === 0) return null;
-    if (primaryMuscleIds.length === 1) return primaryMuscleIds[0];
-    let maxScore = -Infinity;
-    let maxMuscleId: string | null = null;
-    primaryMuscleIds.forEach(muscleId => {
-      const muscleNode = targets[muscleId] as Record<string, unknown> | undefined;
-      if (muscleNode && typeof muscleNode === 'object') {
-        const score = typeof muscleNode._score === 'number' ? muscleNode._score : 0;
-        if (score > maxScore) { maxScore = score; maxMuscleId = muscleId; }
-      }
-    });
-    return maxMuscleId || primaryMuscleIds[0];
-  }, []);
-
-  // Group motions by muscles
-  const groupedMotions = useMemo(() => {
-    if (!Array.isArray(muscles) || muscles.length === 0) return motions.map(m => ({ ...m, _groupLevel: 0 }));
-    
+    const flat = asFlatMuscleTargets(motion.muscle_targets);
+    if (Object.keys(flat).length === 0) return null;
     const muscleMap = new Map(muscles.map((m: MuscleRecord) => [String(m.id ?? ''), m]));
-    const muscleGroups = new Map<string | null, MotionRecord[]>();
-    
+    const findRoot = (muscleId: string) => findRootMuscleId(muscleId, muscleMap);
+    const byRoot: Record<string, number> = {};
+    for (const [muscleId, score] of Object.entries(flat)) {
+      const rootId = findRoot(muscleId);
+      byRoot[rootId] = (byRoot[rootId] ?? 0) + score;
+    }
+    const entries = Object.entries(byRoot).filter(([, s]) => s > 0);
+    if (entries.length === 0) return null;
+    return entries.reduce((best, cur) => (cur[1] > best[1] ? cur : best))[0];
+  }, [muscles]);
+
+  const getEffectiveGroupingId = useCallback((motion: MotionRecord): string | null => {
+    const stored = motion.muscle_grouping_id;
+    if (stored != null && stored !== '') return String(stored);
+    return getPrimaryMuscleForMotion(motion);
+  }, [getPrimaryMuscleForMotion]);
+
+  // Group motions by muscles (nested: primary -> secondary -> motions, _groupLevel 0,1,2,3)
+  const groupedMotions = useMemo(() => {
+    if (!Array.isArray(muscles) || muscles.length === 0) return motions.map(m => ({ ...m, _groupLevel: 2 }));
+    const muscleMap = new Map(muscles.map((m: MuscleRecord) => [String(m.id ?? ''), m]));
+    const findRoot = (muscleId: string) => findRootMuscleId(muscleId, muscleMap);
+    const rootToSecondaryToMotions = new Map<string, Map<string, MotionRecord[]>>();
     motions.forEach(motion => {
-      const primaryMuscleId = getPrimaryMuscleForMotion(motion);
-      if (!muscleGroups.has(primaryMuscleId)) muscleGroups.set(primaryMuscleId, []);
-      muscleGroups.get(primaryMuscleId)!.push(motion);
+      const effectiveId = getEffectiveGroupingId(motion);
+      const rootId = effectiveId ? findRoot(effectiveId) : null;
+      const r = rootId ?? '__none__';
+      if (!rootToSecondaryToMotions.has(r)) rootToSecondaryToMotions.set(r, new Map());
+      const secMap = rootToSecondaryToMotions.get(r)!;
+      const s = effectiveId ?? '__none__';
+      if (!secMap.has(s)) secMap.set(s, []);
+      secMap.get(s)!.push(motion);
     });
-    
+    const getLabel = (id: string) => {
+      if (id === '__none__') return 'No Primary Muscle';
+      const m = muscleMap.get(id);
+      return String(m?.label ?? m?.id ?? id ?? 'Unknown');
+    };
     const grouped: (MotionRecord & { _groupLevel?: number; _isSectionHeader?: boolean; _sectionLabel?: string })[] = [];
-    const sortedGroups = Array.from(muscleGroups.entries()).sort((a, b) => {
-      if (a[0] === null) return 1;
-      if (b[0] === null) return -1;
-      const muscleA = muscleMap.get(a[0]!);
-      const muscleB = muscleMap.get(b[0]!);
-      return String(muscleA?.label ?? a[0] ?? '').localeCompare(String(muscleB?.label ?? b[0] ?? ''));
-    });
-    
-    sortedGroups.forEach(([muscleId, motionsList]) => {
-      const muscle = muscleId ? muscleMap.get(muscleId) : null;
-      const muscleLabel = muscleId ? String(muscle?.label ?? muscleId ?? 'Unknown') : 'No Primary Muscle';
-      grouped.push({ _isSectionHeader: true, _sectionLabel: muscleLabel, _groupLevel: 0 } as any);
-      
+    const sortedRoots = Array.from(rootToSecondaryToMotions.keys()).sort((a, b) => getLabel(a).localeCompare(getLabel(b)));
+    const addMotionRows = (
+      motionsList: MotionRecord[],
+      baseLevel: number
+    ) => {
       const parents: MotionRecord[] = [];
       const childMap = new Map<string, MotionRecord[]>();
-      
       motionsList.forEach(motion => {
-        if (!motion.parent_id) { parents.push(motion); }
+        if (!motion.parent_id) parents.push(motion);
         else {
           const pid = String(motion.parent_id);
           if (!childMap.has(pid)) childMap.set(pid, []);
           childMap.get(pid)!.push(motion);
         }
       });
-      
       parents.sort((a, b) => String(a.label).localeCompare(String(b.label)));
       parents.forEach(p => {
-        grouped.push({ ...p, _groupLevel: 0 });
+        grouped.push({ ...p, _groupLevel: baseLevel });
         const children = childMap.get(String(p.id)) || [];
         children.sort((a, b) => String(a.label).localeCompare(String(b.label)));
-        children.forEach(c => grouped.push({ ...c, _groupLevel: 1 }));
+        children.forEach(c => grouped.push({ ...c, _groupLevel: baseLevel + 1 }));
         childMap.delete(String(p.id));
       });
       childMap.forEach(children => {
         children.sort((a, b) => String(a.label).localeCompare(String(b.label)));
-        children.forEach(c => grouped.push({ ...c, _groupLevel: 0 }));
+        children.forEach(c => grouped.push({ ...c, _groupLevel: baseLevel }));
+      });
+    };
+    
+    sortedRoots.forEach(rootId => {
+      grouped.push({ _isSectionHeader: true, _sectionLabel: getLabel(rootId), _groupLevel: 0 } as any);
+      const secMap = rootToSecondaryToMotions.get(rootId)!;
+      const sortedSecondaries = Array.from(secMap.entries()).sort((a, b) => getLabel(a[0]).localeCompare(getLabel(b[0])));
+      const hasNestedSecondaries = sortedSecondaries.some(([eid]) => eid !== rootId);
+      
+      sortedSecondaries.forEach(([effectiveId, motionsList]) => {
+        if (hasNestedSecondaries && effectiveId !== rootId) {
+          grouped.push({ _isSectionHeader: true, _sectionLabel: getLabel(effectiveId), _groupLevel: 1 } as any);
+          addMotionRows(motionsList, 2);
+        } else {
+          addMotionRows(motionsList, 0);
+        }
       });
     });
-    
     return grouped;
-  }, [motions, muscles, getPrimaryMuscleForMotion]);
+  }, [motions, muscles, getEffectiveGroupingId]);
 
   // For a given motionId, find ALL rows across ALL tables that reference it in their delta_rules
   const getRelationshipsForMotion = useCallback((motionId: string): Record<string, DeltaRelationship[]> => {
@@ -1279,9 +1297,10 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
                   <tbody className="divide-y divide-gray-200">
                     {groupedMotions.map((motion, idx) => {
                       if ((motion as any)._isSectionHeader) {
+                        const headerLevel = (motion as any)._groupLevel ?? 0;
                         return (
                           <tr key={`header-${idx}`} className="bg-gray-100">
-                            <td colSpan={DELTA_TABLES.length + 1} className="px-2 py-1 font-semibold text-gray-900 text-xs" style={{ pointerEvents: 'none' }}>
+                            <td colSpan={DELTA_TABLES.length + 1} className="px-2 py-1 font-semibold text-gray-900 text-xs" style={{ pointerEvents: 'none', paddingLeft: `${8 + headerLevel * 20}px` }}>
                               {(motion as any)._sectionLabel}
                             </td>
                           </tr>

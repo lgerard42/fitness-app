@@ -314,6 +314,7 @@ model RefMotion {
   parentId            String?    @map("parent_id")
   upperLower          Json?      @default("[]") @map("upper_lower")
   muscleTargets       Json?      @map("muscle_targets")
+  muscleGroupingId    String?    @map("muscle_grouping_id")
   defaultDeltaConfigs Json?      @map("default_delta_configs")
   commonNames         Json?      @default("[]") @map("common_names")
   shortDescription    String?    @map("short_description")

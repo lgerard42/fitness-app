@@ -294,6 +294,7 @@ Each motion row defines:
 - canonical motion identity
 - gym-friendly naming aliases
 - absolute baseline muscle engagement (`muscle_targets`)
+- which muscle to use when grouping the motion in admin UIs (`muscle_grouping_id`)
 - default home-base modifier stack (`default_delta_configs`)
 - optional parent-child motion relationships (`parent_id`) for composable motion taxonomy inheritance / specialization
 
@@ -303,12 +304,17 @@ Each motion row defines:
 - `parent_id`
 - `upper_lower`
 - `muscle_targets`
+- `muscle_grouping_id` — optional FK to `muscles.id`; which muscle to use when grouping this motion in the MOTIONS table and Motion Delta Matrix (e.g. "Arms" or "Biceps"). Configurable via the **Muscle Grouping** dropdown in the motion side-panel; default (and backfill) is the muscle with highest score in `muscle_targets`.
 - `default_delta_configs`
 - `common_names`
 - `short_description`
 - `sort_order`
 - `icon`
 - `is_active`
+
+### Muscle grouping (display)
+
+When the admin shows motions grouped by muscle (MOTIONS table "Group by: Muscles" or Motion Delta Matrix motion list), each motion is placed under a **primary** muscle (root in the muscles hierarchy) and optionally a **secondary** (e.g. Biceps under Arms). The grouping key is `muscle_grouping_id` when set; otherwise the system falls back to the muscle with highest aggregated score in `muscle_targets` (by root). The **Muscle Grouping** dropdown in the motion side-panel offers only muscles that have score &gt; 0.5 in that motion's `muscle_targets` plus their ancestors (from `muscles.parent_ids`), so users can assign a motion to a parent group (e.g. Arms) or a specific child (e.g. Biceps). Options are grouped in the dropdown by primary → secondary → tertiary. Existing rows were backfilled so `muscle_grouping_id` defaults to the highest-scoring muscle in `muscle_targets`.
 
 ### What a motion row is **not**
 A motion row is **not**:
@@ -370,10 +376,11 @@ All JSON contracts must be import-safe and validator-safe:
 ```mermaid
 flowchart TD
     muscles["muscles<br/>(id, label, parent_ids, ...)"]
-    motions["motions<br/>(id, muscle_targets,<br/>default_delta_configs, ...)"]
+    motions["motions<br/>(id, muscle_targets, muscle_grouping_id,<br/>default_delta_configs, ...)"]
     mod["Modifier Tables<br/>(id, label, delta_rules, ...)"]
 
     motions -- "muscle_targets keys reference" --> muscles
+    motions -- "muscle_grouping_id references" --> muscles
     motions -- "parent_id self-reference" --> motions
     motions -- "default_delta_configs references" --> mod
     mod -- "delta_rules top-level keys reference" --> motions
