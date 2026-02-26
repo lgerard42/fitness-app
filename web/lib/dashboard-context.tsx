@@ -5,6 +5,8 @@ import {
   useContext,
   useState,
   useEffect,
+  useCallback,
+  useMemo,
   type ReactNode,
 } from "react";
 import type { DashboardData } from "@/types";
@@ -24,19 +26,24 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const load = () => {
+  const load = useCallback(() => {
     setIsLoading(true);
     setError(null);
     apiGetDashboard()
       .then(setData)
       .catch((err) => setError(err.message))
       .finally(() => setIsLoading(false));
-  };
+  }, []);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const value = useMemo<DashboardState>(
+    () => ({ data, isLoading, error, refresh: load }),
+    [data, isLoading, error, load],
+  );
 
   return (
-    <DashboardContext.Provider value={{ data, isLoading, error, refresh: load }}>
+    <DashboardContext.Provider value={value}>
       {children}
     </DashboardContext.Provider>
   );

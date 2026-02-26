@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import {
   Dumbbell,
   Flame,
@@ -32,6 +33,89 @@ import {
 export default function DashboardOverview() {
   const { data, isLoading } = useDashboard();
 
+  const totalVolume = useMemo(
+    () => (data ? calculateTotalVolume(data.workoutHistory) : 0),
+    [data],
+  );
+
+  const streak = useMemo(
+    () => (data ? calculateStreak(data.workoutHistory) : 0),
+    [data],
+  );
+
+  const bestPR = useMemo(
+    () =>
+      data?.personalRecords.reduce(
+        (best, pr) => (pr.weight > best.weight ? pr : best),
+        data.personalRecords[0],
+      ),
+    [data],
+  );
+
+  const activeGoals = useMemo(
+    () => (data ? data.goals.filter((g) => !g.completed).length : 0),
+    [data],
+  );
+
+  const volumeData = useMemo(() => {
+    if (!data) return [];
+    return data.workoutHistory
+      .slice()
+      .reverse()
+      .map((w) => {
+        let vol = 0;
+        const exercises = getExercisesFromItems(w.exercises);
+        for (const ex of exercises) {
+          for (const set of ex.sets) {
+            if (set.completed && !set.isWarmup) {
+              vol += (parseFloat(set.weight) || 0) * (parseInt(set.reps) || 0);
+            }
+          }
+        }
+        return {
+          date: formatDate(w.finishedAt || w.startedAt),
+          volume: vol,
+        };
+      });
+  }, [data]);
+
+  const frequencyData = useMemo(() => {
+    if (!data) return [];
+    const frequencyByWeek: Record<string, number> = {};
+    data.workoutHistory.forEach((w) => {
+      const d = new Date(w.finishedAt || w.startedAt);
+      const weekStart = new Date(d);
+      weekStart.setDate(d.getDate() - d.getDay());
+      const key = formatDate(weekStart.getTime());
+      frequencyByWeek[key] = (frequencyByWeek[key] || 0) + 1;
+    });
+    return Object.entries(frequencyByWeek)
+      .map(([week, count]) => ({ week, count }))
+      .reverse();
+  }, [data]);
+
+  const oneRmData = useMemo(() => {
+    if (!data) return [];
+    const benchStats = data.exerciseStats["bench-press"];
+    if (!benchStats) return [];
+    return benchStats.history
+      .slice()
+      .reverse()
+      .map((h) => {
+        const topSet = h.sets.reduce((best, s) => {
+          const w = parseFloat(s.weight) || 0;
+          return w > (parseFloat(best.weight) || 0) ? s : best;
+        }, h.sets[0]);
+        const weight = parseFloat(topSet.weight) || 0;
+        const reps = parseInt(topSet.reps) || 0;
+        const estimated1rm = Math.round(weight * (1 + reps / 30));
+        return {
+          date: formatDate(h.date),
+          "1RM": estimated1rm,
+        };
+      });
+  }, [data]);
+
   if (isLoading || !data) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -39,65 +123,6 @@ export default function DashboardOverview() {
       </div>
     );
   }
-
-  const totalVolume = calculateTotalVolume(data.workoutHistory);
-  const streak = calculateStreak(data.workoutHistory);
-  const bestPR = data.personalRecords.reduce(
-    (best, pr) => (pr.weight > best.weight ? pr : best),
-    data.personalRecords[0]
-  );
-  const activeGoals = data.goals.filter((g) => !g.completed).length;
-
-  const volumeData = data.workoutHistory
-    .slice()
-    .reverse()
-    .map((w) => {
-      let vol = 0;
-      const exercises = getExercisesFromItems(w.exercises);
-      for (const ex of exercises) {
-        for (const set of ex.sets) {
-          if (set.completed && !set.isWarmup) {
-            vol += (parseFloat(set.weight) || 0) * (parseInt(set.reps) || 0);
-          }
-        }
-      }
-      return {
-        date: formatDate(w.finishedAt || w.startedAt),
-        volume: vol,
-      };
-    });
-
-  const frequencyByWeek: Record<string, number> = {};
-  data.workoutHistory.forEach((w) => {
-    const d = new Date(w.finishedAt || w.startedAt);
-    const weekStart = new Date(d);
-    weekStart.setDate(d.getDate() - d.getDay());
-    const key = formatDate(weekStart.getTime());
-    frequencyByWeek[key] = (frequencyByWeek[key] || 0) + 1;
-  });
-  const frequencyData = Object.entries(frequencyByWeek)
-    .map(([week, count]) => ({ week, count }))
-    .reverse();
-
-  const benchStats = data.exerciseStats["bench-press"];
-  const oneRmData = benchStats
-    ? benchStats.history
-        .slice()
-        .reverse()
-        .map((h) => {
-          const topSet = h.sets.reduce((best, s) => {
-            const w = parseFloat(s.weight) || 0;
-            return w > (parseFloat(best.weight) || 0) ? s : best;
-          }, h.sets[0]);
-          const weight = parseFloat(topSet.weight) || 0;
-          const reps = parseInt(topSet.reps) || 0;
-          const estimated1rm = Math.round(weight * (1 + reps / 30));
-          return {
-            date: formatDate(h.date),
-            "1RM": estimated1rm,
-          };
-        })
-    : [];
 
   return (
     <div>
@@ -130,8 +155,8 @@ export default function DashboardOverview() {
         />
         <StatCard
           title="Best PR"
-          value={`${bestPR.weight} ${bestPR.weightUnit}`}
-          subtitle={bestPR.exerciseName}
+          value={bestPR ? `${bestPR.weight} ${bestPR.weightUnit}` : "—"}
+          subtitle={bestPR?.exerciseName}
           icon={<Trophy size={18} className="text-primary" />}
         />
         <StatCard
