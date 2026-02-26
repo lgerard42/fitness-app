@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ChevronDown, ChevronRight, Calendar, Trophy } from "lucide-react";
 import { useDashboard } from "@/lib/dashboard-context";
 import { formatDate, getExercisesFromItems } from "@/lib/utils";
-import type { Workout } from "@/types";
+import type { Workout, DashboardData } from "@/types";
 import Badge from "@/components/ui/Badge";
 
 export default function HistoryPage() {

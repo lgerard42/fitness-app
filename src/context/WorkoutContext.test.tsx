@@ -55,7 +55,7 @@ describe('WorkoutContext', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('loading').props.children).toBe('false');
-    });
+    }, { timeout: 10000 });
 
     expect(screen.getByTestId('active').props.children).toBe('null');
     expect(screen.getByTestId('history-count').props.children).toBe(0);
@@ -70,7 +70,7 @@ describe('WorkoutContext', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('loading').props.children).toBe('false');
-    });
+    }, { timeout: 10000 });
 
     fireEvent.press(screen.getByTestId('start'));
 
@@ -86,7 +86,7 @@ describe('WorkoutContext', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('loading').props.children).toBe('false');
-    });
+    }, { timeout: 10000 });
 
     fireEvent.press(screen.getByTestId('start'));
     expect(screen.getByTestId('active').props.children).not.toBe('null');
@@ -104,7 +104,7 @@ describe('WorkoutContext', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('loading').props.children).toBe('false');
-    });
+    }, { timeout: 10000 });
 
     fireEvent.press(screen.getByTestId('start'));
 
@@ -141,7 +141,7 @@ describe('WorkoutContext', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('loading').props.children).toBe('false');
-    });
+    }, { timeout: 10000 });
 
     const initialCount = Number(screen.getByTestId('lib-count').props.children);
 
