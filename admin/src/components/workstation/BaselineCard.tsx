@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import MuscleTargetTree from '../FieldRenderers/MuscleTargetTree';
 import type { MuscleTargets } from '../../../../shared/types';
 
@@ -21,6 +21,8 @@ export default function BaselineCard({
   onChange,
   onSave,
 }: BaselineCardProps) {
+  const [isExpanded, setIsExpanded] = useState(true);
+
   if (!muscleTargets) {
     return (
       <div className="border border-gray-200 rounded bg-white p-4">
@@ -32,6 +34,13 @@ export default function BaselineCard({
   return (
     <div className="border border-gray-200 rounded bg-white">
       <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-gray-200 bg-gray-50">
+        <button
+          type="button"
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="text-gray-500 flex-shrink-0 text-xs w-4"
+        >
+          {isExpanded ? '▼' : '▶'}
+        </button>
         <h4 className="text-[11px] font-bold text-gray-900 flex-1 truncate">
           Baseline Muscle Targets
           <span className="font-normal text-gray-500 ml-1">— {motionLabel}</span>
@@ -49,13 +58,16 @@ export default function BaselineCard({
           Save Baseline
         </button>
       </div>
-      <div className="p-1.5 max-h-[320px] overflow-y-auto">
-        <MuscleTargetTree
-          value={muscleTargets as Record<string, unknown>}
-          onChange={(v) => onChange(v as unknown as MuscleTargets)}
-          compact
-        />
-      </div>
+      {isExpanded && (
+        <div className="p-1.5 max-h-[320px] overflow-y-auto">
+          <MuscleTargetTree
+            value={muscleTargets as Record<string, unknown>}
+            onChange={(v) => onChange(v as unknown as MuscleTargets)}
+            compact
+            alwaysExpanded
+          />
+        </div>
+      )}
     </div>
   );
 }

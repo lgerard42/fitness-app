@@ -6,6 +6,8 @@ interface MuscleTargetTreeProps {
   onChange: (v: Record<string, number>) => void;
   /** When true, use smaller typography and spacing (e.g. for Baseline card in Matrix V2) */
   compact?: boolean;
+  /** When true, no collapse/expand toggles and no bullet; tree is always fully expanded (e.g. Baseline card) */
+  alwaysExpanded?: boolean;
 }
 
 interface MuscleDef {
@@ -32,7 +34,7 @@ function parsePids(m: Record<string, unknown>): string[] {
   return [];
 }
 
-export default function MuscleTargetTree({ value, onChange, compact = false }: MuscleTargetTreeProps) {
+export default function MuscleTargetTree({ value, onChange, compact = false, alwaysExpanded = false }: MuscleTargetTreeProps) {
   const [allMuscles, setAllMuscles] = useState<MuscleDef[]>([]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
@@ -190,7 +192,7 @@ export default function MuscleTargetTree({ value, onChange, compact = false }: M
   };
 
   const renderNode = (node: DisplayNode, pathKey: string) => {
-    const isExpanded = expanded.has(pathKey);
+    const isExpanded = alwaysExpanded || expanded.has(pathKey);
     const hasChildren = node.children.length > 0;
     const available = getAvailableChildren(node.id);
     const isRoot = node.depth === 0;
@@ -205,13 +207,15 @@ export default function MuscleTargetTree({ value, onChange, compact = false }: M
           ? `${isRoot ? 'px-2 py-1' : 'px-1.5 py-0.5'} gap-1.5`
           : `${isRoot ? 'px-3 py-2' : 'px-2 py-1.5'} gap-2`
         }`}>
-          {(hasChildren || available.length > 0) ? (
+          {!alwaysExpanded && (hasChildren || available.length > 0) ? (
             <button type="button" onClick={() => toggleExpanded(pathKey)}
               className={`text-gray-500 flex-shrink-0 ${compact ? 'text-[10px] w-3' : 'text-xs w-4'}`}>
               {isExpanded ? '▼' : '▶'}
             </button>
           ) : (
-            <span className={`text-gray-400 flex items-center justify-center flex-shrink-0 ${compact ? 'text-[8px] w-3' : 'text-[10px] w-4'}`}>●</span>
+            !alwaysExpanded && (
+              <span className={`text-gray-400 flex items-center justify-center flex-shrink-0 ${compact ? 'text-[8px] w-3' : 'text-[10px] w-4'}`}>●</span>
+            )
           )}
 
           <span className={`${isRoot ? 'font-medium' : ''} text-red-800 truncate ${compact ? 'text-[11px]' : isLeaf ? 'text-xs' : 'text-sm'}`}>
