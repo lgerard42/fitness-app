@@ -2,15 +2,25 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../../api';
 
 interface MuscleTargetTreeProps {
-  value: Record<string, unknown>;
-  onChange: (v: Record<string, unknown>) => void;
+  value: Record<string, number>;
+  onChange: (v: Record<string, number>) => void;
   /** When true, use smaller typography and spacing (e.g. for Baseline card in Matrix V2) */
   compact?: boolean;
 }
 
-interface MuscleOption {
+interface MuscleDef {
   id: string;
   label: string;
+  parent_ids: string[];
+}
+
+interface DisplayNode {
+  id: string;
+  label: string;
+  score: number;
+  computed: boolean;
+  children: DisplayNode[];
+  depth: number;
 }
 
 function parsePids(m: Record<string, unknown>): string[] {
@@ -22,356 +32,234 @@ function parsePids(m: Record<string, unknown>): string[] {
   return [];
 }
 
-/**
- * Specialized editor for muscle_targets JSON.
- * Renders a collapsible tree:
- *   Level 1: Primary Muscles (e.g. ARMS)
- *   Level 2: Secondary Muscles (e.g. BICEPS) filtered by parent primary
- *   Level 3: Tertiary Muscles (e.g. INNER_BICEP) filtered by parent secondary
- *   Each node has a _score number input.
- */
 export default function MuscleTargetTree({ value, onChange, compact = false }: MuscleTargetTreeProps) {
-  const [allMuscles, setAllMuscles] = useState<Record<string, unknown>[]>([]);
+  const [allMuscles, setAllMuscles] = useState<MuscleDef[]>([]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     api.getTable('muscles').then((data) => {
-      setAllMuscles((data as Record<string, unknown>[]) || []);
+      const muscles = ((data as Record<string, unknown>[]) || []).map(m => ({
+        id: m.id as string,
+        label: m.label as string,
+        parent_ids: parsePids(m),
+      }));
+      setAllMuscles(muscles);
     }).catch(console.error);
   }, []);
 
-  const muscleMap = useMemo(() => {
-    const map = new Map<string, Record<string, unknown>>();
-    for (const m of allMuscles) map.set(m.id as string, m);
-    return map;
+  const { muscleMap, childrenOf, rootIds } = useMemo(() => {
+    const mMap = new Map<string, MuscleDef>();
+    const cOf = new Map<string, string[]>();
+    const rIds: string[] = [];
+
+    for (const m of allMuscles) {
+      mMap.set(m.id, m);
+      if (m.parent_ids.length === 0) rIds.push(m.id);
+      for (const pid of m.parent_ids) {
+        if (!cOf.has(pid)) cOf.set(pid, []);
+        cOf.get(pid)!.push(m.id);
+      }
+    }
+    return { muscleMap: mMap, childrenOf: cOf, rootIds: rIds };
   }, [allMuscles]);
 
-  const primaryMuscles = useMemo<MuscleOption[]>(() =>
-    allMuscles
-      .filter(m => parsePids(m).length === 0)
-      .map(m => ({ id: m.id as string, label: m.label as string })),
-    [allMuscles]
-  );
+  const flat: Record<string, number> =
+    value && typeof value === 'object' && !Array.isArray(value)
+      ? (value as Record<string, number>)
+      : {};
 
-  const toggleExpanded = (key: string) => {
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  };
+  const displayTree = useMemo(() => {
+    const flatIds = new Set(Object.keys(flat));
+    if (flatIds.size === 0 || muscleMap.size === 0) return [];
 
-  const data = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
+    const neededIds = new Set<string>();
+    function ensureAncestors(id: string) {
+      if (neededIds.has(id)) return;
+      neededIds.add(id);
+      const m = muscleMap.get(id);
+      if (!m) return;
+      for (const pid of m.parent_ids) ensureAncestors(pid);
+    }
+    for (const id of flatIds) ensureAncestors(id);
 
-  const recomputeParentScores = (nd: Record<string, unknown>) => {
-    for (const pId of Object.keys(nd).filter(k => k !== '_score')) {
-      const pNode = nd[pId] as Record<string, unknown> | undefined;
-      if (!pNode || typeof pNode !== 'object') continue;
-      const sKeys = Object.keys(pNode).filter(k => k !== '_score');
-      for (const sId of sKeys) {
-        const sNode = pNode[sId] as Record<string, unknown> | undefined;
-        if (!sNode || typeof sNode !== 'object') continue;
-        const tKeys = Object.keys(sNode).filter(k => k !== '_score');
-        if (tKeys.length > 0) {
-          const sum = tKeys.reduce((sum, tId) => {
-            const tNode = sNode[tId] as Record<string, unknown> | undefined;
-            const score = typeof tNode?._score === 'number' && !isNaN(tNode._score) ? tNode._score : 0;
-            return sum + score;
-          }, 0);
-          sNode._score = Math.round(sum * 100) / 100;
-        }
-      }
-      if (sKeys.length > 0) {
-        const sum = sKeys.reduce((sum, sId) => {
-          const sNode = pNode[sId] as Record<string, unknown> | undefined;
-          const score = typeof sNode?._score === 'number' && !isNaN(sNode._score) ? sNode._score : 0;
-          return sum + score;
-        }, 0);
-        pNode._score = Math.round(sum * 100) / 100;
+    function buildNode(id: string, depth: number): DisplayNode | null {
+      if (!neededIds.has(id)) return null;
+      const m = muscleMap.get(id);
+      const label = m?.label ?? id;
+      const childIds = childrenOf.get(id) || [];
+      const childNodes = childIds
+        .map(cid => buildNode(cid, depth + 1))
+        .filter((n): n is DisplayNode => n !== null);
+
+      const hasChildren = childNodes.length > 0;
+      const score = hasChildren
+        ? Math.round(childNodes.reduce((s, c) => s + c.score, 0) * 100) / 100
+        : (flat[id] ?? 0);
+
+      return { id, label, score, computed: hasChildren, children: childNodes, depth };
+    }
+
+    const tree: DisplayNode[] = [];
+    for (const rid of rootIds) {
+      const node = buildNode(rid, 0);
+      if (node) tree.push(node);
+    }
+
+    const reachable = new Set<string>();
+    function collectIds(nodes: DisplayNode[]) {
+      for (const n of nodes) { reachable.add(n.id); collectIds(n.children); }
+    }
+    collectIds(tree);
+    for (const id of flatIds) {
+      if (!reachable.has(id)) {
+        const m = muscleMap.get(id);
+        tree.push({ id, label: m?.label ?? id, score: flat[id] ?? 0, computed: false, children: [], depth: 0 });
       }
     }
-  };
+    return tree;
+  }, [flat, muscleMap, childrenOf, rootIds]);
 
-  const setScore = (path: string[], score: number) => {
+  const toggleExpanded = (key: string) =>
+    setExpanded(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
+
+  const setScore = (muscleId: string, score: number) => {
     if (isNaN(score)) return;
-    const newData = JSON.parse(JSON.stringify(data));
-    let node = newData;
-    for (let i = 0; i < path.length; i++) {
-      if (!node[path[i]] || typeof node[path[i]] !== 'object') {
-        node[path[i]] = { _score: 0 };
+    onChange({ ...flat, [muscleId]: score });
+  };
+
+  const addMuscle = (id: string) => {
+    if (id in flat) return;
+    onChange({ ...flat, [id]: 0 });
+  };
+
+  const removeMuscle = (id: string) => {
+    const newFlat = { ...flat };
+    function removeRec(mid: string) {
+      delete newFlat[mid];
+      for (const kid of childrenOf.get(mid) || []) {
+        if (kid in newFlat) removeRec(kid);
       }
-      node = node[path[i]];
     }
-    if (typeof node === 'object' && node !== null) {
-      node._score = score;
-    }
-    recomputeParentScores(newData);
-    onChange(newData);
+    removeRec(id);
+    onChange(newFlat);
   };
 
-  const addPrimary = (id: string) => {
-    if (data[id]) return;
-    const newData = { ...data, [id]: { _score: 0 } };
-    onChange(newData);
-  };
+  const getAvailableChildren = (parentId: string): MuscleDef[] =>
+    (childrenOf.get(parentId) || [])
+      .map(cid => muscleMap.get(cid))
+      .filter((m): m is MuscleDef => !!m && !(m.id in flat));
 
-  const addSecondary = (primaryId: string, secondaryId: string) => {
-    const newData = JSON.parse(JSON.stringify(data));
-    if (!newData[primaryId]) newData[primaryId] = { _score: 0 };
-    if (!newData[primaryId][secondaryId]) {
-      newData[primaryId][secondaryId] = { _score: 0 };
-    }
-    recomputeParentScores(newData);
-    onChange(newData);
-  };
+  const unusedRoots = useMemo(() => {
+    const usedRoots = new Set(displayTree.map(n => n.id));
+    return rootIds
+      .map(id => muscleMap.get(id))
+      .filter((m): m is MuscleDef => !!m && !usedRoots.has(m.id));
+  }, [displayTree, rootIds, muscleMap]);
 
-  const addTertiary = (primaryId: string, secondaryId: string, tertiaryId: string) => {
-    const newData = JSON.parse(JSON.stringify(data));
-    if (!newData[primaryId]) newData[primaryId] = { _score: 0 };
-    if (!newData[primaryId][secondaryId]) newData[primaryId][secondaryId] = { _score: 0 };
-    if (!newData[primaryId][secondaryId][tertiaryId]) {
-      newData[primaryId][secondaryId][tertiaryId] = { _score: 0 };
-    }
-    recomputeParentScores(newData);
-    onChange(newData);
-  };
-
-  const removeKey = (path: string[]) => {
-    const newData = JSON.parse(JSON.stringify(data));
-    let node = newData;
-    for (let i = 0; i < path.length - 1; i++) {
-      if (!node[path[i]]) return;
-      node = node[path[i]];
-    }
-    delete node[path[path.length - 1]];
-    recomputeParentScores(newData);
-    onChange(newData);
-  };
-
-  const getSecondariesForPrimary = (primaryId: string): MuscleOption[] => {
-    return allMuscles
-      .filter((m) => parsePids(m).includes(primaryId))
-      .map((m) => ({ id: m.id as string, label: m.label as string }));
-  };
-
-  const getTertiariesForSecondary = (secondaryId: string): MuscleOption[] => {
-    return allMuscles
-      .filter((m) => parsePids(m).includes(secondaryId))
-      .map((m) => ({ id: m.id as string, label: m.label as string }));
-  };
-
-  const getLabel = (id: string): string => (muscleMap.get(id)?.label as string) || id;
-
-  const ScoreInput = ({ path, currentScore, computed }: { path: string[]; currentScore: number; computed?: boolean }) => {
-    const [localValue, setLocalValue] = useState<string>(String(currentScore));
+  const ScoreInput = ({ muscleId, currentScore, isComputed }: { muscleId: string; currentScore: number; isComputed?: boolean }) => {
+    const [localValue, setLocalValue] = useState(String(currentScore));
     const [isFocused, setIsFocused] = useState(false);
-    
+
     useEffect(() => {
-      if (!isFocused) {
-        setLocalValue(String(currentScore));
-      }
+      if (!isFocused) setLocalValue(String(currentScore));
     }, [currentScore, isFocused]);
 
     const inputSize = compact ? 'w-12 px-0.5 py-0 text-[10px]' : 'w-16 px-1 py-0.5 text-xs';
 
-    if (computed) {
+    if (isComputed) {
       return (
-        <span className={`${compact ? 'w-12 px-0.5 py-0 text-[10px]' : 'w-16 px-1 py-0.5 text-xs'} bg-gray-100 rounded text-center text-gray-500 italic inline-block`}
+        <span className={`${inputSize} bg-gray-100 rounded text-center text-gray-500 italic inline-block`}
           title="Auto-computed from children">{currentScore}</span>
       );
     }
-
     return (
       <input
-        type="number"
-        step="0.1"
-        value={localValue}
+        type="number" step="0.1" value={localValue}
         onFocus={() => setIsFocused(true)}
-        onChange={(e) => {
-          const val = e.target.value;
-          setLocalValue(val);
-        }}
-        onBlur={(e) => {
+        onChange={e => setLocalValue(e.target.value)}
+        onBlur={e => {
           setIsFocused(false);
-          const numVal = parseFloat(e.target.value);
-          if (isNaN(numVal) || e.target.value === '') {
-            setLocalValue(String(currentScore));
-          } else {
-            setScore(path, numVal);
-          }
+          const n = parseFloat(e.target.value);
+          if (isNaN(n) || e.target.value === '') setLocalValue(String(currentScore));
+          else setScore(muscleId, n);
         }}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.currentTarget.blur();
-          }
-        }}
+        onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }}
         className={`${inputSize} border rounded text-center focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
       />
     );
   };
 
-  const activePrimaries = Object.keys(data).filter((k) => k !== '_score');
-  const unusedPrimaries = primaryMuscles.filter((pm) => !activePrimaries.includes(pm.id));
+  const renderNode = (node: DisplayNode, pathKey: string) => {
+    const isExpanded = expanded.has(pathKey);
+    const hasChildren = node.children.length > 0;
+    const available = getAvailableChildren(node.id);
+    const isRoot = node.depth === 0;
+    const isLeaf = !hasChildren && available.length === 0;
+
+    const addLabel = node.depth === 0 ? '+ Add child...' : node.depth === 1 ? '+ Add child...' : '+ Add child...';
+
+    return (
+      <div key={pathKey} className={`border rounded ${isRoot ? 'bg-white' : `bg-gray-50 ${compact ? 'rounded-sm' : ''}`}`}>
+        {/* header */}
+        <div className={`flex items-center bg-red-50 ${compact
+          ? `${isRoot ? 'px-2 py-1' : 'px-1.5 py-0.5'} gap-1.5`
+          : `${isRoot ? 'px-3 py-2' : 'px-2 py-1.5'} gap-2`
+        }`}>
+          {(hasChildren || available.length > 0) ? (
+            <button type="button" onClick={() => toggleExpanded(pathKey)}
+              className={`text-gray-500 flex-shrink-0 ${compact ? 'text-[10px] w-3' : 'text-xs w-4'}`}>
+              {isExpanded ? '▼' : '▶'}
+            </button>
+          ) : (
+            <span className={`text-gray-400 flex items-center justify-center flex-shrink-0 ${compact ? 'text-[8px] w-3' : 'text-[10px] w-4'}`}>●</span>
+          )}
+
+          <span className={`${isRoot ? 'font-medium' : ''} text-red-800 truncate ${compact ? 'text-[11px]' : isLeaf ? 'text-xs' : 'text-sm'}`}>
+            {node.label}
+          </span>
+
+          <ScoreInput muscleId={node.id} currentScore={node.score} isComputed={node.computed} />
+
+          <button type="button" onClick={() => removeMuscle(node.id)}
+            className={`ml-auto text-red-400 hover:text-red-600 flex-shrink-0 ${compact ? 'text-[10px]' : 'text-xs'}`}>
+            {compact || !isRoot ? 'x' : 'Remove'}
+          </button>
+        </div>
+
+        {/* children */}
+        {isExpanded && (
+          <div className={compact
+            ? `${isRoot ? 'pl-4 pr-1.5 py-1' : 'pl-4 pr-1 py-0.5'} space-y-0.5`
+            : `${isRoot ? 'pl-6 pr-3 py-2' : 'pl-6 pr-2 py-1.5'} space-y-1${isRoot ? '.5' : ''}`
+          }>
+            {node.children.map(child => renderNode(child, `${pathKey}.${child.id}`))}
+
+            {available.length > 0 && (
+              <select
+                onChange={e => { if (e.target.value) addMuscle(e.target.value); e.target.value = ''; }}
+                className={`border border-red-300 rounded text-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 ${compact ? 'text-[10px] px-1.5 py-0.5' : 'text-xs px-2 py-1'}`}
+                defaultValue="">
+                <option value="">{addLabel}</option>
+                {available.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+              </select>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className={`border rounded bg-gray-50 ${compact ? 'p-1.5 space-y-1' : 'p-3 space-y-2'}`}>
-      {activePrimaries.map((primaryId) => {
-        const primaryNode = data[primaryId] as Record<string, unknown> | undefined;
-        if (!primaryNode || typeof primaryNode !== 'object') return null;
-        const primaryLabel = getLabel(primaryId);
-        const primaryScore = (primaryNode._score as number) ?? 0;
-        const secondaryKeys = Object.keys(primaryNode).filter((k) => k !== '_score');
-        const isExpanded = expanded.has(primaryId);
-        const availableSecondaries = getSecondariesForPrimary(primaryId).filter(
-          (s) => !secondaryKeys.includes(s.id)
-        );
+      {displayTree.map(node => renderNode(node, node.id))}
 
-        return (
-          <div key={primaryId} className="border rounded bg-white">
-            <div className={`flex items-center bg-red-50 ${compact ? 'px-2 py-1 gap-1.5' : 'px-3 py-2 gap-2'}`}>
-              <button
-                type="button"
-                onClick={() => toggleExpanded(primaryId)}
-                className={`text-gray-500 flex-shrink-0 ${compact ? 'text-[10px] w-3' : 'text-xs w-4'}`}
-              >
-                {isExpanded ? '▼' : '▶'}
-              </button>
-              <span className={`font-medium text-red-800 truncate ${compact ? 'text-[11px]' : 'text-sm'}`}>{primaryLabel}</span>
-              <span className={compact ? 'text-[10px] text-gray-400' : 'text-xs text-gray-400'}>_score:</span>
-              <ScoreInput path={[primaryId]} currentScore={primaryScore} computed={secondaryKeys.length > 0} />
-              <button
-                type="button"
-                onClick={() => removeKey([primaryId])}
-                className={`ml-auto text-red-400 hover:text-red-600 flex-shrink-0 ${compact ? 'text-[10px]' : 'text-xs'}`}
-              >
-                {compact ? '✕' : 'Remove'}
-              </button>
-            </div>
-
-            {isExpanded && (
-              <div className={compact ? 'pl-4 pr-1.5 py-1 space-y-0.5' : 'pl-6 pr-3 py-2 space-y-1.5'}>
-                {secondaryKeys.map((secondaryId) => {
-                  const secondaryNode = primaryNode[secondaryId] as Record<string, unknown> | undefined;
-                  if (!secondaryNode || typeof secondaryNode !== 'object') return null;
-                  const secondaryLabel = getLabel(secondaryId);
-                  const secondaryScore = (secondaryNode._score as number) ?? 0;
-                  const tertiaryKeys = Object.keys(secondaryNode).filter((k) => k !== '_score');
-                  const subKey = `${primaryId}.${secondaryId}`;
-                  const isSubExpanded = expanded.has(subKey);
-                  const availableTertiaries = getTertiariesForSecondary(secondaryId).filter(
-                    (t) => !tertiaryKeys.includes(t.id)
-                  );
-
-                  const hasTertiaries = tertiaryKeys.length > 0;
-
-                  return (
-                    <div key={secondaryId} className={`border rounded bg-gray-50 ${compact ? 'rounded-sm' : ''}`}>
-                      <div className={`flex items-center gap-1.5 bg-red-50 ${compact ? 'px-1.5 py-0.5' : 'px-2 py-1.5'}`}>
-                        {hasTertiaries ? (
-                          <button
-                            type="button"
-                            onClick={() => toggleExpanded(subKey)}
-                            className={`text-gray-500 flex-shrink-0 ${compact ? 'text-[10px] w-3' : 'text-xs w-4'}`}
-                          >
-                            {isSubExpanded ? '▼' : '▶'}
-                          </button>
-                        ) : (
-                          <span className={`text-gray-400 flex items-center justify-center flex-shrink-0 ${compact ? 'text-[8px] w-3' : 'text-[10px] w-4'}`}>●</span>
-                        )}
-                        <span className={`text-red-800 truncate ${compact ? 'text-[11px]' : 'text-sm'}`}>{secondaryLabel}</span>
-                        <span className={compact ? 'text-[10px] text-gray-400' : 'text-xs text-gray-400'}>_score:</span>
-                        <ScoreInput path={[primaryId, secondaryId]} currentScore={secondaryScore} computed={tertiaryKeys.length > 0} />
-                        <button
-                          type="button"
-                          onClick={() => removeKey([primaryId, secondaryId])}
-                          className={`ml-auto text-red-400 hover:text-red-600 flex-shrink-0 ${compact ? 'text-[10px]' : 'text-xs'}`}
-                        >
-                          x
-                        </button>
-                      </div>
-
-                      {hasTertiaries && isSubExpanded && (
-                        <div className={compact ? 'pl-4 pr-1 py-0.5 space-y-0.5' : 'pl-6 pr-2 py-1.5 space-y-1'}>
-                          {tertiaryKeys.map((tertiaryId) => {
-                            const tertiaryNode = secondaryNode[tertiaryId] as Record<string, unknown> | undefined;
-                            const tertiaryScore = (tertiaryNode?._score as number) ?? 0;
-                            const tertiaryLabel = getLabel(tertiaryId);
-
-                            return (
-                              <div key={tertiaryId} className={`flex items-center gap-1.5 bg-red-50 rounded ${compact ? 'px-1.5 py-0.5' : 'px-2 py-1'}`}>
-                                <span className={`text-red-800 truncate ${compact ? 'text-[10px]' : 'text-xs'}`}>{tertiaryLabel}</span>
-                                <span className={compact ? 'text-[10px] text-gray-400' : 'text-xs text-gray-400'}>_score:</span>
-                                <ScoreInput
-                                  path={[primaryId, secondaryId, tertiaryId]}
-                                  currentScore={tertiaryScore}
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => removeKey([primaryId, secondaryId, tertiaryId])}
-                                  className={`ml-auto text-red-400 hover:text-red-600 flex-shrink-0 ${compact ? 'text-[10px]' : 'text-xs'}`}
-                                >
-                                  x
-                                </button>
-                              </div>
-                            );
-                          })}
-
-                          {availableTertiaries.length > 0 && (
-                            <select
-                              onChange={(e) => {
-                                if (e.target.value) addTertiary(primaryId, secondaryId, e.target.value);
-                                e.target.value = '';
-                              }}
-                              className={`border border-red-300 rounded text-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 ${compact ? 'text-[10px] px-1.5 py-0.5' : 'text-xs px-2 py-1'}`}
-                              defaultValue=""
-                            >
-                              <option value="">+ Add tertiary...</option>
-                              {availableTertiaries.map((t) => (
-                                <option key={t.id} value={t.id}>{t.label}</option>
-                              ))}
-                            </select>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-
-                {availableSecondaries.length > 0 && (
-                  <select
-                    onChange={(e) => {
-                      if (e.target.value) addSecondary(primaryId, e.target.value);
-                      e.target.value = '';
-                    }}
-                    className={`border border-red-300 rounded text-gray-500 focus:outline-none focus:ring-1 focus:ring-red-500 ${compact ? 'text-[10px] px-1.5 py-0.5' : 'text-xs px-2 py-1'}`}
-                    defaultValue=""
-                  >
-                    <option value="">+ Add secondary...</option>
-                    {availableSecondaries.map((s) => (
-                      <option key={s.id} value={s.id}>{s.label}</option>
-                    ))}
-                  </select>
-                )}
-              </div>
-            )}
-          </div>
-        );
-      })}
-
-      {unusedPrimaries.length > 0 && (
+      {unusedRoots.length > 0 && (
         <select
-          onChange={(e) => {
-            if (e.target.value) addPrimary(e.target.value);
-            e.target.value = '';
-          }}
+          onChange={e => { if (e.target.value) addMuscle(e.target.value); e.target.value = ''; }}
           className={`border border-red-300 rounded text-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 ${compact ? 'text-[10px] px-1.5 py-0.5' : 'text-sm px-2 py-1.5'}`}
-          defaultValue=""
-        >
+          defaultValue="">
           <option value="">+ Add primary muscle...</option>
-          {unusedPrimaries.map((pm) => (
-            <option key={pm.id} value={pm.id}>{pm.label}</option>
-          ))}
+          {unusedRoots.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
         </select>
       )}
     </div>

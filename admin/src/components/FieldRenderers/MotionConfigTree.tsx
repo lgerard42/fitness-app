@@ -23,79 +23,110 @@ interface MotionRecord {
 
 interface MuscleOption { id: string; label: string; }
 
+interface FlatTreeNode {
+  id: string;
+  label: string;
+  score: number;
+  computed: boolean;
+  children: FlatTreeNode[];
+}
+
 function parsePids(m: Record<string, unknown>): string[] {
   const raw = m.parent_ids;
   if (Array.isArray(raw)) return raw as string[];
   return [];
 }
 
-function getMuscleLabelById(allMuscles: Record<string, unknown>[], id: string): string {
-  return (allMuscles.find(m => m.id === id)?.label as string) || id;
+function asFlat(v: unknown): Record<string, number> {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return {};
+  const result: Record<string, number> = {};
+  for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+    if (typeof val === 'number') result[k] = val;
+  }
+  return result;
+}
+
+function buildFlatTree(
+  flat: Record<string, number>,
+  allMuscles: Record<string, unknown>[]
+): FlatTreeNode[] {
+  if (Object.keys(flat).length === 0 || allMuscles.length === 0) return [];
+
+  const muscleMap = new Map<string, Record<string, unknown>>();
+  const childrenOf = new Map<string, string[]>();
+  const rootIds: string[] = [];
+
+  for (const m of allMuscles) {
+    const id = m.id as string;
+    muscleMap.set(id, m);
+    const pids = parsePids(m);
+    if (pids.length === 0) rootIds.push(id);
+    for (const pid of pids) {
+      if (!childrenOf.has(pid)) childrenOf.set(pid, []);
+      childrenOf.get(pid)!.push(id);
+    }
+  }
+
+  const flatIds = new Set(Object.keys(flat));
+  const neededIds = new Set<string>();
+  function ensureAncestors(id: string) {
+    if (neededIds.has(id)) return;
+    neededIds.add(id);
+    const m = muscleMap.get(id);
+    if (!m) return;
+    for (const pid of parsePids(m)) ensureAncestors(pid);
+  }
+  for (const id of flatIds) ensureAncestors(id);
+
+  function buildNode(id: string): FlatTreeNode | null {
+    if (!neededIds.has(id)) return null;
+    const m = muscleMap.get(id);
+    const label = m ? (m.label as string) : id;
+    const kids = (childrenOf.get(id) || [])
+      .map(cid => buildNode(cid))
+      .filter((n): n is FlatTreeNode => n !== null);
+    const hasKids = kids.length > 0;
+    const score = hasKids
+      ? Math.round(kids.reduce((s, c) => s + c.score, 0) * 100) / 100
+      : (flat[id] ?? 0);
+    return { id, label, score, computed: hasKids, children: kids };
+  }
+
+  const tree: FlatTreeNode[] = [];
+  for (const rid of rootIds) { const n = buildNode(rid); if (n) tree.push(n); }
+  const reachable = new Set<string>();
+  (function collect(nodes: FlatTreeNode[]) { for (const n of nodes) { reachable.add(n.id); collect(n.children); } })(tree);
+  for (const id of flatIds) {
+    if (!reachable.has(id)) {
+      const m = muscleMap.get(id);
+      tree.push({ id, label: m ? (m.label as string) : id, score: flat[id] ?? 0, computed: false, children: [] });
+    }
+  }
+  return tree;
 }
 
 function collectAllScores(
   data: Record<string, unknown>,
   allMuscles: Record<string, unknown>[]
 ): string {
+  const flat = asFlat(data);
+  const tree = buildFlatTree(flat, allMuscles);
+  if (tree.length === 0) return 'none';
   const lines: string[] = [];
-  const pKeys = Object.keys(data).filter(k => k !== '_score');
-
-  for (let pIdx = 0; pIdx < pKeys.length; pIdx++) {
-    const pId = pKeys[pIdx];
-    const pNode = data[pId] as Record<string, unknown> | undefined;
-    if (!pNode || typeof pNode !== 'object') continue;
-    const pLabel = getMuscleLabelById(allMuscles, pId);
-    const pScore = typeof pNode._score === 'number' ? pNode._score : 0;
-    const sKeys = Object.keys(pNode).filter(k => k !== '_score');
-    const isLastPrimary = pIdx === pKeys.length - 1;
-
-    lines.push(`${isLastPrimary ? '└' : '├'}─ ${pLabel}: ${pScore}`);
-    for (let sIdx = 0; sIdx < sKeys.length; sIdx++) {
-      const sId = sKeys[sIdx];
-      const sNode = pNode[sId] as Record<string, unknown> | undefined;
-      if (!sNode || typeof sNode !== 'object') continue;
-      const sLabel = getMuscleLabelById(allMuscles, sId);
-      const sScore = typeof sNode._score === 'number' ? sNode._score : 0;
-      const tKeys = Object.keys(sNode).filter(k => k !== '_score');
-      const isLastSecondary = sIdx === sKeys.length - 1;
-
-      let secondaryPrefix: string;
-      if (isLastPrimary) {
-        secondaryPrefix = isLastSecondary ? '   └' : '   ├';
-      } else {
-        secondaryPrefix = isLastSecondary ? '│  └' : '│  ├';
-      }
-      lines.push(`${secondaryPrefix}─ ${sLabel}: ${sScore}`);
-
-      for (let tIdx = 0; tIdx < tKeys.length; tIdx++) {
-        const tId = tKeys[tIdx];
-        const tNode = sNode[tId] as Record<string, unknown> | undefined;
-        const tLabel = getMuscleLabelById(allMuscles, tId);
-        const tScore = typeof tNode?._score === 'number' ? tNode._score : 0;
-        const isLastTertiary = tIdx === tKeys.length - 1;
-
-        let tertiaryPrefix: string;
-        if (isLastPrimary) {
-          tertiaryPrefix = isLastSecondary
-            ? (isLastTertiary ? '      └' : '      ├')
-            : (isLastTertiary ? '   │  └' : '   │  ├');
-        } else {
-          tertiaryPrefix = isLastSecondary
-            ? (isLastTertiary ? '│     └' : '│     ├')
-            : (isLastTertiary ? '│  │  └' : '│  │  ├');
-        }
-        lines.push(`${tertiaryPrefix}─ ${tLabel}: ${tScore}`);
-      }
-    }
+  function fmt(node: FlatTreeNode, prefix: string, isLast: boolean) {
+    lines.push(`${prefix}${isLast ? '└' : '├'}─ ${node.label}: ${node.score}`);
+    const cp = prefix + (isLast ? '   ' : '│  ');
+    node.children.forEach((c, i) => fmt(c, cp, i === node.children.length - 1));
   }
-  return lines.length > 0 ? lines.join('\n') : 'none';
+  tree.forEach((n, i) => fmt(n, '', i === tree.length - 1));
+  return lines.join('\n');
 }
 
 function MuscleTargetsSubtree({
   targets,
   onChange,
   readOnly,
-  depth,
+  depth: _depth,
   expanded,
   toggleExpanded,
   allMuscles,
@@ -110,180 +141,85 @@ function MuscleTargetsSubtree({
   allMuscles: Record<string, unknown>[];
   variationTargets?: Record<string, unknown>;
 }) {
-  const data = targets && typeof targets === 'object' && !Array.isArray(targets) ? targets : {};
+  const flat = asFlat(targets);
+  const varFlat = variationTargets ? asFlat(variationTargets) : null;
 
-  // Helper to get score from tree (for comparing parent vs variation)
-  const getScoreFromTree = (id: string, tree: Record<string, unknown>): number | null => {
-    if (!tree || typeof tree !== 'object') return null;
-    for (const [pId, pVal] of Object.entries(tree)) {
-      if (pId === '_score') continue;
-      const pNode = pVal as Record<string, unknown>;
-      if (!pNode || typeof pNode !== 'object') continue;
-      if (pId === id) return typeof pNode._score === 'number' ? pNode._score : 0;
-      for (const [sId, sVal] of Object.entries(pNode)) {
-        if (sId === '_score') continue;
-        const sNode = sVal as Record<string, unknown>;
-        if (!sNode || typeof sNode !== 'object') continue;
-        if (sId === id) return typeof sNode._score === 'number' ? sNode._score : 0;
-        for (const [tId, tVal] of Object.entries(sNode)) {
-          if (tId === '_score') continue;
-          const tNode = tVal as Record<string, unknown>;
-          if (tId === id && tNode && typeof tNode === 'object') {
-            return typeof (tNode as Record<string, unknown>)._score === 'number'
-              ? (tNode as Record<string, unknown>)._score as number : 0;
-          }
-        }
+  const { muscleMap, childrenOf, rootIds } = useMemo(() => {
+    const mMap = new Map<string, Record<string, unknown>>();
+    const cOf = new Map<string, string[]>();
+    const rIds: string[] = [];
+    for (const m of allMuscles) {
+      const id = m.id as string;
+      mMap.set(id, m);
+      const pids = parsePids(m);
+      if (pids.length === 0) rIds.push(id);
+      for (const pid of pids) {
+        if (!cOf.has(pid)) cOf.set(pid, []);
+        cOf.get(pid)!.push(id);
       }
     }
-    return null;
-  };
+    return { muscleMap: mMap, childrenOf: cOf, rootIds: rIds };
+  }, [allMuscles]);
 
-  // Build merged tree for read-only parent scores (to show muscles from variation that aren't in parent)
-  const mergedTree = useMemo(() => {
-    if (!readOnly || !variationTargets || typeof variationTargets !== 'object') return data;
-    const base = JSON.parse(JSON.stringify(data));
-    const variation = variationTargets && typeof variationTargets === 'object' ? variationTargets : {};
-    
-    // Merge variation tree into base, adding missing muscles
-    const mergeTree = (varNode: Record<string, unknown>, baseNode: Record<string, unknown>) => {
-      for (const [key, val] of Object.entries(varNode)) {
-        if (key === '_score') continue;
-        if (!baseNode[key]) {
-          baseNode[key] = { _score: 0 };
-        }
-        const childNode = val as Record<string, unknown>;
-        if (childNode && typeof childNode === 'object') {
-          mergeTree(childNode, baseNode[key] as Record<string, unknown>);
-        }
-      }
-    };
+  const displayFlat = useMemo(() => {
+    if (!readOnly || !varFlat) return flat;
+    const merged = { ...flat };
+    for (const id of Object.keys(varFlat)) {
+      if (!(id in merged)) merged[id] = 0;
+    }
+    return merged;
+  }, [flat, varFlat, readOnly]);
 
-    mergeTree(variation, base);
-    return base;
-  }, [data, readOnly, variationTargets]);
-
-  const displayData = readOnly && variationTargets ? mergedTree : data;
-
-  const primaryMuscles = useMemo<MuscleOption[]>(() =>
-    allMuscles
-      .filter(m => parsePids(m).length === 0)
-      .map(m => ({ id: m.id as string, label: m.label as string })),
-    [allMuscles]
+  const displayTree = useMemo(() =>
+    buildFlatTree(displayFlat, allMuscles),
+    [displayFlat, allMuscles]
   );
 
-  const recomputeParentScores = (nd: Record<string, unknown>) => {
-    for (const pId of Object.keys(nd).filter(k => k !== '_score')) {
-      const pNode = nd[pId] as Record<string, unknown> | undefined;
-      if (!pNode || typeof pNode !== 'object') continue;
-      const sKeys = Object.keys(pNode).filter(k => k !== '_score');
-      for (const sId of sKeys) {
-        const sNode = pNode[sId] as Record<string, unknown> | undefined;
-        if (!sNode || typeof sNode !== 'object') continue;
-        const tKeys = Object.keys(sNode).filter(k => k !== '_score');
-        if (tKeys.length > 0) {
-          const sum = tKeys.reduce((s, tId) => {
-            const tNode = sNode[tId] as Record<string, unknown> | undefined;
-            const score = typeof tNode?._score === 'number' && !isNaN(tNode._score) ? tNode._score : 0;
-            return s + score;
-          }, 0);
-          sNode._score = Math.round(sum * 100) / 100;
-        }
-      }
-      if (sKeys.length > 0) {
-        const sum = sKeys.reduce((s, sId) => {
-          const sNode = pNode[sId] as Record<string, unknown> | undefined;
-          const score = typeof sNode?._score === 'number' && !isNaN(sNode._score) ? sNode._score : 0;
-          return s + score;
-        }, 0);
-        pNode._score = Math.round(sum * 100) / 100;
-      }
+  const setScore = (muscleId: string, score: number) => {
+    if (readOnly || !onChange || isNaN(score)) return;
+    onChange({ ...flat, [muscleId]: score });
+  };
+
+  const removeMuscle = (id: string) => {
+    if (readOnly || !onChange) return;
+    const nf = { ...flat };
+    function removeRec(mid: string) {
+      delete nf[mid];
+      for (const kid of childrenOf.get(mid) || []) { if (kid in nf) removeRec(kid); }
     }
+    removeRec(id);
+    onChange(nf);
   };
 
-  const setScore = (path: string[], score: number) => {
-    if (readOnly || !onChange) return;
-    if (isNaN(score)) return;
-    const nd = JSON.parse(JSON.stringify(data));
-    let node = nd;
-    for (let i = 0; i < path.length; i++) {
-      if (!node[path[i]] || typeof node[path[i]] !== 'object') {
-        node[path[i]] = { _score: 0 };
-      }
-      node = node[path[i]];
-    }
-    if (typeof node === 'object' && node !== null) {
-      node._score = score;
-    }
-    recomputeParentScores(nd);
-    onChange(nd);
+  const addMuscle = (id: string) => {
+    if (readOnly || !onChange || id in flat) return;
+    onChange({ ...flat, [id]: 0 });
   };
 
-  const removeKey = (path: string[]) => {
-    if (readOnly || !onChange) return;
-    const nd = JSON.parse(JSON.stringify(data));
-    let node = nd;
-    for (let i = 0; i < path.length - 1; i++) { if (!node[path[i]]) return; node = node[path[i]]; }
-    delete node[path[path.length - 1]];
-    recomputeParentScores(nd);
-    onChange(nd);
-  };
-
-  const addPrimary = (id: string) => {
-    if (readOnly || !onChange || data[id]) return;
-    const nd = { ...JSON.parse(JSON.stringify(data)), [id]: { _score: 0 } };
-    onChange(nd);
-  };
-
-  const addSecondary = (pId: string, sId: string) => {
-    if (readOnly || !onChange) return;
-    const nd = JSON.parse(JSON.stringify(data));
-    if (!nd[pId]) nd[pId] = { _score: 0 };
-    if (!nd[pId][sId]) nd[pId][sId] = { _score: 0 };
-    recomputeParentScores(nd);
-    onChange(nd);
-  };
-
-  const addTertiary = (pId: string, sId: string, tId: string) => {
-    if (readOnly || !onChange) return;
-    const nd = JSON.parse(JSON.stringify(data));
-    if (!nd[pId]) nd[pId] = { _score: 0 };
-    if (!nd[pId][sId]) nd[pId][sId] = { _score: 0 };
-    if (!nd[pId][sId][tId]) nd[pId][sId][tId] = { _score: 0 };
-    recomputeParentScores(nd);
-    onChange(nd);
-  };
-
-  const getSecondariesFor = (pId: string): MuscleOption[] =>
-    allMuscles
-      .filter(m => parsePids(m).includes(pId))
+  const getAvailableChildren = (parentId: string): MuscleOption[] =>
+    (childrenOf.get(parentId) || [])
+      .map(cid => muscleMap.get(cid))
+      .filter((m): m is Record<string, unknown> => !!m && !(m.id as string in flat))
       .map(m => ({ id: m.id as string, label: m.label as string }));
 
-  const getTertiariesFor = (sId: string): MuscleOption[] =>
-    allMuscles
-      .filter(m => parsePids(m).includes(sId))
+  const unusedRoots = useMemo(() => {
+    const used = new Set(displayTree.map(n => n.id));
+    return rootIds
+      .map(id => muscleMap.get(id))
+      .filter((m): m is Record<string, unknown> => !!m && !used.has(m.id as string))
       .map(m => ({ id: m.id as string, label: m.label as string }));
+  }, [displayTree, rootIds, muscleMap]);
 
-  const prefix = `mt-d${depth}`;
-  const activePrimariesDisplay = Object.keys(displayData).filter(k => k !== '_score');
-  const unusedPrimariesDisplay = primaryMuscles.filter(pm => !activePrimariesDisplay.includes(pm.id));
-  const availSec = (pId: string) => getSecondariesFor(pId).filter(s => {
-    const pNode = displayData[pId] as Record<string, unknown> | undefined;
-    return pNode && typeof pNode === 'object' && !Object.keys(pNode).filter(k => k !== '_score').includes(s.id);
-  });
-
-  const ScoreInput = ({ path, score, computed, muscleId }: { path: string[]; score: number; computed?: boolean; muscleId: string }) => {
-    const [localValue, setLocalValue] = useState<string>(String(score));
+  const ScoreInput = ({ muscleId, currentScore, isComputed }: { muscleId: string; currentScore: number; isComputed?: boolean }) => {
+    const [localValue, setLocalValue] = useState(String(currentScore));
     const [isFocused, setIsFocused] = useState(false);
 
-    useEffect(() => {
-      if (!isFocused) setLocalValue(String(score));
-    }, [score, isFocused]);
+    useEffect(() => { if (!isFocused) setLocalValue(String(currentScore)); }, [currentScore, isFocused]);
 
-    if (readOnly || computed) {
-      // For read-only parent scores with variation comparison
-      if (readOnly && variationTargets && !computed) {
-        const baseScore = getScoreFromTree(muscleId, targets && typeof targets === 'object' ? targets : {});
-        const variationScore = getScoreFromTree(muscleId, variationTargets && typeof variationTargets === 'object' ? variationTargets : {});
+    if (readOnly || isComputed) {
+      if (readOnly && varFlat && !isComputed) {
+        const baseScore = muscleId in flat ? flat[muscleId] : null;
+        const variationScore = muscleId in (varFlat ?? {}) ? (varFlat ?? {})[muscleId] : null;
         const isNew = baseScore === null && variationScore !== null;
         const isChanged = baseScore !== null && variationScore !== null && baseScore !== variationScore;
 
@@ -302,27 +238,24 @@ function MuscleTargetsSubtree({
               <span className={sp.scoreInput.changed}>{variationScore}</span>
             </>
           );
-        } else {
-          return <span className={sp.scoreInput.readOnly}>{baseScore ?? score}</span>;
         }
+        return <span className={sp.scoreInput.readOnly}>{baseScore ?? currentScore}</span>;
       }
-
       return (
-        <span className={computed ? sp.scoreInput.computed : sp.scoreInput.readOnly}
-          title={computed ? 'Auto-computed from children' : undefined}>{score}</span>
+        <span className={isComputed ? sp.scoreInput.computed : sp.scoreInput.readOnly}
+          title={isComputed ? 'Auto-computed from children' : undefined}>{currentScore}</span>
       );
     }
 
     return (
-      <input
-        type="number" step="0.1" value={localValue}
+      <input type="number" step="0.1" value={localValue}
         onFocus={() => setIsFocused(true)}
         onChange={e => setLocalValue(e.target.value)}
         onBlur={e => {
           setIsFocused(false);
-          const numVal = parseFloat(e.target.value);
-          if (isNaN(numVal) || e.target.value === '') setLocalValue(String(score));
-          else setScore(path, numVal);
+          const n = parseFloat(e.target.value);
+          if (isNaN(n) || e.target.value === '') setLocalValue(String(currentScore));
+          else setScore(muscleId, n);
         }}
         onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }}
         className={sp.scoreInput.editable} />
@@ -347,89 +280,48 @@ function MuscleTargetsSubtree({
     nestTertiaries: sp.deltaRules.treeNestTertiaries,
   };
 
+  const renderNode = (node: FlatTreeNode, pathKey: string, depth: number) => {
+    const available = getAvailableChildren(node.id);
+    const hasKids = node.children.length > 0;
+
+    const rowStyle = depth === 0 ? treeStyles.rowPrimary : depth === 1 ? treeStyles.rowSecondary : treeStyles.rowTertiary;
+    const labelStyle = depth === 0 ? sp.treeRow.primaryLabel : depth === 1 ? sp.treeRow.secondaryLabel : sp.treeRow.tertiaryLabel;
+    const wrapperStyle = depth === 0 ? treeStyles.item : treeStyles.itemFlat;
+    const nestStyle = depth === 0 ? treeStyles.nestSecondaries : treeStyles.nestTertiaries;
+
+    return (
+      <div key={pathKey} className={wrapperStyle}>
+        <div className={rowStyle}>
+          <span className={labelStyle}>{node.label}</span>
+          <ScoreInput muscleId={node.id} currentScore={node.score} isComputed={node.computed} />
+          {!readOnly && (
+            <button type="button" onClick={() => removeMuscle(node.id)} className={sp.removeBtn.small}>×</button>
+          )}
+        </div>
+        {(hasKids || (!readOnly && available.length > 0)) && (
+          <div className={nestStyle}>
+            {node.children.map(child => renderNode(child, `${pathKey}.${child.id}`, depth + 1))}
+            {!readOnly && available.length > 0 && (
+              <select onChange={e => { if (e.target.value) addMuscle(e.target.value); e.target.value = ''; }}
+                className={sp.deltaRules.treeAddDropdown} defaultValue="">
+                <option value="">+ child...</option>
+                {available.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+              </select>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className={sp.deltaRules.treeContainer}>
-      {activePrimariesDisplay.map(pId => {
-        const pNode = displayData[pId] as Record<string, unknown> | undefined;
-        if (!pNode || typeof pNode !== 'object') return null;
-        const pLabel = getMuscleLabelById(allMuscles, pId);
-        const pScore = (pNode._score as number) ?? 0;
-        const sKeys = Object.keys(pNode).filter(k => k !== '_score');
-        const availSec = getSecondariesFor(pId).filter(s => !sKeys.includes(s.id));
-        const pIsComputed = sKeys.length > 0;
-
-        return (
-          <div key={pId} className={treeStyles.item}>
-            <div className={treeStyles.rowPrimary}>
-              <span className={sp.treeRow.primaryLabel}>{pLabel}</span>
-              <ScoreInput path={[pId]} score={pScore} computed={pIsComputed} muscleId={pId} />
-              {!readOnly && (
-                <button type="button" onClick={() => removeKey([pId])} className={sp.removeBtn.small}>×</button>
-              )}
-            </div>
-            <div className={treeStyles.nestSecondaries}>
-              {sKeys.map(sId => {
-                const sNode = pNode[sId] as Record<string, unknown> | undefined;
-                if (!sNode || typeof sNode !== 'object') return null;
-                const sLabel = getMuscleLabelById(allMuscles, sId);
-                const sScore = (sNode._score as number) ?? 0;
-                const tKeys = Object.keys(sNode).filter(k => k !== '_score');
-                const availTer = getTertiariesFor(sId).filter(t => !tKeys.includes(t.id));
-                const sIsComputed = tKeys.length > 0;
-
-                return (
-                  <div key={sId} className={treeStyles.itemFlat}>
-                    <div className={treeStyles.rowSecondary}>
-                      <span className={sp.treeRow.secondaryLabel}>{sLabel}</span>
-                      <ScoreInput path={[pId, sId]} score={sScore} computed={sIsComputed} muscleId={sId} />
-                      {!readOnly && (
-                        <button type="button" onClick={() => removeKey([pId, sId])} className={sp.removeBtn.small}>×</button>
-                      )}
-                    </div>
-                    {(tKeys.length > 0 || availTer.length > 0) && (
-                      <div className={treeStyles.nestTertiaries}>
-                        {tKeys.map(tId => {
-                          const tNode = sNode[tId] as Record<string, unknown> | undefined;
-                          const tScore = (tNode?._score as number) ?? 0;
-                          const tLabel = getMuscleLabelById(allMuscles, tId);
-                          return (
-                            <div key={tId} className={treeStyles.rowTertiary}>
-                              <span className={sp.treeRow.tertiaryLabel}>{tLabel}</span>
-                              <ScoreInput path={[pId, sId, tId]} score={tScore} muscleId={tId} />
-                              {!readOnly && (
-                                <button type="button" onClick={() => removeKey([pId, sId, tId])} className={sp.removeBtn.small}>×</button>
-                              )}
-                            </div>
-                          );
-                        })}
-                        {!readOnly && availTer.length > 0 && (
-                          <select onChange={e => { if (e.target.value) addTertiary(pId, sId, e.target.value); e.target.value = ''; }}
-                            className={sp.deltaRules.treeAddDropdown} defaultValue="">
-                            <option value="">+ tertiary...</option>
-                            {availTer.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
-                          </select>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-              {!readOnly && availSec.length > 0 && (
-                <select onChange={e => { if (e.target.value) addSecondary(pId, e.target.value); e.target.value = ''; }}
-                  className={sp.deltaRules.treeAddDropdown} defaultValue="">
-                  <option value="">+ secondary...</option>
-                  {availSec.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
-                </select>
-              )}
-            </div>
-          </div>
-        );
-      })}
-      {!readOnly && unusedPrimariesDisplay.length > 0 && (
-        <select onChange={e => { if (e.target.value) addPrimary(e.target.value); e.target.value = ''; }}
+      {displayTree.map(node => renderNode(node, node.id, 0))}
+      {!readOnly && unusedRoots.length > 0 && (
+        <select onChange={e => { if (e.target.value) addMuscle(e.target.value); e.target.value = ''; }}
           className={sp.deltaRules.treeAddDropdown} defaultValue="">
           <option value="">+ muscle group...</option>
-          {unusedPrimariesDisplay.map(pm => <option key={pm.id} value={pm.id}>{pm.label}</option>)}
+          {unusedRoots.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
         </select>
       )}
     </div>
@@ -446,8 +338,7 @@ function MuscleTargetsToggle({
   toggle: (key: string) => void;
 }) {
   const isExp = expanded.has(mtKey);
-  const data = targets && typeof targets === 'object' && !Array.isArray(targets) ? targets : {};
-  const tooltipText = collectAllScores(data, allMuscles);
+  const tooltipText = collectAllScores(targets, allMuscles);
   const [showTooltip, setShowTooltip] = useState(false);
   const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -563,26 +454,23 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
     expanded, toggleExpanded: toggle, allMuscles,
   }), [expanded, toggle, allMuscles]);
 
-  // Helper to get primary muscles from a motion
   const getPrimaryMusclesFromMotion = useCallback((motion: MotionRecord): string[] => {
     const targets = motion.muscle_targets as Record<string, unknown> | undefined;
     if (!targets || typeof targets !== 'object') return [];
-    return Object.keys(targets).filter(k => k !== '_score');
+    return Object.keys(targets);
   }, []);
 
-  // Compute currentMotion and related values early, but after hooks
   const currentMotion = allMotions.find(m => m.id === currentRecordId);
   const isCurrentParent = currentMotion ? !currentMotion.parent_id : false;
   const computedFocusVariationId = currentMotion && !isCurrentParent ? currentRecordId : null;
-  
-  // Group motions by primary muscle, then by primary motion with variations indented
+
   const groupedMotions = useMemo(() => {
     if (!currentMotion || !allMuscles || allMuscles.length === 0 || !allMotions || allMotions.length === 0) return [];
-    
+
     const addToPrimaryOptions = computedFocusVariationId
       ? parentMotions.filter(pm => pm.id !== currentMotion.parent_id)
       : [];
-    
+
     if (addToPrimaryOptions.length === 0) return [];
 
     const groups: Record<string, Array<{ motion: MotionRecord; isPrimary: boolean }>> = {};
@@ -592,26 +480,21 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
     });
     const primaryMuscleMap = new Map(primaryMuscles.map((m: Record<string, unknown>) => [m.id as string, m]));
 
-    // Separate primary motions from variations
     const primaryMotionsList = addToPrimaryOptions.filter(m => !m.parent_id);
     const variationsList = addToPrimaryOptions.filter(m => !!m.parent_id);
 
-    // Group primary motions by their primary muscles
     primaryMotionsList.forEach(motion => {
       const primaryMuscleIds = getPrimaryMusclesFromMotion(motion);
       if (primaryMuscleIds.length === 0) {
-        // If no primary muscles, put in "Other" group
         if (!groups['OTHER']) groups['OTHER'] = [];
         groups['OTHER'].push({ motion, isPrimary: true });
       } else {
-        // Group by first primary muscle
         const primaryId = primaryMuscleIds[0];
         if (!groups[primaryId]) groups[primaryId] = [];
         groups[primaryId].push({ motion, isPrimary: true });
       }
     });
 
-    // Add variations under their parent's primary muscle group
     variationsList.forEach(variation => {
       const parentMotion = allMotions.find(m => m.id === variation.parent_id);
       if (parentMotion) {
@@ -622,18 +505,15 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
       }
     });
 
-    // Sort motions within each group: primaries first (alphabetically), then variations under their parent
     Object.keys(groups).forEach(key => {
       const items = groups[key];
       const primaries = items.filter(item => item.isPrimary).sort((a, b) => a.motion.label.localeCompare(b.motion.label));
       const variations = items.filter(item => !item.isPrimary);
-      
-      // Sort variations and group them under their parents
+
       variations.sort((a, b) => {
         const aParentId = a.motion.parent_id;
         const bParentId = b.motion.parent_id;
         if (aParentId !== bParentId) {
-          // Group by parent, then sort by label
           const aParent = primaries.find(p => p.motion.id === aParentId);
           const bParent = primaries.find(p => p.motion.id === bParentId);
           if (aParent && bParent) {
@@ -644,29 +524,21 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
         return a.motion.label.localeCompare(b.motion.label);
       });
 
-      // Rebuild array: primaries first, then variations under their parent
       const sorted: Array<{ motion: MotionRecord; isPrimary: boolean }> = [];
       primaries.forEach(primary => {
         sorted.push(primary);
-        // Add variations for this primary
         variations.filter(v => v.motion.parent_id === primary.motion.id).forEach(v => sorted.push(v));
       });
-      // Add any variations whose parent isn't in this group (shouldn't happen, but just in case)
       variations.filter(v => !primaries.some(p => p.motion.id === v.motion.parent_id)).forEach(v => sorted.push(v));
-      
+
       groups[key] = sorted;
     });
 
-    // Sort groups by primary muscle label
     const sortedGroups: Array<{ primaryId: string; primaryLabel: string; motions: Array<{ motion: MotionRecord; isPrimary: boolean }> }> = [];
     Object.keys(groups).forEach(primaryId => {
       const primary = primaryMuscleMap.get(primaryId);
       const primaryLabel = primary && typeof primary === 'object' && 'label' in primary ? String(primary.label) : primaryId;
-      sortedGroups.push({
-        primaryId,
-        primaryLabel,
-        motions: groups[primaryId],
-      });
+      sortedGroups.push({ primaryId, primaryLabel, motions: groups[primaryId] });
     });
     sortedGroups.sort((a, b) => {
       if (a.primaryId === 'OTHER') return 1;
@@ -725,7 +597,7 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
                 <div className={sp.deltaRules.sectionLabel}>Variation Scores</div>
                 <MuscleTargetsSubtree targets={targets} depth={0} onChange={onChange} {...mtProps} />
               </div>
-              {parentTargets && Object.keys(parentTargets).filter(k => k !== '_score').length > 0 && (
+              {parentTargets && Object.keys(parentTargets).length > 0 && (
                 <div className={sp.deltaRules.scoresColumnReadOnly}>
                   <div className={sp.deltaRules.sectionLabel}>Parent Scores</div>
                   <MuscleTargetsSubtree targets={parentTargets} depth={0} readOnly variationTargets={targets} {...mtProps} />
@@ -766,7 +638,6 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
     );
     const pmMtKey = `mt-pm-${pm.id}`;
 
-    // If viewing a variation, show parent → variation on same row
     if (computedFocusVariationId && displayVars.length === 1) {
       const variation = displayVars[0];
       const varMtKey = `mt-var-${variation.id}`;
@@ -800,7 +671,7 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
                   <div className={sp.deltaRules.sectionLabel}>Variation Scores</div>
                   <MuscleTargetsSubtree targets={getTargetsAndOnChange(variation.id, variation).targets} depth={0} onChange={getTargetsAndOnChange(variation.id, variation).onChange} {...mtProps} />
                 </div>
-                {Object.keys(targets).filter(k => k !== '_score').length > 0 && (
+                {Object.keys(targets).length > 0 && (
                   <div className={sp.deltaRules.scoresColumnReadOnly}>
                     <div className={sp.deltaRules.sectionLabel}>Parent Scores</div>
                     <MuscleTargetsSubtree targets={targets} depth={0} readOnly variationTargets={getTargetsAndOnChange(variation.id, variation).targets} {...mtProps} />
@@ -813,10 +684,8 @@ export default function MotionConfigTree({ tableKey: _tableKey, currentRecordId,
       );
     }
 
-    // Normal parent view (when not viewing a variation)
-    // If viewing the primary motion itself, don't show the variations toggle (no parent to show)
     const shouldShowVariationsToggle = !current;
-    
+
     return (
       <div key={pm.id} className={sp.motionConfig.primaryCard}>
         <div className={`${sp.motionConfig.primaryHeader} ${current ? sp.motionConfig.primaryHeaderCurrent : ''}`}>

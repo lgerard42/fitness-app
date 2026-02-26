@@ -15,9 +15,7 @@ describe("Zod Schemas", () => {
         label: "Curl",
         parent_id: null,
         upper_lower: ["UPPER"],
-        muscle_targets: {
-          ARMS: { _score: 2.87, BICEPS: { _score: 2.42 } },
-        },
+        muscle_targets: { BICEP_INNER: 0.82, BICEP_OUTER: 0.78 },
         default_delta_configs: { motionPaths: "LOW_HIGH" },
         sort_order: 11,
         is_active: true,
@@ -55,6 +53,17 @@ describe("Zod Schemas", () => {
         muscle_targets: {},
       });
       expect(result.success).toBe(true);
+    });
+
+    it("rejects nested muscle_targets (requires flat Record<string, number>)", () => {
+      const result = validateMotion({
+        id: "CURL",
+        label: "Curl",
+        parent_id: null,
+        upper_lower: ["UPPER"],
+        muscle_targets: { ARMS: { _score: 2.87, BICEPS: { _score: 2.42 } } } as any,
+      });
+      expect(result.success).toBe(false);
     });
   });
 

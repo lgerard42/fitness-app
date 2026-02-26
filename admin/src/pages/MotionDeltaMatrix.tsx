@@ -138,24 +138,26 @@ type TreeNode = { _score: number; [childId: string]: TreeNode | number };
 function buildTreeFromFlat(flat: Record<string, number>, allMuscles: MuscleRecord[]): TreeNode {
   const tree: TreeNode = { _score: 0 };
   for (const [muscleId, score] of Object.entries(flat)) {
-    const level = getMuscleLevel(muscleId, allMuscles);
-    if (level === 'primary') {
+    const m = allMuscles.find(mu => mu.id === muscleId);
+    if (!m || !m.parent_ids || m.parent_ids.length === 0) {
       if (!tree[muscleId]) tree[muscleId] = { _score: 0 };
       (tree[muscleId] as TreeNode)._score = score;
-    } else if (level === 'secondary') {
-      const pId = findPrimaryFor(muscleId, allMuscles);
-      if (!tree[pId]) tree[pId] = { _score: 0 };
-      const pNode = tree[pId] as TreeNode;
-      if (!pNode[muscleId]) pNode[muscleId] = { _score: 0 };
-      (pNode[muscleId] as TreeNode)._score = score;
-    } else {
-      const sId = findSecondaryFor(muscleId, allMuscles);
-      const pId = findPrimaryFor(muscleId, allMuscles);
-      if (!tree[pId]) tree[pId] = { _score: 0 };
-      const pNode = tree[pId] as TreeNode;
-      if (sId) {
-        if (!pNode[sId]) pNode[sId] = { _score: 0 };
-        const sNode = pNode[sId] as TreeNode;
+      continue;
+    }
+    for (const pid of m.parent_ids) {
+      const parent = allMuscles.find(mu => mu.id === pid);
+      if (!parent) continue;
+      if (!parent.parent_ids || parent.parent_ids.length === 0) {
+        if (!tree[pid]) tree[pid] = { _score: 0 };
+        const pNode = tree[pid] as TreeNode;
+        if (!pNode[muscleId]) pNode[muscleId] = { _score: 0 };
+        (pNode[muscleId] as TreeNode)._score = score;
+      } else {
+        const pId = findPrimaryFor(pid, allMuscles);
+        if (!tree[pId]) tree[pId] = { _score: 0 };
+        const pNode = tree[pId] as TreeNode;
+        if (!pNode[pid]) pNode[pid] = { _score: 0 };
+        const sNode = pNode[pid] as TreeNode;
         if (!sNode[muscleId]) sNode[muscleId] = { _score: 0 };
         (sNode[muscleId] as TreeNode)._score = score;
       }
@@ -170,25 +172,27 @@ type TreeBranch = { label: string; score?: number; children?: Record<string, Tre
 function buildDeltaTreeFromFlat(flat: Record<string, number>, allMuscles: MuscleRecord[]): Record<string, TreeBranch> {
   const tree: Record<string, TreeBranch> = {};
   for (const [muscleId, score] of Object.entries(flat)) {
-    const level = getMuscleLevel(muscleId, allMuscles);
+    const m = allMuscles.find(mu => mu.id === muscleId);
     const label = getMuscleLabel(allMuscles, muscleId);
-    if (level === 'primary') {
+    if (!m || !m.parent_ids || m.parent_ids.length === 0) {
       tree[muscleId] = { label, score, children: tree[muscleId]?.children ?? {} };
-    } else if (level === 'secondary') {
-      const pId = findPrimaryFor(muscleId, allMuscles);
-      if (!tree[pId]) tree[pId] = { label: getMuscleLabel(allMuscles, pId), children: {} };
-      const p = tree[pId];
-      p.children = p.children ?? {};
-      p.children[muscleId] = { label, score, children: (p.children[muscleId] as TreeBranch)?.children ?? {} };
-    } else {
-      const sId = findSecondaryFor(muscleId, allMuscles);
-      const pId = findPrimaryFor(muscleId, allMuscles);
-      if (!tree[pId]) tree[pId] = { label: getMuscleLabel(allMuscles, pId), children: {} };
-      const p = tree[pId];
-      p.children = p.children ?? {};
-      if (sId && !p.children[sId]) p.children[sId] = { label: getMuscleLabel(allMuscles, sId), children: {} };
-      if (sId) {
-        const s = p.children[sId];
+      continue;
+    }
+    for (const pid of m.parent_ids) {
+      const parent = allMuscles.find(mu => mu.id === pid);
+      if (!parent) continue;
+      if (!parent.parent_ids || parent.parent_ids.length === 0) {
+        if (!tree[pid]) tree[pid] = { label: getMuscleLabel(allMuscles, pid), children: {} };
+        const p = tree[pid];
+        p.children = p.children ?? {};
+        p.children[muscleId] = { label, score, children: (p.children[muscleId] as TreeBranch)?.children ?? {} };
+      } else {
+        const pId = findPrimaryFor(pid, allMuscles);
+        if (!tree[pId]) tree[pId] = { label: getMuscleLabel(allMuscles, pId), children: {} };
+        const p = tree[pId];
+        p.children = p.children ?? {};
+        if (!p.children[pid]) p.children[pid] = { label: getMuscleLabel(allMuscles, pid), children: {} };
+        const s = p.children[pid];
         s.children = s.children ?? {};
         s.children[muscleId] = { label, score };
       }

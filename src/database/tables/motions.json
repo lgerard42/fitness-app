@@ -13,24 +13,10 @@
     ],
     "short_description": "Pushing the legs laterally away from the midline of the body.",
     "muscle_targets": {
-      "LEGS": {
-        "_score": 2.52,
-        "GLUTES": {
-          "_score": 1.82,
-          "GLUTE_MEDIUS": {
-            "_score": 1
-          },
-          "GLUTE_MINIMUS": {
-            "_score": 0.82
-          }
-        },
-        "THIGHS_OUTER": {
-          "_score": 0.7
-        }
-      },
-      "CORE": {
-        "_score": 0.2
-      }
+      "GLUTE_MEDIUS": 1,
+      "GLUTE_MINIMUS": 0.82,
+      "THIGHS_OUTER": 0.7,
+      "CORE": 0.2
     },
     "sort_order": 0,
     "is_active": true,
@@ -52,21 +38,9 @@
     ],
     "short_description": "Squeezing the legs inward toward the midline of the body.",
     "muscle_targets": {
-      "LEGS": {
-        "_score": 1.13,
-        "THIGHS_INNER": {
-          "_score": 0.88,
-          "ADDUCTOR_MAGNUS": {
-            "_score": 0.88
-          }
-        },
-        "GLUTES": {
-          "_score": 0.25
-        }
-      },
-      "CORE": {
-        "_score": 0.15
-      }
+      "ADDUCTOR_MAGNUS": 0.88,
+      "GLUTES": 0.25,
+      "CORE": 0.15
     },
     "sort_order": 1,
     "is_active": true,
@@ -88,15 +62,7 @@
     ],
     "short_description": "Pulling the top of the foot upward toward the shin.",
     "muscle_targets": {
-      "LEGS": {
-        "_score": 1,
-        "SHINS": {
-          "_score": 1,
-          "TIBIALIS_ANTERIOR": {
-            "_score": 1
-          }
-        }
-      }
+      "TIBIALIS_ANTERIOR": 1
     },
     "sort_order": 2,
     "is_active": true,
@@ -117,15 +83,7 @@
     ],
     "short_description": "Curling the knuckles inward toward the inner forearm.",
     "muscle_targets": {
-      "ARMS": {
-        "_score": 1,
-        "FOREARMS": {
-          "_score": 1,
-          "FOREARM_BOTTOM": {
-            "_score": 1
-          }
-        }
-      }
+      "FOREARM_BOTTOM": 1
     },
     "sort_order": 3,
     "is_active": true,
@@ -146,15 +104,7 @@
     ],
     "short_description": "Extending the knuckles backward toward the outer forearm.",
     "muscle_targets": {
-      "ARMS": {
-        "_score": 1,
-        "FOREARMS": {
-          "_score": 1,
-          "FOREARM_TOP": {
-            "_score": 1
-          }
-        }
-      }
+      "FOREARM_TOP": 1
     },
     "sort_order": 4,
     "is_active": true,
@@ -176,18 +126,8 @@
     ],
     "short_description": "Rotating the upper arm outward away from the torso.",
     "muscle_targets": {
-      "SHOULDERS": {
-        "_score": 1.74,
-        "ROTATOR_CUFF": {
-          "_score": 1.74,
-          "INFRASPINATUS": {
-            "_score": 0.92
-          },
-          "TERES_MINOR": {
-            "_score": 0.82
-          }
-        }
-      }
+      "INFRASPINATUS": 0.92,
+      "TERES_MINOR": 0.82
     },
     "default_delta_configs": {
       "motionPaths": "MID_MID"
@@ -210,15 +150,7 @@
     ],
     "short_description": "Rotating the upper arm inward across the torso.",
     "muscle_targets": {
-      "SHOULDERS": {
-        "_score": 1,
-        "ROTATOR_CUFF": {
-          "_score": 1,
-          "SUBSCAPULARIS": {
-            "_score": 1
-          }
-        }
-      }
+      "SUBSCAPULARIS": 1
     },
     "default_delta_configs": {
       "motionPaths": "MID_MID"
@@ -241,15 +173,8 @@
     ],
     "short_description": "Isometric pulling of the abdominal wall inward.",
     "muscle_targets": {
-      "CORE": {
-        "_score": 1.2,
-        "CORE_DEEP": {
-          "_score": 1
-        },
-        "ABS": {
-          "_score": 0.2
-        }
-      }
+      "CORE_DEEP": 1,
+      "ABS": 0.2
     },
     "sort_order": 7,
     "is_active": true,
@@ -271,33 +196,11 @@
     ],
     "short_description": "Pushing the body or weight downward and away from the torso.",
     "muscle_targets": {
-      "CHEST": {
-        "_score": 1.15,
-        "CHEST_MID": {
-          "_score": 0.6
-        },
-        "CHEST_LOWER": {
-          "_score": 0.55
-        }
-      },
-      "ARMS": {
-        "_score": 0.92,
-        "TRICEPS": {
-          "_score": 0.92
-        }
-      },
-      "SHOULDERS": {
-        "_score": 0.55,
-        "DELTS_FRONT": {
-          "_score": 0.55
-        }
-      },
-      "CORE": {
-        "_score": 0.35,
-        "CORE_DEEP": {
-          "_score": 0.35
-        }
-      }
+      "CHEST_MID": 0.6,
+      "CHEST_LOWER": 0.55,
+      "TRICEPS": 0.92,
+      "DELTS_FRONT": 0.55,
+      "CORE_DEEP": 0.35
     },
     "sort_order": 8,
     "is_active": true,
@@ -320,33 +223,11 @@
     ],
     "short_description": "Pushing down with a forward torso lean.",
     "muscle_targets": {
-      "CHEST": {
-        "_score": 1.5,
-        "CHEST_LOWER": {
-          "_score": 0.95
-        },
-        "CHEST_MID": {
-          "_score": 0.55
-        }
-      },
-      "ARMS": {
-        "_score": 0.7,
-        "TRICEPS": {
-          "_score": 0.7
-        }
-      },
-      "SHOULDERS": {
-        "_score": 0.4,
-        "DELTS_FRONT": {
-          "_score": 0.4
-        }
-      },
-      "CORE": {
-        "_score": 0.3,
-        "CORE_DEEP": {
-          "_score": 0.3
-        }
-      }
+      "CHEST_LOWER": 0.95,
+      "CHEST_MID": 0.55,
+      "TRICEPS": 0.7,
+      "DELTS_FRONT": 0.4,
+      "CORE_DEEP": 0.3
     },
     "sort_order": 9,
     "is_active": true,
@@ -367,30 +248,10 @@
     ],
     "short_description": "Pushing down with a strictly upright torso.",
     "muscle_targets": {
-      "ARMS": {
-        "_score": 1,
-        "TRICEPS": {
-          "_score": 1
-        }
-      },
-      "CHEST": {
-        "_score": 0.45,
-        "CHEST_MID": {
-          "_score": 0.45
-        }
-      },
-      "SHOULDERS": {
-        "_score": 0.35,
-        "DELTS_FRONT": {
-          "_score": 0.35
-        }
-      },
-      "CORE": {
-        "_score": 0.25,
-        "CORE_DEEP": {
-          "_score": 0.25
-        }
-      }
+      "TRICEPS": 1,
+      "CHEST_MID": 0.45,
+      "DELTS_FRONT": 0.35,
+      "CORE_DEEP": 0.25
     },
     "sort_order": 10,
     "is_active": true,
@@ -411,27 +272,10 @@
     ],
     "short_description": "Bending the arm at the elbow against resistance.",
     "muscle_targets": {
-      "ARMS": {
-        "_score": 2.87,
-        "BICEPS": {
-          "_score": 2.42,
-          "BICEP_INNER": {
-            "_score": 0.82
-          },
-          "BICEP_OUTER": {
-            "_score": 0.78
-          },
-          "BRACHIALIS": {
-            "_score": 0.82
-          }
-        },
-        "FOREARMS": {
-          "_score": 0.45,
-          "FOREARM_BOTTOM": {
-            "_score": 0.45
-          }
-        }
-      }
+      "BICEP_INNER": 0.82,
+      "BICEP_OUTER": 0.78,
+      "BRACHIALIS": 0.82,
+      "FOREARM_BOTTOM": 0.45
     },
     "default_delta_configs": {
       "motionPaths": "LOW_HIGH"
@@ -455,21 +299,9 @@
     ],
     "short_description": "Straightening the arm at the elbow against resistance.",
     "muscle_targets": {
-      "ARMS": {
-        "_score": 2.09,
-        "TRICEPS": {
-          "_score": 2.09,
-          "TRICEP_INNER": {
-            "_score": 0.72
-          },
-          "TRICEP_OUTER": {
-            "_score": 0.72
-          },
-          "TRICEP_DEEP": {
-            "_score": 0.65
-          }
-        }
-      }
+      "TRICEP_INNER": 0.72,
+      "TRICEP_OUTER": 0.72,
+      "TRICEP_DEEP": 0.65
     },
     "sort_order": 12,
     "is_active": true,
@@ -491,30 +323,10 @@
     ],
     "short_description": "Straightening the arm from an overhead position.",
     "muscle_targets": {
-      "ARMS": {
-        "_score": 1.64,
-        "TRICEPS": {
-          "_score": 1.64,
-          "TRICEP_INNER": {
-            "_score": 0.92
-          },
-          "TRICEP_DEEP": {
-            "_score": 0.72
-          }
-        }
-      },
-      "SHOULDERS": {
-        "_score": 0.35,
-        "DELTS_FRONT": {
-          "_score": 0.35
-        }
-      },
-      "CORE": {
-        "_score": 0.2,
-        "CORE_DEEP": {
-          "_score": 0.2
-        }
-      }
+      "TRICEP_INNER": 0.92,
+      "TRICEP_DEEP": 0.72,
+      "DELTS_FRONT": 0.35,
+      "CORE_DEEP": 0.2
     },
     "default_delta_configs": {
       "motionPaths": "LOW_HIGH"
@@ -537,18 +349,8 @@
     ],
     "short_description": "Straightening the arm downward with neutral shoulders.",
     "muscle_targets": {
-      "ARMS": {
-        "_score": 1.56,
-        "TRICEPS": {
-          "_score": 1.56,
-          "TRICEP_OUTER": {
-            "_score": 0.88
-          },
-          "TRICEP_INNER": {
-            "_score": 0.68
-          }
-        }
-      }
+      "TRICEP_OUTER": 0.88,
+      "TRICEP_INNER": 0.68
     },
     "default_delta_configs": {
       "motionPaths": "HIGH_LOW"
@@ -571,36 +373,11 @@
     ],
     "short_description": "Moving arms in a long sagittal arc from overhead toward the hips.",
     "muscle_targets": {
-      "BACK": {
-        "_score": 0.62,
-        "LATS": {
-          "_score": 0.62
-        }
-      },
-      "CHEST": {
-        "_score": 0.45,
-        "CHEST_MID": {
-          "_score": 0.45
-        }
-      },
-      "ARMS": {
-        "_score": 0.2,
-        "TRICEPS": {
-          "_score": 0.2
-        }
-      },
-      "CORE": {
-        "_score": 0.3,
-        "CORE_DEEP": {
-          "_score": 0.3
-        }
-      },
-      "SHOULDERS": {
-        "_score": 0.25,
-        "DELTS_FRONT": {
-          "_score": 0.25
-        }
-      }
+      "LATS": 0.62,
+      "CHEST_MID": 0.45,
+      "TRICEPS": 0.2,
+      "CORE_DEEP": 0.3,
+      "DELTS_FRONT": 0.25
     },
     "sort_order": 15,
     "is_active": true,
@@ -622,36 +399,11 @@
     ],
     "short_description": "Pulling arc focusing on lat stretch.",
     "muscle_targets": {
-      "BACK": {
-        "_score": 0.95,
-        "LATS": {
-          "_score": 0.95
-        }
-      },
-      "CHEST": {
-        "_score": 0.25,
-        "CHEST_MID": {
-          "_score": 0.25
-        }
-      },
-      "ARMS": {
-        "_score": 0.2,
-        "TRICEPS": {
-          "_score": 0.2
-        }
-      },
-      "CORE": {
-        "_score": 0.3,
-        "CORE_DEEP": {
-          "_score": 0.3
-        }
-      },
-      "SHOULDERS": {
-        "_score": 0.25,
-        "DELTS_FRONT": {
-          "_score": 0.25
-        }
-      }
+      "LATS": 0.95,
+      "CHEST_MID": 0.25,
+      "TRICEPS": 0.2,
+      "CORE_DEEP": 0.3,
+      "DELTS_FRONT": 0.25
     },
     "default_delta_configs": {
       "motionPaths": "HIGH_LOW"
@@ -674,39 +426,12 @@
     ],
     "short_description": "Pulling arc focusing on chest squeeze.",
     "muscle_targets": {
-      "CHEST": {
-        "_score": 1.3,
-        "CHEST_MID": {
-          "_score": 0.85
-        },
-        "CHEST_UPPER": {
-          "_score": 0.45
-        }
-      },
-      "BACK": {
-        "_score": 0.42,
-        "LATS": {
-          "_score": 0.42
-        }
-      },
-      "ARMS": {
-        "_score": 0.18,
-        "TRICEPS": {
-          "_score": 0.18
-        }
-      },
-      "CORE": {
-        "_score": 0.25,
-        "CORE_DEEP": {
-          "_score": 0.25
-        }
-      },
-      "SHOULDERS": {
-        "_score": 0.28,
-        "DELTS_FRONT": {
-          "_score": 0.28
-        }
-      }
+      "CHEST_MID": 0.85,
+      "CHEST_UPPER": 0.45,
+      "LATS": 0.42,
+      "TRICEPS": 0.18,
+      "CORE_DEEP": 0.25,
+      "DELTS_FRONT": 0.28
     },
     "default_delta_configs": {
       "motionPaths": "HIGH_LOW"
@@ -728,36 +453,11 @@
     ],
     "short_description": "Vertical elevation of the shoulder girdle.",
     "muscle_targets": {
-      "BACK": {
-        "_score": 1.3,
-        "TRAPS": {
-          "_score": 0.95,
-          "TRAPS_UPPER": {
-            "_score": 0.95
-          }
-        },
-        "BACK_UPPER": {
-          "_score": 0.35
-        }
-      },
-      "NECK": {
-        "_score": 0.4,
-        "NECK_EXTENSORS": {
-          "_score": 0.4
-        }
-      },
-      "ARMS": {
-        "_score": 0.2,
-        "FOREARMS": {
-          "_score": 0.2
-        }
-      },
-      "CORE": {
-        "_score": 0.2,
-        "CORE_DEEP": {
-          "_score": 0.2
-        }
-      }
+      "TRAPS_UPPER": 0.95,
+      "BACK_UPPER": 0.35,
+      "NECK_EXTENSORS": 0.4,
+      "FOREARMS": 0.2,
+      "CORE_DEEP": 0.2
     },
     "sort_order": 18,
     "is_active": true,
@@ -780,36 +480,12 @@
     ],
     "short_description": "Pulling resistance from overhead down toward the body.",
     "muscle_targets": {
-      "BACK": {
-        "_score": 1.55,
-        "LATS": {
-          "_score": 0.78,
-          "LATS_UPPER": {
-            "_score": 0.78
-          }
-        },
-        "RHOMBOIDS": {
-          "_score": 0.42
-        },
-        "TRAPS": {
-          "_score": 0.35
-        }
-      },
-      "ARMS": {
-        "_score": 1.02,
-        "BICEPS": {
-          "_score": 0.62
-        },
-        "FOREARMS": {
-          "_score": 0.4
-        }
-      },
-      "CORE": {
-        "_score": 0.2,
-        "CORE_DEEP": {
-          "_score": 0.2
-        }
-      }
+      "LATS_UPPER": 0.78,
+      "RHOMBOIDS": 0.42,
+      "TRAPS": 0.35,
+      "BICEPS": 0.62,
+      "FOREARMS": 0.4,
+      "CORE_DEEP": 0.2
     },
     "sort_order": 19,
     "is_active": true,
@@ -831,33 +507,11 @@
     ],
     "short_description": "Vertical pulling motion behind the head.",
     "muscle_targets": {
-      "BACK": {
-        "_score": 1.6,
-        "LATS": {
-          "_score": 0.95,
-          "LATS_UPPER": {
-            "_score": 0.95
-          }
-        },
-        "TRAPS": {
-          "_score": 0.35
-        },
-        "RHOMBOIDS": {
-          "_score": 0.3
-        }
-      },
-      "ARMS": {
-        "_score": 0.5,
-        "BICEPS": {
-          "_score": 0.5
-        }
-      },
-      "SHOULDERS": {
-        "_score": 0.25,
-        "ROTATOR_CUFF": {
-          "_score": 0.25
-        }
-      }
+      "LATS_UPPER": 0.95,
+      "TRAPS": 0.35,
+      "RHOMBOIDS": 0.3,
+      "BICEPS": 0.5,
+      "ROTATOR_CUFF": 0.25
     },
     "sort_order": 20,
     "is_active": true,
@@ -878,36 +532,12 @@
     ],
     "short_description": "Standard vertical pulling motion.",
     "muscle_targets": {
-      "BACK": {
-        "_score": 1.33,
-        "LATS": {
-          "_score": 0.65,
-          "LATS_UPPER": {
-            "_score": 0.65
-          }
-        },
-        "RHOMBOIDS": {
-          "_score": 0.38
-        },
-        "TRAPS": {
-          "_score": 0.3
-        }
-      },
-      "ARMS": {
-        "_score": 0.93,
-        "BICEPS": {
-          "_score": 0.58
-        },
-        "FOREARMS": {
-          "_score": 0.35
-        }
-      },
-      "CORE": {
-        "_score": 0.18,
-        "CORE_DEEP": {
-          "_score": 0.18
-        }
-      }
+      "LATS_UPPER": 0.65,
+      "RHOMBOIDS": 0.38,
+      "TRAPS": 0.3,
+      "BICEPS": 0.58,
+      "FOREARMS": 0.35,
+      "CORE_DEEP": 0.18
     },
     "sort_order": 21,
     "is_active": true,
@@ -929,36 +559,12 @@
     ],
     "short_description": "Pulling resistance from in front of the body toward the torso.",
     "muscle_targets": {
-      "BACK": {
-        "_score": 1.92,
-        "BACK_MID": {
-          "_score": 0.82,
-          "RHOMBOIDS": {
-            "_score": 0.82
-          }
-        },
-        "LATS": {
-          "_score": 0.62
-        },
-        "TRAPS": {
-          "_score": 0.48
-        }
-      },
-      "ARMS": {
-        "_score": 0.87,
-        "BICEPS": {
-          "_score": 0.52
-        },
-        "FOREARMS": {
-          "_score": 0.35
-        }
-      },
-      "CORE": {
-        "_score": 0.22,
-        "CORE_DEEP": {
-          "_score": 0.22
-        }
-      }
+      "RHOMBOIDS": 0.82,
+      "LATS": 0.62,
+      "TRAPS": 0.48,
+      "BICEPS": 0.52,
+      "FOREARMS": 0.35,
+      "CORE_DEEP": 0.22
     },
     "sort_order": 22,
     "is_active": true,
@@ -981,30 +587,11 @@
     ],
     "short_description": "Pulling toward the upper chest.",
     "muscle_targets": {
-      "BACK": {
-        "_score": 2.25,
-        "BACK_UPPER": {
-          "_score": 0.95
-        },
-        "RHOMBOIDS": {
-          "_score": 0.7
-        },
-        "TRAPS": {
-          "_score": 0.6
-        }
-      },
-      "SHOULDERS": {
-        "_score": 0.45,
-        "DELTS_REAR": {
-          "_score": 0.45
-        }
-      },
-      "ARMS": {
-        "_score": 0.4,
-        "BICEPS": {
-          "_score": 0.4
-        }
-      }
+      "BACK_UPPER": 0.95,
+      "RHOMBOIDS": 0.7,
+      "TRAPS": 0.6,
+      "DELTS_REAR": 0.45,
+      "BICEPS": 0.4
     },
     "default_delta_configs": {
       "motionPaths": "HIGH_MID"
@@ -1028,30 +615,10 @@
     ],
     "short_description": "Pulling toward the stomach.",
     "muscle_targets": {
-      "BACK": {
-        "_score": 1.37,
-        "BACK_MID": {
-          "_score": 0.82,
-          "RHOMBOIDS": {
-            "_score": 0.82
-          }
-        },
-        "LATS": {
-          "_score": 0.55
-        }
-      },
-      "ARMS": {
-        "_score": 0.45,
-        "BICEPS": {
-          "_score": 0.45
-        }
-      },
-      "CORE": {
-        "_score": 0.2,
-        "CORE_DEEP": {
-          "_score": 0.2
-        }
-      }
+      "RHOMBOIDS": 0.82,
+      "LATS": 0.55,
+      "BICEPS": 0.45,
+      "CORE_DEEP": 0.2
     },
     "default_delta_configs": {
       "motionPaths": "MID_MID"
@@ -1075,30 +642,11 @@
     ],
     "short_description": "Pulling toward the hips/navel.",
     "muscle_targets": {
-      "BACK": {
-        "_score": 1.53,
-        "LATS": {
-          "_score": 0.88
-        },
-        "BACK_LOWER": {
-          "_score": 0.3
-        },
-        "RHOMBOIDS": {
-          "_score": 0.35
-        }
-      },
-      "ARMS": {
-        "_score": 0.42,
-        "BICEPS": {
-          "_score": 0.42
-        }
-      },
-      "CORE": {
-        "_score": 0.2,
-        "CORE_DEEP": {
-          "_score": 0.2
-        }
-      }
+      "LATS": 0.88,
+      "BACK_LOWER": 0.3,
+      "RHOMBOIDS": 0.35,
+      "BICEPS": 0.42,
+      "CORE_DEEP": 0.2
     },
     "default_delta_configs": {
       "motionPaths": "LOW_LOW"
@@ -1121,27 +669,10 @@
     ],
     "short_description": "Creating inward tension by pressing hands or weights together.",
     "muscle_targets": {
-      "CHEST": {
-        "_score": 1.57,
-        "CHEST_MID": {
-          "_score": 0.72
-        },
-        "CHEST_INNER": {
-          "_score": 0.85
-        }
-      },
-      "ARMS": {
-        "_score": 0.35,
-        "TRICEPS": {
-          "_score": 0.35
-        }
-      },
-      "SHOULDERS": {
-        "_score": 0.2,
-        "DELTS_FRONT": {
-          "_score": 0.2
-        }
-      }
+      "CHEST_MID": 0.72,
+      "CHEST_INNER": 0.85,
+      "TRICEPS": 0.35,
+      "DELTS_FRONT": 0.2
     },
     "sort_order": 26,
     "is_active": true,
@@ -1164,30 +695,10 @@
     ],
     "short_description": "Moving resistance horizontally away from the torso in a straight line.",
     "muscle_targets": {
-      "CHEST": {
-        "_score": 0.9,
-        "CHEST_MID": {
-          "_score": 0.9
-        }
-      },
-      "ARMS": {
-        "_score": 0.72,
-        "TRICEPS": {
-          "_score": 0.72
-        }
-      },
-      "SHOULDERS": {
-        "_score": 0.48,
-        "DELTS_FRONT": {
-          "_score": 0.48
-        }
-      },
-      "CORE": {
-        "_score": 0.15,
-        "CORE_DEEP": {
-          "_score": 0.15
-        }
-      }
+      "CHEST_MID": 0.9,
+      "TRICEPS": 0.72,
+      "DELTS_FRONT": 0.48,
+      "CORE_DEEP": 0.15
     },
     "sort_order": 27,
     "is_active": true,
@@ -1209,30 +720,10 @@
     ],
     "short_description": "Horizontal pressing movement on flat surface",
     "muscle_targets": {
-      "CHEST": {
-        "_score": 0.92,
-        "CHEST_MID": {
-          "_score": 0.92
-        }
-      },
-      "ARMS": {
-        "_score": 0.72,
-        "TRICEPS": {
-          "_score": 0.72
-        }
-      },
-      "SHOULDERS": {
-        "_score": 0.45,
-        "DELTS_FRONT": {
-          "_score": 0.45
-        }
-      },
-      "CORE": {
-        "_score": 0.15,
-        "CORE_DEEP": {
-          "_score": 0.15
-        }
-      }
+      "CHEST_MID": 0.92,
+      "TRICEPS": 0.72,
+      "DELTS_FRONT": 0.45,
+      "CORE_DEEP": 0.15
     },
     "default_delta_configs": {},
     "sort_order": 28,
@@ -1253,30 +744,10 @@
     ],
     "short_description": "Incline pressing movement targeting upper chest",
     "muscle_targets": {
-      "CHEST": {
-        "_score": 0.92,
-        "CHEST_UPPER": {
-          "_score": 0.92
-        }
-      },
-      "SHOULDERS": {
-        "_score": 0.65,
-        "DELTS_FRONT": {
-          "_score": 0.65
-        }
-      },
-      "ARMS": {
-        "_score": 0.65,
-        "TRICEPS": {
-          "_score": 0.65
-        }
-      },
-      "CORE": {
-        "_score": 0.15,
-        "CORE_DEEP": {
-          "_score": 0.15
-        }
-      }
+      "CHEST_UPPER": 0.92,
+      "DELTS_FRONT": 0.65,
+      "TRICEPS": 0.65,
+      "CORE_DEEP": 0.15
     },
     "default_delta_configs": {},
     "sort_order": 29,
@@ -1297,30 +768,10 @@
     ],
     "short_description": "Pushing at a downward angle (-15°).",
     "muscle_targets": {
-      "CHEST": {
-        "_score": 0.95,
-        "CHEST_LOWER": {
-          "_score": 0.95
-        }
-      },
-      "ARMS": {
-        "_score": 0.68,
-        "TRICEPS": {
-          "_score": 0.68
-        }
-      },
-      "SHOULDERS": {
-        "_score": 0.35,
-        "DELTS_FRONT": {
-          "_score": 0.35
-        }
-      },
-      "CORE": {
-        "_score": 0.12,
-        "CORE_DEEP": {
-          "_score": 0.12
-        }
-      }
+      "CHEST_LOWER": 0.95,
+      "TRICEPS": 0.68,
+      "DELTS_FRONT": 0.35,
+      "CORE_DEEP": 0.12
     },
     "default_delta_configs": {
       "motionPaths": "HIGH_LOW"
@@ -1344,33 +795,11 @@
     ],
     "short_description": "Moving resistance vertically away from the shoulders.",
     "muscle_targets": {
-      "SHOULDERS": {
-        "_score": 1.27,
-        "DELTS_FRONT": {
-          "_score": 0.92
-        },
-        "DELTS_SIDE": {
-          "_score": 0.35
-        }
-      },
-      "ARMS": {
-        "_score": 0.68,
-        "TRICEPS": {
-          "_score": 0.68
-        }
-      },
-      "CORE": {
-        "_score": 0.3,
-        "CORE_DEEP": {
-          "_score": 0.3
-        }
-      },
-      "BACK": {
-        "_score": 0.2,
-        "TRAPS": {
-          "_score": 0.2
-        }
-      }
+      "DELTS_FRONT": 0.92,
+      "DELTS_SIDE": 0.35,
+      "TRICEPS": 0.68,
+      "CORE_DEEP": 0.3,
+      "TRAPS": 0.2
     },
     "sort_order": 31,
     "is_active": true,
@@ -1393,30 +822,10 @@
     ],
     "short_description": "60-75° incline – heavy upper chest + front delt emphasis",
     "muscle_targets": {
-      "SHOULDERS": {
-        "_score": 0.95,
-        "DELTS_FRONT": {
-          "_score": 0.95
-        }
-      },
-      "CHEST": {
-        "_score": 0.55,
-        "CHEST_UPPER": {
-          "_score": 0.55
-        }
-      },
-      "ARMS": {
-        "_score": 0.65,
-        "TRICEPS": {
-          "_score": 0.65
-        }
-      },
-      "CORE": {
-        "_score": 0.2,
-        "CORE_DEEP": {
-          "_score": 0.2
-        }
-      }
+      "DELTS_FRONT": 0.95,
+      "CHEST_UPPER": 0.55,
+      "TRICEPS": 0.65,
+      "CORE_DEEP": 0.2
     },
     "sort_order": 32,
     "is_active": true,
@@ -1439,36 +848,12 @@
     ],
     "short_description": "Vertical press overhead – pure shoulder + tricep drive",
     "muscle_targets": {
-      "SHOULDERS": {
-        "_score": 1.7,
-        "DELTS_FRONT": {
-          "_score": 0.95
-        },
-        "DELTS_SIDE": {
-          "_score": 0.4
-        },
-        "ROTATOR_CUFF": {
-          "_score": 0.35
-        }
-      },
-      "ARMS": {
-        "_score": 0.72,
-        "TRICEPS": {
-          "_score": 0.72
-        }
-      },
-      "CORE": {
-        "_score": 0.35,
-        "CORE_DEEP": {
-          "_score": 0.35
-        }
-      },
-      "BACK": {
-        "_score": 0.22,
-        "TRAPS": {
-          "_score": 0.22
-        }
-      }
+      "DELTS_FRONT": 0.95,
+      "DELTS_SIDE": 0.4,
+      "ROTATOR_CUFF": 0.35,
+      "TRICEPS": 0.72,
+      "CORE_DEEP": 0.35,
+      "TRAPS": 0.22
     },
     "sort_order": 33,
     "is_active": true,
@@ -1490,24 +875,9 @@
     ],
     "short_description": "Moving the arms in a wide hugging arc toward the midline.",
     "muscle_targets": {
-      "CHEST": {
-        "_score": 0.75,
-        "CHEST_MID": {
-          "_score": 0.75
-        }
-      },
-      "SHOULDERS": {
-        "_score": 0.35,
-        "DELTS_FRONT": {
-          "_score": 0.35
-        }
-      },
-      "CORE": {
-        "_score": 0.1,
-        "CORE_DEEP": {
-          "_score": 0.1
-        }
-      }
+      "CHEST_MID": 0.75,
+      "DELTS_FRONT": 0.35,
+      "CORE_DEEP": 0.1
     },
     "sort_order": 34,
     "is_active": true,
@@ -1529,18 +899,8 @@
     ],
     "short_description": "Hugging arc on a horizontal plane.",
     "muscle_targets": {
-      "CHEST": {
-        "_score": 0.92,
-        "CHEST_MID": {
-          "_score": 0.92
-        }
-      },
-      "SHOULDERS": {
-        "_score": 0.35,
-        "DELTS_FRONT": {
-          "_score": 0.35
-        }
-      }
+      "CHEST_MID": 0.92,
+      "DELTS_FRONT": 0.35
     },
     "default_delta_configs": {
       "motionPaths": "MID_MID"
@@ -1563,18 +923,8 @@
     ],
     "short_description": "Hugging arc at an upward angle.",
     "muscle_targets": {
-      "CHEST": {
-        "_score": 0.92,
-        "CHEST_UPPER": {
-          "_score": 0.92
-        }
-      },
-      "SHOULDERS": {
-        "_score": 0.38,
-        "DELTS_FRONT": {
-          "_score": 0.38
-        }
-      }
+      "CHEST_UPPER": 0.92,
+      "DELTS_FRONT": 0.38
     },
     "default_delta_configs": {
       "motionPaths": "LOW_HIGH"
@@ -1597,18 +947,8 @@
     ],
     "short_description": "Hugging arc at a downward angle.",
     "muscle_targets": {
-      "CHEST": {
-        "_score": 0.92,
-        "CHEST_LOWER": {
-          "_score": 0.92
-        }
-      },
-      "SHOULDERS": {
-        "_score": 0.28,
-        "DELTS_FRONT": {
-          "_score": 0.28
-        }
-      }
+      "CHEST_LOWER": 0.92,
+      "DELTS_FRONT": 0.28
     },
     "default_delta_configs": {
       "motionPaths": "HIGH_LOW"
@@ -1631,21 +971,9 @@
     ],
     "short_description": "Upward underhand arcing path.",
     "muscle_targets": {
-      "CHEST": {
-        "_score": 1.2,
-        "CHEST_UPPER": {
-          "_score": 0.65
-        },
-        "CHEST_MID": {
-          "_score": 0.55
-        }
-      },
-      "SHOULDERS": {
-        "_score": 0.35,
-        "DELTS_FRONT": {
-          "_score": 0.35
-        }
-      }
+      "CHEST_UPPER": 0.65,
+      "CHEST_MID": 0.55,
+      "DELTS_FRONT": 0.35
     },
     "default_delta_configs": {
       "motionPaths": "LOW_HIGH"
@@ -1667,12 +995,7 @@
     ],
     "short_description": "Tilting the head forward under load.",
     "muscle_targets": {
-      "NECK": {
-        "_score": 1,
-        "NECK_FLEXORS": {
-          "_score": 1
-        }
-      }
+      "NECK_FLEXORS": 1
     },
     "sort_order": 39,
     "is_active": true,
@@ -1694,12 +1017,7 @@
     ],
     "short_description": "Tilting the head backward under load.",
     "muscle_targets": {
-      "NECK": {
-        "_score": 1,
-        "NECK_EXTENSORS": {
-          "_score": 1
-        }
-      }
+      "NECK_EXTENSORS": 1
     },
     "sort_order": 40,
     "is_active": true,
@@ -1721,21 +1039,9 @@
     ],
     "short_description": "Raising the arms in an arc without bending the elbows.",
     "muscle_targets": {
-      "SHOULDERS": {
-        "_score": 1.25,
-        "DELTS_SIDE": {
-          "_score": 0.9
-        },
-        "ROTATOR_CUFF": {
-          "_score": 0.35
-        }
-      },
-      "BACK": {
-        "_score": 0.18,
-        "TRAPS": {
-          "_score": 0.18
-        }
-      }
+      "DELTS_SIDE": 0.9,
+      "ROTATOR_CUFF": 0.35,
+      "TRAPS": 0.18
     },
     "sort_order": 41,
     "is_active": true,
@@ -1757,21 +1063,9 @@
     ],
     "short_description": "Arcing arms out to the front.",
     "muscle_targets": {
-      "SHOULDERS": {
-        "_score": 1.25,
-        "DELTS_FRONT": {
-          "_score": 0.95
-        },
-        "ROTATOR_CUFF": {
-          "_score": 0.3
-        }
-      },
-      "CHEST": {
-        "_score": 0.2,
-        "CHEST_UPPER": {
-          "_score": 0.2
-        }
-      }
+      "DELTS_FRONT": 0.95,
+      "ROTATOR_CUFF": 0.3,
+      "CHEST_UPPER": 0.2
     },
     "default_delta_configs": {
       "motionPaths": "LOW_HIGH"
@@ -1795,21 +1089,9 @@
     ],
     "short_description": "Arcing arms out to the sides.",
     "muscle_targets": {
-      "SHOULDERS": {
-        "_score": 1.35,
-        "DELTS_SIDE": {
-          "_score": 1
-        },
-        "ROTATOR_CUFF": {
-          "_score": 0.35
-        }
-      },
-      "BACK": {
-        "_score": 0.15,
-        "TRAPS": {
-          "_score": 0.15
-        }
-      }
+      "DELTS_SIDE": 1,
+      "ROTATOR_CUFF": 0.35,
+      "TRAPS": 0.15
     },
     "default_delta_configs": {
       "motionPaths": "LOW_HIGH"
@@ -1833,24 +1115,10 @@
     ],
     "short_description": "Arcing arms at a 45-degree angle.",
     "muscle_targets": {
-      "SHOULDERS": {
-        "_score": 1.65,
-        "DELTS_SIDE": {
-          "_score": 0.78
-        },
-        "DELTS_FRONT": {
-          "_score": 0.55
-        },
-        "ROTATOR_CUFF": {
-          "_score": 0.32
-        }
-      },
-      "BACK": {
-        "_score": 0.18,
-        "TRAPS": {
-          "_score": 0.18
-        }
-      }
+      "DELTS_SIDE": 0.78,
+      "DELTS_FRONT": 0.55,
+      "ROTATOR_CUFF": 0.32,
+      "TRAPS": 0.18
     },
     "sort_order": 44,
     "is_active": true,
@@ -1871,27 +1139,10 @@
     ],
     "short_description": "Arcing the arms backward away from the midline.",
     "muscle_targets": {
-      "SHOULDERS": {
-        "_score": 0.95,
-        "DELTS_REAR": {
-          "_score": 0.95
-        }
-      },
-      "BACK": {
-        "_score": 1.2,
-        "RHOMBOIDS": {
-          "_score": 0.75
-        },
-        "TRAPS": {
-          "_score": 0.45
-        }
-      },
-      "CORE": {
-        "_score": 0.15,
-        "CORE_DEEP": {
-          "_score": 0.15
-        }
-      }
+      "DELTS_REAR": 0.95,
+      "RHOMBOIDS": 0.75,
+      "TRAPS": 0.45,
+      "CORE_DEEP": 0.15
     },
     "sort_order": 45,
     "is_active": true,
@@ -1913,30 +1164,11 @@
     ],
     "short_description": "Pulling resistance toward the face to engage the upper back.",
     "muscle_targets": {
-      "SHOULDERS": {
-        "_score": 1.4,
-        "DELTS_REAR": {
-          "_score": 0.85
-        },
-        "ROTATOR_CUFF": {
-          "_score": 0.55
-        }
-      },
-      "BACK": {
-        "_score": 1.35,
-        "RHOMBOIDS": {
-          "_score": 0.75
-        },
-        "TRAPS": {
-          "_score": 0.6
-        }
-      },
-      "ARMS": {
-        "_score": 0.25,
-        "BICEPS": {
-          "_score": 0.25
-        }
-      }
+      "DELTS_REAR": 0.85,
+      "ROTATOR_CUFF": 0.55,
+      "RHOMBOIDS": 0.75,
+      "TRAPS": 0.6,
+      "BICEPS": 0.25
     },
     "default_delta_configs": {
       "motionPaths": "HIGH_HIGH"
@@ -1960,27 +1192,10 @@
     ],
     "short_description": "Extending the torso backward against gravity.",
     "muscle_targets": {
-      "BACK": {
-        "_score": 1,
-        "BACK_LOWER": {
-          "_score": 1
-        }
-      },
-      "LEGS": {
-        "_score": 0.97,
-        "GLUTES": {
-          "_score": 0.62
-        },
-        "HAMSTRINGS": {
-          "_score": 0.35
-        }
-      },
-      "CORE": {
-        "_score": 0.3,
-        "CORE_DEEP": {
-          "_score": 0.3
-        }
-      }
+      "BACK_LOWER": 1,
+      "GLUTES": 0.62,
+      "HAMSTRINGS": 0.35,
+      "CORE_DEEP": 0.3
     },
     "sort_order": 47,
     "is_active": true,
@@ -2002,18 +1217,8 @@
     ],
     "short_description": "Lifting the heels to engage the lower leg.",
     "muscle_targets": {
-      "LEGS": {
-        "_score": 1,
-        "CALVES": {
-          "_score": 1
-        }
-      },
-      "CORE": {
-        "_score": 0.15,
-        "CORE_DEEP": {
-          "_score": 0.15
-        }
-      }
+      "CALVES": 1,
+      "CORE_DEEP": 0.15
     },
     "sort_order": 48,
     "is_active": true,
@@ -2035,24 +1240,9 @@
     ],
     "short_description": "Raising heels with flexed knees targeting Soleus.",
     "muscle_targets": {
-      "LEGS": {
-        "_score": 1.1,
-        "CALVES": {
-          "_score": 1,
-          "CALF_LOWER": {
-            "_score": 1
-          }
-        },
-        "HAMSTRINGS": {
-          "_score": 0.1
-        }
-      },
-      "CORE": {
-        "_score": 0.15,
-        "CORE_DEEP": {
-          "_score": 0.15
-        }
-      }
+      "CALF_LOWER": 1,
+      "HAMSTRINGS": 0.1,
+      "CORE_DEEP": 0.15
     },
     "sort_order": 49,
     "is_active": true,
@@ -2073,18 +1263,8 @@
     ],
     "short_description": "Raising heels with fully extended knees targeting Gastrocnemius.",
     "muscle_targets": {
-      "LEGS": {
-        "_score": 1,
-        "CALVES": {
-          "_score": 1
-        }
-      },
-      "CORE": {
-        "_score": 0.15,
-        "CORE_DEEP": {
-          "_score": 0.15
-        }
-      }
+      "CALVES": 1,
+      "CORE_DEEP": 0.15
     },
     "sort_order": 50,
     "is_active": true,
@@ -2105,18 +1285,9 @@
     ],
     "short_description": "Bending the knee to bring the heel toward the glutes.",
     "muscle_targets": {
-      "LEGS": {
-        "_score": 1.65,
-        "HAMSTRINGS": {
-          "_score": 1
-        },
-        "CALVES": {
-          "_score": 0.45
-        },
-        "GLUTES": {
-          "_score": 0.2
-        }
-      }
+      "HAMSTRINGS": 1,
+      "CALVES": 0.45,
+      "GLUTES": 0.2
     },
     "sort_order": 51,
     "is_active": true,
@@ -2137,21 +1308,9 @@
     ],
     "short_description": "Straightening the knee against resistance.",
     "muscle_targets": {
-      "LEGS": {
-        "_score": 2.1,
-        "QUADS": {
-          "_score": 2.1,
-          "QUAD_INNER": {
-            "_score": 0.65
-          },
-          "QUAD_MID": {
-            "_score": 0.75
-          },
-          "QUAD_OUTER": {
-            "_score": 0.7
-          }
-        }
-      }
+      "QUAD_INNER": 0.65,
+      "QUAD_MID": 0.75,
+      "QUAD_OUTER": 0.7
     },
     "sort_order": 52,
     "is_active": true,
@@ -2174,27 +1333,10 @@
     ],
     "short_description": "Bending primarily at the hips with minimal knee bend.",
     "muscle_targets": {
-      "LEGS": {
-        "_score": 1.73,
-        "HAMSTRINGS": {
-          "_score": 0.88
-        },
-        "GLUTES": {
-          "_score": 0.85
-        }
-      },
-      "BACK": {
-        "_score": 0.62,
-        "BACK_LOWER": {
-          "_score": 0.62
-        }
-      },
-      "CORE": {
-        "_score": 0.42,
-        "CORE_DEEP": {
-          "_score": 0.42
-        }
-      }
+      "HAMSTRINGS": 0.88,
+      "GLUTES": 0.85,
+      "BACK_LOWER": 0.62,
+      "CORE_DEEP": 0.42
     },
     "sort_order": 53,
     "is_active": true,
@@ -2216,27 +1358,10 @@
     ],
     "short_description": "Conventional hip hinge with bar on floor",
     "muscle_targets": {
-      "LEGS": {
-        "_score": 1.73,
-        "HAMSTRINGS": {
-          "_score": 0.88
-        },
-        "GLUTES": {
-          "_score": 0.85
-        }
-      },
-      "BACK": {
-        "_score": 0.62,
-        "BACK_LOWER": {
-          "_score": 0.62
-        }
-      },
-      "CORE": {
-        "_score": 0.42,
-        "CORE_DEEP": {
-          "_score": 0.42
-        }
-      }
+      "HAMSTRINGS": 0.88,
+      "GLUTES": 0.85,
+      "BACK_LOWER": 0.62,
+      "CORE_DEEP": 0.42
     },
     "sort_order": 54,
     "is_active": true,
@@ -2258,27 +1383,10 @@
     ],
     "short_description": "Minimal knee bend hip hinge focusing on hamstring stretch.",
     "muscle_targets": {
-      "LEGS": {
-        "_score": 1.62,
-        "HAMSTRINGS": {
-          "_score": 1
-        },
-        "GLUTES": {
-          "_score": 0.62
-        }
-      },
-      "BACK": {
-        "_score": 0.48,
-        "BACK_LOWER": {
-          "_score": 0.48
-        }
-      },
-      "CORE": {
-        "_score": 0.35,
-        "CORE_DEEP": {
-          "_score": 0.35
-        }
-      }
+      "HAMSTRINGS": 1,
+      "GLUTES": 0.62,
+      "BACK_LOWER": 0.48,
+      "CORE_DEEP": 0.35
     },
     "sort_order": 55,
     "is_active": true,
@@ -2299,27 +1407,10 @@
     ],
     "short_description": "Driving the hips forward in a bridging motion.",
     "muscle_targets": {
-      "LEGS": {
-        "_score": 1.35,
-        "GLUTES": {
-          "_score": 1
-        },
-        "HAMSTRINGS": {
-          "_score": 0.35
-        }
-      },
-      "CORE": {
-        "_score": 0.5,
-        "CORE_DEEP": {
-          "_score": 0.5
-        }
-      },
-      "BACK": {
-        "_score": 0.2,
-        "BACK_LOWER": {
-          "_score": 0.2
-        }
-      }
+      "GLUTES": 1,
+      "HAMSTRINGS": 0.35,
+      "CORE_DEEP": 0.5,
+      "BACK_LOWER": 0.2
     },
     "sort_order": 56,
     "is_active": true,
@@ -2341,33 +1432,12 @@
     ],
     "short_description": "Bending at the hips and knees simultaneously.",
     "muscle_targets": {
-      "LEGS": {
-        "_score": 2.25,
-        "QUADS": {
-          "_score": 0.88
-        },
-        "GLUTES": {
-          "_score": 0.72
-        },
-        "HAMSTRINGS": {
-          "_score": 0.35
-        },
-        "THIGHS_INNER": {
-          "_score": 0.3
-        }
-      },
-      "CORE": {
-        "_score": 0.45,
-        "CORE_DEEP": {
-          "_score": 0.45
-        }
-      },
-      "BACK": {
-        "_score": 0.25,
-        "BACK_LOWER": {
-          "_score": 0.25
-        }
-      }
+      "QUADS": 0.88,
+      "GLUTES": 0.72,
+      "HAMSTRINGS": 0.35,
+      "THIGHS_INNER": 0.3,
+      "CORE_DEEP": 0.45,
+      "BACK_LOWER": 0.25
     },
     "sort_order": 57,
     "is_active": true,
@@ -2390,30 +1460,11 @@
     ],
     "short_description": "Balanced knee/hip flexion.",
     "muscle_targets": {
-      "LEGS": {
-        "_score": 1.88,
-        "QUADS": {
-          "_score": 0.9
-        },
-        "GLUTES": {
-          "_score": 0.68
-        },
-        "HAMSTRINGS": {
-          "_score": 0.3
-        }
-      },
-      "CORE": {
-        "_score": 0.42,
-        "CORE_DEEP": {
-          "_score": 0.42
-        }
-      },
-      "BACK": {
-        "_score": 0.22,
-        "BACK_LOWER": {
-          "_score": 0.22
-        }
-      }
+      "QUADS": 0.9,
+      "GLUTES": 0.68,
+      "HAMSTRINGS": 0.3,
+      "CORE_DEEP": 0.42,
+      "BACK_LOWER": 0.22
     },
     "sort_order": 58,
     "is_active": true,
@@ -2435,30 +1486,11 @@
     ],
     "short_description": "Upright squat emphasizing knees.",
     "muscle_targets": {
-      "LEGS": {
-        "_score": 1.5,
-        "QUADS": {
-          "_score": 0.95
-        },
-        "GLUTES": {
-          "_score": 0.55
-        }
-      },
-      "CORE": {
-        "_score": 0.55,
-        "CORE_DEEP": {
-          "_score": 0.55
-        }
-      },
-      "BACK": {
-        "_score": 0.4,
-        "BACK_UPPER": {
-          "_score": 0.2
-        },
-        "BACK_LOWER": {
-          "_score": 0.2
-        }
-      }
+      "QUADS": 0.95,
+      "GLUTES": 0.55,
+      "CORE_DEEP": 0.55,
+      "BACK_UPPER": 0.2,
+      "BACK_LOWER": 0.2
     },
     "sort_order": 59,
     "is_active": true,
@@ -2478,27 +1510,11 @@
     ],
     "short_description": "Horizontal step with eccentric control – quad/glute/ham focus",
     "muscle_targets": {
-      "LEGS": {
-        "_score": 2.2,
-        "QUADS": {
-          "_score": 0.82
-        },
-        "GLUTES": {
-          "_score": 0.78
-        },
-        "HAMSTRINGS": {
-          "_score": 0.35
-        },
-        "THIGHS_INNER": {
-          "_score": 0.25
-        }
-      },
-      "CORE": {
-        "_score": 0.42,
-        "CORE_DEEP": {
-          "_score": 0.42
-        }
-      }
+      "QUADS": 0.82,
+      "GLUTES": 0.78,
+      "HAMSTRINGS": 0.35,
+      "THIGHS_INNER": 0.25,
+      "CORE_DEEP": 0.42
     },
     "sort_order": 60,
     "is_active": true,
@@ -2520,30 +1536,10 @@
     ],
     "short_description": "Stepping out to the side, stretching the inner thigh.",
     "muscle_targets": {
-      "LEGS": {
-        "_score": 1.72,
-        "THIGHS_INNER": {
-          "_score": 0.72,
-          "ADDUCTOR_MAGNUS": {
-            "_score": 0.72
-          }
-        },
-        "GLUTES": {
-          "_score": 0.55,
-          "GLUTE_MEDIUS": {
-            "_score": 0.55
-          }
-        },
-        "QUADS": {
-          "_score": 0.45
-        }
-      },
-      "CORE": {
-        "_score": 0.35,
-        "CORE_DEEP": {
-          "_score": 0.35
-        }
-      }
+      "ADDUCTOR_MAGNUS": 0.72,
+      "GLUTE_MEDIUS": 0.55,
+      "QUADS": 0.45,
+      "CORE_DEEP": 0.35
     },
     "sort_order": 61,
     "is_active": true,
@@ -2565,24 +1561,10 @@
     ],
     "short_description": "Stationary single-leg squat.",
     "muscle_targets": {
-      "LEGS": {
-        "_score": 1.68,
-        "QUADS": {
-          "_score": 0.88
-        },
-        "GLUTES": {
-          "_score": 0.55
-        },
-        "HAMSTRINGS": {
-          "_score": 0.25
-        }
-      },
-      "CORE": {
-        "_score": 0.35,
-        "CORE_DEEP": {
-          "_score": 0.35
-        }
-      }
+      "QUADS": 0.88,
+      "GLUTES": 0.55,
+      "HAMSTRINGS": 0.25,
+      "CORE_DEEP": 0.35
     },
     "sort_order": 62,
     "is_active": true,
@@ -2604,24 +1586,10 @@
     ],
     "short_description": "Dynamic single-leg step.",
     "muscle_targets": {
-      "LEGS": {
-        "_score": 1.95,
-        "QUADS": {
-          "_score": 0.82
-        },
-        "GLUTES": {
-          "_score": 0.78
-        },
-        "HAMSTRINGS": {
-          "_score": 0.35
-        }
-      },
-      "CORE": {
-        "_score": 0.4,
-        "CORE_DEEP": {
-          "_score": 0.4
-        }
-      }
+      "QUADS": 0.82,
+      "GLUTES": 0.78,
+      "HAMSTRINGS": 0.35,
+      "CORE_DEEP": 0.4
     },
     "sort_order": 63,
     "is_active": true,
@@ -2642,30 +1610,11 @@
     ],
     "short_description": "Static core stability holds bracing the spine.",
     "muscle_targets": {
-      "CORE": {
-        "_score": 2.02,
-        "CORE_DEEP": {
-          "_score": 1
-        },
-        "ABS": {
-          "_score": 0.62
-        },
-        "OBLIQUES": {
-          "_score": 0.4
-        }
-      },
-      "SHOULDERS": {
-        "_score": 0.35,
-        "DELTS_FRONT": {
-          "_score": 0.35
-        }
-      },
-      "ARMS": {
-        "_score": 0.2,
-        "TRICEPS": {
-          "_score": 0.2
-        }
-      }
+      "CORE_DEEP": 1,
+      "ABS": 0.62,
+      "OBLIQUES": 0.4,
+      "DELTS_FRONT": 0.35,
+      "TRICEPS": 0.2
     },
     "sort_order": 64,
     "is_active": true,
@@ -2687,21 +1636,9 @@
     ],
     "short_description": "Rolling or flexing the spine forward.",
     "muscle_targets": {
-      "CORE": {
-        "_score": 1.73,
-        "ABS": {
-          "_score": 1.38,
-          "ABS_UPPER": {
-            "_score": 0.88
-          },
-          "ABS_LOWER": {
-            "_score": 0.5
-          }
-        },
-        "HIP_FLEXORS": {
-          "_score": 0.35
-        }
-      }
+      "ABS_UPPER": 0.88,
+      "ABS_LOWER": 0.5,
+      "HIP_FLEXORS": 0.35
     },
     "sort_order": 65,
     "is_active": true,
@@ -2723,15 +1660,8 @@
     ],
     "short_description": "Bending the torso sideways.",
     "muscle_targets": {
-      "CORE": {
-        "_score": 1.35,
-        "OBLIQUES": {
-          "_score": 1
-        },
-        "CORE_DEEP": {
-          "_score": 0.35
-        }
-      }
+      "OBLIQUES": 1,
+      "CORE_DEEP": 0.35
     },
     "sort_order": 66,
     "is_active": true,
@@ -2754,21 +1684,9 @@
     ],
     "short_description": "Twisting the torso horizontally or diagonally.",
     "muscle_targets": {
-      "CORE": {
-        "_score": 1.4,
-        "OBLIQUES": {
-          "_score": 0.95
-        },
-        "CORE_DEEP": {
-          "_score": 0.45
-        }
-      },
-      "BACK": {
-        "_score": 0.2,
-        "BACK_MID": {
-          "_score": 0.2
-        }
-      }
+      "OBLIQUES": 0.95,
+      "CORE_DEEP": 0.45,
+      "BACK_MID": 0.2
     },
     "default_delta_configs": {
       "motionPaths": "MID_MID"
@@ -2792,21 +1710,9 @@
     ],
     "short_description": "Lifting the legs toward the torso.",
     "muscle_targets": {
-      "CORE": {
-        "_score": 2.08,
-        "ABS": {
-          "_score": 1,
-          "ABS_LOWER": {
-            "_score": 1
-          }
-        },
-        "HIP_FLEXORS": {
-          "_score": 0.78
-        },
-        "CORE_DEEP": {
-          "_score": 0.3
-        }
-      }
+      "ABS_LOWER": 1,
+      "HIP_FLEXORS": 0.78,
+      "CORE_DEEP": 0.3
     },
     "sort_order": 68,
     "is_active": true,
@@ -2828,21 +1734,9 @@
     ],
     "short_description": "Resisting spinal extension in prone position",
     "muscle_targets": {
-      "CORE": {
-        "_score": 1.55,
-        "CORE_DEEP": {
-          "_score": 1
-        },
-        "ABS": {
-          "_score": 0.55
-        }
-      },
-      "LEGS": {
-        "_score": 0.15,
-        "GLUTES": {
-          "_score": 0.15
-        }
-      }
+      "CORE_DEEP": 1,
+      "ABS": 0.55,
+      "GLUTES": 0.15
     },
     "default_delta_configs": {},
     "sort_order": 69,
@@ -2864,21 +1758,9 @@
     ],
     "short_description": "Resisting side bending of the spine",
     "muscle_targets": {
-      "CORE": {
-        "_score": 1.55,
-        "OBLIQUES": {
-          "_score": 1
-        },
-        "CORE_DEEP": {
-          "_score": 0.55
-        }
-      },
-      "BACK": {
-        "_score": 0.5,
-        "BACK_LOWER": {
-          "_score": 0.5
-        }
-      }
+      "OBLIQUES": 1,
+      "CORE_DEEP": 0.55,
+      "BACK_LOWER": 0.5
     },
     "default_delta_configs": {},
     "sort_order": 70,
@@ -2899,15 +1781,8 @@
     ],
     "short_description": "Resisting rotational forces on the torso",
     "muscle_targets": {
-      "CORE": {
-        "_score": 1.65,
-        "CORE_DEEP": {
-          "_score": 1
-        },
-        "OBLIQUES": {
-          "_score": 0.65
-        }
-      }
+      "CORE_DEEP": 1,
+      "OBLIQUES": 0.65
     },
     "default_delta_configs": {},
     "sort_order": 71,
@@ -2924,21 +1799,9 @@
       "Horizontal Rear Delt Flys"
     ],
     "muscle_targets": {
-      "SHOULDERS": {
-        "_score": 1,
-        "DELTS_REAR": {
-          "_score": 1
-        }
-      },
-      "BACK": {
-        "_score": 0.95,
-        "RHOMBOIDS": {
-          "_score": 0.6
-        },
-        "TRAPS": {
-          "_score": 0.35
-        }
-      }
+      "DELTS_REAR": 1,
+      "RHOMBOIDS": 0.6,
+      "TRAPS": 0.35
     },
     "default_delta_configs": {},
     "short_description": "Rear delt isolation on flat bench or machine",
@@ -2959,21 +1822,9 @@
       "Prone Incline Reverse Flys"
     ],
     "muscle_targets": {
-      "SHOULDERS": {
-        "_score": 0.95,
-        "DELTS_REAR": {
-          "_score": 0.95
-        }
-      },
-      "BACK": {
-        "_score": 1.16,
-        "RHOMBOIDS": {
-          "_score": 0.68
-        },
-        "TRAPS": {
-          "_score": 0.48
-        }
-      }
+      "DELTS_REAR": 0.95,
+      "RHOMBOIDS": 0.68,
+      "TRAPS": 0.48
     },
     "default_delta_configs": {},
     "short_description": "Upper rear delt emphasis with incline support",
@@ -2994,21 +1845,9 @@
       "Downward Reverse Flys"
     ],
     "muscle_targets": {
-      "SHOULDERS": {
-        "_score": 0.92,
-        "DELTS_REAR": {
-          "_score": 0.92
-        }
-      },
-      "BACK": {
-        "_score": 1.12,
-        "RHOMBOIDS": {
-          "_score": 0.6
-        },
-        "TRAPS": {
-          "_score": 0.52
-        }
-      }
+      "DELTS_REAR": 0.92,
+      "RHOMBOIDS": 0.6,
+      "TRAPS": 0.52
     },
     "default_delta_configs": {},
     "short_description": "Lower rear delt + mid trap emphasis on decline",
@@ -3030,27 +1869,11 @@
       "High Step-ups"
     ],
     "muscle_targets": {
-      "LEGS": {
-        "_score": 2.17,
-        "QUADS": {
-          "_score": 0.8
-        },
-        "GLUTES": {
-          "_score": 0.82
-        },
-        "HAMSTRINGS": {
-          "_score": 0.3
-        },
-        "CALVES": {
-          "_score": 0.25
-        }
-      },
-      "CORE": {
-        "_score": 0.4,
-        "CORE_DEEP": {
-          "_score": 0.4
-        }
-      }
+      "QUADS": 0.8,
+      "GLUTES": 0.82,
+      "HAMSTRINGS": 0.3,
+      "CALVES": 0.25,
+      "CORE_DEEP": 0.4
     },
     "default_delta_configs": {},
     "short_description": "Vertical drive off elevated surface, quad/glute focus",
@@ -3066,33 +1889,13 @@
     "label": "Composite",
     "parent_id": null,
     "muscle_targets": {
-      "LEGS": {
-        "_score": 1.16,
-        "QUADS": {
-          "_score": 0.58
-        },
-        "GLUTES": {
-          "_score": 0.58
-        }
-      },
-      "CORE": {
-        "_score": 0.58,
-        "CORE_DEEP": {
-          "_score": 0.58
-        }
-      },
-      "BACK": {
-        "_score": 0.35
-      },
-      "SHOULDERS": {
-        "_score": 0.3
-      },
-      "ARMS": {
-        "_score": 0.25
-      },
-      "CHEST": {
-        "_score": 0.2
-      }
+      "QUADS": 0.58,
+      "GLUTES": 0.58,
+      "CORE_DEEP": 0.58,
+      "BACK": 0.35,
+      "SHOULDERS": 0.3,
+      "ARMS": 0.25,
+      "CHEST": 0.2
     },
     "default_delta_configs": {},
     "common_names": [],
@@ -3110,57 +1913,18 @@
     "label": "Olympic",
     "parent_id": null,
     "muscle_targets": {
-      "LEGS": {
-        "_score": 2.3,
-        "QUADS": {
-          "_score": 0.68
-        },
-        "GLUTES": {
-          "_score": 0.82
-        },
-        "HAMSTRINGS": {
-          "_score": 0.45
-        },
-        "CALVES": {
-          "_score": 0.35
-        }
-      },
-      "BACK": {
-        "_score": 1.58,
-        "TRAPS": {
-          "_score": 0.88
-        },
-        "LATS": {
-          "_score": 0.35
-        },
-        "BACK_LOWER": {
-          "_score": 0.35
-        }
-      },
-      "SHOULDERS": {
-        "_score": 1.16,
-        "DELTS_FRONT": {
-          "_score": 0.48
-        },
-        "DELTS_REAR": {
-          "_score": 0.38
-        },
-        "ROTATOR_CUFF": {
-          "_score": 0.3
-        }
-      },
-      "CORE": {
-        "_score": 0.55,
-        "CORE_DEEP": {
-          "_score": 0.55
-        }
-      },
-      "ARMS": {
-        "_score": 0.3,
-        "FOREARMS": {
-          "_score": 0.3
-        }
-      }
+      "QUADS": 0.68,
+      "GLUTES": 0.82,
+      "HAMSTRINGS": 0.45,
+      "CALVES": 0.35,
+      "TRAPS": 0.88,
+      "LATS": 0.35,
+      "BACK_LOWER": 0.35,
+      "DELTS_FRONT": 0.48,
+      "DELTS_REAR": 0.38,
+      "ROTATOR_CUFF": 0.3,
+      "CORE_DEEP": 0.55,
+      "FOREARMS": 0.3
     },
     "default_delta_configs": {},
     "common_names": [],
@@ -3179,42 +1943,13 @@
     "label": "Thruster",
     "parent_id": "COMPOSITE",
     "muscle_targets": {
-      "LEGS": {
-        "_score": 1.73,
-        "QUADS": {
-          "_score": 0.95
-        },
-        "GLUTES": {
-          "_score": 0.78
-        }
-      },
-      "SHOULDERS": {
-        "_score": 1.22,
-        "DELTS_FRONT": {
-          "_score": 0.92
-        },
-        "DELTS_SIDE": {
-          "_score": 0.3
-        }
-      },
-      "ARMS": {
-        "_score": 0.68,
-        "TRICEPS": {
-          "_score": 0.68
-        }
-      },
-      "CORE": {
-        "_score": 0.62,
-        "CORE_DEEP": {
-          "_score": 0.62
-        }
-      },
-      "BACK": {
-        "_score": 0.28,
-        "BACK_LOWER": {
-          "_score": 0.28
-        }
-      }
+      "QUADS": 0.95,
+      "GLUTES": 0.78,
+      "DELTS_FRONT": 0.92,
+      "DELTS_SIDE": 0.3,
+      "TRICEPS": 0.68,
+      "CORE_DEEP": 0.62,
+      "BACK_LOWER": 0.28
     },
     "default_delta_configs": {},
     "common_names": [],
@@ -3232,45 +1967,14 @@
     "label": "Kettlebell Swing",
     "parent_id": "COMPOSITE",
     "muscle_targets": {
-      "LEGS": {
-        "_score": 2.08,
-        "GLUTES": {
-          "_score": 1
-        },
-        "HAMSTRINGS": {
-          "_score": 0.88
-        },
-        "CALVES": {
-          "_score": 0.2
-        }
-      },
-      "CORE": {
-        "_score": 0.72,
-        "CORE_DEEP": {
-          "_score": 0.72
-        }
-      },
-      "BACK": {
-        "_score": 0.8,
-        "BACK_LOWER": {
-          "_score": 0.55
-        },
-        "TRAPS": {
-          "_score": 0.25
-        }
-      },
-      "SHOULDERS": {
-        "_score": 0.18,
-        "DELTS_FRONT": {
-          "_score": 0.18
-        }
-      },
-      "ARMS": {
-        "_score": 0.15,
-        "FOREARMS": {
-          "_score": 0.15
-        }
-      }
+      "GLUTES": 1,
+      "HAMSTRINGS": 0.88,
+      "CALVES": 0.2,
+      "CORE_DEEP": 0.72,
+      "BACK_LOWER": 0.55,
+      "TRAPS": 0.25,
+      "DELTS_FRONT": 0.18,
+      "FOREARMS": 0.15
     },
     "default_delta_configs": {},
     "common_names": [],
@@ -3288,42 +1992,13 @@
     "label": "Burpee",
     "parent_id": "COMPOSITE",
     "muscle_targets": {
-      "LEGS": {
-        "_score": 1.37,
-        "QUADS": {
-          "_score": 0.62
-        },
-        "GLUTES": {
-          "_score": 0.55
-        },
-        "CALVES": {
-          "_score": 0.2
-        }
-      },
-      "CHEST": {
-        "_score": 0.5,
-        "CHEST_MID": {
-          "_score": 0.5
-        }
-      },
-      "ARMS": {
-        "_score": 0.58,
-        "TRICEPS": {
-          "_score": 0.58
-        }
-      },
-      "SHOULDERS": {
-        "_score": 0.38,
-        "DELTS_FRONT": {
-          "_score": 0.38
-        }
-      },
-      "CORE": {
-        "_score": 0.68,
-        "CORE_DEEP": {
-          "_score": 0.68
-        }
-      }
+      "QUADS": 0.62,
+      "GLUTES": 0.55,
+      "CALVES": 0.2,
+      "CHEST_MID": 0.5,
+      "TRICEPS": 0.58,
+      "DELTS_FRONT": 0.38,
+      "CORE_DEEP": 0.68
     },
     "default_delta_configs": {},
     "common_names": [],
@@ -3341,51 +2016,16 @@
     "label": "Ball Slam",
     "parent_id": "COMPOSITE",
     "muscle_targets": {
-      "CORE": {
-        "_score": 1.35,
-        "CORE_DEEP": {
-          "_score": 0.95
-        },
-        "ABS": {
-          "_score": 0.4
-        }
-      },
-      "BACK": {
-        "_score": 1,
-        "LATS": {
-          "_score": 0.65
-        },
-        "TRAPS": {
-          "_score": 0.35
-        }
-      },
-      "SHOULDERS": {
-        "_score": 0.7,
-        "DELTS_FRONT": {
-          "_score": 0.5
-        },
-        "DELTS_SIDE": {
-          "_score": 0.2
-        }
-      },
-      "LEGS": {
-        "_score": 0.65,
-        "GLUTES": {
-          "_score": 0.35
-        },
-        "QUADS": {
-          "_score": 0.3
-        }
-      },
-      "ARMS": {
-        "_score": 0.4,
-        "TRICEPS": {
-          "_score": 0.2
-        },
-        "FOREARMS": {
-          "_score": 0.2
-        }
-      }
+      "CORE_DEEP": 0.95,
+      "ABS": 0.4,
+      "LATS": 0.65,
+      "TRAPS": 0.35,
+      "DELTS_FRONT": 0.5,
+      "DELTS_SIDE": 0.2,
+      "GLUTES": 0.35,
+      "QUADS": 0.3,
+      "TRICEPS": 0.2,
+      "FOREARMS": 0.2
     },
     "default_delta_configs": {},
     "common_names": [],
@@ -3403,54 +2043,17 @@
     "label": "Turkish Get-Up",
     "parent_id": "COMPOSITE",
     "muscle_targets": {
-      "CORE": {
-        "_score": 1.55,
-        "CORE_DEEP": {
-          "_score": 1
-        },
-        "OBLIQUES": {
-          "_score": 0.55
-        }
-      },
-      "SHOULDERS": {
-        "_score": 1.99,
-        "DELTS_FRONT": {
-          "_score": 0.72
-        },
-        "DELTS_SIDE": {
-          "_score": 0.62
-        },
-        "ROTATOR_CUFF": {
-          "_score": 0.65
-        }
-      },
-      "LEGS": {
-        "_score": 0.95,
-        "GLUTES": {
-          "_score": 0.55
-        },
-        "QUADS": {
-          "_score": 0.4
-        }
-      },
-      "BACK": {
-        "_score": 0.5,
-        "BACK_LOWER": {
-          "_score": 0.25
-        },
-        "BACK_UPPER": {
-          "_score": 0.25
-        }
-      },
-      "ARMS": {
-        "_score": 0.45,
-        "TRICEPS": {
-          "_score": 0.2
-        },
-        "FOREARMS": {
-          "_score": 0.25
-        }
-      }
+      "CORE_DEEP": 1,
+      "OBLIQUES": 0.55,
+      "DELTS_FRONT": 0.72,
+      "DELTS_SIDE": 0.62,
+      "ROTATOR_CUFF": 0.65,
+      "GLUTES": 0.55,
+      "QUADS": 0.4,
+      "BACK_LOWER": 0.25,
+      "BACK_UPPER": 0.25,
+      "TRICEPS": 0.2,
+      "FOREARMS": 0.25
     },
     "default_delta_configs": {},
     "common_names": [],
@@ -3468,48 +2071,15 @@
     "label": "Muscle Up",
     "parent_id": "COMPOSITE",
     "muscle_targets": {
-      "BACK": {
-        "_score": 1.3,
-        "LATS": {
-          "_score": 1
-        },
-        "TRAPS": {
-          "_score": 0.3
-        }
-      },
-      "ARMS": {
-        "_score": 1.85,
-        "TRICEPS": {
-          "_score": 0.75
-        },
-        "BICEPS": {
-          "_score": 0.65
-        },
-        "FOREARMS": {
-          "_score": 0.45
-        }
-      },
-      "CHEST": {
-        "_score": 0.25,
-        "CHEST_LOWER": {
-          "_score": 0.25
-        }
-      },
-      "SHOULDERS": {
-        "_score": 0.6,
-        "DELTS_FRONT": {
-          "_score": 0.4
-        },
-        "DELTS_REAR": {
-          "_score": 0.2
-        }
-      },
-      "CORE": {
-        "_score": 0.72,
-        "CORE_DEEP": {
-          "_score": 0.72
-        }
-      }
+      "LATS": 1,
+      "TRAPS": 0.3,
+      "TRICEPS": 0.75,
+      "BICEPS": 0.65,
+      "FOREARMS": 0.45,
+      "CHEST_LOWER": 0.25,
+      "DELTS_FRONT": 0.4,
+      "DELTS_REAR": 0.2,
+      "CORE_DEEP": 0.72
     },
     "default_delta_configs": {},
     "common_names": [],
@@ -3527,30 +2097,11 @@
     "label": "Jumping Jack",
     "parent_id": "COMPOSITE",
     "muscle_targets": {
-      "SHOULDERS": {
-        "_score": 0.72,
-        "DELTS_SIDE": {
-          "_score": 0.72
-        }
-      },
-      "LEGS": {
-        "_score": 1.05,
-        "CALVES": {
-          "_score": 0.6
-        },
-        "GLUTES": {
-          "_score": 0.25
-        },
-        "QUADS": {
-          "_score": 0.2
-        }
-      },
-      "CORE": {
-        "_score": 0.32,
-        "CORE_DEEP": {
-          "_score": 0.32
-        }
-      }
+      "DELTS_SIDE": 0.72,
+      "CALVES": 0.6,
+      "GLUTES": 0.25,
+      "QUADS": 0.2,
+      "CORE_DEEP": 0.32
     },
     "default_delta_configs": {},
     "common_names": [],
@@ -3568,54 +2119,17 @@
     "label": "Clean",
     "parent_id": "OLYMPIC",
     "muscle_targets": {
-      "LEGS": {
-        "_score": 2.55,
-        "GLUTES": {
-          "_score": 0.95
-        },
-        "QUADS": {
-          "_score": 0.8
-        },
-        "HAMSTRINGS": {
-          "_score": 0.5
-        },
-        "CALVES": {
-          "_score": 0.3
-        }
-      },
-      "BACK": {
-        "_score": 1.55,
-        "TRAPS": {
-          "_score": 0.95
-        },
-        "BACK_LOWER": {
-          "_score": 0.35
-        },
-        "LATS": {
-          "_score": 0.25
-        }
-      },
-      "SHOULDERS": {
-        "_score": 0.58,
-        "DELTS_FRONT": {
-          "_score": 0.38
-        },
-        "DELTS_REAR": {
-          "_score": 0.2
-        }
-      },
-      "ARMS": {
-        "_score": 0.28,
-        "FOREARMS": {
-          "_score": 0.28
-        }
-      },
-      "CORE": {
-        "_score": 0.55,
-        "CORE_DEEP": {
-          "_score": 0.55
-        }
-      }
+      "GLUTES": 0.95,
+      "QUADS": 0.8,
+      "HAMSTRINGS": 0.5,
+      "CALVES": 0.3,
+      "TRAPS": 0.95,
+      "BACK_LOWER": 0.35,
+      "LATS": 0.25,
+      "DELTS_FRONT": 0.38,
+      "DELTS_REAR": 0.2,
+      "FOREARMS": 0.28,
+      "CORE_DEEP": 0.55
     },
     "default_delta_configs": {},
     "common_names": [],
@@ -3633,60 +2147,19 @@
     "label": "Snatch",
     "parent_id": "OLYMPIC",
     "muscle_targets": {
-      "LEGS": {
-        "_score": 2.42,
-        "GLUTES": {
-          "_score": 0.95
-        },
-        "QUADS": {
-          "_score": 0.72
-        },
-        "HAMSTRINGS": {
-          "_score": 0.45
-        },
-        "CALVES": {
-          "_score": 0.3
-        }
-      },
-      "BACK": {
-        "_score": 1.45,
-        "TRAPS": {
-          "_score": 0.88
-        },
-        "BACK_LOWER": {
-          "_score": 0.35
-        },
-        "LATS": {
-          "_score": 0.22
-        }
-      },
-      "SHOULDERS": {
-        "_score": 1.93,
-        "DELTS_FRONT": {
-          "_score": 0.55
-        },
-        "DELTS_SIDE": {
-          "_score": 0.7
-        },
-        "DELTS_REAR": {
-          "_score": 0.3
-        },
-        "ROTATOR_CUFF": {
-          "_score": 0.38
-        }
-      },
-      "ARMS": {
-        "_score": 0.3,
-        "FOREARMS": {
-          "_score": 0.3
-        }
-      },
-      "CORE": {
-        "_score": 0.58,
-        "CORE_DEEP": {
-          "_score": 0.58
-        }
-      }
+      "GLUTES": 0.95,
+      "QUADS": 0.72,
+      "HAMSTRINGS": 0.45,
+      "CALVES": 0.3,
+      "TRAPS": 0.88,
+      "BACK_LOWER": 0.35,
+      "LATS": 0.22,
+      "DELTS_FRONT": 0.55,
+      "DELTS_SIDE": 0.7,
+      "DELTS_REAR": 0.3,
+      "ROTATOR_CUFF": 0.38,
+      "FOREARMS": 0.3,
+      "CORE_DEEP": 0.58
     },
     "default_delta_configs": {},
     "common_names": [],
@@ -3704,51 +2177,16 @@
     "label": "Clean & Jerk",
     "parent_id": "OLYMPIC",
     "muscle_targets": {
-      "LEGS": {
-        "_score": 2.05,
-        "GLUTES": {
-          "_score": 0.88
-        },
-        "QUADS": {
-          "_score": 0.82
-        },
-        "HAMSTRINGS": {
-          "_score": 0.35
-        }
-      },
-      "SHOULDERS": {
-        "_score": 1.23,
-        "DELTS_FRONT": {
-          "_score": 0.88
-        },
-        "DELTS_SIDE": {
-          "_score": 0.35
-        }
-      },
-      "ARMS": {
-        "_score": 0.97,
-        "TRICEPS": {
-          "_score": 0.72
-        },
-        "FOREARMS": {
-          "_score": 0.25
-        }
-      },
-      "BACK": {
-        "_score": 1,
-        "TRAPS": {
-          "_score": 0.72
-        },
-        "BACK_LOWER": {
-          "_score": 0.28
-        }
-      },
-      "CORE": {
-        "_score": 0.6,
-        "CORE_DEEP": {
-          "_score": 0.6
-        }
-      }
+      "GLUTES": 0.88,
+      "QUADS": 0.82,
+      "HAMSTRINGS": 0.35,
+      "DELTS_FRONT": 0.88,
+      "DELTS_SIDE": 0.35,
+      "TRICEPS": 0.72,
+      "FOREARMS": 0.25,
+      "TRAPS": 0.72,
+      "BACK_LOWER": 0.28,
+      "CORE_DEEP": 0.6
     },
     "default_delta_configs": {},
     "common_names": [],
@@ -3766,45 +2204,14 @@
     "label": "Power Clean",
     "parent_id": "OLYMPIC",
     "muscle_targets": {
-      "LEGS": {
-        "_score": 1.93,
-        "GLUTES": {
-          "_score": 0.9
-        },
-        "QUADS": {
-          "_score": 0.65
-        },
-        "HAMSTRINGS": {
-          "_score": 0.38
-        }
-      },
-      "BACK": {
-        "_score": 1.23,
-        "TRAPS": {
-          "_score": 0.95
-        },
-        "BACK_LOWER": {
-          "_score": 0.28
-        }
-      },
-      "SHOULDERS": {
-        "_score": 0.28,
-        "DELTS_FRONT": {
-          "_score": 0.28
-        }
-      },
-      "ARMS": {
-        "_score": 0.25,
-        "FOREARMS": {
-          "_score": 0.25
-        }
-      },
-      "CORE": {
-        "_score": 0.48,
-        "CORE_DEEP": {
-          "_score": 0.48
-        }
-      }
+      "GLUTES": 0.9,
+      "QUADS": 0.65,
+      "HAMSTRINGS": 0.38,
+      "TRAPS": 0.95,
+      "BACK_LOWER": 0.28,
+      "DELTS_FRONT": 0.28,
+      "FOREARMS": 0.25,
+      "CORE_DEEP": 0.48
     },
     "default_delta_configs": {},
     "common_names": [],
@@ -3822,45 +2229,14 @@
     "label": "Hang Clean",
     "parent_id": "OLYMPIC",
     "muscle_targets": {
-      "LEGS": {
-        "_score": 1.92,
-        "GLUTES": {
-          "_score": 0.9
-        },
-        "QUADS": {
-          "_score": 0.62
-        },
-        "HAMSTRINGS": {
-          "_score": 0.4
-        }
-      },
-      "BACK": {
-        "_score": 1.2,
-        "TRAPS": {
-          "_score": 0.95
-        },
-        "BACK_LOWER": {
-          "_score": 0.25
-        }
-      },
-      "SHOULDERS": {
-        "_score": 0.28,
-        "DELTS_FRONT": {
-          "_score": 0.28
-        }
-      },
-      "ARMS": {
-        "_score": 0.25,
-        "FOREARMS": {
-          "_score": 0.25
-        }
-      },
-      "CORE": {
-        "_score": 0.48,
-        "CORE_DEEP": {
-          "_score": 0.48
-        }
-      }
+      "GLUTES": 0.9,
+      "QUADS": 0.62,
+      "HAMSTRINGS": 0.4,
+      "TRAPS": 0.95,
+      "BACK_LOWER": 0.25,
+      "DELTS_FRONT": 0.28,
+      "FOREARMS": 0.25,
+      "CORE_DEEP": 0.48
     },
     "default_delta_configs": {},
     "common_names": [],
@@ -3878,48 +2254,15 @@
     "label": "Power Snatch",
     "parent_id": "OLYMPIC",
     "muscle_targets": {
-      "LEGS": {
-        "_score": 1.85,
-        "GLUTES": {
-          "_score": 0.9
-        },
-        "QUADS": {
-          "_score": 0.6
-        },
-        "HAMSTRINGS": {
-          "_score": 0.35
-        }
-      },
-      "SHOULDERS": {
-        "_score": 1.53,
-        "DELTS_FRONT": {
-          "_score": 0.55
-        },
-        "DELTS_SIDE": {
-          "_score": 0.68
-        },
-        "ROTATOR_CUFF": {
-          "_score": 0.3
-        }
-      },
-      "BACK": {
-        "_score": 0.8,
-        "TRAPS": {
-          "_score": 0.8
-        }
-      },
-      "ARMS": {
-        "_score": 0.25,
-        "FOREARMS": {
-          "_score": 0.25
-        }
-      },
-      "CORE": {
-        "_score": 0.5,
-        "CORE_DEEP": {
-          "_score": 0.5
-        }
-      }
+      "GLUTES": 0.9,
+      "QUADS": 0.6,
+      "HAMSTRINGS": 0.35,
+      "DELTS_FRONT": 0.55,
+      "DELTS_SIDE": 0.68,
+      "ROTATOR_CUFF": 0.3,
+      "TRAPS": 0.8,
+      "FOREARMS": 0.25,
+      "CORE_DEEP": 0.5
     },
     "default_delta_configs": {},
     "common_names": [],
@@ -3937,48 +2280,15 @@
     "label": "Hang Snatch",
     "parent_id": "OLYMPIC",
     "muscle_targets": {
-      "LEGS": {
-        "_score": 1.86,
-        "GLUTES": {
-          "_score": 0.9
-        },
-        "QUADS": {
-          "_score": 0.58
-        },
-        "HAMSTRINGS": {
-          "_score": 0.38
-        }
-      },
-      "SHOULDERS": {
-        "_score": 1.53,
-        "DELTS_FRONT": {
-          "_score": 0.55
-        },
-        "DELTS_SIDE": {
-          "_score": 0.68
-        },
-        "ROTATOR_CUFF": {
-          "_score": 0.3
-        }
-      },
-      "BACK": {
-        "_score": 0.8,
-        "TRAPS": {
-          "_score": 0.8
-        }
-      },
-      "ARMS": {
-        "_score": 0.25,
-        "FOREARMS": {
-          "_score": 0.25
-        }
-      },
-      "CORE": {
-        "_score": 0.5,
-        "CORE_DEEP": {
-          "_score": 0.5
-        }
-      }
+      "GLUTES": 0.9,
+      "QUADS": 0.58,
+      "HAMSTRINGS": 0.38,
+      "DELTS_FRONT": 0.55,
+      "DELTS_SIDE": 0.68,
+      "ROTATOR_CUFF": 0.3,
+      "TRAPS": 0.8,
+      "FOREARMS": 0.25,
+      "CORE_DEEP": 0.5
     },
     "default_delta_configs": {},
     "common_names": [],
@@ -3996,51 +2306,16 @@
     "label": "Split Jerk",
     "parent_id": "OLYMPIC",
     "muscle_targets": {
-      "LEGS": {
-        "_score": 2.1,
-        "QUADS": {
-          "_score": 0.7
-        },
-        "GLUTES": {
-          "_score": 0.65
-        },
-        "THIGHS_INNER": {
-          "_score": 0.5
-        },
-        "CALVES": {
-          "_score": 0.25
-        }
-      },
-      "SHOULDERS": {
-        "_score": 1.62,
-        "DELTS_FRONT": {
-          "_score": 0.92
-        },
-        "DELTS_SIDE": {
-          "_score": 0.35
-        },
-        "ROTATOR_CUFF": {
-          "_score": 0.35
-        }
-      },
-      "ARMS": {
-        "_score": 0.72,
-        "TRICEPS": {
-          "_score": 0.72
-        }
-      },
-      "CORE": {
-        "_score": 0.58,
-        "CORE_DEEP": {
-          "_score": 0.58
-        }
-      },
-      "BACK": {
-        "_score": 0.22,
-        "TRAPS": {
-          "_score": 0.22
-        }
-      }
+      "QUADS": 0.7,
+      "GLUTES": 0.65,
+      "THIGHS_INNER": 0.5,
+      "CALVES": 0.25,
+      "DELTS_FRONT": 0.92,
+      "DELTS_SIDE": 0.35,
+      "ROTATOR_CUFF": 0.35,
+      "TRICEPS": 0.72,
+      "CORE_DEEP": 0.58,
+      "TRAPS": 0.22
     },
     "default_delta_configs": {},
     "common_names": [],
@@ -4058,48 +2333,15 @@
     "label": "Push Jerk",
     "parent_id": "OLYMPIC",
     "muscle_targets": {
-      "LEGS": {
-        "_score": 1.36,
-        "QUADS": {
-          "_score": 0.72
-        },
-        "GLUTES": {
-          "_score": 0.42
-        },
-        "CALVES": {
-          "_score": 0.22
-        }
-      },
-      "SHOULDERS": {
-        "_score": 1.62,
-        "DELTS_FRONT": {
-          "_score": 0.92
-        },
-        "DELTS_SIDE": {
-          "_score": 0.35
-        },
-        "ROTATOR_CUFF": {
-          "_score": 0.35
-        }
-      },
-      "ARMS": {
-        "_score": 0.72,
-        "TRICEPS": {
-          "_score": 0.72
-        }
-      },
-      "CORE": {
-        "_score": 0.55,
-        "CORE_DEEP": {
-          "_score": 0.55
-        }
-      },
-      "BACK": {
-        "_score": 0.2,
-        "TRAPS": {
-          "_score": 0.2
-        }
-      }
+      "QUADS": 0.72,
+      "GLUTES": 0.42,
+      "CALVES": 0.22,
+      "DELTS_FRONT": 0.92,
+      "DELTS_SIDE": 0.35,
+      "ROTATOR_CUFF": 0.35,
+      "TRICEPS": 0.72,
+      "CORE_DEEP": 0.55,
+      "TRAPS": 0.2
     },
     "default_delta_configs": {},
     "common_names": [],
@@ -4117,39 +2359,12 @@
     "label": "Jump Shrug",
     "parent_id": "OLYMPIC",
     "muscle_targets": {
-      "BACK": {
-        "_score": 0.88,
-        "TRAPS": {
-          "_score": 0.88,
-          "TRAPS_UPPER": {
-            "_score": 0.88
-          }
-        }
-      },
-      "NECK": {
-        "_score": 0.4,
-        "NECK_EXTENSORS": {
-          "_score": 0.4
-        }
-      },
-      "LEGS": {
-        "_score": 1.25,
-        "GLUTES": {
-          "_score": 0.45
-        },
-        "CALVES": {
-          "_score": 0.55
-        },
-        "QUADS": {
-          "_score": 0.25
-        }
-      },
-      "CORE": {
-        "_score": 0.3,
-        "CORE_DEEP": {
-          "_score": 0.3
-        }
-      }
+      "TRAPS_UPPER": 0.88,
+      "NECK_EXTENSORS": 0.4,
+      "GLUTES": 0.45,
+      "CALVES": 0.55,
+      "QUADS": 0.25,
+      "CORE_DEEP": 0.3
     },
     "default_delta_configs": {},
     "common_names": [],
@@ -4167,54 +2382,16 @@
     "label": "Olympic High Pull",
     "parent_id": "OLYMPIC",
     "muscle_targets": {
-      "BACK": {
-        "_score": 1.4,
-        "TRAPS": {
-          "_score": 1
-        },
-        "BACK_UPPER": {
-          "_score": 0.4
-        }
-      },
-      "NECK": {
-        "_score": 0.3,
-        "NECK_EXTENSORS": {
-          "_score": 0.3
-        }
-      },
-      "LEGS": {
-        "_score": 1.17,
-        "GLUTES": {
-          "_score": 0.62
-        },
-        "QUADS": {
-          "_score": 0.35
-        },
-        "CALVES": {
-          "_score": 0.2
-        }
-      },
-      "SHOULDERS": {
-        "_score": 0.5,
-        "DELTS_SIDE": {
-          "_score": 0.3
-        },
-        "DELTS_REAR": {
-          "_score": 0.2
-        }
-      },
-      "ARMS": {
-        "_score": 0.3,
-        "FOREARMS": {
-          "_score": 0.3
-        }
-      },
-      "CORE": {
-        "_score": 0.42,
-        "CORE_DEEP": {
-          "_score": 0.42
-        }
-      }
+      "TRAPS": 1,
+      "BACK_UPPER": 0.4,
+      "NECK_EXTENSORS": 0.3,
+      "GLUTES": 0.62,
+      "QUADS": 0.35,
+      "CALVES": 0.2,
+      "DELTS_SIDE": 0.3,
+      "DELTS_REAR": 0.2,
+      "FOREARMS": 0.3,
+      "CORE_DEEP": 0.42
     },
     "default_delta_configs": {},
     "common_names": [],
@@ -4232,48 +2409,15 @@
     "label": "Snatch Pull",
     "parent_id": "OLYMPIC",
     "muscle_targets": {
-      "BACK": {
-        "_score": 1.3,
-        "TRAPS": {
-          "_score": 1
-        },
-        "BACK_LOWER": {
-          "_score": 0.3
-        }
-      },
-      "LEGS": {
-        "_score": 1.74,
-        "GLUTES": {
-          "_score": 0.72
-        },
-        "QUADS": {
-          "_score": 0.45
-        },
-        "HAMSTRINGS": {
-          "_score": 0.35
-        },
-        "CALVES": {
-          "_score": 0.22
-        }
-      },
-      "SHOULDERS": {
-        "_score": 0.15,
-        "DELTS_REAR": {
-          "_score": 0.15
-        }
-      },
-      "ARMS": {
-        "_score": 0.28,
-        "FOREARMS": {
-          "_score": 0.28
-        }
-      },
-      "CORE": {
-        "_score": 0.45,
-        "CORE_DEEP": {
-          "_score": 0.45
-        }
-      }
+      "TRAPS": 1,
+      "BACK_LOWER": 0.3,
+      "GLUTES": 0.72,
+      "QUADS": 0.45,
+      "HAMSTRINGS": 0.35,
+      "CALVES": 0.22,
+      "DELTS_REAR": 0.15,
+      "FOREARMS": 0.28,
+      "CORE_DEEP": 0.45
     },
     "default_delta_configs": {},
     "common_names": [],

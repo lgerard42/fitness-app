@@ -1,17 +1,13 @@
 export * from "./matrixV2";
 
 // ─── Muscle Targets ──────────────────────────────────────────────────
-// Hierarchical muscle scoring from motions.json
-// Each node has _score and may nest child muscles
+// Flat map: muscleId → score. Hierarchy is built at display time from
+// the muscles table's parent_ids. Parent scores are computed dynamically
+// as the sum of their children present in the map.
 
-export interface MuscleTargetNode {
-  _score: number;
-  [childMuscleId: string]: number | MuscleTargetNode;
-}
+export type MuscleTargets = Record<string, number>;
 
-export type MuscleTargets = Record<string, MuscleTargetNode>;
-
-/** Flat map: muscleId → score (after walking the tree) */
+/** Alias kept for backward compat; identical to MuscleTargets now. */
 export type FlatMuscleScores = Record<string, number>;
 
 // ─── Delta Rules ─────────────────────────────────────────────────────

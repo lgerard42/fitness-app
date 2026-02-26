@@ -25,10 +25,10 @@ const MOTIONS: Record<string, Motion> = {
     parent_id: null,
     upper_lower: ["UPPER"],
     muscle_targets: {
-      CHEST: { _score: 0.9, CHEST_MID: { _score: 0.9 } },
-      ARMS: { _score: 0.72, TRICEPS: { _score: 0.72 } },
-      SHOULDERS: { _score: 0.48, DELTS_FRONT: { _score: 0.48 } },
-      CORE: { _score: 0.15, CORE_DEEP: { _score: 0.15 } },
+      CHEST_MID: 0.9,
+      TRICEPS: 0.72,
+      DELTS_FRONT: 0.48,
+      CORE_DEEP: 0.15,
     },
     default_delta_configs: {},
   },
@@ -38,10 +38,10 @@ const MOTIONS: Record<string, Motion> = {
     parent_id: "PRESS",
     upper_lower: ["UPPER"],
     muscle_targets: {
-      CHEST: { _score: 0.92, CHEST_MID: { _score: 0.92 } },
-      ARMS: { _score: 0.72, TRICEPS: { _score: 0.72 } },
-      SHOULDERS: { _score: 0.45, DELTS_FRONT: { _score: 0.45 } },
-      CORE: { _score: 0.15, CORE_DEEP: { _score: 0.15 } },
+      CHEST_MID: 0.92,
+      TRICEPS: 0.72,
+      DELTS_FRONT: 0.45,
+      CORE_DEEP: 0.15,
     },
     default_delta_configs: {},
   },
@@ -51,10 +51,10 @@ const MOTIONS: Record<string, Motion> = {
     parent_id: "PRESS",
     upper_lower: ["UPPER"],
     muscle_targets: {
-      CHEST: { _score: 0.92, CHEST_UPPER: { _score: 0.92 } },
-      SHOULDERS: { _score: 0.65, DELTS_FRONT: { _score: 0.65 } },
-      ARMS: { _score: 0.65, TRICEPS: { _score: 0.65 } },
-      CORE: { _score: 0.15, CORE_DEEP: { _score: 0.15 } },
+      CHEST_UPPER: 0.92,
+      DELTS_FRONT: 0.65,
+      TRICEPS: 0.65,
+      CORE_DEEP: 0.15,
     },
     default_delta_configs: {},
   },
@@ -64,16 +64,10 @@ const MOTIONS: Record<string, Motion> = {
     parent_id: null,
     upper_lower: ["UPPER"],
     muscle_targets: {
-      ARMS: {
-        _score: 2.87,
-        BICEPS: {
-          _score: 2.42,
-          BICEP_INNER: { _score: 0.82 },
-          BICEP_OUTER: { _score: 0.78 },
-          BRACHIALIS: { _score: 0.82 },
-        },
-        FOREARMS: { _score: 0.45, FOREARM_BOTTOM: { _score: 0.45 } },
-      },
+      BICEP_INNER: 0.82,
+      BICEP_OUTER: 0.78,
+      BRACHIALIS: 0.82,
+      FOREARM_BOTTOM: 0.45,
     },
     default_delta_configs: { motionPaths: "LOW_HIGH" },
   },
@@ -83,15 +77,12 @@ const MOTIONS: Record<string, Motion> = {
     parent_id: null,
     upper_lower: ["LOWER"],
     muscle_targets: {
-      LEGS: {
-        _score: 2.25,
-        QUADS: { _score: 0.88 },
-        GLUTES: { _score: 0.72 },
-        HAMSTRINGS: { _score: 0.35 },
-        THIGHS_INNER: { _score: 0.3 },
-      },
-      CORE: { _score: 0.45, CORE_DEEP: { _score: 0.45 } },
-      BACK: { _score: 0.25, BACK_LOWER: { _score: 0.25 } },
+      QUADS: 0.88,
+      GLUTES: 0.72,
+      HAMSTRINGS: 0.35,
+      THIGHS_INNER: 0.3,
+      CORE_DEEP: 0.45,
+      BACK_LOWER: 0.25,
     },
     default_delta_configs: {},
   },
@@ -101,14 +92,11 @@ const MOTIONS: Record<string, Motion> = {
     parent_id: null,
     upper_lower: ["UPPER"],
     muscle_targets: {
-      CHEST: {
-        _score: 1.15,
-        CHEST_MID: { _score: 0.6 },
-        CHEST_LOWER: { _score: 0.55 },
-      },
-      ARMS: { _score: 0.92, TRICEPS: { _score: 0.92 } },
-      SHOULDERS: { _score: 0.55, DELTS_FRONT: { _score: 0.55 } },
-      CORE: { _score: 0.35, CORE_DEEP: { _score: 0.35 } },
+      CHEST_MID: 0.6,
+      CHEST_LOWER: 0.55,
+      TRICEPS: 0.92,
+      DELTS_FRONT: 0.55,
+      CORE_DEEP: 0.35,
     },
     default_delta_configs: {},
   },
@@ -118,8 +106,8 @@ const MOTIONS: Record<string, Motion> = {
     parent_id: "FLY",
     upper_lower: ["UPPER"],
     muscle_targets: {
-      CHEST: { _score: 0.92, CHEST_UPPER: { _score: 0.92 } },
-      SHOULDERS: { _score: 0.38, DELTS_FRONT: { _score: 0.38 } },
+      CHEST_UPPER: 0.92,
+      DELTS_FRONT: 0.38,
     },
     default_delta_configs: { motionPaths: "LOW_HIGH" },
   },
@@ -129,9 +117,9 @@ const MOTIONS: Record<string, Motion> = {
     parent_id: null,
     upper_lower: ["UPPER"],
     muscle_targets: {
-      CHEST: { _score: 0.75, CHEST_MID: { _score: 0.75 } },
-      SHOULDERS: { _score: 0.35, DELTS_FRONT: { _score: 0.35 } },
-      CORE: { _score: 0.1, CORE_DEEP: { _score: 0.1 } },
+      CHEST_MID: 0.75,
+      DELTS_FRONT: 0.35,
+      CORE_DEEP: 0.1,
     },
     default_delta_configs: {},
   },
@@ -246,29 +234,24 @@ const MODIFIER_TABLES: Record<string, Record<string, ModifierRow>> = {
 // ─── Tests ───────────────────────────────────────────────────────────
 
 describe("flattenMuscleTargets", () => {
-  it("flattens CURL muscle targets to flat map", () => {
+  it("returns flat map as-is for CURL (identity/shallow copy)", () => {
     const flat = flattenMuscleTargets(MOTIONS.CURL.muscle_targets);
-    expect(flat.ARMS).toBe(2.87);
-    expect(flat.BICEPS).toBe(2.42);
     expect(flat.BICEP_INNER).toBe(0.82);
     expect(flat.BICEP_OUTER).toBe(0.78);
     expect(flat.BRACHIALIS).toBe(0.82);
-    expect(flat.FOREARMS).toBe(0.45);
     expect(flat.FOREARM_BOTTOM).toBe(0.45);
   });
 
-  it("flattens PRESS_FLAT targets", () => {
+  it("returns flat map as-is for PRESS_FLAT (identity/shallow copy)", () => {
     const flat = flattenMuscleTargets(MOTIONS.PRESS_FLAT.muscle_targets);
-    expect(flat.CHEST).toBe(0.92);
     expect(flat.CHEST_MID).toBe(0.92);
     expect(flat.TRICEPS).toBe(0.72);
     expect(flat.DELTS_FRONT).toBe(0.45);
     expect(flat.CORE_DEEP).toBe(0.15);
   });
 
-  it("flattens SQUAT targets with multi-child groups", () => {
+  it("returns flat map as-is for SQUAT (identity/shallow copy)", () => {
     const flat = flattenMuscleTargets(MOTIONS.SQUAT.muscle_targets);
-    expect(flat.LEGS).toBe(2.25);
     expect(flat.QUADS).toBe(0.88);
     expect(flat.GLUTES).toBe(0.72);
     expect(flat.HAMSTRINGS).toBe(0.35);

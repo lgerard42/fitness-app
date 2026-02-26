@@ -14,7 +14,8 @@
     "db:triggers": "tsx src/drizzle/migrate.ts",
     "db:setup": "tsx src/setup/dbSetup.ts",
     "ref:seed": "tsx src/seed/seedPipeline.ts",
-    "ref:parity": "tsx src/parity/parityHarness.ts"
+    "ref:parity": "tsx src/parity/parityHarness.ts",
+    "db:flatten-muscle-targets": "tsx src/scripts/flattenMotionMuscleTargets.ts"
   },
   "dependencies": {
     "@prisma/client": "6.4.0",

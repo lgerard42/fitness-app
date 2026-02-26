@@ -1,6 +1,5 @@
 import type {
   MuscleTargets,
-  MuscleTargetNode,
   FlatMuscleScores,
   ResolvedDelta,
   ActivationResult,
@@ -16,34 +15,13 @@ const DEFAULT_POLICY: ScorePolicy = {
 };
 
 /**
- * Flatten a hierarchical muscle_targets tree into a flat muscleId → score map.
- * Walks recursively, collecting every node's _score.
+ * MuscleTargets is now a flat Record<string, number>, so this is an
+ * identity/shallow-copy. Kept for backward compat with call sites.
  */
 export function flattenMuscleTargets(
   targets: MuscleTargets
 ): FlatMuscleScores {
-  const flat: FlatMuscleScores = {};
-
-  function walk(node: Record<string, unknown>, parentKey?: string) {
-    for (const [key, value] of Object.entries(node)) {
-      if (key === "_score") continue;
-
-      if (
-        value !== null &&
-        typeof value === "object" &&
-        !Array.isArray(value)
-      ) {
-        const targetNode = value as MuscleTargetNode;
-        if (typeof targetNode._score === "number") {
-          flat[key] = targetNode._score;
-        }
-        walk(targetNode, key);
-      }
-    }
-  }
-
-  walk(targets);
-  return flat;
+  return { ...targets };
 }
 
 /**

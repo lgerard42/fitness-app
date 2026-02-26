@@ -79,24 +79,26 @@ function findSecondaryFor(id: string, allMuscles: MuscleRecord[]): string | null
 function buildTreeFromFlat(flat: Record<string, number>, allMuscles: MuscleRecord[]): TreeNode {
   const tree: TreeNode = { _score: 0 };
   for (const [muscleId, score] of Object.entries(flat)) {
-    const level = getMuscleLevel(muscleId, allMuscles);
-    if (level === 'primary') {
+    const m = allMuscles.find(mu => mu.id === muscleId);
+    if (!m || m.parent_ids.length === 0) {
       if (!tree[muscleId]) tree[muscleId] = { _score: 0 };
       (tree[muscleId] as TreeNode)._score = score;
-    } else if (level === 'secondary') {
-      const pId = findPrimaryFor(muscleId, allMuscles);
-      if (!tree[pId]) tree[pId] = { _score: 0 };
-      const pNode = tree[pId] as TreeNode;
-      if (!pNode[muscleId]) pNode[muscleId] = { _score: 0 };
-      (pNode[muscleId] as TreeNode)._score = score;
-    } else {
-      const sId = findSecondaryFor(muscleId, allMuscles);
-      const pId = findPrimaryFor(muscleId, allMuscles);
-      if (!tree[pId]) tree[pId] = { _score: 0 };
-      const pNode = tree[pId] as TreeNode;
-      if (sId) {
-        if (!pNode[sId]) pNode[sId] = { _score: 0 };
-        const sNode = pNode[sId] as TreeNode;
+      continue;
+    }
+    for (const pid of m.parent_ids) {
+      const parent = allMuscles.find(mu => mu.id === pid);
+      if (!parent) continue;
+      if (parent.parent_ids.length === 0) {
+        if (!tree[pid]) tree[pid] = { _score: 0 };
+        const pNode = tree[pid] as TreeNode;
+        if (!pNode[muscleId]) pNode[muscleId] = { _score: 0 };
+        (pNode[muscleId] as TreeNode)._score = score;
+      } else {
+        const pId = findPrimaryFor(pid, allMuscles);
+        if (!tree[pId]) tree[pId] = { _score: 0 };
+        const pNode = tree[pId] as TreeNode;
+        if (!pNode[pid]) pNode[pid] = { _score: 0 };
+        const sNode = pNode[pid] as TreeNode;
         if (!sNode[muscleId]) sNode[muscleId] = { _score: 0 };
         (sNode[muscleId] as TreeNode)._score = score;
       }
@@ -149,30 +151,22 @@ function flattenTree(tree: TreeNode): Record<string, number> {
   return flat;
 }
 
-function flattenMuscleTargets(targets: Record<string, unknown>): Record<string, number> {
+function asFlat(targets: Record<string, unknown>): Record<string, number> {
   const flat: Record<string, number> = {};
   if (!targets || typeof targets !== 'object') return flat;
-  for (const [pId, pVal] of Object.entries(targets)) {
-    if (pId === '_score') continue;
-    const pNode = pVal as Record<string, unknown>;
-    if (!pNode || typeof pNode !== 'object') continue;
-    flat[pId] = typeof pNode._score === 'number' ? pNode._score : 0;
-    for (const [sId, sVal] of Object.entries(pNode)) {
-      if (sId === '_score') continue;
-      const sNode = sVal as Record<string, unknown>;
-      if (!sNode || typeof sNode !== 'object') continue;
-      flat[sId] = typeof sNode._score === 'number' ? sNode._score : 0;
-      for (const [tId, tVal] of Object.entries(sNode)) {
-        if (tId === '_score') continue;
-        const tNode = tVal as Record<string, unknown>;
-        if (tNode && typeof tNode === 'object') {
-          flat[tId] = typeof (tNode as Record<string, unknown>)._score === 'number'
-            ? (tNode as Record<string, unknown>)._score as number : 0;
-        }
-      }
-    }
+  for (const [k, v] of Object.entries(targets)) {
+    if (typeof v === 'number') flat[k] = v;
   }
   return flat;
+}
+
+interface ROTreeNode {
+  id: string;
+  label: string;
+  baseScore: number | null;
+  afterScore: number;
+  computed: boolean;
+  children: ROTreeNode[];
 }
 
 function ReadOnlyMuscleTree({ targets, allMuscles, deltaScores }: {
@@ -180,177 +174,126 @@ function ReadOnlyMuscleTree({ targets, allMuscles, deltaScores }: {
   allMuscles: MuscleRecord[];
   deltaScores?: Record<string, number>;
 }) {
-  const getBaseFromTree = (id: string, tree: Record<string, unknown>): number | null => {
-    if (!tree || typeof tree !== 'object') return null;
-    for (const [pId, pVal] of Object.entries(tree)) {
-      if (pId === '_score') continue;
-      const pNode = pVal as Record<string, unknown>;
-      if (!pNode || typeof pNode !== 'object') continue;
-      if (pId === id) return typeof pNode._score === 'number' ? pNode._score : 0;
-      for (const [sId, sVal] of Object.entries(pNode)) {
-        if (sId === '_score') continue;
-        const sNode = sVal as Record<string, unknown>;
-        if (!sNode || typeof sNode !== 'object') continue;
-        if (sId === id) return typeof sNode._score === 'number' ? sNode._score : 0;
-        for (const [tId, tVal] of Object.entries(sNode)) {
-          if (tId === '_score') continue;
-          const tNode = tVal as Record<string, unknown>;
-          if (tId === id && tNode && typeof tNode === 'object') {
-            return typeof (tNode as Record<string, unknown>)._score === 'number'
-              ? (tNode as Record<string, unknown>)._score as number : 0;
-          }
-        }
+  const baseFlat = asFlat(targets);
+
+  const displayTree = useMemo(() => {
+    const allIds = new Set([...Object.keys(baseFlat), ...Object.keys(deltaScores ?? {})]);
+    if (allIds.size === 0 || allMuscles.length === 0) return [];
+
+    const muscleMap = new Map<string, MuscleRecord>();
+    const childrenOf = new Map<string, string[]>();
+    const rootIds: string[] = [];
+
+    for (const m of allMuscles) {
+      muscleMap.set(m.id, m);
+      const pids = m.parent_ids ?? [];
+      if (pids.length === 0) rootIds.push(m.id);
+      for (const pid of pids) {
+        if (!childrenOf.has(pid)) childrenOf.set(pid, []);
+        childrenOf.get(pid)!.push(m.id);
       }
     }
-    return null;
-  };
 
-  const getAfter = (base: number | null, id: string) => {
-    const delta = deltaScores?.[id] ?? 0;
-    if (base === null) return delta;
-    return Math.round((base + delta) * 100) / 100;
-  };
+    const neededIds = new Set<string>();
+    function ensureAncestors(id: string) {
+      if (neededIds.has(id)) return;
+      neededIds.add(id);
+      const m = muscleMap.get(id);
+      if (!m) return;
+      for (const pid of m.parent_ids ?? []) ensureAncestors(pid);
+    }
+    for (const id of allIds) ensureAncestors(id);
 
-  const hasInTree = (id: string, tree: Record<string, unknown>): boolean => {
-    return getBaseFromTree(id, tree) !== null;
-  };
+    function buildNode(id: string, depth: number): ROTreeNode | null {
+      if (!neededIds.has(id)) return null;
+      const m = muscleMap.get(id);
+      const label = m?.label ?? id;
+      const kids = (childrenOf.get(id) || [])
+        .map(cid => buildNode(cid, depth + 1))
+        .filter((n): n is ROTreeNode => n !== null);
 
-  // Build merged tree: combine targets and deltaScores, showing all muscles
-  const mergedTree = useMemo(() => {
-    const base = targets && typeof targets === 'object' ? JSON.parse(JSON.stringify(targets)) : {};
-    if (!deltaScores || Object.keys(deltaScores).length === 0) return base;
+      const hasKids = kids.length > 0;
+      const base = id in baseFlat ? baseFlat[id] : null;
+      const delta = deltaScores?.[id] ?? 0;
 
-    // Build tree from deltaScores to get the hierarchical structure
-    const deltaTree = buildTreeFromFlat(deltaScores, allMuscles);
-    
-    // Merge deltaTree into base, adding missing muscles
-    const mergeTree = (deltaNode: TreeNode, baseNode: Record<string, unknown>) => {
-      for (const [key, val] of Object.entries(deltaNode)) {
-        if (key === '_score') continue;
-        if (!baseNode[key]) {
-          baseNode[key] = { _score: 0 };
-        }
-        const childNode = val as TreeNode;
-        if (childNode && typeof childNode === 'object') {
-          mergeTree(childNode, baseNode[key] as Record<string, unknown>);
-        }
+      if (hasKids) {
+        const baseSum = kids.reduce((s, c) => s + (c.baseScore ?? 0), 0);
+        const afterSum = kids.reduce((s, c) => s + c.afterScore, 0);
+        return {
+          id, label,
+          baseScore: kids.some(c => c.baseScore !== null) ? Math.round(baseSum * 100) / 100 : null,
+          afterScore: Math.round(afterSum * 100) / 100,
+          computed: true, children: kids,
+        };
       }
-    };
 
-    mergeTree(deltaTree, base);
-    return base;
-  }, [targets, deltaScores, allMuscles]);
+      return {
+        id, label,
+        baseScore: base,
+        afterScore: base !== null ? Math.round((base + delta) * 100) / 100 : delta,
+        computed: false, children: [],
+      };
+    }
 
-  if (!mergedTree || typeof mergedTree !== 'object') {
+    const tree: ROTreeNode[] = [];
+    for (const rid of rootIds) { const n = buildNode(rid, 0); if (n) tree.push(n); }
+    const reachable = new Set<string>();
+    (function collect(nodes: ROTreeNode[]) { for (const n of nodes) { reachable.add(n.id); collect(n.children); } })(tree);
+    for (const id of allIds) {
+      if (!reachable.has(id)) {
+        const m = muscleMap.get(id);
+        const base = id in baseFlat ? baseFlat[id] : null;
+        const delta = deltaScores?.[id] ?? 0;
+        tree.push({ id, label: m?.label ?? id, baseScore: base, afterScore: base !== null ? Math.round((base + delta) * 100) / 100 : delta, computed: false, children: [] });
+      }
+    }
+    return tree;
+  }, [baseFlat, deltaScores, allMuscles]);
+
+  if (displayTree.length === 0) {
     return <div className="text-xs text-gray-400 italic py-2">No muscle targets</div>;
   }
-  const primaries = Object.keys(mergedTree).filter(k => k !== '_score');
-  if (primaries.length === 0 && (!deltaScores || Object.keys(deltaScores).length === 0)) {
-    return <div className="text-xs text-gray-400 italic py-2">No muscle targets</div>;
-  }
+
+  const renderNode = (node: ROTreeNode, depth: number) => {
+    const rowStyle = depth === 0 ? sp.deltaRules.treeRowPrimaryReadOnly : depth === 1 ? sp.deltaRules.treeRowSecondaryReadOnly : sp.deltaRules.treeRowTertiaryReadOnly;
+    const labelStyle = depth === 0 ? sp.treeRow.primaryLabel : depth === 1 ? sp.treeRow.secondaryLabel : sp.treeRow.tertiaryLabel;
+    const wrapperStyle = depth === 0 ? sp.deltaRules.treeItemReadOnly : sp.deltaRules.treeItemFlatReadOnly;
+    const nestStyle = depth === 0 ? sp.deltaRules.treeNestSecondariesReadOnly : sp.deltaRules.treeNestTertiariesReadOnly;
+
+    const isNew = node.baseScore === null;
+    const isChanged = !isNew && node.baseScore !== node.afterScore;
+
+    return (
+      <div key={node.id} className={wrapperStyle}>
+        <div className={rowStyle}>
+          <span className={labelStyle}>{node.label}</span>
+          {isNew ? (
+            <>
+              <span className={sp.deltaRules.addBadge}>Add</span>
+              <span className={sp.scoreInput.readOnly}>{node.afterScore}</span>
+            </>
+          ) : isChanged ? (
+            <>
+              <span className={sp.scoreInput.readOnly}>{node.baseScore}</span>
+              <span className={sp.deltaRules.arrowSeparator}>→</span>
+              <span className={sp.scoreInput.changed}>{node.afterScore}</span>
+            </>
+          ) : (
+            <span className={sp.scoreInput.readOnly}>{node.baseScore}</span>
+          )}
+        </div>
+        {node.children.length > 0 && (
+          <div className={nestStyle}>
+            {node.children.map(child => renderNode(child, depth + 1))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className={sp.deltaRules.treeContainer}>
-      {primaries.map(pId => {
-        const pNode = mergedTree[pId] as Record<string, unknown>;
-        if (!pNode || typeof pNode !== 'object') return null;
-        const pLabel = getMuscleLabel(allMuscles, pId);
-        const pBase = getBaseFromTree(pId, targets && typeof targets === 'object' ? targets : {});
-        const pAfter = getAfter(pBase, pId);
-        const sKeys = Object.keys(pNode).filter(k => k !== '_score');
-        const isNew = pBase === null;
-        const isChanged = !isNew && pBase !== null && pBase !== pAfter;
-
-        return (
-          <div key={pId} className={sp.deltaRules.treeItemReadOnly}>
-            <div className={sp.deltaRules.treeRowPrimaryReadOnly}>
-              <span className={sp.treeRow.primaryLabel}>{pLabel}</span>
-              {isNew ? (
-                <>
-                  <span className={sp.deltaRules.addBadge}>Add</span>
-                  <span className={sp.scoreInput.readOnly}>{pAfter}</span>
-                </>
-              ) : isChanged ? (
-                <>
-                  <span className={sp.scoreInput.readOnly}>{pBase}</span>
-                  <span className={sp.deltaRules.arrowSeparator}>→</span>
-                  <span className={sp.scoreInput.changed}>{pAfter}</span>
-                </>
-              ) : (
-                <span className={sp.scoreInput.readOnly}>{pBase}</span>
-              )}
-            </div>
-            {sKeys.length > 0 && (
-              <div className={sp.deltaRules.treeNestSecondariesReadOnly}>
-                {sKeys.map(sId => {
-                  const sNode = pNode[sId] as Record<string, unknown>;
-                  if (!sNode || typeof sNode !== 'object') return null;
-                  const sLabel = getMuscleLabel(allMuscles, sId);
-                  const sBase = getBaseFromTree(sId, targets && typeof targets === 'object' ? targets : {});
-                  const sAfter = getAfter(sBase, sId);
-                  const tKeys = Object.keys(sNode).filter(k => k !== '_score');
-                  const sIsNew = sBase === null;
-                  const sIsChanged = !sIsNew && sBase !== null && sBase !== sAfter;
-
-                  return (
-                    <div key={sId} className={sp.deltaRules.treeItemFlatReadOnly}>
-                      <div className={sp.deltaRules.treeRowSecondaryReadOnly}>
-                        <span className={sp.treeRow.secondaryLabel}>{sLabel}</span>
-                        {sIsNew ? (
-                          <>
-                            <span className={sp.deltaRules.addBadge}>Add</span>
-                            <span className={sp.scoreInput.readOnly}>{sAfter}</span>
-                          </>
-                        ) : sIsChanged ? (
-                          <>
-                            <span className={sp.scoreInput.readOnly}>{sBase}</span>
-                            <span className={sp.deltaRules.arrowSeparator}>→</span>
-                            <span className={sp.scoreInput.changed}>{sAfter}</span>
-                          </>
-                        ) : (
-                          <span className={sp.scoreInput.readOnly}>{sBase}</span>
-                        )}
-                      </div>
-                      {tKeys.length > 0 && (
-                        <div className={sp.deltaRules.treeNestTertiariesReadOnly}>
-                          {tKeys.map(tId => {
-                            const tNode = sNode[tId] as Record<string, unknown>;
-                            const tBase = getBaseFromTree(tId, targets && typeof targets === 'object' ? targets : {});
-                            const tAfter = getAfter(tBase, tId);
-                            const tLabel = getMuscleLabel(allMuscles, tId);
-                            const tIsNew = tBase === null;
-                            const tIsChanged = !tIsNew && tBase !== null && tBase !== tAfter;
-
-                            return (
-                              <div key={tId} className={sp.deltaRules.treeRowTertiaryReadOnly}>
-                                <span className={sp.treeRow.tertiaryLabel}>{tLabel}</span>
-                                {tIsNew ? (
-                                  <>
-                                    <span className={sp.deltaRules.addBadge}>Add</span>
-                                    <span className={sp.scoreInput.readOnly}>{tAfter}</span>
-                                  </>
-                                ) : tIsChanged ? (
-                                  <>
-                                    <span className={sp.scoreInput.readOnly}>{tBase}</span>
-                                    <span className={sp.deltaRules.arrowSeparator}>→</span>
-                                    <span className={sp.scoreInput.changed}>{tAfter}</span>
-                                  </>
-                                ) : (
-                                  <span className={sp.scoreInput.readOnly}>{tBase}</span>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        );
-      })}
+      {displayTree.map(node => renderNode(node, 0))}
     </div>
   );
 }

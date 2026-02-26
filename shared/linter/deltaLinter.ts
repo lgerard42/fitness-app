@@ -151,50 +151,35 @@ function lintDeltaRules(
 }
 
 /**
- * Lint muscle_targets in motions for unknown muscle IDs.
+ * Lint muscle_targets (flat map) for unknown muscle IDs and non-number values.
  */
 function lintMuscleTargets(
   motion: Motion,
   muscleIds: Set<string>
 ): LintIssue[] {
   const issues: LintIssue[] = [];
+  if (!motion.muscle_targets) return issues;
 
-  function walk(
-    node: Record<string, unknown>,
-    path: string
-  ) {
-    for (const [key, value] of Object.entries(node)) {
-      if (key === "_score") {
-        if (typeof value !== "number") {
-          issues.push({
-            severity: "error",
-            table: "motions",
-            rowId: motion.id,
-            field: `muscle_targets.${path}_score`,
-            message: `_score must be a number, got ${typeof value}`,
-          });
-        }
-        continue;
-      }
-
-      if (!muscleIds.has(key)) {
-        issues.push({
-          severity: "warning",
-          table: "motions",
-          rowId: motion.id,
-          field: `muscle_targets.${path}${key}`,
-          message: `Unknown muscle ID "${key}" in muscle_targets`,
-        });
-      }
-
-      if (typeof value === "object" && value !== null) {
-        walk(value as Record<string, unknown>, `${path}${key}.`);
-      }
+  const mt = motion.muscle_targets as Record<string, unknown>;
+  for (const [muscleId, value] of Object.entries(mt)) {
+    if (!muscleIds.has(muscleId)) {
+      issues.push({
+        severity: "warning",
+        table: "motions",
+        rowId: motion.id,
+        field: `muscle_targets.${muscleId}`,
+        message: `Unknown muscle ID "${muscleId}" in muscle_targets`,
+      });
     }
-  }
-
-  if (motion.muscle_targets) {
-    walk(motion.muscle_targets as unknown as Record<string, unknown>, "");
+    if (typeof value !== "number") {
+      issues.push({
+        severity: "error",
+        table: "motions",
+        rowId: motion.id,
+        field: `muscle_targets.${muscleId}`,
+        message: `Score must be a number, got ${typeof value}`,
+      });
+    }
   }
 
   return issues;

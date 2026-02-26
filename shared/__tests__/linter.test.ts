@@ -16,12 +16,7 @@ const MOTIONS: Motion[] = [
     label: "Curl",
     parent_id: null,
     upper_lower: ["UPPER"],
-    muscle_targets: {
-      ARMS: {
-        _score: 2.87,
-        BICEPS: { _score: 2.42, BRACHIALIS: { _score: 0.82 } },
-      },
-    },
+    muscle_targets: { BICEPS: 0.85, BRACHIALIS: 0.75 },
     default_delta_configs: {},
   },
   {
@@ -29,9 +24,7 @@ const MOTIONS: Motion[] = [
     label: "Press",
     parent_id: null,
     upper_lower: ["UPPER"],
-    muscle_targets: {
-      CHEST: { _score: 0.9, CHEST_MID: { _score: 0.9 } },
-    },
+    muscle_targets: { CHEST: 0.9, CHEST_MID: 0.9 },
     default_delta_configs: {},
   },
   {
@@ -39,9 +32,7 @@ const MOTIONS: Motion[] = [
     label: "Flat Press",
     parent_id: "PRESS",
     upper_lower: ["UPPER"],
-    muscle_targets: {
-      CHEST: { _score: 0.92, CHEST_MID: { _score: 0.92 } },
-    },
+    muscle_targets: { CHEST: 0.92, CHEST_MID: 0.92 },
     default_delta_configs: {},
   },
 ];
@@ -167,12 +158,7 @@ describe("Delta Linter", () => {
         label: "Bad",
         parent_id: null,
         upper_lower: ["UPPER"],
-        muscle_targets: {
-          CHEST: {
-            _score: 1,
-            UNKNOWN_MUSCLE: { _score: 0.5 },
-          },
-        } as any,
+        muscle_targets: { UNKNOWN_MUSCLE: 0.5 },
         default_delta_configs: {},
       },
     ];
@@ -181,6 +167,24 @@ describe("Delta Linter", () => {
     const warnings = issues.filter((i) => i.severity === "warning");
     expect(warnings.length).toBeGreaterThan(0);
     expect(warnings[0].message).toContain("Unknown muscle ID");
+  });
+
+  it("detects non-number value in muscle_targets", () => {
+    const motionsWithBadValue: Motion[] = [
+      {
+        id: "BAD",
+        label: "Bad",
+        parent_id: null,
+        upper_lower: ["UPPER"],
+        muscle_targets: { BICEPS: "high" as any },
+        default_delta_configs: {},
+      },
+    ];
+
+    const issues = lintAll(motionsWithBadValue, MUSCLES, {});
+    const errors = issues.filter((i) => i.severity === "error");
+    expect(errors.length).toBeGreaterThan(0);
+    expect(errors[0].message).toContain("Score must be a number");
   });
 
   it("formatLintResults produces readable output", () => {

@@ -160,24 +160,32 @@ export default function DeltaBranchCard({
 
   const deltaTree = useMemo(() => {
     const tree: Record<string, { score: number; children: Record<string, { score: number; children: Record<string, number> }> }> = {};
+    const findPrimaryFor = (mid: string): string => {
+      const mu = allMuscles.find(x => x.id === mid);
+      if (!mu?.parent_ids?.length) return mid;
+      return findPrimaryFor(mu.parent_ids[0]);
+    };
     for (const [id, score] of Object.entries(effectiveDeltas)) {
       const m = allMuscles.find(mu => mu.id === id);
       if (!m) continue;
-      const level = getMuscleLevel(id, allMuscles);
-      if (level === 'primary') {
+      if (!m.parent_ids || m.parent_ids.length === 0) {
         if (!tree[id]) tree[id] = { score, children: {} };
         else tree[id].score = score;
-      } else if (level === 'secondary') {
-        const pId = m.parent_ids![0];
-        if (!tree[pId]) tree[pId] = { score: 0, children: {} };
-        tree[pId].children[id] = { score, children: {} };
-      } else {
-        const parent = allMuscles.find(mu => mu.id === m.parent_ids![0]);
-        const sId = m.parent_ids![0];
-        const pId = parent?.parent_ids?.[0] || '';
-        if (!tree[pId]) tree[pId] = { score: 0, children: {} };
-        if (!tree[pId].children[sId]) tree[pId].children[sId] = { score: 0, children: {} };
-        tree[pId].children[sId].children[id] = score;
+        continue;
+      }
+      for (const pid of m.parent_ids) {
+        const parent = allMuscles.find(mu => mu.id === pid);
+        if (!parent) continue;
+        if (!parent.parent_ids || parent.parent_ids.length === 0) {
+          if (!tree[pid]) tree[pid] = { score: 0, children: {} };
+          tree[pid].children[id] = { score, children: {} };
+        } else {
+          const pId = findPrimaryFor(pid);
+          const sId = pid;
+          if (!tree[pId]) tree[pId] = { score: 0, children: {} };
+          if (!tree[pId].children[sId]) tree[pId].children[sId] = { score: 0, children: {} };
+          tree[pId].children[sId].children[id] = score;
+        }
       }
     }
     return tree;

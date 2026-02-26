@@ -1,11 +1,11 @@
 import { z } from "zod";
 
 // ─── Muscle Targets Schema ───────────────────────────────────────────
-// Accepts nested objects with _score fields
+// Flat map: muscleId → score (number)
 
 export const muscleTargetsSchema = z.record(
   z.string(),
-  z.any()
+  z.number()
 );
 
 // ─── Delta Rules Schema ──────────────────────────────────────────────
@@ -36,7 +36,7 @@ export const motionSchema = z.object({
   label: z.string().min(1),
   parent_id: z.union([z.string(), z.null()]),
   upper_lower: z.array(z.union([z.literal("UPPER"), z.literal("LOWER")])),
-  muscle_targets: z.record(z.string(), z.any()),
+  muscle_targets: z.record(z.string(), z.number()),
   default_delta_configs: z.record(z.string(), z.string()).optional().default({}),
   common_names: z.array(z.string()).optional(),
   short_description: z.string().optional(),
