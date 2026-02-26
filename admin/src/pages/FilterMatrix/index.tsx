@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import toast from 'react-hot-toast';
-import { api, type TableSchema } from '../api';
+import { api, type TableSchema } from '../../api';
 
 // Simple markdown parser for descriptions (handles **bold** and `code`)
 function renderMarkdown(text: string): React.ReactNode {

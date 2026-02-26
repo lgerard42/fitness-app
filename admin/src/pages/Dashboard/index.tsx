@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import type { TableInfo } from '../api';
+import type { TableInfo } from '../../api';
 
 interface DashboardProps {
   tables: TableInfo[];

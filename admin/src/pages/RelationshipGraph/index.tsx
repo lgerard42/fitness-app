@@ -15,7 +15,7 @@ import {
   useEdgesState,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { api, type RelationshipNode, type RelationshipEdge } from '../api';
+import { api, type RelationshipNode, type RelationshipEdge } from '../../api';
 
 // ─── Color palette for groups ──────────────────────────────────
 const GROUP_COLORS: Record<string, { bg: string; border: string; text: string; mini: string }> = {

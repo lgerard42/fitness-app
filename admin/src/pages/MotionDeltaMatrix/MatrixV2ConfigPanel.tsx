@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { api } from '../api';
+import { api } from '../../api';
 import toast from 'react-hot-toast';
 import type {
   MatrixConfigRow,
@@ -8,15 +8,15 @@ import type {
   ValidationResult,
   ResolverOutput,
   ModifierTableKey,
-} from '../../../shared/types/matrixV2';
-import { MODIFIER_TABLE_KEYS } from '../../../shared/types/matrixV2';
-import type { MuscleTargets, ModifierRow } from '../../../shared/types';
-import { useWorkstationState } from '../hooks/useWorkstationState';
-import { useScoringSimulation } from '../hooks/useScoringSimulation';
-import BaselineCard from '../components/workstation/BaselineCard';
-import SimulationPreview from '../components/workstation/SimulationPreview';
-import DeltaBranchCard from '../components/workstation/DeltaBranchCard';
-import DirtyBadge from '../components/workstation/DirtyBadge';
+} from '../../../../shared/types/matrixV2';
+import { MODIFIER_TABLE_KEYS } from '../../../../shared/types/matrixV2';
+import type { MuscleTargets, ModifierRow } from '../../../../shared/types';
+import { useWorkstationState } from '../../hooks/useWorkstationState';
+import { useScoringSimulation } from '../../hooks/useScoringSimulation';
+import BaselineCard from '../../components/workstation/BaselineCard';
+import SimulationPreview from '../../components/workstation/SimulationPreview';
+import DeltaBranchCard from '../../components/workstation/DeltaBranchCard';
+import DirtyBadge from '../../components/workstation/DirtyBadge';
 
 interface MatrixV2ConfigPanelProps {
   motions: Array<{ id: string; label: string; parent_id?: string | null }>;

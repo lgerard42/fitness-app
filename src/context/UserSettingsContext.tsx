@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback, useMemo, useRef, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchSettings as apiFetchSettings, updateSettings as apiUpdateSettings } from '@/api/profile';
 import type { UserSettings } from '@/types/workout';
@@ -58,10 +58,15 @@ export const UserSettingsProvider = ({ children }: UserSettingsProviderProps) =>
     load();
   }, []);
 
+  const settingsTimerRef = useRef<ReturnType<typeof setTimeout>>();
   useEffect(() => {
     if (isLoaded) {
-      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+      clearTimeout(settingsTimerRef.current);
+      settingsTimerRef.current = setTimeout(() => {
+        AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+      }, 300);
     }
+    return () => clearTimeout(settingsTimerRef.current);
   }, [settings, isLoaded]);
 
   const updateSettings = useCallback((partial: Partial<UserSettings>) => {
@@ -72,8 +77,13 @@ export const UserSettingsProvider = ({ children }: UserSettingsProviderProps) =>
     );
   }, []);
 
+  const contextValue = useMemo<UserSettingsContextValue>(
+    () => ({ settings, updateSettings, isLoaded }),
+    [settings, updateSettings, isLoaded]
+  );
+
   return (
-    <UserSettingsContext.Provider value={{ settings, updateSettings, isLoaded }}>
+    <UserSettingsContext.Provider value={contextValue}>
       {children}
     </UserSettingsContext.Provider>
   );

@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback, useMemo, useRef, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { EXERCISE_LIBRARY, migrateExercise, migrateAssistedMachine } from '@/constants/data';
 import { formatDuration } from '@shared/utils/formatting';
@@ -58,12 +58,16 @@ export const WorkoutProvider = ({ children }: WorkoutProviderProps) => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [history, library, active, stats] = await Promise.all([
-          AsyncStorage.getItem(STORAGE_KEYS.HISTORY),
-          AsyncStorage.getItem(STORAGE_KEYS.LIBRARY),
-          AsyncStorage.getItem(STORAGE_KEYS.ACTIVE_WORKOUT),
-          AsyncStorage.getItem(STORAGE_KEYS.STATS)
+        const pairs = await AsyncStorage.multiGet([
+          STORAGE_KEYS.HISTORY,
+          STORAGE_KEYS.LIBRARY,
+          STORAGE_KEYS.ACTIVE_WORKOUT,
+          STORAGE_KEYS.STATS,
         ]);
+        const history = pairs[0][1];
+        const library = pairs[1][1];
+        const active = pairs[2][1];
+        const stats = pairs[3][1];
 
         if (history) setWorkoutHistory(JSON.parse(history) as Workout[]);
         if (library) {
@@ -101,54 +105,75 @@ export const WorkoutProvider = ({ children }: WorkoutProviderProps) => {
     loadData();
   }, []);
 
+  const historyTimerRef = useRef<ReturnType<typeof setTimeout>>();
   useEffect(() => {
     if (!isLoading) {
-      AsyncStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(workoutHistory));
+      clearTimeout(historyTimerRef.current);
+      historyTimerRef.current = setTimeout(() => {
+        AsyncStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(workoutHistory));
+      }, 500);
     }
+    return () => clearTimeout(historyTimerRef.current);
   }, [workoutHistory, isLoading]);
 
+  const libraryTimerRef = useRef<ReturnType<typeof setTimeout>>();
   useEffect(() => {
     if (!isLoading) {
-      AsyncStorage.setItem(STORAGE_KEYS.LIBRARY, JSON.stringify(exercisesLibrary));
+      clearTimeout(libraryTimerRef.current);
+      libraryTimerRef.current = setTimeout(() => {
+        AsyncStorage.setItem(STORAGE_KEYS.LIBRARY, JSON.stringify(exercisesLibrary));
+      }, 500);
     }
+    return () => clearTimeout(libraryTimerRef.current);
   }, [exercisesLibrary, isLoading]);
 
+  const statsTimerRef = useRef<ReturnType<typeof setTimeout>>();
   useEffect(() => {
     if (!isLoading) {
-      AsyncStorage.setItem(STORAGE_KEYS.STATS, JSON.stringify(exerciseStats));
+      clearTimeout(statsTimerRef.current);
+      statsTimerRef.current = setTimeout(() => {
+        AsyncStorage.setItem(STORAGE_KEYS.STATS, JSON.stringify(exerciseStats));
+      }, 500);
     }
+    return () => clearTimeout(statsTimerRef.current);
   }, [exerciseStats, isLoading]);
 
+  const activeTimerRef = useRef<ReturnType<typeof setTimeout>>();
   useEffect(() => {
     if (!isLoading) {
-      if (activeWorkout) {
-        AsyncStorage.setItem(STORAGE_KEYS.ACTIVE_WORKOUT, JSON.stringify(activeWorkout));
-      } else {
-        AsyncStorage.removeItem(STORAGE_KEYS.ACTIVE_WORKOUT);
-      }
+      clearTimeout(activeTimerRef.current);
+      activeTimerRef.current = setTimeout(() => {
+        if (activeWorkout) {
+          AsyncStorage.setItem(STORAGE_KEYS.ACTIVE_WORKOUT, JSON.stringify(activeWorkout));
+        } else {
+          AsyncStorage.removeItem(STORAGE_KEYS.ACTIVE_WORKOUT);
+        }
+      }, 500);
     }
+    return () => clearTimeout(activeTimerRef.current);
   }, [activeWorkout, isLoading]);
 
-  const startEmptyWorkout = () => {
-    if (!activeWorkout) {
-      setActiveWorkout({
+  const startEmptyWorkout = useCallback(() => {
+    setActiveWorkout(prev => {
+      if (prev) return prev;
+      return {
         id: `w-${Date.now()}`,
         name: "Empty Workout",
         startedAt: Date.now(),
         exercises: [],
         sessionNotes: []
-      });
-    }
-  };
+      };
+    });
+  }, []);
 
-  const updateWorkout = (updatedWorkout: Workout) => {
+  const updateWorkout = useCallback((updatedWorkout: Workout) => {
     const sanitized = sanitizeWorkout(updatedWorkout);
     setActiveWorkout(sanitized);
-  };
+  }, []);
 
-  const updateHistory = (updatedWorkout: Workout) => {
-    setWorkoutHistory(workoutHistory.map(w => w.id === updatedWorkout.id ? updatedWorkout : w));
-  };
+  const updateHistory = useCallback((updatedWorkout: Workout) => {
+    setWorkoutHistory(prev => prev.map(w => w.id === updatedWorkout.id ? updatedWorkout : w));
+  }, []);
 
   const updateStatsForExercise = (stats: ExerciseStatsMap, exercise: Exercise, date: string, bodyWeight?: number | null): void => {
     const { exerciseId, category, sets } = exercise;
@@ -189,7 +214,7 @@ export const WorkoutProvider = ({ children }: WorkoutProviderProps) => {
     currentStats.lastPerformed = date;
   };
 
-  const finishWorkout = (bodyWeight?: number) => {
+  const finishWorkout = useCallback((bodyWeight?: number) => {
     if (!activeWorkout) return;
     const finishedWorkout: Workout = {
       ...activeWorkout,
@@ -198,65 +223,82 @@ export const WorkoutProvider = ({ children }: WorkoutProviderProps) => {
       date: new Date().toLocaleDateString()
     };
 
-    const newStats = { ...exerciseStats };
-    finishedWorkout.exercises.forEach(ex => {
-      if (ex.type === 'group') {
-        ex.children.forEach(child => updateStatsForExercise(newStats, child, finishedWorkout.date!, bodyWeight));
-      } else {
-        updateStatsForExercise(newStats, ex, finishedWorkout.date!, bodyWeight);
-      }
+    setExerciseStats(prevStats => {
+      const newStats = { ...prevStats };
+      finishedWorkout.exercises.forEach(ex => {
+        if (ex.type === 'group') {
+          ex.children.forEach(child => updateStatsForExercise(newStats, child, finishedWorkout.date!, bodyWeight));
+        } else {
+          updateStatsForExercise(newStats, ex, finishedWorkout.date!, bodyWeight);
+        }
+      });
+      return newStats;
     });
-    setExerciseStats(newStats);
 
-    setWorkoutHistory([finishedWorkout, ...workoutHistory]);
+    setWorkoutHistory(prev => [finishedWorkout, ...prev]);
     setActiveWorkout(null);
 
     apiCreateWorkout(finishedWorkout).catch(err =>
       console.warn("[sync] failed to push workout:", (err as Error).message)
     );
-  };
+  }, [activeWorkout]);
 
-  const cancelWorkout = () => {
+  const cancelWorkout = useCallback(() => {
     setActiveWorkout(null);
-  };
+  }, []);
 
-  const addExerciseToLibrary = (newExercise: ExerciseLibraryItem): string => {
+  const addExerciseToLibrary = useCallback((newExercise: ExerciseLibraryItem): string => {
     const newId = newExercise.id || `e${Date.now()}`;
     const exerciseToAdd = migrateAssistedMachine({ ...newExercise, id: newId });
-    setExercisesLibrary([exerciseToAdd, ...exercisesLibrary]);
+    setExercisesLibrary(prev => [exerciseToAdd, ...prev]);
 
     apiCreateExercise(exerciseToAdd).catch(err =>
       console.warn("[sync] failed to push exercise:", (err as Error).message)
     );
 
     return newId;
-  };
+  }, []);
 
-  const updateExerciseInLibrary = (exerciseId: string, updates: Partial<ExerciseLibraryItem>) => {
-    setExercisesLibrary(exercisesLibrary.map(ex =>
+  const updateExerciseInLibrary = useCallback((exerciseId: string, updates: Partial<ExerciseLibraryItem>) => {
+    setExercisesLibrary(prev => prev.map(ex =>
       ex.id === exerciseId ? migrateAssistedMachine({ ...ex, ...updates }) : ex
     ));
 
     apiUpdateExercise(exerciseId, updates).catch(err =>
       console.warn("[sync] failed to update exercise:", (err as Error).message)
     );
-  };
+  }, []);
+
+  const contextValue = useMemo<WorkoutContextValue>(() => ({
+    activeWorkout,
+    workoutHistory,
+    exercisesLibrary,
+    exerciseStats,
+    startEmptyWorkout,
+    updateWorkout,
+    updateHistory,
+    finishWorkout,
+    cancelWorkout,
+    addExerciseToLibrary,
+    updateExerciseInLibrary,
+    isLoading
+  }), [
+    activeWorkout,
+    workoutHistory,
+    exercisesLibrary,
+    exerciseStats,
+    startEmptyWorkout,
+    updateWorkout,
+    updateHistory,
+    finishWorkout,
+    cancelWorkout,
+    addExerciseToLibrary,
+    updateExerciseInLibrary,
+    isLoading
+  ]);
 
   return (
-    <WorkoutContext.Provider value={{
-      activeWorkout,
-      workoutHistory,
-      exercisesLibrary,
-      exerciseStats,
-      startEmptyWorkout,
-      updateWorkout,
-      updateHistory,
-      finishWorkout,
-      cancelWorkout,
-      addExerciseToLibrary,
-      updateExerciseInLibrary,
-      isLoading
-    }}>
+    <WorkoutContext.Provider value={contextValue}>
       {children}
     </WorkoutContext.Provider>
   );

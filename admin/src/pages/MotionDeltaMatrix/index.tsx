@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { api, type TableSchema } from '../api';
+import { api, type TableSchema } from '../../api';
 import toast from 'react-hot-toast';
-import { findRootMuscleId, asFlatMuscleTargets } from '../../../shared/utils/muscleGrouping';
+import { findRootMuscleId, asFlatMuscleTargets } from '../../../../shared/utils/muscleGrouping';
 import MatrixV2ConfigPanel from './MatrixV2ConfigPanel';
 
 interface MotionDeltaMatrixProps {

@@ -2,12 +2,12 @@ import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom';
 import { useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { api, type TableSchema, type TableField, type FKRef } from '../api';
-import { findRootMuscleId, asFlatMuscleTargets } from '../../../shared/utils/muscleGrouping';
-import RowEditor from '../components/RowEditor';
-import ColumnSettings from '../components/ColumnSettings';
-import FilterBar, { type FilterRule } from '../components/FilterBar';
-import ImportRowsModal from '../components/ImportRowsModal';
+import { api, type TableSchema, type TableField, type FKRef } from '../../api';
+import { findRootMuscleId, asFlatMuscleTargets } from '../../../../shared/utils/muscleGrouping';
+import RowEditor from '../../components/RowEditor';
+import ColumnSettings from '../../components/ColumnSettings';
+import FilterBar, { type FilterRule } from '../../components/FilterBar';
+import ImportRowsModal from '../../components/ImportRowsModal';
 
 interface TableEditorProps {
   schemas: TableSchema[];
