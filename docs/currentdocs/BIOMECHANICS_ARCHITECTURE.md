@@ -377,7 +377,7 @@ flowchart TD
     motions -- "parent_id self-reference" --> motions
     motions -- "default_delta_configs references" --> mod
     mod -- "delta_rules top-level keys reference" --> motions
-    mod -- "delta_rules nested keys reference" --> muscles
+    mod -- "delta_rules per-motion value: flat muscleId→delta; keys reference" --> muscles
 
     style muscles fill:#2d6a4f,stroke:#1b4332,color:#fff
     style motions fill:#264653,stroke:#1d3557,color:#fff
@@ -416,9 +416,12 @@ This is the score map the engine begins from **before** applying active modifier
 
 ### Key properties
 - absolute values (not deltas)
-- canonical muscle IDs as keys
+- canonical muscle IDs as keys (flat map only; no nested groups)
 - motion-specific baseline only
 - designed for downstream delta-cascade compatibility
+
+### Storage format (flat only)
+`muscle_targets` is a **single-level object**: `Record<muscleId, number>`. Only leaf-level (or explicitly scored) muscle IDs are stored. There are **no nested muscle groups** in the JSON. Parent/group totals are **not** stored; they are computed at **display time** from the `muscles` table hierarchy (`parent_ids`) when the admin UI (or any consumer) needs to show a tree. The scoring engine uses the flat map directly.
 
 ### Contract (conceptual shape)
 ```json
@@ -433,11 +436,11 @@ This is the score map the engine begins from **before** applying active modifier
 
 1. Keys must be valid canonical `muscles.id`
 2. Values must be numeric (float/int accepted by parser, normalized to float)
-3. Values should be bounded by agreed scoring range semantics (typically non-negative baseline contributions)
-4. Shape must be deterministic and parser-safe
+3. Shape must be **flat**: no nested objects; only `muscleId → number` pairs
+4. Values should be bounded by agreed scoring range semantics (typically non-negative baseline contributions)
 5. No duplicate keys (JSON parser-level)
 6. No prose placeholders like `"inherit"` in `muscle_targets`
-7. No motion IDs nested inside `muscle_targets` (that belongs to `delta_rules`)
+7. No motion IDs inside `muscle_targets` (that belongs to `delta_rules`)
 
 ### Baseline semantics rule
 
@@ -464,6 +467,9 @@ Represents **relative adjustments** to a motion baseline when that modifier row 
 
 A modifier row may define different delta behavior for different motions.
 
+### Storage format (flat per motion)
+Each motion’s value in `delta_rules` is a **flat** object: `Record<muscleId, number>`. There are **no nested muscle groups**; only muscle IDs as keys and numeric deltas as values. The same flat structure used for `muscle_targets` is used per motion here. Display-time hierarchy (e.g. in the admin UI) is built from the `muscles` table (`parent_ids`); the stored JSON does not contain nested muscle objects.
+
 ### Contract (conceptual shape)
 
 ```json
@@ -478,11 +484,13 @@ A modifier row may define different delta behavior for different motions.
 }
 ```
 
+(Each value is a flat map of `muscleId → delta`; no nesting.)
+
 ### Contract rules (architecture-level)
 
 1. Top-level keys are `motions.id`
-2. Nested keys are `muscles.id`
-3. Nested values are numeric deltas (positive/negative), subject to engine constraints
+2. Each motion’s value is a **flat** object: keys are `muscles.id`, values are numeric deltas (positive/negative), subject to engine constraints
+3. No nested muscle groups inside a motion’s delta map—only `muscleId → number` pairs
 4. No baseline totals are stored here
 5. No standalone modifier-only muscle maps (must be motion-contextual)
 6. No human labels as keys (`"chest"`, `"pecs"`, etc. invalid if not canonical IDs)
@@ -923,6 +931,7 @@ flowchart TD
 ### Required validations
 
 * JSON parses successfully
+* **flat structure only**: no nested objects; only `muscleId → number` pairs
 * all keys exist in `muscles`
 * all values are numeric and within accepted bounds
 * no disallowed tokens (`inherit`, labels, comments)
@@ -933,7 +942,6 @@ flowchart TD
 
 * empty map on active motion row
 * excessive number of keys (possible over-modeling)
-* keys only at high hierarchy levels if tertiary specificity is expected
 * references to inactive muscles
 
 ---
@@ -944,8 +952,7 @@ flowchart TD
 
 * JSON parses successfully
 * top-level keys exist in `motions`
-* nested keys exist in `muscles`
-* nested values match allowed schema types
+* each motion’s value is a **flat** object: keys are muscle IDs that exist in `muscles`, values are numeric deltas (no nested muscle groups)
 * no malformed mixed structures (e.g., arrays where objects expected)
 * no orphan motion references after motion deprecations
 
