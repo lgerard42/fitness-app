@@ -5,3 +5,4 @@ export {
   applyDeltas,
   computeActivation,
 } from "./computeActivation";
+export { stripParentZerosFromFlatScores } from "./stripParentZeros";

@@ -282,6 +282,28 @@ export async function handleFKCleanupPg(
   }
 }
 
+/** Set of muscle IDs that appear as a parent (in any row's parent_ids). Used to strip parent keys with 0 from delta_rules. */
+export async function getParentMuscleIds(): Promise<Set<string>> {
+  const { rows } = await pool.query<{ parent_ids: unknown }>(
+    `SELECT parent_ids FROM muscles WHERE is_active = true AND parent_ids IS NOT NULL`,
+  );
+  const parentIds = new Set<string>();
+  for (const row of rows) {
+    let pids = row.parent_ids;
+    if (typeof pids === "string") {
+      try {
+        pids = JSON.parse(pids);
+      } catch {
+        continue;
+      }
+    }
+    if (Array.isArray(pids)) {
+      for (const id of pids) if (typeof id === "string") parentIds.add(id);
+    }
+  }
+  return parentIds;
+}
+
 export async function cleanMotionDeltaRules(
   motionId: string,
 ): Promise<void> {

@@ -36,18 +36,33 @@ const MUSCLE_GROUP_LABEL: Record<string, string> = {
   ARMS: 'Arms', LEGS: 'Legs', CORE: 'Core', NECK: 'Neck',
 };
 
+const DEFAULT_GROUP_COLOR = '#6b7280';
+
+/** Bar shows only primary (root) muscles; scores are computed by summing leaf scores per root. No child muscles in the bar. */
 function MuscleTargetBar({ targets, refData }: { targets: Record<string, unknown>; refData?: Record<string, Record<string, unknown>[]> }) {
   const [hovered, setHovered] = React.useState<string | null>(null);
   const [tooltipPos, setTooltipPos] = React.useState<{ top: number; left: number } | null>(null);
   const barRef = useRef<HTMLDivElement>(null);
 
   const groups = useMemo(() => {
-    const muscles = (refData?.['muscles'] ?? []) as Array<{ id: string; label: string; parent_ids?: string[] }>;
-    const flat = targets as Record<string, number>;
+    const rawMuscles = (refData?.['muscles'] ?? []) as Array<Record<string, unknown>>;
+    const muscles = rawMuscles.map((m) => {
+      let pids = m.parent_ids ?? m.parentIds;
+      if (typeof pids === 'string') {
+        try { pids = JSON.parse(pids); } catch { pids = []; }
+      }
+      return { id: String(m.id ?? ''), label: String(m.label ?? m.id ?? ''), parent_ids: Array.isArray(pids) ? pids.map(String) : [] };
+    });
+    const flat: Record<string, number> = {};
+    if (targets && typeof targets === 'object') {
+      for (const [k, v] of Object.entries(targets)) {
+        if (typeof v === 'number') flat[k] = v;
+      }
+    }
 
     const findRoot = (id: string): string => {
       const m = muscles.find(mu => mu.id === id);
-      if (!m || !m.parent_ids || m.parent_ids.length === 0) return id;
+      if (!m || !m.parent_ids.length) return id;
       return findRoot(m.parent_ids[0]);
     };
 
@@ -55,12 +70,17 @@ function MuscleTargetBar({ targets, refData }: { targets: Record<string, unknown
     for (const [muscleId, score] of Object.entries(flat)) {
       if (typeof score !== 'number') continue;
       const rootId = muscles.length > 0 ? findRoot(muscleId) : muscleId;
-      if (!MUSCLE_GROUP_COLORS[rootId]) continue;
       groupScores[rootId] = (groupScores[rootId] ?? 0) + score;
     }
 
+    const muscleMap = new Map(muscles.map(m => [m.id, m]));
     return Object.entries(groupScores)
-      .map(([key, score]) => ({ key, score: Math.round(score * 100) / 100 }))
+      .map(([key, score]) => ({
+        key,
+        score: Math.round(score * 100) / 100,
+        label: MUSCLE_GROUP_LABEL[key] ?? muscleMap.get(key)?.label ?? key,
+        color: MUSCLE_GROUP_COLORS[key] ?? DEFAULT_GROUP_COLOR,
+      }))
       .filter(g => g.score > 0)
       .sort((a, b) => b.score - a.score);
   }, [targets, refData]);
@@ -94,8 +114,8 @@ function MuscleTargetBar({ targets, refData }: { targets: Record<string, unknown
             <div className="bg-gray-900 text-white rounded-md px-2.5 py-1.5 shadow-lg whitespace-nowrap" style={{ fontSize: '10px' }}>
               {groups.map(g => (
                 <div key={g.key} className="flex items-center gap-1.5 py-0.5">
-                  <span className="inline-block w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: MUSCLE_GROUP_COLORS[g.key] }} />
-                  <span className="font-medium">{MUSCLE_GROUP_LABEL[g.key] || g.key}</span>
+                  <span className="inline-block w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: g.color }} />
+                  <span className="font-medium">{g.label}</span>
                   <span className="text-gray-400 ml-auto pl-3">{g.score.toFixed(1)}</span>
                 </div>
               ))}
@@ -117,7 +137,6 @@ function MuscleTargetBar({ targets, refData }: { targets: Record<string, unknown
         <div className="flex h-5 rounded overflow-hidden bg-gray-100 cursor-default">
           {groups.map(g => {
             const pct = (g.score / totalScore) * 100;
-            const color = MUSCLE_GROUP_COLORS[g.key];
             const isHov = hovered === g.key;
             return (
               <div
@@ -126,7 +145,7 @@ function MuscleTargetBar({ targets, refData }: { targets: Record<string, unknown
                 style={{
                   width: `${pct}%`,
                   minWidth: pct > 8 ? '14px' : '4px',
-                  backgroundColor: color,
+                  backgroundColor: g.color,
                   opacity: hovered && !isHov ? 0.4 : 1,
                 }}
                 onMouseEnter={() => setHovered(g.key)}
@@ -295,6 +314,14 @@ interface FlatDisplayNode {
   children: FlatDisplayNode[];
 }
 
+function parseParentIds(m: Record<string, unknown>): string[] {
+  let pids = m.parent_ids ?? m.parentIds;
+  if (typeof pids === 'string') {
+    try { pids = JSON.parse(pids); } catch { return []; }
+  }
+  return Array.isArray(pids) ? pids.map(String) : [];
+}
+
 function buildMuscleDisplayTree(
   flat: Record<string, number>,
   muscles: MuscleRecord[]
@@ -302,16 +329,19 @@ function buildMuscleDisplayTree(
   if (Object.keys(flat).length === 0 || muscles.length === 0) return [];
 
   const muscleMap = new Map<string, MuscleRecord>();
+  const parentIdsOf = new Map<string, string[]>();
   const childrenOf = new Map<string, string[]>();
   const rootIds: string[] = [];
 
   for (const m of muscles) {
-    muscleMap.set(String(m.id), m);
-    const pids = m.parent_ids ?? [];
-    if (pids.length === 0) rootIds.push(String(m.id));
+    const id = String(m.id ?? '');
+    muscleMap.set(id, m);
+    const pids = parseParentIds(m as Record<string, unknown>);
+    parentIdsOf.set(id, pids);
+    if (pids.length === 0) rootIds.push(id);
     for (const pid of pids) {
       if (!childrenOf.has(pid)) childrenOf.set(pid, []);
-      childrenOf.get(pid)!.push(String(m.id));
+      childrenOf.get(pid)!.push(id);
     }
   }
 
@@ -320,16 +350,14 @@ function buildMuscleDisplayTree(
   function ensureAncestors(id: string) {
     if (neededIds.has(id)) return;
     neededIds.add(id);
-    const m = muscleMap.get(id);
-    if (!m) return;
-    for (const pid of m.parent_ids ?? []) ensureAncestors(pid);
+    for (const pid of parentIdsOf.get(id) ?? []) ensureAncestors(pid);
   }
   for (const id of flatIds) ensureAncestors(id);
 
   function buildNode(id: string): FlatDisplayNode | null {
     if (!neededIds.has(id)) return null;
     const m = muscleMap.get(id);
-    const label = m?.label ?? id;
+    const label = (m?.label ?? id).trim() || id.replace(/_/g, ' ');
     const kids = (childrenOf.get(id) || [])
       .map(cid => buildNode(cid))
       .filter((n): n is FlatDisplayNode => n !== null);
@@ -347,12 +375,14 @@ function buildMuscleDisplayTree(
   for (const id of flatIds) {
     if (!reachable.has(id)) {
       const m = muscleMap.get(id);
-      tree.push({ id, label: m?.label ?? id, score: flat[id] ?? 0, computed: false, children: [] });
+      const label = (m?.label ?? id).trim() || id.replace(/_/g, ' ');
+      tree.push({ id, label, score: flat[id] ?? 0, computed: false, children: [] });
     }
   }
   return tree;
 }
 
+/** Targets: flat schema. On hover: full tree with children nested under parents; labels only (no ids). */
 function MuscleTargetsTooltipContent({
   targets,
   refData,
@@ -372,13 +402,14 @@ function MuscleTargetsTooltipContent({
   const tree = buildMuscleDisplayTree(flat, muscles);
   const hasContent = tree.length > 0;
 
-  const renderNode = (node: FlatDisplayNode, depth: number) => {
+  const renderNode = (node: FlatDisplayNode, depth: number, path: string) => {
     const labelClass = depth === 0 ? 'text-blue-200 font-medium' : depth === 1 ? 'text-cyan-200' : 'text-gray-300';
     const scoreClass = depth === 0 ? 'text-gray-300 font-mono' : depth === 1 ? 'text-gray-400 font-mono' : 'text-gray-500 font-mono';
+    const indentPx = 8 + depth * 14;
 
     if (depth === 0) {
       return (
-        <div key={node.id} className="rounded bg-gray-800/80 overflow-hidden">
+        <div key={path} className="rounded bg-gray-800/80 overflow-hidden">
           <div className="px-2 py-1 font-medium text-blue-200 border-b border-gray-700">{node.label}</div>
           <div className="p-1.5 space-y-0.5">
             <div className="flex items-center gap-1.5 py-0.5">
@@ -386,8 +417,8 @@ function MuscleTargetsTooltipContent({
               <span className={scoreClass}>{node.score}</span>
             </div>
             {node.children.length > 0 && (
-              <div className="pl-0 space-y-0.5 mt-1">
-                {node.children.map(child => renderNode(child, depth + 1))}
+              <div className="mt-1 space-y-0.5 border-l border-gray-600 ml-1.5 pl-2">
+                {node.children.map((child, i) => renderNode(child, depth + 1, `${path}.${i}.${child.id}`))}
               </div>
             )}
           </div>
@@ -396,14 +427,15 @@ function MuscleTargetsTooltipContent({
     }
 
     return (
-      <div key={node.id} className={depth > 1 ? '' : 'pl-0'}>
+      <div key={path} style={{ paddingLeft: depth > 1 ? indentPx : 0 }}>
         <div className="flex items-center gap-1.5 py-0.5">
+          {depth > 1 && <span className="text-gray-500 mr-0.5">└</span>}
           <span className={labelClass}>{node.label}</span>
           <span className={`${scoreClass} ml-auto text-[9px]`}>{node.score}</span>
         </div>
         {node.children.length > 0 && (
-          <div className="pl-2 border-l border-gray-600 ml-1">
-            {node.children.map(child => renderNode(child, depth + 1))}
+          <div className="border-l border-gray-600 ml-1.5 pl-2 mt-0.5">
+            {node.children.map((child, i) => renderNode(child, depth + 1, `${path}.${i}.${child.id}`))}
           </div>
         )}
       </div>
@@ -418,7 +450,7 @@ function MuscleTargetsTooltipContent({
       <div className="p-2 space-y-3">
         {!hasContent ? (
           <div className="text-gray-400 text-xs italic">No muscle targets</div>
-        ) : tree.map(node => renderNode(node, 0))}
+        ) : tree.map((node, i) => renderNode(node, 0, `root-${i}-${node.id}`))}
       </div>
     </div>
   );
@@ -662,6 +694,7 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
     const fkTables = new Set<string>();
     for (const f of schema.fields) {
       if (f.refTable) fkTables.add(f.refTable);
+      if (f.jsonShape === 'muscle_targets' || f.jsonShape === 'delta_rules') fkTables.add('muscles');
     }
     const entries: Record<string, Record<string, unknown>[]> = {};
     await Promise.all(
@@ -889,34 +922,26 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
         const muscles = refData['muscles'] || [];
         const muscleMap = new Map(muscles.map((m: Record<string, unknown>) => [String(m.id ?? ''), m]));
         
-        // Helper to get primary muscle with highest score from muscle_targets
+        // Helper to get primary (root) muscle with highest total score from flat muscle_targets
+        const findRoot = (muscleId: string): string => {
+          const m = muscleMap.get(muscleId) as { parent_ids?: string[] } | undefined;
+          if (!m || !m.parent_ids || m.parent_ids.length === 0) return muscleId;
+          return findRoot(m.parent_ids[0]);
+        };
         const getPrimaryMuscleForMotion = (motion: Record<string, unknown>): string | null => {
           const targets = motion.muscle_targets as Record<string, unknown> | undefined;
           if (!targets || typeof targets !== 'object') return null;
-          
-          // Get all primary muscle IDs (top-level keys excluding '_score')
-          const primaryMuscleIds = Object.keys(targets).filter(k => k !== '_score');
-          if (primaryMuscleIds.length === 0) return null;
-          
-          // If only one primary muscle, use it
-          if (primaryMuscleIds.length === 1) return primaryMuscleIds[0];
-          
-          // If multiple, find the one with highest score
-          let maxScore = -Infinity;
-          let maxMuscleId: string | null = null;
-          
-          primaryMuscleIds.forEach(muscleId => {
-            const muscleNode = targets[muscleId] as Record<string, unknown> | undefined;
-            if (muscleNode && typeof muscleNode === 'object') {
-              const score = typeof muscleNode._score === 'number' ? muscleNode._score : 0;
-              if (score > maxScore) {
-                maxScore = score;
-                maxMuscleId = muscleId;
-              }
-            }
-          });
-          
-          return maxMuscleId || primaryMuscleIds[0];
+          const musclesList = muscles as Array<{ id: string; parent_ids?: string[] }>;
+          if (musclesList.length === 0) return null;
+          const byRoot: Record<string, number> = {};
+          for (const [muscleId, score] of Object.entries(targets)) {
+            if (typeof score !== 'number') continue;
+            const rootId = findRoot(muscleId);
+            byRoot[rootId] = (byRoot[rootId] ?? 0) + score;
+          }
+          const entries = Object.entries(byRoot).filter(([, s]) => s > 0);
+          if (entries.length === 0) return null;
+          return entries.reduce((best, cur) => (cur[1] > best[1] ? cur : best))[0];
         };
         
         // Group motions by their primary muscle
@@ -1849,7 +1874,8 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
     if (field.type === 'json') {
       if (field.jsonShape === 'muscle_targets' && val && typeof val === 'object') {
         const targets = val as Record<string, unknown>;
-        const hasTargets = Object.keys(targets).length > 0;
+        // Flat schema: only muscle IDs with numeric scores count
+        const hasTargets = Object.entries(targets).some(([, v]) => typeof v === 'number');
         if (!hasTargets) return <span className="text-gray-300">—</span>;
         return (
           <MuscleTargetsCellWithTooltip

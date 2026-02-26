@@ -13,8 +13,23 @@ import {
   getRow,
   handleFKCleanupPg,
   cleanMotionDeltaRules,
+  getParentMuscleIds,
 } from "../pgCrud";
 import { matrixConfigService } from "../../services/matrixConfigService";
+import { stripParentZerosFromFlatScores } from "../../../../shared/scoring/stripParentZeros";
+
+function isFlatScoreRecord(val: unknown): val is Record<string, number> {
+  if (!val || typeof val !== "object" || Array.isArray(val)) return false;
+  return Object.values(val as Record<string, unknown>).every((v) => typeof v === "number");
+}
+
+/** Normalize delta_rules in place: remove parent muscle IDs with score 0. */
+function normalizeDeltaRules(dr: Record<string, unknown>, parentIds: Set<string>): void {
+  for (const [motionId, val] of Object.entries(dr)) {
+    if (val === "inherit" || !isFlatScoreRecord(val)) continue;
+    dr[motionId] = stripParentZerosFromFlatScores(val, parentIds);
+  }
+}
 
 /**
  * After a row with delta_rules is saved, sync each referenced motion
@@ -90,6 +105,15 @@ router.put("/:key", async (req: Request, res: Response) => {
     } else {
       rows = req.body;
     }
+    const hasDeltaRules = rows.some((r) => r.delta_rules && typeof r.delta_rules === "object" && !Array.isArray(r.delta_rules));
+    if (hasDeltaRules) {
+      const parentIds = await getParentMuscleIds();
+      for (const row of rows) {
+        if (row.delta_rules && typeof row.delta_rules === "object" && !Array.isArray(row.delta_rules)) {
+          normalizeDeltaRules(row.delta_rules as Record<string, unknown>, parentIds);
+        }
+      }
+    }
     await upsertFullTable(schema.pgTable, columns, rows);
 
     // Post-save: sync delta_rules from upserted rows
@@ -116,9 +140,13 @@ router.post("/:key/rows", async (req: Request, res: Response) => {
       res.json({ ok: true });
       return;
     }
-    const newRow = req.body;
+    const newRow = req.body as Record<string, unknown>;
     if (!newRow.id) { res.status(400).json({ error: "Row must have an id field" }); return; }
-    if (await rowExists(schema.pgTable, newRow.id)) {
+    if (newRow.delta_rules && typeof newRow.delta_rules === "object" && !Array.isArray(newRow.delta_rules)) {
+      const parentIds = await getParentMuscleIds();
+      normalizeDeltaRules(newRow.delta_rules as Record<string, unknown>, parentIds);
+    }
+    if (await rowExists(schema.pgTable, newRow.id as string)) {
       res.status(409).json({ error: `Row with id "${newRow.id}" already exists` }); return;
     }
     const inserted = await insertRow(schema.pgTable, columns, newRow);
@@ -149,11 +177,16 @@ router.put("/:key/rows/:id", async (req: Request, res: Response) => {
       res.json({ ok: true });
       return;
     }
-    const updated = await updateRow(schema.pgTable, columns, rowId, req.body);
+    const body = req.body as Record<string, unknown>;
+    if (body.delta_rules && typeof body.delta_rules === "object" && !Array.isArray(body.delta_rules)) {
+      const parentIds = await getParentMuscleIds();
+      normalizeDeltaRules(body.delta_rules as Record<string, unknown>, parentIds);
+    }
+    const updated = await updateRow(schema.pgTable, columns, rowId, body);
     if (!updated) { res.status(404).json({ error: `Row "${rowId}" not found` }); return; }
 
     // Post-save: sync delta_rules → Matrix V2 configs (fire-and-forget)
-    syncDeltaRulesIfPresent(req.body).catch(() => {});
+    syncDeltaRulesIfPresent(body).catch(() => {});
 
     res.json({ ok: true, row: updated });
   } catch (err) {
@@ -232,10 +265,20 @@ router.post("/bulk-matrix", async (req: Request, res: Response) => {
   if (!schema) { res.status(404).json({ error: `Table "${sourceTable}" not found in registry` }); return; }
   try {
     const columns = getPgColumns(schema);
+    const rowDataList = Object.values(updates);
+    const hasDeltaRules = rowDataList.some((r) => r.delta_rules && typeof r.delta_rules === "object" && !Array.isArray(r.delta_rules));
+    if (hasDeltaRules) {
+      const parentIds = await getParentMuscleIds();
+      for (const rowData of rowDataList) {
+        if (rowData.delta_rules && typeof rowData.delta_rules === "object" && !Array.isArray(rowData.delta_rules)) {
+          normalizeDeltaRules(rowData.delta_rules as Record<string, unknown>, parentIds);
+        }
+      }
+    }
     await bulkUpdateRows(schema.pgTable, columns, updates);
 
     // Post-save: sync delta_rules from any updated rows
-    for (const rowData of Object.values(updates)) {
+    for (const rowData of rowDataList) {
       syncDeltaRulesIfPresent(rowData).catch(() => {});
     }
 
