@@ -3,16 +3,12 @@ import { View, Text, StyleSheet } from 'react-native';
 import { COLORS } from '@/constants/colors';
 import type { BodyMeasurement } from '@/types/workout';
 import SwipeToDelete from '@/components/common/SwipeToDelete';
+import { formatDate } from '@shared/utils/formatting';
 
 interface MeasurementHistoryItemProps {
   measurement: BodyMeasurement;
   onDelete: (id: string) => void;
 }
-
-const formatDate = (iso: string): string => {
-  const d = new Date(iso);
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-};
 
 const MeasurementHistoryItem: React.FC<MeasurementHistoryItemProps> = ({ measurement, onDelete }) => {
   const weightLabel = measurement.weight

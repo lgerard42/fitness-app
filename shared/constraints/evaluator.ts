@@ -1,7 +1,7 @@
 import type {
   Motion,
   Equipment,
-  ExerciseCategory,
+  RefExerciseCategory,
   ModifierTableConstraint,
   ConstraintEvaluatorOutput,
   ConstraintState,
@@ -34,7 +34,7 @@ const ALL_MODIFIER_TABLES = [
 export interface ConstraintEvaluatorInput {
   motion: Motion;
   equipment?: Equipment | null;
-  category?: ExerciseCategory | null;
+  category?: RefExerciseCategory | null;
   /** The selected torso angle row (for orientation gating) */
   selectedTorsoAngle?: { allow_torso_orientations?: boolean } | null;
 }

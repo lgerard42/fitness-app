@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { EXERCISE_LIBRARY, migrateExercise, migrateAssistedMachine, formatDuration } from '@/constants/data';
+import { EXERCISE_LIBRARY, migrateExercise, migrateAssistedMachine } from '@/constants/data';
+import { formatDuration } from '@shared/utils/formatting';
 import { getEffectiveWeight } from '@/utils/workoutHelpers';
 import { autoLogin } from '@/api/client';
 import { fetchWorkouts, createWorkout as apiCreateWorkout } from '@/api/workouts';

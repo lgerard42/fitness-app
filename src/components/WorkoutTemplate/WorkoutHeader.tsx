@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Platform, Modal } 
 import { ChevronDown, Calendar, Clock } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { COLORS } from '@/constants/colors';
-import { formatDuration } from '@/constants/data';
+import { formatDuration } from '@shared/utils/formatting';
 import type { Workout, WorkoutMode } from '@/types/workout';
 
 interface WorkoutHeaderProps {

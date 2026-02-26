@@ -5,7 +5,7 @@ import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flat
 import { ChevronDown, ChevronLeft, ChevronRight, Calendar, Clock, FileText, Plus, Dumbbell, TrendingDown, Layers, MoreVertical, Trash2, RefreshCw, X, Flame, Zap, Check, Timer, LogOut } from 'lucide-react-native';
 import type { NavigationProp } from '@react-navigation/native';
 import { COLORS } from '@/constants/colors';
-import { formatDuration } from '@/constants/data';
+import { formatDuration } from '@shared/utils/formatting';
 import SetRow from './SetRow';
 import SavedNoteItem from '@/components/SavedNoteItem';
 import ExercisePicker from './modals/ExercisePicker/ExercisePickerIndex';

@@ -1,4 +1,5 @@
 export * from "./matrixV2";
+export * from "./workout";
 
 // ─── Muscle Targets ──────────────────────────────────────────────────
 // Flat map: muscleId → score. Hierarchy is built at display time from
@@ -70,12 +71,15 @@ export type PermissionLevel = "allowed" | "required" | "disallowed";
 
 export type ExerciseInputPermissions = Record<string, PermissionLevel>;
 
-export interface ExerciseCategory {
+export interface RefExerciseCategory {
   id: string;
   label: string;
   exercise_input_permissions: ExerciseInputPermissions;
   is_active?: boolean;
 }
+
+/** @deprecated Use RefExerciseCategory instead */
+export type ExerciseCategoryRef = RefExerciseCategory;
 
 // ─── Muscle Definition ───────────────────────────────────────────────
 
@@ -164,5 +168,5 @@ export interface DataContext {
   muscles: Record<string, Muscle>;
   modifierTables: Record<string, Record<string, ModifierRow>>;
   equipment: Record<string, Equipment>;
-  exerciseCategories: Record<string, ExerciseCategory>;
+  exerciseCategories: Record<string, RefExerciseCategory>;
 }

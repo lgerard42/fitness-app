@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Clock } from 'lucide-react-native';
 import { COLORS } from '@/constants/colors';
 import { useWorkout } from '@/context/WorkoutContext';
-import { formatDuration } from '@/constants/data';
+import { formatDuration } from '@shared/utils/formatting';
 
 const ActiveWorkoutBanner: React.FC = () => {
   const { activeWorkout } = useWorkout();
