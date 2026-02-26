@@ -2,7 +2,7 @@
 
 **Canonical Source of Truth for Exercise Configuration + Baseline Scoring Architecture**  
 **Status:** Draft for review / lock  
-**Last Updated:** 2026-02-25  
+**Last Updated:** 2026-02-26  
 **Repository:** `fitness-app`  
 **Primary Scope:** Admin-authored biomechanics data model + baseline scoring compatibility (UBSE / delta-cascade architecture)  
 **Out of Scope:** Mobile UI implementation code, runtime frontend state wiring, final delta tuning values, composite/multi-phase sequence decomposition
@@ -264,6 +264,9 @@ Benefits:
 - `sort_order`
 - `icon`
 - `is_active`
+- `is_scorable` — boolean (default true); whether this muscle is included in scoring
+- `is_default` — boolean (default true); whether this muscle is a default option in admin/UI
+- `is_advanced` — boolean (default false); whether this muscle is shown only in advanced views
 
 ### Normalization boundary
 `muscles` should **not** contain:
@@ -311,6 +314,9 @@ Each motion row defines:
 - `sort_order`
 - `icon`
 - `is_active`
+- `is_scorable` — boolean (default true); whether this motion is included in scoring
+- `is_default` — boolean (default true); whether this motion is a default option in admin/UI
+- `is_advanced` — boolean (default false); whether this motion is shown only in advanced views
 
 ### Muscle grouping (display)
 

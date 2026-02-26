@@ -45,6 +45,9 @@ export interface Motion {
   short_description?: string;
   sort_order?: number;
   is_active?: boolean;
+  is_scorable?: boolean;
+  is_default?: boolean;
+  is_advanced?: boolean;
   icon?: string | null;
 }
 
@@ -91,6 +94,9 @@ export interface Muscle {
   technical_name?: string;
   common_names?: string[];
   is_active?: boolean;
+  is_scorable?: boolean;
+  is_default?: boolean;
+  is_advanced?: boolean;
 }
 
 // ─── Score Policy ────────────────────────────────────────────────────

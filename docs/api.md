@@ -58,7 +58,7 @@ All require auth.
 
 No JWT. Proxied by Admin (Vite) and optionally Web.
 
-- **Tables**: GET/PUT `/tables`, GET/PUT/DELETE `/tables/:key`, POST `/tables/:key/rows`, PUT `/tables/:key/rows/:id`, DELETE `/tables/:key/rows/:id`, POST `/:key/reorder`, POST `/bulk-matrix`, POST `/:key/sync`.
+- **Tables**: GET/PUT `/tables`, GET/PUT/DELETE `/tables/:key`, POST `/tables/:key/rows`, PUT `/tables/:key/rows/:id`, DELETE `/tables/:key/rows/:id`, POST `/:key/reorder`, POST `/bulk-matrix`, POST `/:key/sync`. Rows for the `muscles` and `motions` tables may include boolean fields `is_scorable`, `is_default`, and `is_advanced` (defaults: true, true, false).
 - **Schema**: GET `/schema`, GET `/schema/:key`, GET `/schema/meta/relationships`, POST `/schema/:key/validate`, GET `/schema/meta/fk-refs/:key/:id`.
 - **Scoring**: POST `/scoring/compute`, `/scoring/trace`, `/scoring/constraints`, GET `/scoring/lint`, `/scoring/manifest`.
 - **Matrix configs**: Full CRUD, validate, activate, clone, resolve, export, import, sync-deltas, ensure-drafts, deduplicate.

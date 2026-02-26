@@ -74,6 +74,9 @@ const TABLE_DEFINITIONS: TableSchema[] = [
       { name: 'location', type: 'string' },
       { name: 'triggers', type: 'string' },
       { name: 'upper_lower', type: 'string[]', defaultValue: [] },
+      { name: 'is_scorable', type: 'boolean', defaultValue: true, label: 'Scorable' },
+      { name: 'is_default', type: 'boolean', defaultValue: true, label: 'Default' },
+      { name: 'is_advanced', type: 'boolean', defaultValue: false, label: 'Advanced' },
     ]),
   },
   {
@@ -87,6 +90,9 @@ const TABLE_DEFINITIONS: TableSchema[] = [
       { name: 'default_delta_configs', type: 'json', jsonShape: 'default_delta_configs', label: 'Motion paths', defaultValue: {} },
       { name: 'common_names', type: 'string[]', defaultValue: [] },
       { name: 'short_description', type: 'string' },
+      { name: 'is_scorable', type: 'boolean', defaultValue: true, label: 'Scorable' },
+      { name: 'is_default', type: 'boolean', defaultValue: true, label: 'Default' },
+      { name: 'is_advanced', type: 'boolean', defaultValue: false, label: 'Advanced' },
     ]),
   },
   {

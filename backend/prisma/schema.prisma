@@ -307,6 +307,9 @@ model RefMuscle {
   sortOrder        Int        @default(0) @map("sort_order")
   icon             String?    @default("")
   isActive         Boolean    @default(true) @map("is_active")
+  isScorable       Boolean    @default(true) @map("is_scorable")
+  isDefault        Boolean    @default(true) @map("is_default")
+  isAdvanced       Boolean    @default(false) @map("is_advanced")
   sourceType       SourceType @default(seed) @map("source_type")
 
   @@map("muscles")
@@ -325,6 +328,9 @@ model RefMotion {
   sortOrder           Int        @default(0) @map("sort_order")
   icon                String?    @default("")
   isActive            Boolean    @default(true) @map("is_active")
+  isScorable          Boolean    @default(true) @map("is_scorable")
+  isDefault           Boolean    @default(true) @map("is_default")
+  isAdvanced          Boolean    @default(false) @map("is_advanced")
   sourceType          SourceType @default(seed) @map("source_type")
 
   parent   RefMotion?  @relation("MotionParent", fields: [parentId], references: [id], onUpdate: Cascade, onDelete: Restrict)
