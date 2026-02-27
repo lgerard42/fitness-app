@@ -149,7 +149,7 @@ Smoke test: render inside a router (e.g. `MemoryRouter`), mock `api.listTables` 
 ## 5. File and naming conventions
 
 - **Pattern:** `src/**/*.test.{ts,tsx}` (Vitest default).
-- **Placement:** Prefer `__tests__` next to the module (e.g. `api/__tests__/client.test.ts`, `hooks/__tests__/useWorkstationState.test.tsx`, `components/FieldRenderers/__tests__/StringField.test.tsx`). This mirrors Backend and Web.
+- **Placement:** Prefer `__tests`__ next to the module (e.g. `api/__tests__/client.test.ts`, `hooks/__tests__/useWorkstationState.test.tsx`, `components/FieldRenderers/__tests__/StringField.test.tsx`). This mirrors Backend and Web.
 - **Naming:** `*.test.ts` for logic-only, `*.test.tsx` when the test file imports JSX.
 
 ---

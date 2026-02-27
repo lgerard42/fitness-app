@@ -224,7 +224,7 @@ For the `allowed_grip_types`, `allowed_grip_widths`, `allowed_stance_types`, `al
 - **Matrix grid**: rows = equipment items (or cable attachments), columns = grip types (or grip widths, stance types, stance widths -- tabs to switch)
 - Each cell is a checkbox: checked = this equipment allows this grip/width/stance
 - Can also edit in reverse: select a grip type and see which equipment allows it
-- Changes write back to the `allowed_*` columns on the respective table's JSON file
+- Changes write back to the `allowed`_* columns on the respective table's JSON file
 
 ### Page 4: Relationship Viewer (optional, lower priority)
 
