@@ -166,6 +166,16 @@ function buildTreeFromFlat(flat: Record<string, number>, allMuscles: MuscleRecor
       }
     }
   }
+  const pKeys = Object.keys(tree).filter(k => k !== '_score');
+  for (const pId of pKeys) {
+    const pNode = tree[pId] as TreeNode;
+    if (pId in flat) pNode._score = flat[pId];
+    const sKeys = Object.keys(pNode).filter(k => k !== '_score');
+    for (const sId of sKeys) {
+      const sNode = pNode[sId] as TreeNode;
+      if (sId in flat) sNode._score = flat[sId];
+    }
+  }
   return tree;
 }
 
@@ -325,25 +335,38 @@ function InlineDeltaEditor({
         const pNode = tree[pId] as TreeNode;
         const pLabel = getMuscleLabel(allMuscles, pId);
         const sKeys = Object.keys(pNode).filter(k => k !== '_score');
-        const pIsComputed = sKeys.length > 0;
+        const pSumChildren = sKeys.reduce((acc, sId) => {
+          const sNode = pNode[sId] as TreeNode;
+          const tKeys = Object.keys(sNode).filter(k => k !== '_score');
+          const tertiarySum = tKeys.length > 0
+            ? tKeys.reduce((a, tId) => a + ((sNode[tId] as TreeNode)._score ?? 0), 0)
+            : 0;
+          return acc + (sNode._score ?? 0) + tertiarySum;
+        }, 0);
+        const pTotal = Math.round(((pNode._score ?? 0) + pSumChildren) * 100) / 100;
         const availSec = getSecondariesFor(pId).filter(s => !sKeys.includes(s.id));
 
         return (
           <div key={pId} className="border border-gray-200 rounded p-1 bg-gray-50">
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] font-semibold text-gray-700">{pLabel}</span>
-              {pIsComputed ? (
-                <span className="text-[10px] text-gray-400 italic ml-auto" title="Auto-computed from children">{pNode._score}</span>
-              ) : !isMuscleScorable(allMuscles, pId) ? (
-                <span className="text-[10px] text-gray-500 ml-auto" title="Not scorable">{pNode._score}</span>
+              {!isMuscleScorable(allMuscles, pId) ? (
+                <span className="text-[10px] text-gray-500 ml-auto" title="Not scorable">
+                  {sKeys.length > 0 ? `${pNode._score ?? 0} ${pTotal}` : (pNode._score ?? 0)}
+                </span>
               ) : (
-                <input
-                  type="number"
-                  value={pNode._score}
-                  onChange={e => updateScore(pId, parseFloat(e.target.value) || 0)}
-                  className="w-14 text-[10px] border border-gray-300 rounded px-0.5 py-0 text-right"
-                  step="0.1"
-                />
+                <span className="flex items-center gap-1 ml-auto">
+                  <input
+                    type="number"
+                    value={pNode._score ?? 0}
+                    onChange={e => updateScore(pId, parseFloat(e.target.value) || 0)}
+                    className="w-14 text-[10px] border border-gray-300 rounded px-0.5 py-0 text-right"
+                    step="0.1"
+                  />
+                  {sKeys.length > 0 && (
+                    <span className="text-[10px] text-gray-400 italic" title="Parent + children total">{pTotal}</span>
+                  )}
+                </span>
               )}
               <button onClick={() => removeMuscle(pId)} className="text-red-400 hover:text-red-600 text-[10px] ml-auto">×</button>
             </div>
@@ -351,27 +374,33 @@ function InlineDeltaEditor({
               <div className="pl-2 mt-0.5 space-y-0.5 border-l border-gray-200 ml-0.5">
                 {sKeys.map(sId => {
                   const sNode = pNode[sId] as TreeNode;
-                  const sLabel = getMuscleLabel(allMuscles, sId);
-                  const tKeys = Object.keys(sNode).filter(k => k !== '_score');
-                  const sIsComputed = tKeys.length > 0;
-                  const availTer = getTertiariesFor(sId).filter(t => !tKeys.includes(t.id));
+                const sLabel = getMuscleLabel(allMuscles, sId);
+                const tKeys = Object.keys(sNode).filter(k => k !== '_score');
+                const sSumChildren = tKeys.reduce((acc, tId) => acc + ((sNode[tId] as TreeNode)._score ?? 0), 0);
+                const sTotal = Math.round(((sNode._score ?? 0) + sSumChildren) * 100) / 100;
+                const availTer = getTertiariesFor(sId).filter(t => !tKeys.includes(t.id));
 
                   return (
                     <div key={sId}>
                       <div className="flex items-center gap-1.5">
                         <span className="text-[10px] text-gray-600">{sLabel}</span>
-                        {sIsComputed ? (
-                          <span className="text-[10px] text-gray-400 italic" title="Auto-computed from children">{sNode._score}</span>
-                        ) : !isMuscleScorable(allMuscles, sId) ? (
-                          <span className="text-[10px] text-gray-500" title="Not scorable">{sNode._score}</span>
+                        {!isMuscleScorable(allMuscles, sId) ? (
+                          <span className="text-[10px] text-gray-500" title="Not scorable">
+                            {tKeys.length > 0 ? `${sNode._score ?? 0} ${sTotal}` : (sNode._score ?? 0)}
+                          </span>
                         ) : (
-                          <input
-                            type="number"
-                            value={sNode._score}
-                            onChange={e => updateScore(sId, parseFloat(e.target.value) || 0)}
-                            className="w-14 text-[10px] border border-gray-300 rounded px-0.5 py-0 text-right"
-                            step="0.1"
-                          />
+                          <span className="flex items-center gap-1">
+                            <input
+                              type="number"
+                              value={sNode._score ?? 0}
+                              onChange={e => updateScore(sId, parseFloat(e.target.value) || 0)}
+                              className="w-14 text-[10px] border border-gray-300 rounded px-0.5 py-0 text-right"
+                              step="0.1"
+                            />
+                            {tKeys.length > 0 && (
+                              <span className="text-[10px] text-gray-400 italic" title="Parent + children total">{sTotal}</span>
+                            )}
+                          </span>
                         )}
                         <button onClick={() => removeMuscle(sId)} className="text-red-400 hover:text-red-600 text-[10px] ml-auto">×</button>
                       </div>

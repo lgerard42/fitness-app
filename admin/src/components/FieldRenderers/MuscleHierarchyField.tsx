@@ -19,7 +19,16 @@ interface MuscleRecord {
 type MuscleTier = 'primary' | 'secondary' | 'tertiary';
 
 function parseParentIds(record: MuscleRecord): string[] {
-  if (Array.isArray(record.parent_ids)) return record.parent_ids;
+  const raw = record.parent_ids;
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
   return [];
 }
 
@@ -42,9 +51,11 @@ export default function MuscleHierarchyField({ tableKey, currentRecordId, onFiel
   const loadAllData = useCallback(async () => {
     try {
       const data = await api.getTable('muscles');
-      setAllMuscles((data as MuscleRecord[]) || []);
+      const muscles = Array.isArray(data) ? (data as MuscleRecord[]) : [];
+      setAllMuscles(muscles);
     } catch (err) {
       console.error('Failed to load muscle data:', err);
+      setAllMuscles([]);
     } finally {
       setLoading(false);
     }
@@ -212,7 +223,7 @@ export default function MuscleHierarchyField({ tableKey, currentRecordId, onFiel
 
   // Available items for "Add" dropdowns
   const availableAddOptions = useMemo(() => {
-    if (!currentRecord) return [];
+    if (!currentRecord || !currentRecordId) return [];
 
     if (currentTier === 'primary') {
       const linkedChildIds = secondaries.filter(s => parseParentIds(s).includes(currentRecordId)).map(s => s.id);
@@ -222,20 +233,33 @@ export default function MuscleHierarchyField({ tableKey, currentRecordId, onFiel
       const linkedParentIds = parseParentIds(currentRecord);
       return primaries.filter(p => !linkedParentIds.includes(p.id));
     }
-    // Tertiary: can add secondary parents
     const linkedParentIds = parseParentIds(currentRecord);
     return secondaries.filter(s => !linkedParentIds.includes(s.id));
   }, [currentTier, currentRecord, currentRecordId, primaries, secondaries]);
+
+  // Must be called before any early returns to satisfy React's rules of hooks
+  const otherPrimaries = useMemo(() => {
+    if (!currentRecord || currentTier !== 'primary') return [];
+    return primaries.filter(p => p.id !== currentRecord.id);
+  }, [currentRecord, currentTier, primaries]);
 
   if (loading) {
     return <div className={sp.muscleHierarchy.loading}>Loading muscle data...</div>;
   }
 
-  // Other primaries (for "Make child of" when current is primary)
-  const otherPrimaries = useMemo(() => {
-    if (!currentRecord || currentTier !== 'primary') return [];
-    return primaries.filter(p => p.id !== currentRecord.id);
-  }, [currentRecord, currentTier, primaries]);
+  if (!currentRecordId || currentRecordId.trim() === '') {
+    return <div className={sp.muscleHierarchy.loading}>Invalid muscle ID</div>;
+  }
+
+  if (!currentRecord) {
+    return (
+      <div className={sp.muscleHierarchy.container}>
+        <div className="text-sm text-red-600 p-4">
+          Muscle with ID &quot;{currentRecordId}&quot; not found. It may have been deleted or the data is still loading.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={sp.muscleHierarchy.container}>

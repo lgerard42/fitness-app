@@ -2321,10 +2321,10 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
         </div>
       )}
 
-      {/* Row Editor */}
-      {editRow && (
+      {/* Row Editor - only when schema is loaded to avoid white screen */}
+      {editRow && schema && (
         <RowEditor
-          key={String(editRow[schema?.idField || 'id'] ?? 'new')}
+          key={String(editRow[schema.idField] ?? 'new')}
           schema={schema}
           row={editRow}
           isNew={isNew}

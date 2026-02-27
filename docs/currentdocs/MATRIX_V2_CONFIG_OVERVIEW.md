@@ -573,6 +573,8 @@ The admin UI at port 5173 proxies `/api` requests to `http://localhost:4000` wit
 
 ## 10. Admin UI Components
 
+For React and data-shape gotchas when editing admin components (e.g. Rules of Hooks, JSON/array parsing), see **ADMIN_UI_NOTES.md** in this folder.
+
 ### Tab Switcher
 
 The existing `MotionDeltaMatrix.tsx` page now has two tabs:

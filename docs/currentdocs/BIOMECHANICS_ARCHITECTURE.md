@@ -436,7 +436,7 @@ This is the score map the engine begins from **before** applying active modifier
 - designed for downstream delta-cascade compatibility
 
 ### Storage format (flat only)
-`muscle_targets` is a **single-level object**: `Record<muscleId, number>`. Only leaf-level (or explicitly scored) muscle IDs are stored. There are **no nested muscle groups** in the JSON. Parent/group totals are **not** stored; they are computed at **display time** from the `muscles` table hierarchy (`parent_ids`) when the admin UI (or any consumer) needs to show a tree. The scoring engine uses the flat map directly.
+`muscle_targets` is a **single-level object**: `Record<muscleId, number>`. Only leaf-level (or explicitly scored) muscle IDs are stored. There are **no nested muscle groups** in the JSON. Parent/group totals are **not** stored; they are computed at **display time** from the `muscles` table hierarchy (`parent_ids`) when the admin UI (or any consumer) needs to show a tree. The scoring engine uses the flat map directly. **On save**, the backend strips parent muscle IDs that have score 0 (same as for `delta_rules`), so only non-zero parent entries and all leaf entries are persisted.
 
 ### Contract (conceptual shape)
 ```json
@@ -483,7 +483,7 @@ Represents **relative adjustments** to a motion baseline when that modifier row 
 A modifier row may define different delta behavior for different motions.
 
 ### Storage format (flat per motion)
-Each motion’s value in `delta_rules` is a **flat** object: `Record<muscleId, number>`. There are **no nested muscle groups**; only muscle IDs as keys and numeric deltas as values. The same flat structure used for `muscle_targets` is used per motion here. Display-time hierarchy (e.g. in the admin UI) is built from the `muscles` table (`parent_ids`); the stored JSON does not contain nested muscle objects.
+Each motion’s value in `delta_rules` is a **flat** object: `Record<muscleId, number>`. There are **no nested muscle groups**; only muscle IDs as keys and numeric deltas as values. The same flat structure used for `muscle_targets` is used per motion here. Display-time hierarchy (e.g. in the admin UI) is built from the `muscles` table (`parent_ids`); the stored JSON does not contain nested muscle objects. **On save**, the backend strips parent muscle IDs that have score 0 from each motion's value before persisting.
 
 ### Contract (conceptual shape)
 
@@ -1014,6 +1014,8 @@ Recommended UX support (implementation detail can vary):
 * validation profiles (hard error vs warning)
 
 This section does not prescribe exact UI components, but it does establish the **authoring safety expectations** the tooling must meet.
+
+For implementation gotchas and fixes (e.g. React Rules of Hooks, JSON field parsing in the admin), see **ADMIN_UI_NOTES.md** in this folder.
 
 ---
 

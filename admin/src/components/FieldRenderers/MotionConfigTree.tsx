@@ -3,7 +3,9 @@ import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { api } from '../../api';
 import { sp } from '../../styles/sidePanelStyles';
-import { filterScorableOnly, isMuscleScorable, getScorableMuscles } from '../../utils/muscleScorable';
+import { filterScorableOnly, isMuscleScorable } from '../../utils/muscleScorable';
+import { buildPrimaryMuscleDropdownGroups, buildSecondaryMuscleDropdownGroups } from '../../utils/muscleDropdownGroups';
+import MuscleSecondarySelect from './MuscleSecondarySelect';
 
 type MotionTableKey = 'motions';
 
@@ -27,8 +29,8 @@ interface MuscleOption { id: string; label: string; }
 interface FlatTreeNode {
   id: string;
   label: string;
-  score: number;
-  computed: boolean;
+  explicitScore: number;
+  sumChildren?: number;
   children: FlatTreeNode[];
 }
 
@@ -87,10 +89,11 @@ function buildFlatTree(
       .map(cid => buildNode(cid))
       .filter((n): n is FlatTreeNode => n !== null);
     const hasKids = kids.length > 0;
-    const score = hasKids
-      ? Math.round(kids.reduce((s, c) => s + c.score, 0) * 100) / 100
-      : (flat[id] ?? 0);
-    return { id, label, score, computed: hasKids, children: kids };
+    const explicitScore = flat[id] ?? 0;
+    const sumChildren = hasKids
+      ? Math.round(kids.reduce((s, c) => s + (c.explicitScore + (c.sumChildren ?? 0)), 0) * 100) / 100
+      : undefined;
+    return { id, label, explicitScore, sumChildren, children: kids };
   }
 
   const tree: FlatTreeNode[] = [];
@@ -100,7 +103,7 @@ function buildFlatTree(
   for (const id of flatIds) {
     if (!reachable.has(id)) {
       const m = muscleMap.get(id);
-      tree.push({ id, label: m ? (m.label as string) : id, score: flat[id] ?? 0, computed: false, children: [] });
+      tree.push({ id, label: m ? (m.label as string) : id, explicitScore: flat[id] ?? 0, children: [] });
     }
   }
   return tree;
@@ -115,7 +118,8 @@ function collectAllScores(
   if (tree.length === 0) return 'none';
   const lines: string[] = [];
   function fmt(node: FlatTreeNode, prefix: string, isLast: boolean) {
-    lines.push(`${prefix}${isLast ? '└' : '├'}─ ${node.label}: ${node.score}`);
+    const total = node.explicitScore + (node.sumChildren ?? 0);
+    lines.push(`${prefix}${isLast ? '└' : '├'}─ ${node.label}: ${total}`);
     const cp = prefix + (isLast ? '   ' : '│  ');
     node.children.forEach((c, i) => fmt(c, cp, i === node.children.length - 1));
   }
@@ -197,31 +201,41 @@ function MuscleTargetsSubtree({
     onChange(filterScorableOnly({ ...flat, [id]: 0 }, allMuscles) as unknown as Record<string, unknown>);
   };
 
+  const usedIds = useMemo(() => new Set(Object.keys(flat)), [flat]);
+
+  const musclesForDropdown = useMemo(
+    () =>
+      allMuscles.map(m => ({
+        id: m.id as string,
+        label: m.label as string,
+        parent_ids: parsePids(m),
+        is_scorable: m.is_scorable as boolean | undefined,
+      })),
+    [allMuscles]
+  );
+
   const getAvailableChildren = (parentId: string): MuscleOption[] =>
-    getScorableMuscles(
-      (childrenOf.get(parentId) || [])
-        .map(cid => muscleMap.get(cid))
-        .filter((m): m is Record<string, unknown> => !!m && !(m.id as string in flat))
-    ).map(m => ({ id: m.id as string, label: m.label as string }));
+    (childrenOf.get(parentId) || [])
+      .map(cid => muscleMap.get(cid))
+      .filter((m): m is Record<string, unknown> => !!m && !(m.id as string in flat) && m.is_scorable !== false)
+      .map(m => ({ id: m.id as string, label: m.label as string }));
 
-  const unusedRoots = useMemo(() => {
-    const used = new Set(displayTree.map(n => n.id));
-    return getScorableMuscles(
-      rootIds
-        .map(id => muscleMap.get(id))
-        .filter((m): m is Record<string, unknown> => !!m && !used.has(m.id as string))
-    ).map(m => ({ id: m.id as string, label: m.label as string }));
-  }, [displayTree, rootIds, muscleMap, allMuscles]);
+  const primaryDropdownGroups = useMemo(
+    () => buildPrimaryMuscleDropdownGroups(musclesForDropdown, usedIds),
+    [musclesForDropdown, usedIds]
+  );
+  const hasPrimaryOptions = primaryDropdownGroups.some(g => g.options.length > 0);
 
-  const ScoreInput = ({ muscleId, currentScore, isComputed }: { muscleId: string; currentScore: number; isComputed?: boolean }) => {
-    const [localValue, setLocalValue] = useState(String(currentScore));
+  const ScoreInput = ({ muscleId, explicitScore, sumChildren }: { muscleId: string; explicitScore: number; sumChildren?: number }) => {
+    const [localValue, setLocalValue] = useState(String(explicitScore));
     const [isFocused, setIsFocused] = useState(false);
     const scorable = isMuscleScorable(allMuscles, muscleId);
+    const total = sumChildren !== undefined ? Math.round((explicitScore + sumChildren) * 100) / 100 : undefined;
 
-    useEffect(() => { if (!isFocused) setLocalValue(String(currentScore)); }, [currentScore, isFocused]);
+    useEffect(() => { if (!isFocused) setLocalValue(String(explicitScore)); }, [explicitScore, isFocused]);
 
-    if (readOnly || isComputed) {
-      if (readOnly && varFlat && !isComputed) {
+    if (readOnly) {
+      if (varFlat) {
         const baseScore = muscleId in flat ? flat[muscleId] : null;
         const variationScore = muscleId in (varFlat ?? {}) ? (varFlat ?? {})[muscleId] : null;
         const isNew = baseScore === null && variationScore !== null;
@@ -243,32 +257,49 @@ function MuscleTargetsSubtree({
             </>
           );
         }
-        return <span className={sp.scoreInput.readOnly}>{baseScore ?? currentScore}</span>;
+        return (
+          <span className={sp.scoreInput.readOnly}>
+            {baseScore ?? explicitScore}
+            {total !== undefined && ` ${total}`}
+          </span>
+        );
       }
       return (
-        <span className={isComputed ? sp.scoreInput.computed : sp.scoreInput.readOnly}
-          title={isComputed ? 'Auto-computed from children' : undefined}>{currentScore}</span>
+        <span className={sp.scoreInput.readOnly}>
+          {total !== undefined ? `${explicitScore} ${total}` : explicitScore}
+        </span>
       );
     }
 
     if (!scorable) {
       return (
-        <span className={sp.scoreInput.readOnly} title="Not scorable">{currentScore}</span>
+        <span className={sp.scoreInput.readOnly} title="Not scorable">
+          {total !== undefined ? `${explicitScore} ${total}` : explicitScore}
+        </span>
       );
     }
 
     return (
-      <input type="number" step="0.1" value={localValue}
-        onFocus={() => setIsFocused(true)}
-        onChange={e => setLocalValue(e.target.value)}
-        onBlur={e => {
-          setIsFocused(false);
-          const n = parseFloat(e.target.value);
-          if (isNaN(n) || e.target.value === '') setLocalValue(String(currentScore));
-          else setScore(muscleId, n);
-        }}
-        onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }}
-        className={sp.scoreInput.editable} />
+      <span className="flex items-center gap-1">
+        <input
+          type="number"
+          step="0.1"
+          value={localValue}
+          onFocus={() => setIsFocused(true)}
+          onChange={e => setLocalValue(e.target.value)}
+          onBlur={e => {
+            setIsFocused(false);
+            const n = parseFloat(e.target.value);
+            if (isNaN(n) || e.target.value === '') setLocalValue(String(explicitScore));
+            else setScore(muscleId, n);
+          }}
+          onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+          className={sp.scoreInput.editable}
+        />
+        {total !== undefined && (
+          <span className={sp.scoreInput.computed} title="Parent + children total">{total}</span>
+        )}
+      </span>
     );
   };
 
@@ -292,6 +323,9 @@ function MuscleTargetsSubtree({
 
   const renderNode = (node: FlatTreeNode, pathKey: string, depth: number) => {
     const available = getAvailableChildren(node.id);
+    const secondaryGroups = depth === 0 ? buildSecondaryMuscleDropdownGroups(musclesForDropdown, node.id, usedIds) : [];
+    const hasSecondaryOptions = secondaryGroups.some(g => g.options.length > 0);
+    const showAddDropdown = depth === 0 ? hasSecondaryOptions : available.length > 0;
     const hasKids = node.children.length > 0;
 
     const rowStyle = depth === 0 ? treeStyles.rowPrimary : depth === 1 ? treeStyles.rowSecondary : treeStyles.rowTertiary;
@@ -303,20 +337,29 @@ function MuscleTargetsSubtree({
       <div key={pathKey} className={wrapperStyle}>
         <div className={rowStyle}>
           <span className={labelStyle}>{node.label}</span>
-          <ScoreInput muscleId={node.id} currentScore={node.score} isComputed={node.computed} />
+          <ScoreInput muscleId={node.id} explicitScore={node.explicitScore} sumChildren={node.sumChildren} />
           {!readOnly && (
             <button type="button" onClick={() => removeMuscle(node.id)} className={sp.removeBtn.small}>×</button>
           )}
         </div>
-        {(hasKids || (!readOnly && available.length > 0)) && (
+        {(hasKids || (!readOnly && showAddDropdown)) && (
           <div className={nestStyle}>
             {node.children.map(child => renderNode(child, `${pathKey}.${child.id}`, depth + 1))}
-            {!readOnly && available.length > 0 && (
-              <select onChange={e => { if (e.target.value) addMuscle(e.target.value); e.target.value = ''; }}
-                className={sp.deltaRules.treeAddDropdown} defaultValue="">
-                <option value="">+ child...</option>
-                {available.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
-              </select>
+            {!readOnly && showAddDropdown && (
+              depth === 0 ? (
+                <MuscleSecondarySelect
+                  options={secondaryGroups[0].options}
+                  onChange={v => addMuscle(v)}
+                  className={sp.deltaRules.treeAddDropdown}
+                  placeholder="+ child..."
+                />
+              ) : (
+                <select onChange={e => { if (e.target.value) addMuscle(e.target.value); e.target.value = ''; }}
+                  className={sp.deltaRules.treeAddDropdown} defaultValue="">
+                  <option value="">+ child...</option>
+                  {available.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+                </select>
+              )
             )}
           </div>
         )}
@@ -327,11 +370,15 @@ function MuscleTargetsSubtree({
   return (
     <div className={sp.deltaRules.treeContainer}>
       {displayTree.map(node => renderNode(node, node.id, 0))}
-      {!readOnly && unusedRoots.length > 0 && (
+      {!readOnly && hasPrimaryOptions && (
         <select onChange={e => { if (e.target.value) addMuscle(e.target.value); e.target.value = ''; }}
           className={sp.deltaRules.treeAddDropdown} defaultValue="">
           <option value="">+ muscle group...</option>
-          {unusedRoots.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+          {primaryDropdownGroups.map(grp => (
+            <optgroup key={grp.groupLabel} label={grp.groupLabel}>
+              {grp.options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </optgroup>
+          ))}
         </select>
       )}
     </div>

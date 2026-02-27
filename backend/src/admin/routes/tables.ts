@@ -31,6 +31,12 @@ function normalizeDeltaRules(dr: Record<string, unknown>, parentIds: Set<string>
   }
 }
 
+/** Normalize muscle_targets in place: remove parent muscle IDs with score 0. */
+function normalizeMuscleTargets(body: Record<string, unknown>, parentIds: Set<string>): void {
+  if (!body.muscle_targets || !isFlatScoreRecord(body.muscle_targets)) return;
+  body.muscle_targets = stripParentZerosFromFlatScores(body.muscle_targets, parentIds);
+}
+
 /**
  * After a row with delta_rules is saved, sync each referenced motion
  * so it has an active Matrix V2 config with up-to-date allowed_row_ids.
@@ -146,6 +152,10 @@ router.post("/:key/rows", async (req: Request, res: Response) => {
       const parentIds = await getParentMuscleIds();
       normalizeDeltaRules(newRow.delta_rules as Record<string, unknown>, parentIds);
     }
+    if (schema.key === "motions" && newRow.muscle_targets) {
+      const parentIds = await getParentMuscleIds();
+      normalizeMuscleTargets(newRow, parentIds);
+    }
     if (await rowExists(schema.pgTable, newRow.id as string)) {
       res.status(409).json({ error: `Row with id "${newRow.id}" already exists` }); return;
     }
@@ -181,6 +191,10 @@ router.put("/:key/rows/:id", async (req: Request, res: Response) => {
     if (body.delta_rules && typeof body.delta_rules === "object" && !Array.isArray(body.delta_rules)) {
       const parentIds = await getParentMuscleIds();
       normalizeDeltaRules(body.delta_rules as Record<string, unknown>, parentIds);
+    }
+    if (schema.key === "motions" && body.muscle_targets) {
+      const parentIds = await getParentMuscleIds();
+      normalizeMuscleTargets(body, parentIds);
     }
     const updated = await updateRow(schema.pgTable, columns, rowId, body);
     if (!updated) { res.status(404).json({ error: `Row "${rowId}" not found` }); return; }

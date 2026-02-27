@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { api } from '../../api';
 import { sp } from '../../styles/sidePanelStyles';
 import { filterScorableOnly, isMuscleScorable, getScorableMuscles } from '../../utils/muscleScorable';
+import { buildPrimaryMuscleDropdownGroups, buildSecondaryMuscleDropdownGroups } from '../../utils/muscleDropdownGroups';
+import MuscleSecondarySelect from './MuscleSecondarySelect';
 
 
 interface MotionPath {
@@ -106,7 +108,16 @@ function buildTreeFromFlat(flat: Record<string, number>, allMuscles: MuscleRecor
       }
     }
   }
-  recomputeScores(tree);
+  const pKeys = Object.keys(tree).filter(k => k !== '_score');
+  for (const pId of pKeys) {
+    const pNode = tree[pId] as TreeNode;
+    if (pId in flat) pNode._score = flat[pId];
+    const sKeys = Object.keys(pNode).filter(k => k !== '_score');
+    for (const sId of sKeys) {
+      const sNode = pNode[sId] as TreeNode;
+      if (sId in flat) sNode._score = flat[sId];
+    }
+  }
   return tree;
 }
 
@@ -133,20 +144,14 @@ function flattenTree(tree: TreeNode): Record<string, number> {
   const pKeys = Object.keys(tree).filter(k => k !== '_score');
   for (const pId of pKeys) {
     const pNode = tree[pId] as TreeNode;
+    flat[pId] = pNode._score ?? 0;
     const sKeys = Object.keys(pNode).filter(k => k !== '_score');
-    if (sKeys.length === 0) {
-      flat[pId] = pNode._score;
-    } else {
-      for (const sId of sKeys) {
-        const sNode = pNode[sId] as TreeNode;
-        const tKeys = Object.keys(sNode).filter(k => k !== '_score');
-        if (tKeys.length === 0) {
-          flat[sId] = sNode._score;
-        } else {
-          for (const tId of tKeys) {
-            flat[tId] = (sNode[tId] as TreeNode)._score;
-          }
-        }
+    for (const sId of sKeys) {
+      const sNode = pNode[sId] as TreeNode;
+      flat[sId] = sNode._score ?? 0;
+      const tKeys = Object.keys(sNode).filter(k => k !== '_score');
+      for (const tId of tKeys) {
+        flat[tId] = (sNode[tId] as TreeNode)._score ?? 0;
       }
     }
   }
@@ -300,6 +305,62 @@ function ReadOnlyMuscleTree({ targets, allMuscles, deltaScores }: {
   );
 }
 
+/** Standalone score input for DeltaMuscleTree so hook order is stable when expanding/collapsing. */
+function MotionPathsScoreInput({
+  path,
+  score,
+  sumChildren,
+  allMuscles,
+  onSetScore,
+}: {
+  path: string[];
+  score: number;
+  sumChildren?: number;
+  allMuscles: MuscleRecord[];
+  onSetScore: (path: string[], score: number) => void;
+}) {
+  const [localValue, setLocalValue] = useState<string>(String(score));
+  const [isFocused, setIsFocused] = useState(false);
+  const muscleId = path[path.length - 1];
+  const scorable = isMuscleScorable(allMuscles, muscleId);
+  const total = sumChildren !== undefined ? Math.round((score + sumChildren) * 100) / 100 : undefined;
+
+  useEffect(() => {
+    if (!isFocused) setLocalValue(String(score));
+  }, [score, isFocused]);
+
+  if (!scorable) {
+    return (
+      <span className={sp.scoreInput.readOnly} title="Not scorable">
+        {total !== undefined ? `${score} ${total}` : score}
+      </span>
+    );
+  }
+
+  return (
+    <span className="flex items-center gap-1">
+      <input
+        type="number"
+        step="0.1"
+        value={localValue}
+        onFocus={() => setIsFocused(true)}
+        onChange={e => setLocalValue(e.target.value)}
+        onBlur={e => {
+          setIsFocused(false);
+          const numVal = parseFloat(e.target.value);
+          if (isNaN(numVal) || e.target.value === '') setLocalValue(String(score));
+          else onSetScore(path, numVal);
+        }}
+        onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+        className={sp.scoreInput.editable}
+      />
+      {total !== undefined && (
+        <span className={sp.scoreInput.computed} title="Parent + children total">{total}</span>
+      )}
+    </span>
+  );
+}
+
 function DeltaMuscleTree({
   delta,
   onSave,
@@ -312,6 +373,16 @@ function DeltaMuscleTree({
   planeId: string;
 }) {
   const tree = useMemo(() => buildTreeFromFlat(delta, allMuscles), [delta, allMuscles]);
+  const usedIds = useMemo(() => new Set(Object.keys(delta)), [delta]);
+  const musclesForDropdown = useMemo(() =>
+    allMuscles.map(m => ({ id: m.id, label: m.label, parent_ids: m.parent_ids, is_scorable: m.is_scorable })),
+    [allMuscles]
+  );
+  const primaryDropdownGroups = useMemo(
+    () => buildPrimaryMuscleDropdownGroups(musclesForDropdown, usedIds),
+    [musclesForDropdown, usedIds]
+  );
+  const hasPrimaryOptions = primaryDropdownGroups.some(grp => grp.options.length > 0);
 
   const primaryMuscles = useMemo(() =>
     getScorableMuscles(allMuscles.filter(m => m.parent_ids.length === 0)).map(m => ({ id: m.id, label: m.label })),
@@ -323,7 +394,6 @@ function DeltaMuscleTree({
     getScorableMuscles(allMuscles.filter(m => m.parent_ids.includes(sId))).map(m => ({ id: m.id, label: m.label }));
 
   const save = (newTree: TreeNode) => {
-    recomputeScores(newTree);
     onSave(planeId, filterScorableOnly(flattenTree(newTree), allMuscles));
   };
 
@@ -376,48 +446,35 @@ function DeltaMuscleTree({
     save(nd);
   };
 
+  /** Add a muscle (and its path) under primary pId when user selects from grouped secondary dropdown. */
+  const addMuscleUnderPrimary = (pId: string, muscleId: string) => {
+    const primary = findPrimaryFor(muscleId, allMuscles);
+    if (primary !== pId) return;
+    const secondary = findSecondaryFor(muscleId, allMuscles);
+    if (secondary != null) {
+      addSecondary(pId, secondary);
+      addTertiary(pId, secondary, muscleId);
+    } else {
+      addSecondary(pId, muscleId);
+    }
+  };
+
+  /** Add any muscle by id from the primary (bottom) grouped dropdown; creates full path. */
+  const addMuscleByPath = (muscleId: string) => {
+    const primary = findPrimaryFor(muscleId, allMuscles);
+    addPrimary(primary);
+    if (muscleId === primary) return;
+    const secondary = findSecondaryFor(muscleId, allMuscles);
+    if (secondary != null) {
+      addSecondary(primary, secondary);
+      if (muscleId !== secondary) addTertiary(primary, secondary, muscleId);
+    } else {
+      addSecondary(primary, muscleId);
+    }
+  };
+
   const activePrimaries = Object.keys(tree).filter(k => k !== '_score');
   const unusedPrimaries = primaryMuscles.filter(pm => !activePrimaries.includes(pm.id));
-
-  const ScoreInput = ({ path, score, computed }: { path: string[]; score: number; computed?: boolean }) => {
-    const [localValue, setLocalValue] = useState<string>(String(score));
-    const [isFocused, setIsFocused] = useState(false);
-    const muscleId = path[path.length - 1];
-    const scorable = isMuscleScorable(allMuscles, muscleId);
-
-    useEffect(() => {
-      if (!isFocused) setLocalValue(String(score));
-    }, [score, isFocused]);
-
-    if (computed) {
-      return (
-        <span className={sp.scoreInput.computed}
-          title="Auto-computed from children">{score}</span>
-      );
-    }
-
-    if (!scorable) {
-      return (
-        <span className={sp.scoreInput.readOnly} title="Not scorable">{score}</span>
-      );
-    }
-
-    return (
-      <input
-        type="number" step="0.1" value={localValue}
-        onFocus={() => setIsFocused(true)}
-        onChange={e => setLocalValue(e.target.value)}
-        onBlur={e => {
-          setIsFocused(false);
-          const numVal = parseFloat(e.target.value);
-          if (isNaN(numVal) || e.target.value === '') setLocalValue(String(score));
-          else setScore(path, numVal);
-        }}
-        onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }}
-        className={sp.scoreInput.editable}
-      />
-    );
-  };
 
   return (
     <div className={sp.deltaRules.treeContainer}>
@@ -428,13 +485,17 @@ function DeltaMuscleTree({
         const pScore = pNode._score ?? 0;
         const sKeys = Object.keys(pNode).filter(k => k !== '_score');
         const availSec = getSecondariesFor(pId).filter(s => !sKeys.includes(s.id));
-        const pIsComputed = sKeys.length > 0;
+        const secondaryGroups = buildSecondaryMuscleDropdownGroups(musclesForDropdown, pId, usedIds);
+        const hasSecondaryOptions = secondaryGroups.some(grp => grp.options.length > 0);
+        const pSumChildren = sKeys.length > 0
+          ? Math.round(sKeys.reduce((acc, sId) => acc + ((pNode[sId] as TreeNode)._score ?? 0), 0) * 100) / 100
+          : undefined;
 
         return (
           <div key={pId} className={sp.deltaRules.treeItem}>
             <div className={sp.deltaRules.treeRowPrimary}>
               <span className={sp.treeRow.primaryLabel}>{pLabel}</span>
-              <ScoreInput path={[pId]} score={pScore} computed={pIsComputed} />
+              <MotionPathsScoreInput path={[pId]} score={pScore} sumChildren={pSumChildren} allMuscles={allMuscles} onSetScore={setScore} />
               <button type="button" onClick={() => removeKey([pId])} className={sp.removeBtn.small}>×</button>
             </div>
             <div className={sp.deltaRules.treeNestSecondaries}>
@@ -445,13 +506,15 @@ function DeltaMuscleTree({
                 const sScore = sNode._score ?? 0;
                 const tKeys = Object.keys(sNode).filter(k => k !== '_score');
                 const availTer = getTertiariesFor(sId).filter(t => !tKeys.includes(t.id));
-                const sIsComputed = tKeys.length > 0;
+                const sSumChildren = tKeys.length > 0
+                  ? Math.round(tKeys.reduce((acc, tId) => acc + ((sNode[tId] as TreeNode)._score ?? 0), 0) * 100) / 100
+                  : undefined;
 
                 return (
                   <div key={sId} className={sp.deltaRules.treeItemFlat}>
                     <div className={sp.deltaRules.treeRowSecondary}>
                       <span className={sp.treeRow.secondaryLabel}>{sLabel}</span>
-                      <ScoreInput path={[pId, sId]} score={sScore} computed={sIsComputed} />
+                      <MotionPathsScoreInput path={[pId, sId]} score={sScore} sumChildren={sSumChildren} allMuscles={allMuscles} onSetScore={setScore} />
                       <button type="button" onClick={() => removeKey([pId, sId])} className={sp.removeBtn.small}>×</button>
                     </div>
                     {(tKeys.length > 0 || availTer.length > 0) && (
@@ -463,7 +526,7 @@ function DeltaMuscleTree({
                           return (
                             <div key={tId} className={sp.deltaRules.treeRowTertiary}>
                               <span className={sp.treeRow.tertiaryLabel}>{tLabel}</span>
-                              <ScoreInput path={[pId, sId, tId]} score={tScore} />
+                              <MotionPathsScoreInput path={[pId, sId, tId]} score={tScore} allMuscles={allMuscles} onSetScore={setScore} />
                               <button type="button" onClick={() => removeKey([pId, sId, tId])} className={sp.removeBtn.small}>×</button>
                             </div>
                           );
@@ -480,22 +543,35 @@ function DeltaMuscleTree({
                   </div>
                 );
               })}
-              {availSec.length > 0 && (
-                <select onChange={e => { if (e.target.value) addSecondary(pId, e.target.value); e.target.value = ''; }}
-                  className={sp.deltaRules.treeAddDropdown} defaultValue="">
-                  <option value="">+ secondary...</option>
-                  {availSec.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
-                </select>
+              {(hasSecondaryOptions || availSec.length > 0) && (
+                hasSecondaryOptions ? (
+                  <MuscleSecondarySelect
+                    options={secondaryGroups[0].options}
+                    onChange={v => addMuscleUnderPrimary(pId, v)}
+                    className={sp.deltaRules.treeAddDropdown}
+                    placeholder="+ secondary..."
+                  />
+                ) : (
+                  <select onChange={e => { if (e.target.value) addSecondary(pId, e.target.value); e.target.value = ''; }}
+                    className={sp.deltaRules.treeAddDropdown} defaultValue="">
+                    <option value="">+ secondary...</option>
+                    {availSec.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                  </select>
+                )
               )}
             </div>
           </div>
         );
       })}
-      {unusedPrimaries.length > 0 && (
-        <select onChange={e => { if (e.target.value) addPrimary(e.target.value); e.target.value = ''; }}
+      {hasPrimaryOptions && (
+        <select onChange={e => { if (e.target.value) addMuscleByPath(e.target.value); e.target.value = ''; }}
           className={sp.deltaRules.treeAddDropdown} defaultValue="">
           <option value="">+ muscle group...</option>
-          {unusedPrimaries.map(pm => <option key={pm.id} value={pm.id}>{pm.label}</option>)}
+          {primaryDropdownGroups.map(grp => (
+            <optgroup key={grp.groupLabel} label={grp.groupLabel}>
+              {grp.options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </optgroup>
+          ))}
         </select>
       )}
     </div>
@@ -774,13 +850,20 @@ export default function MotionPathsField({ value, onChange, motionId, onOpenRow 
     setFamilyTooltip(true);
   };
 
+  // Must run after all hooks to satisfy Rules of Hooks (no early return before this).
+  const selectedPlanes = useMemo(
+    () =>
+      loading
+        ? []
+        : current.options
+            .map(id => planes.find(p => p.id === id))
+            .filter((p): p is MotionPath => p != null),
+    [loading, current.options, planes]
+  );
+
   if (loading) {
     return <div className={sp.loading}>Loading motion paths...</div>;
   }
-
-  const selectedPlanes = current.options
-    .map(id => planes.find(p => p.id === id))
-    .filter((p): p is MotionPath => p != null);
 
   return (
     <div className="space-y-1">
@@ -834,6 +917,7 @@ export default function MotionPathsField({ value, onChange, motionId, onOpenRow 
                     <div className={sp.deltaRules.scoresColumnEditable}>
                       <div className={sp.deltaRules.sectionLabel}>Delta Modifiers</div>
                       <DeltaMuscleTree
+                        key={`dmt-${plane.id}`}
                         delta={motionDelta}
                         onSave={saveDelta}
                         allMuscles={allMuscles}
