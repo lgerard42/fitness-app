@@ -10,7 +10,7 @@ interface MuscleSecondarySelectProps {
 }
 
 /**
- * Custom dropdown for secondary muscle level: secondaries rendered bold, tertiaries indented.
+ * Custom dropdown for muscle children: depth 1 bold, depth >= 2 indented by (depth - 1) * 12px.
  * Renders the list in a portal so it is not clipped by tree containers (overflow-hidden).
  */
 export default function MuscleSecondarySelect({
@@ -70,10 +70,14 @@ export default function MuscleSecondarySelect({
             key={opt.value}
             type="button"
             role="option"
-            onClick={() => handleSelect(opt.value)}
-            className={`w-full text-left px-2 py-1 text-[10px] hover:bg-red-50 focus:bg-red-50 focus:outline-none ${
-              opt.depth === 1 ? 'font-bold text-gray-900' : 'pl-5 text-gray-700'
+            disabled={opt.disabled}
+            onClick={() => !opt.disabled && handleSelect(opt.value)}
+            className={`w-full text-left px-2 py-1 text-[10px] focus:outline-none ${
+              opt.disabled
+                ? 'text-gray-400 cursor-not-allowed'
+                : 'hover:bg-red-50 focus:bg-red-50 ' + (opt.depth === 0 ? 'font-bold text-gray-900' : 'text-gray-700')
             }`}
+            style={opt.depth != null && opt.depth >= 1 ? { paddingLeft: 8 + opt.depth * 12 } : undefined}
           >
             {opt.label}
           </button>

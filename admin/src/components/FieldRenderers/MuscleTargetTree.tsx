@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../../api';
 import { filterScorableOnly, isMuscleScorable } from '../../utils/muscleScorable';
-import { buildPrimaryMuscleDropdownGroups, buildSecondaryMuscleDropdownGroups } from '../../utils/muscleDropdownGroups';
+import { buildPrimaryMuscleDropdownGroups, buildAddMuscleDropdownGroups, flattenAddMuscleGroupsToOptions } from '../../utils/muscleDropdownGroups';
 import MuscleSecondarySelect from './MuscleSecondarySelect';
 
 interface MuscleTargetTreeProps {
@@ -224,28 +224,21 @@ export default function MuscleTargetTree({ value, onChange, compact = false, alw
 
   const usedIds = useMemo(() => new Set(Object.keys(flat)), [flat]);
 
-  const getAvailableChildren = (parentId: string): MuscleDef[] =>
-    (childrenOf.get(parentId) || [])
-      .map(cid => muscleMap.get(cid))
-      .filter((m): m is MuscleDef => !!m && !(m.id in flat) && m.is_scorable !== false);
-
   const primaryDropdownGroups = useMemo(
     () => buildPrimaryMuscleDropdownGroups(allMuscles, usedIds),
     [allMuscles, usedIds]
   );
   const hasPrimaryOptions = primaryDropdownGroups.some(g => g.options.length > 0);
+  const primaryOptionsFlattened = useMemo(() => flattenAddMuscleGroupsToOptions(primaryDropdownGroups), [primaryDropdownGroups]);
 
   const renderNode = (node: DisplayNode, pathKey: string) => {
     const isExpanded = alwaysExpanded || expanded.has(pathKey);
     const hasChildren = node.children.length > 0;
-    const available = getAvailableChildren(node.id);
-    const secondaryGroups = node.depth === 0 ? buildSecondaryMuscleDropdownGroups(allMuscles, node.id, usedIds) : [];
-    const hasSecondaryOptions = secondaryGroups.some(g => g.options.length > 0);
-    const showAddDropdown = node.depth === 0 ? hasSecondaryOptions : available.length > 0;
+    const addGroups = buildAddMuscleDropdownGroups(node.id, allMuscles, usedIds);
+    const addOptions = flattenAddMuscleGroupsToOptions(addGroups);
+    const showAddDropdown = addOptions.length > 0;
     const isRoot = node.depth === 0;
     const isLeaf = !hasChildren && !showAddDropdown;
-
-    const addLabel = node.depth === 0 ? '+ Add child...' : node.depth === 1 ? '+ Add child...' : '+ Add child...';
 
     return (
       <div key={pathKey} className={`border rounded ${isRoot ? 'bg-white' : `bg-gray-50 ${compact ? 'rounded-sm' : ''}`}`}>
@@ -293,22 +286,12 @@ export default function MuscleTargetTree({ value, onChange, compact = false, alw
             {node.children.map(child => renderNode(child, `${pathKey}.${child.id}`))}
 
             {showAddDropdown && (
-              node.depth === 0 ? (
-                <MuscleSecondarySelect
-                  options={secondaryGroups[0].options}
-                  onChange={v => addMuscle(v)}
-                  className={`border border-red-300 rounded text-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 ${compact ? 'text-[10px] px-1.5 py-0.5' : 'text-xs px-2 py-1'}`}
-                  placeholder={addLabel}
-                />
-              ) : (
-                <select
-                  onChange={e => { if (e.target.value) addMuscle(e.target.value); e.target.value = ''; }}
-                  className={`border border-red-300 rounded text-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 ${compact ? 'text-[10px] px-1.5 py-0.5' : 'text-xs px-2 py-1'}`}
-                  defaultValue="">
-                  <option value="">{addLabel}</option>
-                  {available.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
-                </select>
-              )
+              <MuscleSecondarySelect
+                options={addOptions}
+                onChange={v => addMuscle(v)}
+                className={`border border-red-300 rounded text-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 ${compact ? 'text-[10px] px-1.5 py-0.5' : 'text-xs px-2 py-1'}`}
+                placeholder="+ Add child..."
+              />
             )}
           </div>
         )}
@@ -321,17 +304,12 @@ export default function MuscleTargetTree({ value, onChange, compact = false, alw
       {displayTree.map(node => renderNode(node, node.id))}
 
       {hasPrimaryOptions && (
-        <select
-          onChange={e => { if (e.target.value) addMuscle(e.target.value); e.target.value = ''; }}
+        <MuscleSecondarySelect
+          options={primaryOptionsFlattened}
+          onChange={addMuscle}
           className={`border border-red-300 rounded text-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 ${compact ? 'text-[10px] px-1.5 py-0.5' : 'text-sm px-2 py-1.5'}`}
-          defaultValue="">
-          <option value="">+ Add primary muscle...</option>
-          {primaryDropdownGroups.map(grp => (
-            <optgroup key={grp.groupLabel} label={grp.groupLabel}>
-              {grp.options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </optgroup>
-          ))}
-        </select>
+          placeholder="+ Add primary muscle..."
+        />
       )}
     </div>
   );

@@ -403,9 +403,14 @@ function MuscleTargetsTooltipContent({
   const tree = buildMuscleDisplayTree(flat, muscles);
   const hasContent = tree.length > 0;
 
+  const labelClassByDepth: string[] = ['text-blue-200 font-medium', 'text-cyan-200', 'text-gray-300'];
+  const scoreClassByDepth: string[] = ['text-gray-300 font-mono', 'text-gray-400 font-mono', 'text-gray-500 font-mono'];
+  const getLabelClass = (d: number) => labelClassByDepth[d] ?? 'text-gray-400';
+  const getScoreClass = (d: number) => scoreClassByDepth[d] ?? 'text-gray-500 font-mono';
+
   const renderNode = (node: FlatDisplayNode, depth: number, path: string) => {
-    const labelClass = depth === 0 ? 'text-blue-200 font-medium' : depth === 1 ? 'text-cyan-200' : 'text-gray-300';
-    const scoreClass = depth === 0 ? 'text-gray-300 font-mono' : depth === 1 ? 'text-gray-400 font-mono' : 'text-gray-500 font-mono';
+    const labelClass = getLabelClass(depth);
+    const scoreClass = getScoreClass(depth);
     const indentPx = 8 + depth * 14;
 
     if (depth === 0) {
@@ -428,9 +433,9 @@ function MuscleTargetsTooltipContent({
     }
 
     return (
-      <div key={path} style={{ paddingLeft: depth > 1 ? indentPx : 0 }}>
+      <div key={path} style={{ paddingLeft: depth >= 1 ? indentPx : 0 }}>
         <div className="flex items-center gap-1.5 py-0.5">
-          {depth > 1 && <span className="text-gray-500 mr-0.5">└</span>}
+          {depth >= 1 && <span className="text-gray-500 mr-0.5">└</span>}
           <span className={labelClass}>{node.label}</span>
           <span className={`${scoreClass} ml-auto text-[9px]`}>{node.score}</span>
         </div>

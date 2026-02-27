@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
+import { getChildrenOf, getPathFromRootToMuscle } from '../shared/utils/muscleTree';
 
 interface MuscleTreeProps {
   tableKey: 'muscles';
@@ -11,27 +12,36 @@ interface MuscleRecord {
   id: string;
   label: string;
   parent_ids?: string[];
+  [key: string]: unknown;
 }
 
-type MuscleTier = 'primary' | 'secondary' | 'tertiary';
+type MuscleTier = 'primary' | 'secondary' | 'tertiary' | 'child';
 
-function parseParentIds(record: MuscleRecord): string[] {
-  if (Array.isArray(record.parent_ids)) return record.parent_ids;
-  if (typeof record.parent_ids === 'string') {
-    try { return JSON.parse(record.parent_ids); } catch { return []; }
-  }
-  return [];
+/** Depth under root (0 = root, 1 = child of root, etc.). */
+function getDepth(recordId: string, muscleMap: Map<string, MuscleRecord>): number {
+  const path = getPathFromRootToMuscle(recordId, muscleMap);
+  return Math.max(0, path.length - 1);
 }
 
-function classifyMuscle(record: MuscleRecord, allMuscles: MuscleRecord[]): MuscleTier {
-  const pids = parseParentIds(record);
-  if (pids.length === 0) return 'primary';
-  const anyParentIsPrimary = pids.some(pid => {
-    const parent = allMuscles.find(m => m.id === pid);
-    return parent && parseParentIds(parent).length === 0;
-  });
-  if (anyParentIsPrimary) return 'secondary';
-  return 'tertiary';
+function classifyMuscle(record: MuscleRecord, muscleMap: Map<string, MuscleRecord>): MuscleTier {
+  const d = getDepth(record.id, muscleMap);
+  if (d === 0) return 'primary';
+  if (d === 1) return 'secondary';
+  if (d === 2) return 'tertiary';
+  return 'child';
+}
+
+interface TreeNodeDisplay {
+  record: MuscleRecord;
+  children: TreeNodeDisplay[];
+}
+
+function buildNode(record: MuscleRecord, allMuscles: MuscleRecord[]): TreeNodeDisplay {
+  const children = getChildrenOf(record.id, allMuscles);
+  return {
+    record,
+    children: children.map(c => buildNode(c, allMuscles)),
+  };
 }
 
 export default function MuscleTree({ tableKey, currentRecordId }: MuscleTreeProps) {
@@ -53,73 +63,18 @@ export default function MuscleTree({ tableKey, currentRecordId }: MuscleTreeProp
     loadData();
   }, []);
 
-  const { primaries, secondaries, tertiaries } = useMemo(() => {
-    const p: MuscleRecord[] = [];
-    const s: MuscleRecord[] = [];
-    const t: MuscleRecord[] = [];
-    for (const m of allMuscles) {
-      const tier = classifyMuscle(m, allMuscles);
-      if (tier === 'primary') p.push(m);
-      else if (tier === 'secondary') s.push(m);
-      else t.push(m);
-    }
-    return { primaries: p, secondaries: s, tertiaries: t };
-  }, [allMuscles]);
-
+  const muscleMap = useMemo(() => new Map(allMuscles.map(m => [m.id, m])), [allMuscles]);
   const currentRecord = useMemo(() => allMuscles.find(m => m.id === currentRecordId), [allMuscles, currentRecordId]);
-  const currentTier = useMemo(() => currentRecord ? classifyMuscle(currentRecord, allMuscles) : 'primary', [currentRecord, allMuscles]);
+  const currentTier = useMemo(() => currentRecord ? classifyMuscle(currentRecord, muscleMap) : 'primary', [currentRecord, muscleMap]);
 
-  const treeData = useMemo(() => {
+  /** Branches to show: path from root to parent of listed children, then recursive children. */
+  const treeData = useMemo((): { path: MuscleRecord[]; children: TreeNodeDisplay[] }[] => {
     if (loading || !currentRecord) return [];
-
-    if (currentTier === 'primary') {
-      const relatedSecondaries = secondaries.filter(s =>
-        parseParentIds(s).includes(currentRecordId)
-      );
-      return relatedSecondaries.map(secondary => ({
-        primary: currentRecord,
-        secondary,
-        tertiaries: tertiaries.filter(t =>
-          parseParentIds(t).includes(secondary.id)
-        ),
-      }));
-    }
-
-    if (currentTier === 'secondary') {
-      const parentIds = parseParentIds(currentRecord);
-      const relatedTertiaries = tertiaries.filter(t =>
-        parseParentIds(t).includes(currentRecordId)
-      );
-      return parentIds
-        .map(primaryId => {
-          const primary = primaries.find(p => p.id === primaryId);
-          if (!primary) return null;
-          return {
-            primary,
-            secondary: currentRecord,
-            tertiaries: relatedTertiaries,
-          };
-        })
-        .filter((item): item is NonNullable<typeof item> => item !== null);
-    }
-
-    // Tertiary
-    const parentIds = parseParentIds(currentRecord);
-    const secondaryId = parentIds[0];
-    const secondary = secondaries.find(s => s.id === secondaryId);
-    if (!secondary) return [];
-
-    const secParentIds = parseParentIds(secondary);
-    const primaryId = secParentIds[0];
-    const primary = primaries.find(p => p.id === primaryId);
-    if (!primary) return [];
-
-    return [{
-      primary,
-      secondary,
-      tertiaries: [currentRecord],
-    }];
-  }, [currentTier, currentRecord, currentRecordId, primaries, secondaries, tertiaries, loading]);
+    const pathIds = getPathFromRootToMuscle(currentRecordId, muscleMap);
+    const path = pathIds.map(id => allMuscles.find(m => m.id === id)).filter((x): x is MuscleRecord => !!x);
+    const childNodes = getChildrenOf(currentRecordId, allMuscles).map(c => buildNode(c, allMuscles));
+    return [{ path, children: childNodes }];
+  }, [loading, currentRecord, currentRecordId, allMuscles, muscleMap]);
 
   const toggleExpand = (key: string) => {
     setExpanded(prev => {
@@ -140,125 +95,76 @@ export default function MuscleTree({ tableKey, currentRecordId }: MuscleTreeProp
     );
   }
 
+  function renderNode(node: TreeNodeDisplay, depth: number, parentKey: string): React.ReactNode {
+    const key = `${parentKey}-${node.record.id}`;
+    const isExpanded = expanded.has(key);
+    const hasChildren = node.children.length > 0;
+    const depthStyle = depth === 0 ? 'font-medium text-gray-800' : depth === 1 ? 'text-gray-700' : depth === 2 ? 'text-gray-600' : 'text-gray-500';
+    const pl = 8 + depth * 12;
+
+    return (
+      <div key={node.record.id}>
+        <div className="px-3 py-1.5 flex items-center gap-2" style={{ paddingLeft: pl }}>
+          {hasChildren ? (
+            <button
+              type="button"
+              onClick={() => toggleExpand(key)}
+              className="text-xs text-gray-500 w-4 flex-shrink-0 hover:text-gray-700"
+            >
+              {isExpanded ? '▼' : '▶'}
+            </button>
+          ) : (
+            <span className="text-xs text-gray-400 w-4 flex-shrink-0">•</span>
+          )}
+          <Link
+            to="/table/muscles"
+            className={`text-sm hover:underline ${depthStyle}`}
+          >
+            {node.record.label}
+          </Link>
+          <span className="text-xs text-gray-400">{node.record.id}</span>
+          {hasChildren && !isExpanded && (
+            <span className="text-xs text-gray-400">({node.children.length})</span>
+          )}
+        </div>
+        {hasChildren && isExpanded && (
+          <div className="border-t border-gray-100">
+            {node.children.map(c => renderNode(c, depth + 1, key))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-1">
-      {treeData.map((item, idx) => {
-        const secondaryKey = `secondary-${item.secondary.id}`;
-        const isExpanded = expanded.has(secondaryKey);
-
-        return (
-          <div key={idx} className="bg-white border rounded">
-            <div className="px-3 py-2">
-              <div className="flex items-center gap-2">
-                {currentTier === 'primary' ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => toggleExpand(secondaryKey)}
-                      className="text-xs text-gray-500 w-4 flex-shrink-0 hover:text-gray-700"
-                      disabled={item.tertiaries.length === 0}
-                    >
-                      {item.tertiaries.length > 0 ? (isExpanded ? '▼' : '▶') : '•'}
-                    </button>
-                    <Link
-                      to="/table/muscles"
-                      className="text-sm text-blue-600 hover:underline font-medium"
-                    >
-                      {item.secondary.label}
-                    </Link>
-                    <span className="text-xs text-gray-400">{item.secondary.id}</span>
-                    {item.tertiaries.length > 0 && (
-                      <span className="text-xs text-gray-400 ml-auto">
-                        ({item.tertiaries.length} tertiary)
-                      </span>
-                    )}
-                  </>
-                ) : currentTier === 'secondary' ? (
-                  <>
-                    <Link
-                      to="/table/muscles"
-                      className="text-sm text-blue-600 hover:underline"
-                    >
-                      {item.primary.label}
-                    </Link>
-                    <span className="text-xs text-gray-400">→</span>
-                    <span className="text-sm text-gray-700 font-medium">
-                      {item.secondary.label}
-                    </span>
-                    <span className="text-xs text-gray-400">{item.secondary.id}</span>
-                    {item.tertiaries.length > 0 && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => toggleExpand(secondaryKey)}
-                          className="text-xs text-gray-500 ml-auto hover:text-gray-700"
-                        >
-                          {isExpanded ? '▼' : '▶'}
-                        </button>
-                        <span className="text-xs text-gray-400">
-                          ({item.tertiaries.length} tertiary)
-                        </span>
-                      </>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <Link
-                      to="/table/muscles"
-                      className="text-sm text-blue-600 hover:underline"
-                    >
-                      {item.primary.label}
-                    </Link>
-                    <span className="text-xs text-gray-400">→</span>
-                    <Link
-                      to="/table/muscles"
-                      className="text-sm text-blue-600 hover:underline"
-                    >
-                      {item.secondary.label}
-                    </Link>
-                    <span className="text-xs text-gray-400">→</span>
-                    <span className="text-sm text-gray-500 font-medium">
-                      {item.tertiaries[0]?.label}
-                    </span>
-                    <span className="text-xs text-gray-400">{item.tertiaries[0]?.id}</span>
-                  </>
-                )}
-              </div>
+      {treeData.map((branch, idx) => (
+        <div key={idx} className="bg-white border rounded">
+          <div className="px-3 py-2 border-b border-gray-100">
+            <div className="flex items-center gap-2 flex-wrap">
+              {branch.path.map((p, i) => (
+                <React.Fragment key={p.id}>
+                  {i > 0 && <span className="text-xs text-gray-400">→</span>}
+                  {i === branch.path.length - 1 ? (
+                    <span className="text-sm font-medium text-gray-700">{p.label}</span>
+                  ) : (
+                    <Link to="/table/muscles" className="text-sm text-blue-600 hover:underline">{p.label}</Link>
+                  )}
+                  <span className="text-xs text-gray-400">{p.id}</span>
+                </React.Fragment>
+              ))}
+              {branch.children.length > 0 && (
+                <span className="text-xs text-gray-400 ml-1">({branch.children.length} child)</span>
+              )}
             </div>
-
-            {item.tertiaries.length > 0 && isExpanded && (
-              <div className="border-t bg-gray-50">
-                {item.tertiaries.map(tertiary => (
-                  <div key={tertiary.id} className="px-3 py-1.5 pl-8">
-                    <div className="flex items-center gap-2">
-                      {currentTier === 'tertiary' ? (
-                        <>
-                          <span className="text-xs text-gray-500">•</span>
-                          <span className="text-sm text-gray-500 font-medium">
-                            {tertiary.label}
-                          </span>
-                          <span className="text-xs text-gray-400">{tertiary.id}</span>
-                        </>
-                      ) : (
-                        <>
-                          <span className="text-xs text-gray-500">•</span>
-                          <Link
-                            to="/table/muscles"
-                            className="text-sm text-blue-600 hover:underline"
-                          >
-                            {tertiary.label}
-                          </Link>
-                          <span className="text-xs text-gray-400">{tertiary.id}</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
-        );
-      })}
+          {branch.children.length > 0 && (
+            <div className="py-1">
+              {branch.children.map(node => renderNode(node, 0, `branch-${idx}`))}
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }

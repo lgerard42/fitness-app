@@ -3,8 +3,9 @@ import { api } from '../../api';
 import type { DeltaRules, ModifierRow, Motion } from '../../../../shared/types';
 import { resolveSingleDelta } from '../../../../shared/scoring/resolveDeltas';
 import { filterScorableOnly, isMuscleScorable, getScorableMuscles } from '../../utils/muscleScorable';
-import { buildPrimaryMuscleDropdownGroups, buildSecondaryMuscleDropdownGroups } from '../../utils/muscleDropdownGroups';
+import { buildPrimaryMuscleDropdownGroups, buildAddMuscleDropdownGroups, flattenAddMuscleGroupsToOptions } from '../../utils/muscleDropdownGroups';
 import MuscleSecondarySelect from '../FieldRenderers/MuscleSecondarySelect';
+import { buildMuscleTreeFromFlat, getChildrenOf, getPathFromRootToMuscle, type TreeNode as SharedTreeNode, type MuscleRecord as SharedMuscleRecord } from '../../../../shared/utils/muscleTree';
 
 interface MuscleRecord {
   id: string;
@@ -35,27 +36,7 @@ function getMuscleLabel(allMuscles: MuscleRecord[], id: string): string {
   return allMuscles.find(m => m.id === id)?.label || id;
 }
 
-function findPrimaryFor(id: string, allMuscles: MuscleRecord[]): string {
-  const m = allMuscles.find(mu => mu.id === id);
-  if (!m || !m.parent_ids || m.parent_ids.length === 0) return id;
-  return findPrimaryFor(m.parent_ids[0], allMuscles);
-}
-
-function findSecondaryFor(id: string, allMuscles: MuscleRecord[]): string | null {
-  const m = allMuscles.find(mu => mu.id === id);
-  if (!m || !m.parent_ids || m.parent_ids.length === 0) return null;
-  const parent = allMuscles.find(mu => mu.id === m.parent_ids![0]);
-  if (!parent || !parent.parent_ids || parent.parent_ids.length === 0) return null;
-  return m.parent_ids[0];
-}
-
-function getMuscleLevel(id: string, allMuscles: MuscleRecord[]): 'primary' | 'secondary' | 'tertiary' {
-  const m = allMuscles.find(mu => mu.id === id);
-  if (!m || !m.parent_ids || m.parent_ids.length === 0) return 'primary';
-  const parent = allMuscles.find(mu => mu.id === m.parent_ids![0]);
-  if (!parent || !parent.parent_ids || parent.parent_ids.length === 0) return 'secondary';
-  return 'tertiary';
-}
+type TreeNode = SharedTreeNode;
 
 export default function DeltaBranchCard({
   tableKey,
@@ -157,13 +138,11 @@ export default function DeltaBranchCard({
 
   const handleRemoveMuscle = (muscleId: string) => {
     const current = typeof currentEntry === 'object' && currentEntry !== null ? { ...currentEntry as Record<string, number> } : {};
-    delete current[muscleId];
-    const children = allMuscles.filter(m => m.parent_ids && m.parent_ids.includes(muscleId));
-    for (const c of children) {
-      delete current[c.id];
-      const grandchildren = allMuscles.filter(m => m.parent_ids && m.parent_ids.includes(c.id));
-      for (const gc of grandchildren) delete current[gc.id];
+    function removeRec(id: string) {
+      delete current[id];
+      getChildrenOf(id, allMuscles as SharedMuscleRecord[]).forEach(c => removeRec(c.id));
     }
+    removeRec(muscleId);
     onDeltaChange(tableKey, rowId, filterScorableOnly(current, allMuscles));
   };
 
@@ -174,15 +153,13 @@ export default function DeltaBranchCard({
     onDeltaChange(tableKey, rowId, filterScorableOnly(current, allMuscles));
   };
 
+  const muscleMapForPath = useMemo(() => new Map(allMuscles.map(m => [m.id, m as SharedMuscleRecord])), [allMuscles]);
+
   /** Add a muscle and its full path (ancestors) with score 0 when selecting from grouped dropdowns. */
   const handleAddMuscleByPath = (muscleId: string) => {
-    const primary = findPrimaryFor(muscleId, allMuscles);
-    const secondary = findSecondaryFor(muscleId, allMuscles);
+    const path = getPathFromRootToMuscle(muscleId, muscleMapForPath);
     const current = typeof currentEntry === 'object' && currentEntry !== null ? { ...currentEntry as Record<string, number> } : {};
-    const toAdd: string[] = [primary];
-    if (secondary != null) toAdd.push(secondary);
-    if (muscleId !== primary && muscleId !== secondary) toAdd.push(muscleId);
-    for (const id of toAdd) {
+    for (const id of path) {
       if (isMuscleScorable(allMuscles, id)) current[id] = current[id] ?? 0;
     }
     onDeltaChange(tableKey, rowId, filterScorableOnly(current, allMuscles));
@@ -198,49 +175,9 @@ export default function DeltaBranchCard({
     [musclesForDropdown, usedIds]
   );
   const hasPrimaryOptions = primaryDropdownGroups.some(grp => grp.options.length > 0);
+  const primaryOptionsFlattened = useMemo(() => flattenAddMuscleGroupsToOptions(primaryDropdownGroups), [primaryDropdownGroups]);
 
-  const primaryMuscles = useMemo(() => getScorableMuscles(allMuscles.filter(m => !m.parent_ids || m.parent_ids.length === 0)), [allMuscles]);
-  const getSecondariesFor = (pId: string) => getScorableMuscles(allMuscles.filter(m => m.parent_ids && m.parent_ids.includes(pId)));
-  const getTertiariesFor = (sId: string) => getScorableMuscles(allMuscles.filter(m => m.parent_ids && m.parent_ids.includes(sId)));
-
-  const deltaTree = useMemo(() => {
-    const tree: Record<string, { score: number; children: Record<string, { score: number; children: Record<string, number> }> }> = {};
-    const findPrimaryFor = (mid: string): string => {
-      const mu = allMuscles.find(x => x.id === mid);
-      if (!mu?.parent_ids?.length) return mid;
-      return findPrimaryFor(mu.parent_ids[0]);
-    };
-    for (const [id, score] of Object.entries(effectiveDeltas)) {
-      const m = allMuscles.find(mu => mu.id === id);
-      if (!m) continue;
-      if (!m.parent_ids || m.parent_ids.length === 0) {
-        if (!tree[id]) tree[id] = { score, children: {} };
-        else tree[id].score = score;
-        continue;
-      }
-      for (const pid of m.parent_ids) {
-        const parent = allMuscles.find(mu => mu.id === pid);
-        if (!parent) continue;
-        if (!parent.parent_ids || parent.parent_ids.length === 0) {
-          if (!tree[pid]) tree[pid] = { score: effectiveDeltas[pid] ?? 0, children: {} };
-          tree[pid].children[id] = { score, children: {} };
-        } else {
-          const pId = findPrimaryFor(pid);
-          const sId = pid;
-          if (!tree[pId]) tree[pId] = { score: effectiveDeltas[pId] ?? 0, children: {} };
-          if (!tree[pId].children[sId]) tree[pId].children[sId] = { score: effectiveDeltas[sId] ?? 0, children: {} };
-          tree[pId].children[sId].children[id] = score;
-        }
-      }
-    }
-    for (const pId of Object.keys(tree)) {
-      if (pId in effectiveDeltas) tree[pId].score = effectiveDeltas[pId];
-      for (const sId of Object.keys(tree[pId].children)) {
-        if (sId in effectiveDeltas) tree[pId].children[sId].score = effectiveDeltas[sId];
-      }
-    }
-    return tree;
-  }, [effectiveDeltas, allMuscles]);
+  const deltaTree = useMemo(() => buildMuscleTreeFromFlat(effectiveDeltas, allMuscles as SharedMuscleRecord[]), [effectiveDeltas, allMuscles]);
 
   const hasDeltas = Object.keys(effectiveDeltas).length > 0;
 
@@ -324,139 +261,87 @@ export default function DeltaBranchCard({
             </div>
           ) : (
             <div className="space-y-1">
-              {Object.keys(deltaTree).length === 0 && (
+              {Object.keys(deltaTree).filter(k => k !== '_score').length === 0 && (
                 <div className="text-gray-400 italic py-1">No deltas (home base)</div>
               )}
-              {Object.entries(deltaTree).map(([pId, pNode]) => {
-                const pLabel = getMuscleLabel(allMuscles, pId);
-                const sKeys = Object.keys(pNode.children);
-                const pSumChildren = sKeys.reduce((acc, sId) => {
-                  const sNode = pNode.children[sId];
-                  const childTotal = sNode.score + Object.values(sNode.children).reduce((a, v) => a + v, 0);
-                  return acc + childTotal;
-                }, 0);
-                const pTotal = Math.round((pNode.score + pSumChildren) * 100) / 100;
-                const availSec = getSecondariesFor(pId).filter(s => !sKeys.includes(s.id));
-                const secondaryGroups = buildSecondaryMuscleDropdownGroups(musclesForDropdown, pId, usedIds);
-                const hasSecondaryOptions = secondaryGroups.some(grp => grp.options.length > 0);
+              {(() => {
+                function totalOf(node: TreeNode): number {
+                  const keys = Object.keys(node).filter(k => k !== '_score');
+                  let sum = node._score ?? 0;
+                  for (const k of keys) {
+                    const child = node[k];
+                    if (typeof child === 'object') sum += totalOf(child);
+                  }
+                  return sum;
+                }
+                function renderTreeNode(nodeId: string, node: TreeNode, depth: number): React.ReactNode {
+                  if (!node || typeof node !== 'object') return null;
+                  const childKeys = Object.keys(node).filter(k => k !== '_score');
+                  const addGroups = buildAddMuscleDropdownGroups(nodeId, musclesForDropdown, usedIds);
+                  const addOptions = flattenAddMuscleGroupsToOptions(addGroups);
+                  const hasAddOptions = addOptions.length > 0;
+                  const total = Math.round(totalOf(node) * 100) / 100;
+                  const labelClass = depth === 0 ? 'font-semibold text-gray-700' : depth === 1 ? 'text-gray-600' : 'text-gray-500';
 
-                return (
-                  <div key={pId} className="border border-gray-200 rounded p-1 bg-gray-50">
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-semibold text-gray-700">{pLabel}</span>
-                      {!isMuscleScorable(allMuscles, pId) ? (
-                        <span className="text-gray-500 ml-auto" title="Not scorable">
-                          {sKeys.length > 0 ? pTotal : pNode.score}
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1 ml-auto">
-                          <input
-                            type="number"
-                            value={pNode.score}
-                            onChange={e => handleScoreChange(pId, parseFloat(e.target.value) || 0)}
-                            step="0.05"
-                            className="w-16 px-1 py-0.5 border border-gray-300 rounded text-center font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          />
-                          {sKeys.length > 0 && (
-                            <span className="text-gray-400 italic text-[10px]" title="Parent + children total">{pTotal}</span>
-                          )}
-                        </span>
-                      )}
-                      <button onClick={() => handleRemoveMuscle(pId)} className="text-red-400 hover:text-red-600 ml-auto">×</button>
-                    </div>
-                    {(sKeys.length > 0 || availSec.length > 0) && (
-                      <div className="pl-2 mt-0.5 space-y-0.5 border-l border-gray-200 ml-0.5">
-                        {sKeys.map(sId => {
-                          const sNode = pNode.children[sId];
-                          const sLabel = getMuscleLabel(allMuscles, sId);
-                          const tKeys = Object.keys(sNode.children);
-                          const sSumChildren = Object.values(sNode.children).reduce((a, v) => a + v, 0);
-                          const sTotal = Math.round((sNode.score + sSumChildren) * 100) / 100;
-                          const availTer = getTertiariesFor(sId).filter(t => !tKeys.includes(t.id));
-
-                          return (
-                            <div key={sId}>
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-gray-600">{sLabel}</span>
-                                {!isMuscleScorable(allMuscles, sId) ? (
-                                  <span className="text-gray-500" title="Not scorable">
-                                    {tKeys.length > 0 ? sTotal : sNode.score}
-                                  </span>
-                                ) : (
-                                  <span className="flex items-center gap-1">
-                                    <input
-                                      type="number"
-                                      value={sNode.score}
-                                      onChange={e => handleScoreChange(sId, parseFloat(e.target.value) || 0)}
-                                      step="0.05"
-                                      className="w-16 px-1 py-0.5 border border-gray-300 rounded text-center font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                    />
-                                    {tKeys.length > 0 && (
-                                      <span className="text-gray-400 italic text-[10px]" title="Parent + children total">{sTotal}</span>
-                                    )}
-                                  </span>
-                                )}
-                                <button onClick={() => handleRemoveMuscle(sId)} className="text-red-400 hover:text-red-600 ml-auto">×</button>
-                              </div>
-                              {(tKeys.length > 0 || availTer.length > 0) && (
-                                <div className="pl-2 mt-0.5 space-y-0 border-l border-gray-200 ml-0.5">
-                                  {tKeys.map(tId => (
-                                    <div key={tId} className="flex items-center gap-1.5">
-                                      <span className="text-gray-500">{getMuscleLabel(allMuscles, tId)}</span>
-                                      {!isMuscleScorable(allMuscles, tId) ? (
-                                        <span className="text-gray-500" title="Not scorable">{sNode.children[tId]}</span>
-                                      ) : (
-                                        <input type="number" value={sNode.children[tId]}
-                                          onChange={e => handleScoreChange(tId, parseFloat(e.target.value) || 0)}
-                                          step="0.05" className="w-16 px-1 py-0.5 border border-gray-300 rounded text-center font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
-                                      )}
-                                      <button onClick={() => handleRemoveMuscle(tId)} className="text-red-400 hover:text-red-600 ml-auto">×</button>
-                                    </div>
-                                  ))}
-                                  {availTer.length > 0 && (
-                                    <select onChange={e => { if (e.target.value) handleAddMuscle(e.target.value); e.target.value = ''; }}
-                                      className="w-40 border border-gray-300 rounded px-1 py-0.5 text-gray-600 bg-white mt-0.5" defaultValue="">
-                                      <option value="">+ tertiary...</option>
-                                      {availTer.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
-                                    </select>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                        {(hasSecondaryOptions || availSec.length > 0) && (
-                          hasSecondaryOptions ? (
+                  return (
+                    <div key={nodeId}>
+                      <div className="flex items-center gap-1.5">
+                        <span className={labelClass}>{getMuscleLabel(allMuscles, nodeId)}</span>
+                        {!isMuscleScorable(allMuscles, nodeId) ? (
+                          <span className="text-gray-500 ml-auto" title="Not scorable">
+                            {childKeys.length > 0 ? total : (node._score ?? 0)}
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 ml-auto">
+                            <input
+                              type="number"
+                              value={node._score ?? 0}
+                              onChange={e => handleScoreChange(nodeId, parseFloat(e.target.value) || 0)}
+                              step="0.05"
+                              className="w-16 px-1 py-0.5 border border-gray-300 rounded text-center font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            />
+                            {childKeys.length > 0 && (
+                              <span className="text-gray-400 italic text-[10px]" title="Parent + children total">{total}</span>
+                            )}
+                          </span>
+                        )}
+                        <button onClick={() => handleRemoveMuscle(nodeId)} className="text-red-400 hover:text-red-600 ml-auto">×</button>
+                      </div>
+                      {(childKeys.length > 0 || hasAddOptions) && (
+                        <div className="pl-2 mt-0.5 space-y-0.5 border-l border-gray-200 ml-0.5">
+                          {childKeys.map(cId => renderTreeNode(cId, node[cId] as TreeNode, depth + 1))}
+                          {hasAddOptions && (
                             <MuscleSecondarySelect
-                              options={secondaryGroups[0].options}
+                              options={addOptions}
                               onChange={handleAddMuscleByPath}
                               className="w-40 border border-gray-300 rounded px-1 py-0.5 text-gray-600 bg-white mt-0.5"
-                              placeholder="+ secondary..."
+                              placeholder="+ Add child..."
                             />
-                          ) : (
-                            <select onChange={e => { if (e.target.value) handleAddMuscle(e.target.value); e.target.value = ''; }}
-                              className="w-40 border border-gray-300 rounded px-1 py-0.5 text-gray-600 bg-white mt-0.5" defaultValue="">
-                              <option value="">+ secondary...</option>
-                              {availSec.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
-                            </select>
-                          )
-                        )}
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+                const rootKeys = Object.keys(deltaTree).filter(k => k !== '_score');
+                return (
+                  <>
+                    {rootKeys.map(pId => (
+                      <div key={pId} className="border border-gray-200 rounded p-1 bg-gray-50">
+                        {renderTreeNode(pId, deltaTree[pId] as TreeNode, 0)}
                       </div>
+                    ))}
+                    {hasPrimaryOptions && (
+                      <MuscleSecondarySelect
+                        options={primaryOptionsFlattened}
+                        onChange={handleAddMuscleByPath}
+                        className="w-40 border border-gray-300 rounded px-1 py-0.5 text-gray-600 bg-white mt-1"
+                        placeholder="+ muscle group..."
+                      />
                     )}
-                  </div>
+                  </>
                 );
-              })}
-              {hasPrimaryOptions && (
-                <select onChange={e => { if (e.target.value) handleAddMuscleByPath(e.target.value); e.target.value = ''; }}
-                  className="w-40 border border-gray-300 rounded px-1 py-0.5 text-gray-600 bg-white mt-1" defaultValue="">
-                  <option value="">+ muscle group...</option>
-                  {primaryDropdownGroups.map(grp => (
-                    <optgroup key={grp.groupLabel} label={grp.groupLabel}>
-                      {grp.options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </optgroup>
-                  ))}
-                </select>
-              )}
+              })()}
             </div>
           )}
 

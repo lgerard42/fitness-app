@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../../api';
 import { sp } from '../../styles/sidePanelStyles';
 import { filterScorableOnly, isMuscleScorable } from '../../utils/muscleScorable';
-import { buildPrimaryMuscleDropdownGroups, buildSecondaryMuscleDropdownGroups } from '../../utils/muscleDropdownGroups';
+import { buildPrimaryMuscleDropdownGroups, buildAddMuscleDropdownGroups, flattenAddMuscleGroupsToOptions } from '../../utils/muscleDropdownGroups';
 import MuscleSecondarySelect from './MuscleSecondarySelect';
 
 type MotionTableKey = 'motions';
@@ -214,17 +214,12 @@ function MuscleTargetsSubtree({
     [allMuscles]
   );
 
-  const getAvailableChildren = (parentId: string): MuscleOption[] =>
-    (childrenOf.get(parentId) || [])
-      .map(cid => muscleMap.get(cid))
-      .filter((m): m is Record<string, unknown> => !!m && !(m.id as string in flat) && m.is_scorable !== false)
-      .map(m => ({ id: m.id as string, label: m.label as string }));
-
   const primaryDropdownGroups = useMemo(
     () => buildPrimaryMuscleDropdownGroups(musclesForDropdown, usedIds),
     [musclesForDropdown, usedIds]
   );
   const hasPrimaryOptions = primaryDropdownGroups.some(g => g.options.length > 0);
+  const primaryOptionsFlattened = useMemo(() => flattenAddMuscleGroupsToOptions(primaryDropdownGroups), [primaryDropdownGroups]);
 
   const ScoreInput = ({ muscleId, explicitScore, sumChildren }: { muscleId: string; explicitScore: number; sumChildren?: number }) => {
     const [localValue, setLocalValue] = useState(String(explicitScore));
@@ -322,14 +317,15 @@ function MuscleTargetsSubtree({
   };
 
   const renderNode = (node: FlatTreeNode, pathKey: string, depth: number) => {
-    const available = getAvailableChildren(node.id);
-    const secondaryGroups = depth === 0 ? buildSecondaryMuscleDropdownGroups(musclesForDropdown, node.id, usedIds) : [];
-    const hasSecondaryOptions = secondaryGroups.some(g => g.options.length > 0);
-    const showAddDropdown = depth === 0 ? hasSecondaryOptions : available.length > 0;
+    const addGroups = buildAddMuscleDropdownGroups(node.id, musclesForDropdown, usedIds);
+    const addOptions = flattenAddMuscleGroupsToOptions(addGroups);
+    const showAddDropdown = addOptions.length > 0;
     const hasKids = node.children.length > 0;
 
-    const rowStyle = depth === 0 ? treeStyles.rowPrimary : depth === 1 ? treeStyles.rowSecondary : treeStyles.rowTertiary;
-    const labelStyle = depth === 0 ? sp.treeRow.primaryLabel : depth === 1 ? sp.treeRow.secondaryLabel : sp.treeRow.tertiaryLabel;
+    const rowStyleByDepth = [treeStyles.rowPrimary, treeStyles.rowSecondary, treeStyles.rowTertiary];
+    const labelStyleByDepth = [sp.treeRow.primaryLabel, sp.treeRow.secondaryLabel, sp.treeRow.tertiaryLabel];
+    const rowStyle = rowStyleByDepth[depth] ?? treeStyles.rowTertiary;
+    const labelStyle = labelStyleByDepth[depth] ?? sp.treeRow.tertiaryLabel;
     const wrapperStyle = depth === 0 ? treeStyles.item : treeStyles.itemFlat;
     const nestStyle = depth === 0 ? treeStyles.nestSecondaries : treeStyles.nestTertiaries;
 
@@ -346,20 +342,12 @@ function MuscleTargetsSubtree({
           <div className={nestStyle}>
             {node.children.map(child => renderNode(child, `${pathKey}.${child.id}`, depth + 1))}
             {!readOnly && showAddDropdown && (
-              depth === 0 ? (
-                <MuscleSecondarySelect
-                  options={secondaryGroups[0].options}
-                  onChange={v => addMuscle(v)}
-                  className={sp.deltaRules.treeAddDropdown}
-                  placeholder="+ child..."
-                />
-              ) : (
-                <select onChange={e => { if (e.target.value) addMuscle(e.target.value); e.target.value = ''; }}
-                  className={sp.deltaRules.treeAddDropdown} defaultValue="">
-                  <option value="">+ child...</option>
-                  {available.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
-                </select>
-              )
+              <MuscleSecondarySelect
+                options={addOptions}
+                onChange={v => addMuscle(v)}
+                className={sp.deltaRules.treeAddDropdown}
+                placeholder="+ child..."
+              />
             )}
           </div>
         )}
@@ -371,15 +359,12 @@ function MuscleTargetsSubtree({
     <div className={sp.deltaRules.treeContainer}>
       {displayTree.map(node => renderNode(node, node.id, 0))}
       {!readOnly && hasPrimaryOptions && (
-        <select onChange={e => { if (e.target.value) addMuscle(e.target.value); e.target.value = ''; }}
-          className={sp.deltaRules.treeAddDropdown} defaultValue="">
-          <option value="">+ muscle group...</option>
-          {primaryDropdownGroups.map(grp => (
-            <optgroup key={grp.groupLabel} label={grp.groupLabel}>
-              {grp.options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </optgroup>
-          ))}
-        </select>
+        <MuscleSecondarySelect
+          options={primaryOptionsFlattened}
+          onChange={addMuscle}
+          className={sp.deltaRules.treeAddDropdown}
+          placeholder="+ muscle group..."
+        />
       )}
     </div>
   );

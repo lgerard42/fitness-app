@@ -62,6 +62,19 @@ describe("findRootMuscleId", () => {
     expect(findRootMuscleId("ARM", map)).toBe("ARM");
   });
 
+  it("walks to root for 4-level hierarchy (R → A → B → C)", () => {
+    const map = muscleMap([
+      { id: "R", parent_ids: [] },
+      { id: "A", parent_ids: ["R"] },
+      { id: "B", parent_ids: ["A"] },
+      { id: "C", parent_ids: ["B"] },
+    ]);
+    expect(findRootMuscleId("C", map)).toBe("R");
+    expect(findRootMuscleId("B", map)).toBe("R");
+    expect(findRootMuscleId("A", map)).toBe("R");
+    expect(findRootMuscleId("R", map)).toBe("R");
+  });
+
   it("returns id when not in map", () => {
     expect(findRootMuscleId("X", new Map())).toBe("X");
   });

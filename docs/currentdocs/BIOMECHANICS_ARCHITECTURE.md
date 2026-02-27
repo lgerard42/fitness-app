@@ -232,7 +232,7 @@ flowchart TD
 ## 1.3 `muscles` Table (Unified Hierarchy Model)
 
 ### Why a single `muscles` table exists
-Older designs often split muscles across multiple tables (e.g., muscle groups / primary / secondary / tertiary). The current architecture consolidates these into a **single hierarchical table** using `parent_ids`.
+Older designs often split muscles across multiple tables (e.g., muscle groups by depth). The current architecture consolidates these into a **single recursive hierarchical table** using `parent_ids`, supporting **arbitrary depth** (not fixed levels). The UI may still use labels like "primary", "secondary", "tertiary" for depth 0, 1, 2 and "child" or "level N" for deeper levels.
 
 Benefits:
 - one canonical namespace for muscle IDs
@@ -328,7 +328,7 @@ When the admin shows motions grouped by muscle (MOTIONS table "Group by: Muscles
 - **Must have children:** Only muscles that have **at least one child** in the muscles hierarchy appear in the dropdown; leaf muscles (no children) never qualify, so users can only assign a motion to a group or sub-group (e.g. Arms or Biceps), not to a leaf muscle.
 - **Independent evaluation:** Each muscle is evaluated on its own; a parent qualifying does not automatically include its children, and a child with high score does not add the parent unless the parent's own calculated score meets the threshold.
 
-Options are grouped in the dropdown by primary → secondary → tertiary, sorted alphabetically. Default selection (when `muscle_grouping_id` is null) is the selectable muscle with the **highest calculated score**. Existing rows were backfilled so `muscle_grouping_id` defaults to that muscle.
+Options are grouped in the dropdown by hierarchy (root, then children at each depth), sorted alphabetically. Default selection (when `muscle_grouping_id` is null) is the selectable muscle with the **highest calculated score**. Existing rows were backfilled so `muscle_grouping_id` defaults to that muscle.
 
 ### What a motion row is **not**
 A motion row is **not**:
@@ -1188,7 +1188,7 @@ This section is intentionally retained to reduce migration regressions.
 | `primaryMotions`                                       | `motions` (base rows)                                                                                                                      | Legacy split terminology replaced by unified `motions` table |
 | `primaryMotionVariations`                              | `motions` child rows via `parent_id` (where used)                                                                                          | Variations are not separate hardcoded exercise definitions   |
 | `motionPlanes` (as standalone scoring driver)          | Typically represented by current modifier dimensions such as `motionPaths` / `resistanceOrigin` / other current tables depending on intent | Do not blindly 1:1 map without semantics review              |
-| split muscle tables (group/primary/secondary/tertiary) | unified `muscles` table + hierarchy via `parent_ids`                                                                                       | Single namespace for scoring JSON keys                       |
+| split muscle tables (group/depth-based tiers)           | unified `muscles` table + recursive hierarchy via `parent_ids` (arbitrary depth)                                                            | Single namespace for scoring JSON keys                       |
 | "exercise variant row" as scoring anchor               | base motion + modifiers composition                                                                                                        | Core architecture shift                                      |
 | prose "standard setup" defaults                        | `motions.default_delta_configs`                                                                                                            | Canonical home-base source                                   |
 

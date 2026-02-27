@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { api } from '../../api';
 import { sp } from '../../styles/sidePanelStyles';
+import { getChildrenOf } from '../../../../shared/utils/muscleTree';
 
 interface MuscleHierarchyFieldProps {
   tableKey: 'muscles';
@@ -16,7 +17,7 @@ interface MuscleRecord {
   [key: string]: unknown;
 }
 
-type MuscleTier = 'primary' | 'secondary' | 'tertiary';
+type MuscleTier = 'primary' | 'secondary' | 'tertiary' | 'child';
 
 function parseParentIds(record: MuscleRecord): string[] {
   const raw = record.parent_ids;
@@ -32,15 +33,30 @@ function parseParentIds(record: MuscleRecord): string[] {
   return [];
 }
 
-function classifyMuscle(record: MuscleRecord, allMuscles: MuscleRecord[]): MuscleTier {
+/** Depth in hierarchy (0 = root, 1 = child of root, etc.). */
+function getDepth(record: MuscleRecord, allMuscles: MuscleRecord[]): number {
   const pids = parseParentIds(record);
-  if (pids.length === 0) return 'primary';
-  const anyParentIsPrimary = pids.some(pid => {
-    const parent = allMuscles.find(m => m.id === pid);
-    return parent && parseParentIds(parent).length === 0;
-  });
-  if (anyParentIsPrimary) return 'secondary';
-  return 'tertiary';
+  if (pids.length === 0) return 0;
+  const visited = new Set<string>();
+  let d = 0;
+  let current: string | undefined = record.id;
+  while (current && !visited.has(current)) {
+    visited.add(current);
+    const m = allMuscles.find(x => x.id === current);
+    const parents = m ? parseParentIds(m) : [];
+    if (parents.length === 0) return d;
+    d++;
+    current = parents[0];
+  }
+  return d;
+}
+
+function classifyMuscle(record: MuscleRecord, allMuscles: MuscleRecord[]): MuscleTier {
+  const depth = getDepth(record, allMuscles);
+  if (depth === 0) return 'primary';
+  if (depth === 1) return 'secondary';
+  if (depth === 2) return 'tertiary';
+  return 'child';
 }
 
 export default function MuscleHierarchyField({ tableKey, currentRecordId, onFieldsChange, onOpenRow }: MuscleHierarchyFieldProps) {
@@ -72,17 +88,19 @@ export default function MuscleHierarchyField({ tableKey, currentRecordId, onFiel
     });
   };
 
-  const { primaries, secondaries, tertiaries } = useMemo(() => {
+  const { primaries, secondaries, tertiaries, children: deeperChildren } = useMemo(() => {
     const p: MuscleRecord[] = [];
     const s: MuscleRecord[] = [];
     const t: MuscleRecord[] = [];
+    const c: MuscleRecord[] = [];
     for (const m of allMuscles) {
       const tier = classifyMuscle(m, allMuscles);
       if (tier === 'primary') p.push(m);
       else if (tier === 'secondary') s.push(m);
-      else t.push(m);
+      else if (tier === 'tertiary') t.push(m);
+      else c.push(m);
     }
-    return { primaries: p, secondaries: s, tertiaries: t };
+    return { primaries: p, secondaries: s, tertiaries: t, children: c };
   }, [allMuscles]);
 
   const currentRecord = useMemo(() => allMuscles.find(m => m.id === currentRecordId), [allMuscles, currentRecordId]);
@@ -205,21 +223,46 @@ export default function MuscleHierarchyField({ tableKey, currentRecordId, onFiel
       }).filter((x): x is NonNullable<typeof x> => x !== null);
     }
 
-    // Tertiary: show parent chain
-    const parentIds = parseParentIds(currentRecord);
-    return parentIds.map(sid => {
-      const sec = secondaries.find(s => s.id === sid);
-      if (!sec) return null;
-      const secParents = parseParentIds(sec);
-      const pris = secParents.map(pid => primaries.find(p => p.id === pid)).filter(Boolean) as MuscleRecord[];
-      return {
-        type: 'tertiary-view' as const,
-        secondary: sec,
-        primaries: pris,
-        tertiary: currentRecord,
-      };
-    }).filter((x): x is NonNullable<typeof x> => x !== null);
-  }, [currentTier, currentRecord, currentRecordId, primaries, secondaries, tertiaries, loading]);
+    if (currentTier === 'tertiary') {
+      const parentIds = parseParentIds(currentRecord);
+      return parentIds.map(sid => {
+        const sec = secondaries.find(s => s.id === sid);
+        if (!sec) return null;
+        const secParents = parseParentIds(sec);
+        const pris = secParents.map(pid => primaries.find(p => p.id === pid)).filter(Boolean) as MuscleRecord[];
+        return {
+          type: 'tertiary-view' as const,
+          secondary: sec,
+          primaries: pris,
+          tertiary: currentRecord,
+        };
+      }).filter((x): x is NonNullable<typeof x> => x !== null);
+    }
+
+    // Child (depth >= 3): parent chain from root to immediate parent, plus children of current
+    if (currentTier === 'child') {
+      const parentChain: MuscleRecord[] = [];
+      let currentId: string | undefined = parseParentIds(currentRecord)[0];
+      const visited = new Set<string>();
+      while (currentId && !visited.has(currentId)) {
+        visited.add(currentId);
+        const m = allMuscles.find(x => x.id === currentId);
+        if (!m) break;
+        parentChain.unshift(m);
+        const pids = parseParentIds(m);
+        currentId = pids.length > 0 ? pids[0] : undefined;
+      }
+      const myChildren = getChildrenOf(currentRecordId, allMuscles);
+      return [{
+        type: 'child-view' as const,
+        parentChain,
+        current: currentRecord,
+        children: myChildren,
+      }];
+    }
+
+    return [];
+  }, [currentTier, currentRecord, currentRecordId, primaries, secondaries, tertiaries, allMuscles, loading]);
 
   // Available items for "Add" dropdowns
   const availableAddOptions = useMemo(() => {
@@ -233,9 +276,13 @@ export default function MuscleHierarchyField({ tableKey, currentRecordId, onFiel
       const linkedParentIds = parseParentIds(currentRecord);
       return primaries.filter(p => !linkedParentIds.includes(p.id));
     }
-    const linkedParentIds = parseParentIds(currentRecord);
-    return secondaries.filter(s => !linkedParentIds.includes(s.id));
-  }, [currentTier, currentRecord, currentRecordId, primaries, secondaries]);
+    if (currentTier === 'tertiary' || currentTier === 'child') {
+      const linkedParentIds = parseParentIds(currentRecord);
+      const candidates = currentTier === 'tertiary' ? secondaries : [...primaries, ...secondaries, ...tertiaries, ...deeperChildren];
+      return candidates.filter(m => m.id !== currentRecordId && !linkedParentIds.includes(m.id));
+    }
+    return [];
+  }, [currentTier, currentRecord, currentRecordId, primaries, secondaries, tertiaries, deeperChildren]);
 
   // Must be called before any early returns to satisfy React's rules of hooks
   const otherPrimaries = useMemo(() => {
@@ -410,6 +457,63 @@ export default function MuscleHierarchyField({ tableKey, currentRecordId, onFiel
               <button type="button" onClick={() => unlinkParent(currentRecordId, secondary.id)}
                 className={sp.removeBtn.textMl}>Remove</button>
             </div>
+          </div>
+        );
+      })}
+
+      {/* Child (depth >= 3): parent chain and children */}
+      {currentTier === 'child' && hierarchyItems.map((item) => {
+        if (item.type !== 'child-view') return null;
+        const { parentChain, current, children: myChildren } = item;
+        const key = 'child-view';
+        const isExp = expanded.has(key);
+        const existingChildIds = myChildren.map(c => c.id);
+        const allChildCandidates = [...tertiaries, ...deeperChildren].filter(
+          m => m.id !== currentRecordId && !parseParentIds(m).includes(currentRecordId)
+        );
+        return (
+          <div key={key} className={sp.muscleHierarchy.card}>
+            <div className={`${sp.muscleHierarchy.header} ${isExp ? sp.muscleHierarchy.headerExpanded : ''}`}>
+              <div className="flex items-center gap-2 flex-1 flex-wrap">
+                <button type="button" onClick={() => toggleExpand(key)} className={sp.muscleHierarchy.toggle}>
+                  {isExp ? '▼' : '▶'}
+                </button>
+                {parentChain.map((p, i) => (
+                  <React.Fragment key={p.id}>
+                    {i > 0 && <span className={sp.muscleHierarchy.arrow}>→</span>}
+                    <button type="button" onClick={(e) => handleOpenMuscle(e, p.id)} className={sp.muscleHierarchy.link}>{p.label}</button>
+                    <span className={sp.muscleHierarchy.muscleId}>{p.id}</span>
+                  </React.Fragment>
+                ))}
+                <span className={sp.muscleHierarchy.arrow}>→</span>
+                <span className={sp.muscleHierarchy.label}>{current.label}</span>
+                <span className={sp.muscleHierarchy.muscleId}>{current.id}</span>
+                {myChildren.length > 0 && <span className={sp.muscleHierarchy.count}>({myChildren.length} child)</span>}
+              </div>
+              {parentChain.length > 0 && (
+                <button type="button" onClick={() => unlinkParent(currentRecordId, parentChain[parentChain.length - 1].id)}
+                  className={sp.muscleHierarchy.removeBtn}>Remove parent</button>
+              )}
+            </div>
+            {isExp && (
+              <div className={sp.muscleHierarchy.expandedContent}>
+                {myChildren.map(c => (
+                  <div key={c.id} className={sp.muscleHierarchy.tertiaryItem}>
+                    <div className="flex items-center gap-2">
+                      <button type="button" onClick={(e) => handleOpenMuscle(e, c.id)} className={sp.muscleHierarchy.link}>{c.label}</button>
+                      <span className={sp.muscleHierarchy.muscleId}>{c.id}</span>
+                    </div>
+                  </div>
+                ))}
+                <ChildMuscleAdder
+                  currentParentId={currentRecordId}
+                  existingChildIds={existingChildIds}
+                  allChildMuscles={allChildCandidates}
+                  onAdd={(childId) => linkParent(childId, currentRecordId)}
+                  onCreate={(data) => createChild(currentRecordId, data)}
+                />
+              </div>
+            )}
           </div>
         );
       })}

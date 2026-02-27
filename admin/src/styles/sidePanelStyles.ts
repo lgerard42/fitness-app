@@ -107,16 +107,21 @@ export const treeRow = {
   primary: 'flex items-center gap-1.5 px-2 py-1 bg-red-50/60',
   secondary: 'flex items-center gap-1.5 px-2 py-0.5 bg-red-50/60',
   tertiary: 'flex items-center gap-1.5 px-2 py-0.5 bg-red-50/60 rounded',
+  /** For depth >= 3 in recursive hierarchy. */
+  nested: 'flex items-center gap-1.5 px-2 py-0.5 bg-red-50/50 rounded',
   leafBullet: 'text-[8px] text-gray-400 w-3 flex items-center justify-center',
   primaryLabel: 'text-xs font-medium text-red-800',
   secondaryLabel: 'text-xs text-red-800',
   tertiaryLabel: 'text-[11px] text-red-800',
+  nestedLabel: 'text-[11px] text-red-800',
 };
 
 /* ── Nested containers inside expanded tree cards ────────── */
 export const treeNest = {
   secondaries: 'pl-4 pr-2 py-1 space-y-1',
   tertiaries: 'pl-4 pr-2 py-0.5 space-y-0.5',
+  /** Single style for nested list at any depth (recursive hierarchy). */
+  children: 'pl-4 pr-2 py-0.5 space-y-0.5',
   variations: 'pl-4 pr-2 py-2 space-y-2',
 };
 
@@ -200,8 +205,10 @@ export const motionPath = {
   treeRowPrimary: 'flex items-center gap-1.5 px-2 py-1 bg-red-50/60',
   treeRowSecondary: 'flex items-center gap-1.5 px-2 py-0.5 bg-red-50/60',
   treeRowTertiary: 'flex items-center gap-1.5 px-2 py-0.5 bg-red-50/60 rounded',
+  treeRowNested: 'flex items-center gap-1.5 px-2 py-0.5 bg-red-50/50 rounded',
   treeNestSecondaries: 'pl-4 pr-2 py-1 space-y-1',
   treeNestTertiaries: 'pl-4 pr-2 py-0.5 space-y-0.5',
+  treeNestChildren: 'pl-4 pr-2 py-0.5 space-y-0.5',
   treeAddDropdown: [
     'text-[10px] px-1 py-0.5 border border-red-300 rounded text-red-500',
     'focus:outline-none focus:ring-1 focus:ring-red-500',
@@ -283,8 +290,10 @@ export const deltaRules = {
   treeRowPrimary: 'flex items-center gap-1.5 px-2 py-0.5 bg-red-50/90',
   treeRowSecondary: 'flex items-center gap-1.5 px-2 py-0.5 bg-red-50/80',
   treeRowTertiary: 'flex items-center gap-1 px-2 py-0.5 bg-red-50/70 rounded',
+  treeRowNested: 'flex items-center gap-1 px-2 py-0.5 bg-red-50/60 rounded',
   treeNestSecondaries: 'pl-4 pr-2 py-0.5 space-y-1',
   treeNestTertiaries: 'pl-4 pr-2 py-0.5 space-y-0.5',
+  treeNestChildren: 'pl-4 pr-2 py-0.5 space-y-0.5',
   treeAddDropdown: [
     'text-[10px] px-1 py-0.5 border border-red-300 rounded text-red-500',
     'focus:outline-none focus:ring-1 focus:ring-red-500',
@@ -295,8 +304,10 @@ export const deltaRules = {
   treeRowPrimaryReadOnly: 'flex items-center gap-0 px-2 py-0',
   treeRowSecondaryReadOnly: 'flex items-center gap-0 px-2 py-0',
   treeRowTertiaryReadOnly: 'flex items-center gap-0 px-2 py-0 rounded',
+  treeRowNestedReadOnly: 'flex items-center gap-0 px-2 py-0 rounded',
   treeNestSecondariesReadOnly: 'pl-4 pr-2 py-0 space-y-0',
   treeNestTertiariesReadOnly: 'pl-4 pr-2 py-0 space-y-0',
+  treeNestChildrenReadOnly: 'pl-4 pr-2 py-0 space-y-0',
 };
 
 /* ── Muscle hierarchy configurator components ───────────────── */

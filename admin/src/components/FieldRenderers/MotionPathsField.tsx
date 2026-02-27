@@ -3,8 +3,16 @@ import { createPortal } from 'react-dom';
 import { api } from '../../api';
 import { sp } from '../../styles/sidePanelStyles';
 import { filterScorableOnly, isMuscleScorable, getScorableMuscles } from '../../utils/muscleScorable';
-import { buildPrimaryMuscleDropdownGroups, buildSecondaryMuscleDropdownGroups } from '../../utils/muscleDropdownGroups';
+import { buildPrimaryMuscleDropdownGroups, buildAddMuscleDropdownGroups, flattenAddMuscleGroupsToOptions } from '../../utils/muscleDropdownGroups';
 import MuscleSecondarySelect from './MuscleSecondarySelect';
+import {
+  buildMuscleTreeFromFlat,
+  flattenMuscleTree,
+  getChildrenOf,
+  getPathFromRootToMuscle,
+  type TreeNode as SharedTreeNode,
+  type MuscleRecord as SharedMuscleRecord,
+} from '../../../../shared/utils/muscleTree';
 
 
 interface MotionPath {
@@ -52,110 +60,10 @@ function getDefaultFromValue(raw: unknown): string {
 
 /* ──────────────────── DeltaMuscleTree ──────────────────── */
 
-type TreeNode = { _score: number; [childId: string]: TreeNode | number };
+type TreeNode = SharedTreeNode;
 
 function getMuscleLabel(allMuscles: MuscleRecord[], id: string): string {
   return allMuscles.find(m => m.id === id)?.label || id;
-}
-
-function getMuscleLevel(id: string, allMuscles: MuscleRecord[]): 'primary' | 'secondary' | 'tertiary' {
-  const m = allMuscles.find(mu => mu.id === id);
-  if (!m || m.parent_ids.length === 0) return 'primary';
-  const parent = allMuscles.find(mu => mu.id === m.parent_ids[0]);
-  if (!parent || parent.parent_ids.length === 0) return 'secondary';
-  return 'tertiary';
-}
-
-function findPrimaryFor(id: string, allMuscles: MuscleRecord[]): string {
-  const m = allMuscles.find(mu => mu.id === id);
-  if (!m || m.parent_ids.length === 0) return id;
-  return findPrimaryFor(m.parent_ids[0], allMuscles);
-}
-
-function findSecondaryFor(id: string, allMuscles: MuscleRecord[]): string | null {
-  const m = allMuscles.find(mu => mu.id === id);
-  if (!m || m.parent_ids.length === 0) return null;
-  const parent = allMuscles.find(mu => mu.id === m.parent_ids[0]);
-  if (!parent || parent.parent_ids.length === 0) return null;
-  return m.parent_ids[0];
-}
-
-function buildTreeFromFlat(flat: Record<string, number>, allMuscles: MuscleRecord[]): TreeNode {
-  const tree: TreeNode = { _score: 0 };
-  for (const [muscleId, score] of Object.entries(flat)) {
-    const m = allMuscles.find(mu => mu.id === muscleId);
-    if (!m || m.parent_ids.length === 0) {
-      if (!tree[muscleId]) tree[muscleId] = { _score: 0 };
-      (tree[muscleId] as TreeNode)._score = score;
-      continue;
-    }
-    for (const pid of m.parent_ids) {
-      const parent = allMuscles.find(mu => mu.id === pid);
-      if (!parent) continue;
-      if (parent.parent_ids.length === 0) {
-        if (!tree[pid]) tree[pid] = { _score: 0 };
-        const pNode = tree[pid] as TreeNode;
-        if (!pNode[muscleId]) pNode[muscleId] = { _score: 0 };
-        (pNode[muscleId] as TreeNode)._score = score;
-      } else {
-        const pId = findPrimaryFor(pid, allMuscles);
-        if (!tree[pId]) tree[pId] = { _score: 0 };
-        const pNode = tree[pId] as TreeNode;
-        if (!pNode[pid]) pNode[pid] = { _score: 0 };
-        const sNode = pNode[pid] as TreeNode;
-        if (!sNode[muscleId]) sNode[muscleId] = { _score: 0 };
-        (sNode[muscleId] as TreeNode)._score = score;
-      }
-    }
-  }
-  const pKeys = Object.keys(tree).filter(k => k !== '_score');
-  for (const pId of pKeys) {
-    const pNode = tree[pId] as TreeNode;
-    if (pId in flat) pNode._score = flat[pId];
-    const sKeys = Object.keys(pNode).filter(k => k !== '_score');
-    for (const sId of sKeys) {
-      const sNode = pNode[sId] as TreeNode;
-      if (sId in flat) sNode._score = flat[sId];
-    }
-  }
-  return tree;
-}
-
-function recomputeScores(tree: TreeNode) {
-  const pKeys = Object.keys(tree).filter(k => k !== '_score');
-  for (const pId of pKeys) {
-    const pNode = tree[pId] as TreeNode;
-    const sKeys = Object.keys(pNode).filter(k => k !== '_score');
-    for (const sId of sKeys) {
-      const sNode = pNode[sId] as TreeNode;
-      const tKeys = Object.keys(sNode).filter(k => k !== '_score');
-      if (tKeys.length > 0) {
-        sNode._score = Math.round(tKeys.reduce((s, tId) => s + ((sNode[tId] as TreeNode)._score || 0), 0) * 100) / 100;
-      }
-    }
-    if (sKeys.length > 0) {
-      pNode._score = Math.round(sKeys.reduce((s, sId) => s + ((pNode[sId] as TreeNode)._score || 0), 0) * 100) / 100;
-    }
-  }
-}
-
-function flattenTree(tree: TreeNode): Record<string, number> {
-  const flat: Record<string, number> = {};
-  const pKeys = Object.keys(tree).filter(k => k !== '_score');
-  for (const pId of pKeys) {
-    const pNode = tree[pId] as TreeNode;
-    flat[pId] = pNode._score ?? 0;
-    const sKeys = Object.keys(pNode).filter(k => k !== '_score');
-    for (const sId of sKeys) {
-      const sNode = pNode[sId] as TreeNode;
-      flat[sId] = sNode._score ?? 0;
-      const tKeys = Object.keys(sNode).filter(k => k !== '_score');
-      for (const tId of tKeys) {
-        flat[tId] = (sNode[tId] as TreeNode)._score ?? 0;
-      }
-    }
-  }
-  return flat;
 }
 
 function asFlat(targets: Record<string, unknown>): Record<string, number> {
@@ -259,8 +167,10 @@ function ReadOnlyMuscleTree({ targets, allMuscles, deltaScores }: {
   }, [baseFlat, deltaScores, allMuscles]);
 
   const renderNode = (node: ROTreeNode, depth: number) => {
-    const rowStyle = depth === 0 ? sp.deltaRules.treeRowPrimaryReadOnly : depth === 1 ? sp.deltaRules.treeRowSecondaryReadOnly : sp.deltaRules.treeRowTertiaryReadOnly;
-    const labelStyle = depth === 0 ? sp.treeRow.primaryLabel : depth === 1 ? sp.treeRow.secondaryLabel : sp.treeRow.tertiaryLabel;
+    const rowStyleByDepth = [sp.deltaRules.treeRowPrimaryReadOnly, sp.deltaRules.treeRowSecondaryReadOnly, sp.deltaRules.treeRowTertiaryReadOnly];
+    const labelStyleByDepth = [sp.treeRow.primaryLabel, sp.treeRow.secondaryLabel, sp.treeRow.tertiaryLabel];
+    const rowStyle = rowStyleByDepth[depth] ?? sp.deltaRules.treeRowTertiaryReadOnly;
+    const labelStyle = labelStyleByDepth[depth] ?? sp.treeRow.tertiaryLabel;
     const wrapperStyle = depth === 0 ? sp.deltaRules.treeItemReadOnly : sp.deltaRules.treeItemFlatReadOnly;
     const nestStyle = depth === 0 ? sp.deltaRules.treeNestSecondariesReadOnly : sp.deltaRules.treeNestTertiariesReadOnly;
 
@@ -373,10 +283,10 @@ function DeltaMuscleTree({
   allMuscles: MuscleRecord[];
   planeId: string;
 }) {
-  const tree = useMemo(() => buildTreeFromFlat(delta, allMuscles), [delta, allMuscles]);
+  const tree = useMemo(() => buildMuscleTreeFromFlat(delta, allMuscles as SharedMuscleRecord[]), [delta, allMuscles]);
   const usedIds = useMemo(() => new Set(Object.keys(delta)), [delta]);
   const musclesForDropdown = useMemo(() =>
-    allMuscles.map(m => ({ id: m.id, label: m.label, parent_ids: m.parent_ids, is_scorable: m.is_scorable })),
+    allMuscles.map(m => ({ id: m.id, label: m.label, parent_ids: m.parent_ids ?? [], is_scorable: m.is_scorable })),
     [allMuscles]
   );
   const primaryDropdownGroups = useMemo(
@@ -384,18 +294,16 @@ function DeltaMuscleTree({
     [musclesForDropdown, usedIds]
   );
   const hasPrimaryOptions = primaryDropdownGroups.some(grp => grp.options.length > 0);
+  const primaryOptionsFlattened = useMemo(() => flattenAddMuscleGroupsToOptions(primaryDropdownGroups), [primaryDropdownGroups]);
 
   const primaryMuscles = useMemo(() =>
     getScorableMuscles(allMuscles.filter(m => (m.parent_ids ?? []).length === 0)).map(m => ({ id: m.id, label: m.label })),
     [allMuscles]
   );
-  const getSecondariesFor = (pId: string) =>
-    getScorableMuscles(allMuscles.filter(m => (m.parent_ids ?? []).includes(pId))).map(m => ({ id: m.id, label: m.label }));
-  const getTertiariesFor = (sId: string) =>
-    getScorableMuscles(allMuscles.filter(m => (m.parent_ids ?? []).includes(sId))).map(m => ({ id: m.id, label: m.label }));
+  const muscleMapForPath = useMemo(() => new Map(allMuscles.map(m => [m.id, m as SharedMuscleRecord])), [allMuscles]);
 
   const save = (newTree: TreeNode) => {
-    onSave(planeId, filterScorableOnly(flattenTree(newTree), allMuscles));
+    onSave(planeId, filterScorableOnly(flattenMuscleTree(newTree), allMuscles));
   };
 
   const setScore = (path: string[], score: number) => {
@@ -405,7 +313,7 @@ function DeltaMuscleTree({
     const nd: TreeNode = JSON.parse(JSON.stringify(tree));
     let node: TreeNode = nd;
     for (const key of path) {
-      if (!node[key] || typeof node[key] !== 'object') node[key] = { _score: 0 };
+      if (!node[key] || typeof node[key] !== 'object') (node as Record<string, TreeNode>)[key] = { _score: 0 };
       node = node[key] as TreeNode;
     }
     node._score = score;
@@ -419,166 +327,120 @@ function DeltaMuscleTree({
       if (!node[path[i]]) return;
       node = node[path[i]] as TreeNode;
     }
-    delete node[path[path.length - 1]];
+    delete (node as Record<string, unknown>)[path[path.length - 1]];
     save(nd);
   };
 
-  const addPrimary = (id: string) => {
-    if (tree[id]) return;
-    const nd: TreeNode = { ...JSON.parse(JSON.stringify(tree)), [id]: { _score: 0 } };
-    save(nd);
-  };
+  function ensurePathAndSetScore(nd: TreeNode, path: string[], score: number) {
+    let node: TreeNode = nd;
+    for (let i = 0; i < path.length; i++) {
+      const id = path[i];
+      if (!node[id] || typeof node[id] === 'number') (node as Record<string, TreeNode>)[id] = { _score: 0 };
+      node = node[id] as TreeNode;
+    }
+    node._score = score;
+  }
 
-  const addSecondary = (pId: string, sId: string) => {
+  const addFullPath = (path: string[]) => {
+    if (path.length === 0) return;
     const nd: TreeNode = JSON.parse(JSON.stringify(tree));
-    if (!nd[pId]) nd[pId] = { _score: 0 };
-    const pNode = nd[pId] as TreeNode;
-    if (!pNode[sId]) pNode[sId] = { _score: 0 };
+    ensurePathAndSetScore(nd, path, 0);
     save(nd);
   };
 
-  const addTertiary = (pId: string, sId: string, tId: string) => {
+  const addChild = (parentPath: string[], childId: string) => {
     const nd: TreeNode = JSON.parse(JSON.stringify(tree));
-    if (!nd[pId]) nd[pId] = { _score: 0 };
-    const pNode = nd[pId] as TreeNode;
-    if (!pNode[sId]) pNode[sId] = { _score: 0 };
-    const sNode = pNode[sId] as TreeNode;
-    if (!sNode[tId]) sNode[tId] = { _score: 0 };
+    let node: TreeNode = nd;
+    for (const key of parentPath) {
+      if (!node[key] || typeof node[key] !== 'object') (node as Record<string, TreeNode>)[key] = { _score: 0 };
+      node = node[key] as TreeNode;
+    }
+    if (!node[childId] || typeof node[childId] === 'number') (node as Record<string, TreeNode>)[childId] = { _score: 0 };
     save(nd);
   };
 
-  /** Add a muscle (and its path) under primary pId when user selects from grouped secondary dropdown. */
   const addMuscleUnderPrimary = (pId: string, muscleId: string) => {
-    const primary = findPrimaryFor(muscleId, allMuscles);
-    if (primary !== pId) return;
-    const secondary = findSecondaryFor(muscleId, allMuscles);
-    if (secondary != null) {
-      addSecondary(pId, secondary);
-      addTertiary(pId, secondary, muscleId);
-    } else {
-      addSecondary(pId, muscleId);
-    }
+    const path = getPathFromRootToMuscle(muscleId, muscleMapForPath);
+    if (path.length === 0 || path[0] !== pId) return;
+    addFullPath(path);
   };
 
-  /** Add any muscle by id from the primary (bottom) grouped dropdown; creates full path. */
   const addMuscleByPath = (muscleId: string) => {
-    const primary = findPrimaryFor(muscleId, allMuscles);
-    addPrimary(primary);
-    if (muscleId === primary) return;
-    const secondary = findSecondaryFor(muscleId, allMuscles);
-    if (secondary != null) {
-      addSecondary(primary, secondary);
-      if (muscleId !== secondary) addTertiary(primary, secondary, muscleId);
-    } else {
-      addSecondary(primary, muscleId);
-    }
+    const path = getPathFromRootToMuscle(muscleId, muscleMapForPath);
+    if (path.length === 0) return;
+    addFullPath(path);
   };
 
   const activePrimaries = Object.keys(tree).filter(k => k !== '_score');
-  const unusedPrimaries = primaryMuscles.filter(pm => !activePrimaries.includes(pm.id));
+
+  const rowStyleByDepth = [sp.deltaRules.treeRowPrimary, sp.deltaRules.treeRowSecondary, sp.deltaRules.treeRowTertiary];
+  const labelStyleByDepth = [sp.treeRow.primaryLabel, sp.treeRow.secondaryLabel, sp.treeRow.tertiaryLabel];
+
+  function totalOf(node: TreeNode): number {
+    const keys = Object.keys(node).filter(k => k !== '_score');
+    let sum = node._score ?? 0;
+    for (const k of keys) {
+      const child = node[k];
+      if (typeof child === 'object') sum += totalOf(child);
+    }
+    return sum;
+  }
+  function sumChildrenOf(node: TreeNode): number | undefined {
+    const keys = Object.keys(node).filter(k => k !== '_score');
+    if (keys.length === 0) return undefined;
+    const sum = keys.reduce((s, k) => {
+      const child = node[k];
+      return s + (typeof child === 'object' ? totalOf(child) : 0);
+    }, 0);
+    return Math.round(sum * 100) / 100;
+  }
+
+  function renderTreeNode(nodeId: string, node: TreeNode, path: string[], depth: number): React.ReactNode {
+    if (!node || typeof node !== 'object') return null;
+    const rowStyle = rowStyleByDepth[depth] ?? sp.deltaRules.treeRowTertiary;
+    const labelStyle = labelStyleByDepth[depth] ?? sp.treeRow.tertiaryLabel;
+    const childKeys = Object.keys(node).filter(k => k !== '_score');
+    const sumChildren = sumChildrenOf(node);
+    const parentId = path[path.length - 1];
+    const addGroups = buildAddMuscleDropdownGroups(parentId, musclesForDropdown, usedIds);
+    const addOptions = flattenAddMuscleGroupsToOptions(addGroups);
+    const hasAddOptions = addOptions.length > 0;
+    const nestStyle = depth === 0 ? sp.deltaRules.treeNestSecondaries : sp.deltaRules.treeNestTertiaries;
+
+    return (
+      <div key={nodeId} className={depth === 0 ? sp.deltaRules.treeItem : sp.deltaRules.treeItemFlat}>
+        <div className={rowStyle}>
+          <span className={labelStyle}>{getMuscleLabel(allMuscles, nodeId)}</span>
+          <MotionPathsScoreInput path={path} score={node._score ?? 0} sumChildren={sumChildren} allMuscles={allMuscles} onSetScore={setScore} />
+          <button type="button" onClick={() => removeKey(path)} className={sp.removeBtn.small}>×</button>
+        </div>
+        {(childKeys.length > 0 || hasAddOptions) && (
+          <div className={nestStyle}>
+            {childKeys.map(cId => renderTreeNode(cId, node[cId] as TreeNode, [...path, cId], depth + 1))}
+            {hasAddOptions && (
+              <MuscleSecondarySelect
+                options={addOptions}
+                onChange={v => addChild(path, v)}
+                className={sp.deltaRules.treeAddDropdown}
+                placeholder="+ Add child..."
+              />
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className={sp.deltaRules.treeContainer}>
-      {activePrimaries.map(pId => {
-        const pNode = tree[pId] as TreeNode;
-        if (!pNode || typeof pNode !== 'object') return null;
-        const pLabel = getMuscleLabel(allMuscles, pId);
-        const pScore = pNode._score ?? 0;
-        const sKeys = Object.keys(pNode).filter(k => k !== '_score');
-        const availSec = getSecondariesFor(pId).filter(s => !sKeys.includes(s.id));
-        const secondaryGroups = buildSecondaryMuscleDropdownGroups(musclesForDropdown, pId, usedIds);
-        const hasSecondaryOptions = secondaryGroups.some(grp => grp.options.length > 0);
-        const pSumChildren = sKeys.length > 0
-          ? Math.round(sKeys.reduce((acc, sId) => {
-              const sNode = pNode[sId] as TreeNode;
-              const tKeys = Object.keys(sNode).filter(k => k !== '_score');
-              const secondaryTotal = (sNode._score ?? 0) + tKeys.reduce((a, tId) => a + ((sNode[tId] as TreeNode)._score ?? 0), 0);
-              return acc + secondaryTotal;
-            }, 0) * 100) / 100
-          : undefined;
-
-        return (
-          <div key={pId} className={sp.deltaRules.treeItem}>
-            <div className={sp.deltaRules.treeRowPrimary}>
-              <span className={sp.treeRow.primaryLabel}>{pLabel}</span>
-              <MotionPathsScoreInput path={[pId]} score={pScore} sumChildren={pSumChildren} allMuscles={allMuscles} onSetScore={setScore} />
-              <button type="button" onClick={() => removeKey([pId])} className={sp.removeBtn.small}>×</button>
-            </div>
-            <div className={sp.deltaRules.treeNestSecondaries}>
-              {sKeys.map(sId => {
-                const sNode = pNode[sId] as TreeNode;
-                if (!sNode || typeof sNode !== 'object') return null;
-                const sLabel = getMuscleLabel(allMuscles, sId);
-                const sScore = sNode._score ?? 0;
-                const tKeys = Object.keys(sNode).filter(k => k !== '_score');
-                const availTer = getTertiariesFor(sId).filter(t => !tKeys.includes(t.id));
-                const sSumChildren = tKeys.length > 0
-                  ? Math.round(tKeys.reduce((acc, tId) => acc + ((sNode[tId] as TreeNode)._score ?? 0), 0) * 100) / 100
-                  : undefined;
-
-                return (
-                  <div key={sId} className={sp.deltaRules.treeItemFlat}>
-                    <div className={sp.deltaRules.treeRowSecondary}>
-                      <span className={sp.treeRow.secondaryLabel}>{sLabel}</span>
-                      <MotionPathsScoreInput path={[pId, sId]} score={sScore} sumChildren={sSumChildren} allMuscles={allMuscles} onSetScore={setScore} />
-                      <button type="button" onClick={() => removeKey([pId, sId])} className={sp.removeBtn.small}>×</button>
-                    </div>
-                    {(tKeys.length > 0 || availTer.length > 0) && (
-                      <div className={sp.deltaRules.treeNestTertiaries}>
-                        {tKeys.map(tId => {
-                          const tNode = sNode[tId] as TreeNode;
-                          const tScore = (tNode as TreeNode)?._score ?? 0;
-                          const tLabel = getMuscleLabel(allMuscles, tId);
-                          return (
-                            <div key={tId} className={sp.deltaRules.treeRowTertiary}>
-                              <span className={sp.treeRow.tertiaryLabel}>{tLabel}</span>
-                              <MotionPathsScoreInput path={[pId, sId, tId]} score={tScore} allMuscles={allMuscles} onSetScore={setScore} />
-                              <button type="button" onClick={() => removeKey([pId, sId, tId])} className={sp.removeBtn.small}>×</button>
-                            </div>
-                          );
-                        })}
-                        {availTer.length > 0 && (
-                          <select onChange={e => { if (e.target.value) addTertiary(pId, sId, e.target.value); e.target.value = ''; }}
-                            className={sp.deltaRules.treeAddDropdown} defaultValue="">
-                            <option value="">+ tertiary...</option>
-                            {availTer.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
-                          </select>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-              {(hasSecondaryOptions || availSec.length > 0) && (
-                hasSecondaryOptions ? (
-                  <MuscleSecondarySelect
-                    options={(secondaryGroups.find(g => g.options.length > 0) ?? secondaryGroups[0])?.options ?? []}
-                    onChange={v => addMuscleUnderPrimary(pId, v)}
-                    className={sp.deltaRules.treeAddDropdown}
-                    placeholder="+ secondary..."
-                  />
-                ) : (
-                  <select onChange={e => { if (e.target.value) addSecondary(pId, e.target.value); e.target.value = ''; }}
-                    className={sp.deltaRules.treeAddDropdown} defaultValue="">
-                    <option value="">+ secondary...</option>
-                    {availSec.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
-                  </select>
-                )
-              )}
-            </div>
-          </div>
-        );
-      })}
+      {activePrimaries.map(pId => renderTreeNode(pId, tree[pId] as TreeNode, [pId], 0))}
       {hasPrimaryOptions && (
-        <select onChange={e => { if (e.target.value) addMuscleByPath(e.target.value); e.target.value = ''; }}
-          className={sp.deltaRules.treeAddDropdown} defaultValue="">
-          <option value="">+ muscle group...</option>
-          {primaryDropdownGroups.map(grp => (
-            <optgroup key={grp.groupLabel} label={grp.groupLabel}>
-              {grp.options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </optgroup>
-          ))}
-        </select>
+        <MuscleSecondarySelect
+          options={primaryOptionsFlattened}
+          onChange={addMuscleByPath}
+          className={sp.deltaRules.treeAddDropdown}
+          placeholder="+ muscle group..."
+        />
       )}
     </div>
   );

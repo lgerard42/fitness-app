@@ -14,8 +14,10 @@ export interface MuscleForDropdown {
 export interface MuscleDropdownOption {
   value: string;
   label: string;
-  /** For secondary dropdown only: 1 = secondary (show bold), 2 = tertiary (show indented). */
-  depth?: 1 | 2;
+  /** Relative depth in this dropdown: 0 = group level (or first in group), 1 = one level nested. Used for indent/bold styling. */
+  depth?: number;
+  /** When true, option is shown for grouping but not selectable (e.g. is_scorable = false or already in tree). */
+  disabled?: boolean;
 }
 
 export interface MuscleDropdownGroup {
@@ -45,117 +47,69 @@ function getRootId(muscleId: string, muscles: Map<string, MuscleForDropdown>): s
   return getRootId(pids[0], muscles);
 }
 
-/** Collect all descendant ids under a root (depth-first). */
-function collectUnderRoot(
-  rootId: string,
-  muscles: Map<string, MuscleForDropdown>,
-  childrenOf: Map<string, string[]>
-): string[] {
-  const out: string[] = [];
-  const queue = [rootId];
-  while (queue.length > 0) {
-    const id = queue.shift()!;
-    out.push(id);
-    for (const cid of childrenOf.get(id) || []) {
-      queue.push(cid);
-    }
-  }
-  return out;
-}
-
-/** Depth relative to root: 0 = root, 1 = secondary, 2 = tertiary. */
+/** Depth relative to root (0 = root, 1 = child of root, etc.). Cycle-safe. */
 function depthUnderRoot(
   mid: string,
   rootId: string,
   muscleMap: Map<string, MuscleForDropdown>
-): 0 | 1 | 2 {
+): number {
   if (mid === rootId) return 0;
-  const m = muscleMap.get(mid);
-  const pids = m ? parseParentIds(m) : [];
-  if (pids.length === 0) return 0;
-  const parent = muscleMap.get(pids[0]);
-  const parentPids = parent ? parseParentIds(parent) : [];
-  if (parentPids.length === 0) return 1;
-  return 2;
+  const visited = new Set<string>();
+  let current: string | undefined = mid;
+  let depth = 0;
+  while (current && !visited.has(current)) {
+    visited.add(current);
+    depth++;
+    const m = muscleMap.get(current);
+    const pids = m ? parseParentIds(m) : [];
+    if (pids.length === 0) return 0;
+    current = pids[0];
+    if (current === rootId) return depth;
+  }
+  return 0;
 }
 
-/** If tertiary, returns secondary (parent) id; if secondary, returns self; if primary, returns null. */
-function secondaryIdUnderRoot(
+/** Immediate parent id of this node under root (parent in chain toward rootId); null if root. */
+function parentIdUnderRoot(
   mid: string,
   rootId: string,
   muscleMap: Map<string, MuscleForDropdown>
 ): string | null {
-  const d = depthUnderRoot(mid, rootId, muscleMap);
-  if (d === 0) return null;
-  if (d === 1) return mid;
+  if (mid === rootId) return null;
   const m = muscleMap.get(mid);
   const pids = m ? parseParentIds(m) : [];
   return pids.length > 0 ? pids[0] : null;
 }
 
 /**
- * Build options for one root: group tertiaries under their parent secondary, indent tertiaries, sort alphabetically.
+ * Collect one option for nodeId at the given depth, then recursively all descendants with depth+1.
+ * Used to build a full tree of options under each group.
  */
-function buildOptionsForRoot(
-  rootId: string,
-  muscleMap: Map<string, MuscleForDropdown>,
+function collectDescendantsWithDepth(
+  nodeId: string,
+  depth: number,
   childrenOf: Map<string, string[]>,
-  excludeIds: Set<string>
+  getLabel: (id: string) => string,
+  disabled: (id: string) => boolean
 ): MuscleDropdownOption[] {
-  const idsUnderRoot = collectUnderRoot(rootId, muscleMap, childrenOf);
-  const scorableIds = idsUnderRoot.filter(mid => {
-    if (excludeIds.has(mid)) return false;
-    return muscleMap.get(mid)?.is_scorable !== false;
-  });
-
-  const primaryOpt: MuscleDropdownOption[] = [];
-  const bySecondary = new Map<string, string[]>();
-
-  for (const mid of scorableIds) {
-    const d = depthUnderRoot(mid, rootId, muscleMap);
-    const label = muscleMap.get(mid)?.label ?? mid;
-    if (d === 0) {
-      primaryOpt.push({ value: mid, label });
-      continue;
-    }
-    if (d === 1) {
-      if (!bySecondary.has(mid)) bySecondary.set(mid, []);
-      bySecondary.get(mid)!.push(mid);
-      continue;
-    }
-    const sId = secondaryIdUnderRoot(mid, rootId, muscleMap);
-    if (sId != null) {
-      if (!bySecondary.has(sId)) bySecondary.set(sId, []);
-      bySecondary.get(sId)!.push(mid);
-    }
+  const options: MuscleDropdownOption[] = [
+    { value: nodeId, label: getLabel(nodeId), depth, disabled: disabled(nodeId) },
+  ];
+  const children = (childrenOf.get(nodeId) || []).slice().sort((a, b) => getLabel(a).localeCompare(getLabel(b)));
+  for (const cid of children) {
+    options.push(...collectDescendantsWithDepth(cid, depth + 1, childrenOf, getLabel, disabled));
   }
-
-  const options: MuscleDropdownOption[] = [...primaryOpt];
-
-  const secondaryIds = Array.from(bySecondary.keys());
-  secondaryIds.sort((a, b) => (muscleMap.get(a)?.label ?? a).localeCompare(muscleMap.get(b)?.label ?? b));
-
-  for (const sId of secondaryIds) {
-    const list = bySecondary.get(sId)!;
-    const secondary = list.find(mid => mid === sId);
-    const tertiaries = list.filter(mid => mid !== sId);
-    tertiaries.sort((a, b) => (muscleMap.get(a)?.label ?? a).localeCompare(muscleMap.get(b)?.label ?? b));
-
-    if (secondary != null) options.push({ value: sId, label: muscleMap.get(sId)?.label ?? sId });
-    for (const tId of tertiaries) {
-      options.push({ value: tId, label: `  ${muscleMap.get(tId)?.label ?? tId}` });
-    }
-  }
-
   return options;
 }
 
 /**
- * Build groups for the primary (outermost) dropdown: all muscles grouped by root.
- * Within each root: secondaries and tertiaries grouped (tertiaries indented under secondary), all sorted alphabetically.
- * excludeIds: muscle ids already in the tree (e.g. already added).
+ * Unified add-muscle dropdown: recursive grouping with all relative children at all depths.
+ * - At root (parentId null): groups = roots (depth 0), options under each = all descendants of that root (depth 0, 1, 2, ...).
+ * - At any node (parentId set): groups = direct children (relative depth 1), options = [that child] (depth 0) + all its descendants (depth 1, 2, ...).
+ * Includes is_scorable = false for grouping; they are marked disabled and not clickable.
  */
-export function buildPrimaryMuscleDropdownGroups(
+export function buildAddMuscleDropdownGroups(
+  parentId: string | null,
   allMuscles: MuscleForDropdown[],
   excludeIds: Set<string>
 ): MuscleDropdownGroup[] {
@@ -175,95 +129,69 @@ export function buildPrimaryMuscleDropdownGroups(
     }
   }
 
-  rootIds.sort((a, b) => (muscleMap.get(a)?.label ?? a).localeCompare(muscleMap.get(b)?.label ?? b));
+  const getLabel = (id: string) => muscleMap.get(id)?.label ?? id;
+  const disabled = (id: string) => muscleMap.get(id)?.is_scorable === false || excludeIds.has(id);
 
+  function sortIds(ids: string[]) {
+    return ids.slice().sort((a, b) => getLabel(a).localeCompare(getLabel(b)));
+  }
+
+  if (parentId === null) {
+    rootIds.sort((a, b) => getLabel(a).localeCompare(getLabel(b)));
+    const groups: MuscleDropdownGroup[] = [];
+    for (const rid of rootIds) {
+      const groupLabel = getLabel(rid);
+      const directChildren = sortIds(childrenOf.get(rid) || []);
+      const options: MuscleDropdownOption[] = [];
+      for (const cid of directChildren) {
+        options.push(...collectDescendantsWithDepth(cid, 0, childrenOf, getLabel, disabled));
+      }
+      groups.push({ groupLabel, options });
+    }
+    return groups;
+  }
+
+  const directChildren = sortIds(childrenOf.get(parentId) || []);
   const groups: MuscleDropdownGroup[] = [];
-  for (const rid of rootIds) {
-    const root = muscleMap.get(rid);
-    const groupLabel = root?.label ?? rid;
-    const options = buildOptionsForRoot(rid, muscleMap, childrenOf, excludeIds);
-    if (options.length > 0) groups.push({ groupLabel, options });
+  for (const cid of directChildren) {
+    const groupLabel = getLabel(cid);
+    const options = collectDescendantsWithDepth(cid, 0, childrenOf, getLabel, disabled);
+    groups.push({ groupLabel, options });
   }
   return groups;
 }
 
 /**
- * Build options for the secondary dropdown only: no primary (current level).
- * Top level = secondaries (depth 1, render bold). Under each = tertiaries (depth 2, indented). Sorted alphabetically.
+ * Build groups for the primary (outermost) dropdown: all muscles grouped by root.
+ * Uses unified recursive grouping; includes non-scorable as disabled.
  */
-function buildOptionsForSecondaryDropdown(
-  rootId: string,
-  muscleMap: Map<string, MuscleForDropdown>,
-  childrenOf: Map<string, string[]>,
+export function buildPrimaryMuscleDropdownGroups(
+  allMuscles: MuscleForDropdown[],
   excludeIds: Set<string>
-): MuscleDropdownOption[] {
-  const idsUnderRoot = collectUnderRoot(rootId, muscleMap, childrenOf);
-  const scorableIds = idsUnderRoot.filter(mid => {
-    if (excludeIds.has(mid)) return false;
-    return muscleMap.get(mid)?.is_scorable !== false;
-  });
-
-  const bySecondary = new Map<string, string[]>();
-
-  for (const mid of scorableIds) {
-    const d = depthUnderRoot(mid, rootId, muscleMap);
-    if (d === 0) continue;
-    if (d === 1) {
-      if (!bySecondary.has(mid)) bySecondary.set(mid, []);
-      bySecondary.get(mid)!.push(mid);
-      continue;
-    }
-    const sId = secondaryIdUnderRoot(mid, rootId, muscleMap);
-    if (sId != null) {
-      if (!bySecondary.has(sId)) bySecondary.set(sId, []);
-      bySecondary.get(sId)!.push(mid);
-    }
-  }
-
-  const options: MuscleDropdownOption[] = [];
-  const secondaryIds = Array.from(bySecondary.keys());
-  secondaryIds.sort((a, b) => (muscleMap.get(a)?.label ?? a).localeCompare(muscleMap.get(b)?.label ?? b));
-
-  for (const sId of secondaryIds) {
-    const list = bySecondary.get(sId)!;
-    const secondary = list.find(mid => mid === sId);
-    const tertiaries = list.filter(mid => mid !== sId);
-    tertiaries.sort((a, b) => (muscleMap.get(a)?.label ?? a).localeCompare(muscleMap.get(b)?.label ?? b));
-
-    if (secondary != null) {
-      options.push({ value: sId, label: muscleMap.get(sId)?.label ?? sId, depth: 1 });
-    }
-    for (const tId of tertiaries) {
-      options.push({ value: tId, label: muscleMap.get(tId)?.label ?? tId, depth: 2 });
-    }
-  }
-
-  return options;
+): MuscleDropdownGroup[] {
+  return buildAddMuscleDropdownGroups(null, allMuscles, excludeIds);
 }
 
 /**
- * Build groups for the secondary dropdown: only muscles under the given primary (root) id.
- * Excludes the primary (current level). Secondaries at top level (depth 1), tertiaries indented under (depth 2). Sorted alphabetically.
+ * Build groups for the "add under this node" dropdown: only muscles under the given parent id.
+ * Uses unified recursive grouping (relative depth 1 as groups, depth 2 nested); includes non-scorable as disabled.
  */
 export function buildSecondaryMuscleDropdownGroups(
   allMuscles: MuscleForDropdown[],
   primaryId: string,
   excludeIds: Set<string>
 ): MuscleDropdownGroup[] {
-  const muscleMap = new Map<string, MuscleForDropdown>();
-  const childrenOf = new Map<string, string[]>();
-  for (const m of allMuscles) {
-    muscleMap.set(m.id, m);
-    const pids = parseParentIds(m);
-    if (pids.length > 0) {
-      const pid = pids[0];
-      if (!childrenOf.has(pid)) childrenOf.set(pid, []);
-      childrenOf.get(pid)!.push(m.id);
-    }
+  return buildAddMuscleDropdownGroups(primaryId, allMuscles, excludeIds);
+}
+
+/**
+ * Flatten buildAddMuscleDropdownGroups result to a single options array for MuscleSecondarySelect.
+ * Relative depth 0 = group-level (bold), depth 1+ = indented by depth. Disabled options are included.
+ */
+export function flattenAddMuscleGroupsToOptions(groups: MuscleDropdownGroup[]): MuscleDropdownOption[] {
+  const out: MuscleDropdownOption[] = [];
+  for (const grp of groups) {
+    for (const opt of grp.options) out.push(opt);
   }
-  const root = muscleMap.get(primaryId);
-  const groupLabel = root?.label ?? primaryId;
-  const options = buildOptionsForSecondaryDropdown(primaryId, muscleMap, childrenOf, excludeIds);
-  if (options.length === 0) return [];
-  return [{ groupLabel, options }];
+  return out;
 }
