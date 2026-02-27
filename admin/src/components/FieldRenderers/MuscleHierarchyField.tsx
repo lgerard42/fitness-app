@@ -136,6 +136,20 @@ export default function MuscleHierarchyField({ tableKey, currentRecordId, onFiel
     }
   }, [allMuscles, notifyFieldsChange]);
 
+  // Set parent of current record (for primary muscles: make this muscle a child of another)
+  const setParentOfCurrent = useCallback(async (parentId: string) => {
+    if (!currentRecordId || !parentId) return;
+    const newParentIds = [parentId];
+    try {
+      await api.updateRow('muscles', currentRecordId, { parent_ids: newParentIds });
+      const updated = allMuscles.map(m => m.id === currentRecordId ? { ...m, parent_ids: newParentIds } : m);
+      setAllMuscles(updated);
+      notifyFieldsChange(updated);
+    } catch (err) {
+      console.error('Failed to set parent:', err);
+    }
+  }, [currentRecordId, allMuscles, notifyFieldsChange]);
+
   // Create a new child muscle under a given parent
   const createChild = useCallback(async (parentId: string, newData: Record<string, unknown>) => {
     try {
@@ -217,8 +231,42 @@ export default function MuscleHierarchyField({ tableKey, currentRecordId, onFiel
     return <div className={sp.muscleHierarchy.loading}>Loading muscle data...</div>;
   }
 
+  // Other primaries (for "Make child of" when current is primary)
+  const otherPrimaries = useMemo(() => {
+    if (!currentRecord || currentTier !== 'primary') return [];
+    return primaries.filter(p => p.id !== currentRecord.id);
+  }, [currentRecord, currentTier, primaries]);
+
   return (
     <div className={sp.muscleHierarchy.container}>
+      {/* Primary: option to assign this muscle to a parent (make it a child of another muscle) */}
+      {currentTier === 'primary' && currentRecord && otherPrimaries.length > 0 && (
+        <div className={sp.muscleHierarchy.card}>
+          <div className={`${sp.muscleHierarchy.header} ${sp.muscleHierarchy.headerExpanded}`}>
+            <span className="text-xs text-gray-600 font-medium">This muscle has no parent. Make it a child of:</span>
+            <div className="flex items-center gap-2 flex-1 flex-wrap mt-1">
+              <select
+                id="set-parent-primary-dropdown"
+                className={sp.muscleHierarchy.addDropdown}
+                defaultValue=""
+                onChange={async (e) => {
+                  const parentId = e.target.value;
+                  if (parentId) {
+                    await setParentOfCurrent(parentId);
+                    e.target.value = '';
+                  }
+                }}
+              >
+                <option value="">Choose parent muscle...</option>
+                {otherPrimaries.map(p => (
+                  <option key={p.id} value={p.id}>{p.label} ({p.id})</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Primary: list of secondaries with nested tertiaries */}
       {currentTier === 'primary' && currentRecord && hierarchyItems.map((item) => {
         if (item.type !== 'primary-view') return null;

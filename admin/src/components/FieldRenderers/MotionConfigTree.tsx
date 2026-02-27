@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { api } from '../../api';
 import { sp } from '../../styles/sidePanelStyles';
+import { filterScorableOnly, isMuscleScorable, getScorableMuscles } from '../../utils/muscleScorable';
 
 type MotionTableKey = 'motions';
 
@@ -176,8 +177,8 @@ function MuscleTargetsSubtree({
   );
 
   const setScore = (muscleId: string, score: number) => {
-    if (readOnly || !onChange || isNaN(score)) return;
-    onChange({ ...flat, [muscleId]: score });
+    if (readOnly || !onChange || isNaN(score) || !isMuscleScorable(allMuscles, muscleId)) return;
+    onChange(filterScorableOnly({ ...flat, [muscleId]: score }, allMuscles) as unknown as Record<string, unknown>);
   };
 
   const removeMuscle = (id: string) => {
@@ -188,31 +189,34 @@ function MuscleTargetsSubtree({
       for (const kid of childrenOf.get(mid) || []) { if (kid in nf) removeRec(kid); }
     }
     removeRec(id);
-    onChange(nf);
+    onChange(filterScorableOnly(nf, allMuscles) as unknown as Record<string, unknown>);
   };
 
   const addMuscle = (id: string) => {
-    if (readOnly || !onChange || id in flat) return;
-    onChange({ ...flat, [id]: 0 });
+    if (readOnly || !onChange || id in flat || !isMuscleScorable(allMuscles, id)) return;
+    onChange(filterScorableOnly({ ...flat, [id]: 0 }, allMuscles) as unknown as Record<string, unknown>);
   };
 
   const getAvailableChildren = (parentId: string): MuscleOption[] =>
-    (childrenOf.get(parentId) || [])
-      .map(cid => muscleMap.get(cid))
-      .filter((m): m is Record<string, unknown> => !!m && !(m.id as string in flat))
-      .map(m => ({ id: m.id as string, label: m.label as string }));
+    getScorableMuscles(
+      (childrenOf.get(parentId) || [])
+        .map(cid => muscleMap.get(cid))
+        .filter((m): m is Record<string, unknown> => !!m && !(m.id as string in flat))
+    ).map(m => ({ id: m.id as string, label: m.label as string }));
 
   const unusedRoots = useMemo(() => {
     const used = new Set(displayTree.map(n => n.id));
-    return rootIds
-      .map(id => muscleMap.get(id))
-      .filter((m): m is Record<string, unknown> => !!m && !used.has(m.id as string))
-      .map(m => ({ id: m.id as string, label: m.label as string }));
-  }, [displayTree, rootIds, muscleMap]);
+    return getScorableMuscles(
+      rootIds
+        .map(id => muscleMap.get(id))
+        .filter((m): m is Record<string, unknown> => !!m && !used.has(m.id as string))
+    ).map(m => ({ id: m.id as string, label: m.label as string }));
+  }, [displayTree, rootIds, muscleMap, allMuscles]);
 
   const ScoreInput = ({ muscleId, currentScore, isComputed }: { muscleId: string; currentScore: number; isComputed?: boolean }) => {
     const [localValue, setLocalValue] = useState(String(currentScore));
     const [isFocused, setIsFocused] = useState(false);
+    const scorable = isMuscleScorable(allMuscles, muscleId);
 
     useEffect(() => { if (!isFocused) setLocalValue(String(currentScore)); }, [currentScore, isFocused]);
 
@@ -244,6 +248,12 @@ function MuscleTargetsSubtree({
       return (
         <span className={isComputed ? sp.scoreInput.computed : sp.scoreInput.readOnly}
           title={isComputed ? 'Auto-computed from children' : undefined}>{currentScore}</span>
+      );
+    }
+
+    if (!scorable) {
+      return (
+        <span className={sp.scoreInput.readOnly} title="Not scorable">{currentScore}</span>
       );
     }
 

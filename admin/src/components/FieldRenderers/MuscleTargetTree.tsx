@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../../api';
+import { filterScorableOnly, isMuscleScorable, getScorableMuscles } from '../../utils/muscleScorable';
 
 interface MuscleTargetTreeProps {
   value: Record<string, number>;
@@ -14,6 +15,7 @@ interface MuscleDef {
   id: string;
   label: string;
   parent_ids: string[];
+  is_scorable?: boolean;
 }
 
 interface DisplayNode {
@@ -44,6 +46,7 @@ export default function MuscleTargetTree({ value, onChange, compact = false, alw
         id: m.id as string,
         label: m.label as string,
         parent_ids: parsePids(m),
+        is_scorable: m.is_scorable as boolean | undefined,
       }));
       setAllMuscles(muscles);
     }).catch(console.error);
@@ -125,13 +128,13 @@ export default function MuscleTargetTree({ value, onChange, compact = false, alw
     setExpanded(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
 
   const setScore = (muscleId: string, score: number) => {
-    if (isNaN(score)) return;
-    onChange({ ...flat, [muscleId]: score });
+    if (isNaN(score) || !isMuscleScorable(allMuscles, muscleId)) return;
+    onChange(filterScorableOnly({ ...flat, [muscleId]: score }, allMuscles));
   };
 
   const addMuscle = (id: string) => {
-    if (id in flat) return;
-    onChange({ ...flat, [id]: 0 });
+    if (id in flat || !isMuscleScorable(allMuscles, id)) return;
+    onChange(filterScorableOnly({ ...flat, [id]: 0 }, allMuscles));
   };
 
   const removeMuscle = (id: string) => {
@@ -143,24 +146,29 @@ export default function MuscleTargetTree({ value, onChange, compact = false, alw
       }
     }
     removeRec(id);
-    onChange(newFlat);
+    onChange(filterScorableOnly(newFlat, allMuscles));
   };
 
   const getAvailableChildren = (parentId: string): MuscleDef[] =>
-    (childrenOf.get(parentId) || [])
-      .map(cid => muscleMap.get(cid))
-      .filter((m): m is MuscleDef => !!m && !(m.id in flat));
+    getScorableMuscles(
+      (childrenOf.get(parentId) || [])
+        .map(cid => muscleMap.get(cid))
+        .filter((m): m is MuscleDef => !!m && !(m.id in flat))
+    );
 
   const unusedRoots = useMemo(() => {
     const usedRoots = new Set(displayTree.map(n => n.id));
-    return rootIds
-      .map(id => muscleMap.get(id))
-      .filter((m): m is MuscleDef => !!m && !usedRoots.has(m.id));
-  }, [displayTree, rootIds, muscleMap]);
+    return getScorableMuscles(
+      rootIds
+        .map(id => muscleMap.get(id))
+        .filter((m): m is MuscleDef => !!m && !usedRoots.has(m.id))
+    );
+  }, [displayTree, rootIds, muscleMap, allMuscles]);
 
   const ScoreInput = ({ muscleId, currentScore, isComputed }: { muscleId: string; currentScore: number; isComputed?: boolean }) => {
     const [localValue, setLocalValue] = useState(String(currentScore));
     const [isFocused, setIsFocused] = useState(false);
+    const scorable = isMuscleScorable(allMuscles, muscleId);
 
     useEffect(() => {
       if (!isFocused) setLocalValue(String(currentScore));
@@ -172,6 +180,12 @@ export default function MuscleTargetTree({ value, onChange, compact = false, alw
       return (
         <span className={`${inputSize} bg-gray-100 rounded text-center text-gray-500 italic inline-block`}
           title="Auto-computed from children">{currentScore}</span>
+      );
+    }
+    if (!scorable) {
+      return (
+        <span className={`${inputSize} bg-gray-100 rounded text-center text-gray-500 inline-block`}
+          title="Not scorable">{currentScore}</span>
       );
     }
     return (

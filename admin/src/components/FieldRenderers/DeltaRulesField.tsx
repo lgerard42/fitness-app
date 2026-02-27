@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom';
 import { api } from '../../api';
 import { sp } from '../../styles/sidePanelStyles';
+import { filterScorableOnly, isMuscleScorable, getScorableMuscles } from '../../utils/muscleScorable';
 
 interface DeltaRulesFieldProps {
   value: Record<string, Record<string, number> | "inherit"> | null | undefined;
@@ -18,6 +19,7 @@ interface MuscleRecord {
   id: string;
   label: string;
   parent_ids?: string[];
+  is_scorable?: boolean;
   [key: string]: unknown;
 }
 
@@ -287,21 +289,23 @@ function DeltaMuscleTree({
   const tree = useMemo(() => buildTreeFromFlat(delta, allMuscles), [delta, allMuscles]);
 
   const primaryMuscles = useMemo(() =>
-    allMuscles.filter(m => !m.parent_ids || m.parent_ids.length === 0).map(m => ({ id: m.id, label: m.label })),
+    getScorableMuscles(allMuscles.filter(m => !m.parent_ids || m.parent_ids.length === 0)).map(m => ({ id: m.id, label: m.label })),
     [allMuscles]
   );
   const getSecondariesFor = (pId: string) =>
-    allMuscles.filter(m => m.parent_ids && m.parent_ids.includes(pId)).map(m => ({ id: m.id, label: m.label }));
+    getScorableMuscles(allMuscles.filter(m => m.parent_ids && m.parent_ids.includes(pId))).map(m => ({ id: m.id, label: m.label }));
   const getTertiariesFor = (sId: string) =>
-    allMuscles.filter(m => m.parent_ids && m.parent_ids.includes(sId)).map(m => ({ id: m.id, label: m.label }));
+    getScorableMuscles(allMuscles.filter(m => m.parent_ids && m.parent_ids.includes(sId))).map(m => ({ id: m.id, label: m.label }));
 
   const save = (newTree: TreeNode) => {
     recomputeScores(newTree);
-    onSave(motionId, flattenTree(newTree));
+    onSave(motionId, filterScorableOnly(flattenTree(newTree), allMuscles));
   };
 
   const setScore = (path: string[], score: number) => {
     if (isNaN(score)) return;
+    const muscleId = path[path.length - 1];
+    if (!isMuscleScorable(allMuscles, muscleId)) return;
     const nd: TreeNode = JSON.parse(JSON.stringify(tree));
     let node: TreeNode = nd;
     for (const key of path) {
@@ -353,6 +357,8 @@ function DeltaMuscleTree({
   const ScoreInput = ({ path, score, computed }: { path: string[]; score: number; computed?: boolean }) => {
     const [localValue, setLocalValue] = useState<string>(String(score));
     const [isFocused, setIsFocused] = useState(false);
+    const muscleId = path[path.length - 1];
+    const scorable = isMuscleScorable(allMuscles, muscleId);
 
     useEffect(() => {
       if (!isFocused) setLocalValue(String(score));
@@ -362,6 +368,12 @@ function DeltaMuscleTree({
       return (
         <span className={sp.scoreInput.computed}
           title="Auto-computed from children">{score}</span>
+      );
+    }
+
+    if (!scorable) {
+      return (
+        <span className={sp.scoreInput.readOnly} title="Not scorable">{score}</span>
       );
     }
 
@@ -590,10 +602,11 @@ export default function DeltaRulesField({ value, onChange }: DeltaRulesFieldProp
 
   const updateMotionDelta = (motionId: string, newDelta: Record<string, number>) => {
     const next = { ...deltaRules };
-    if (Object.keys(newDelta).length === 0) {
+    const filtered = filterScorableOnly(newDelta, allMuscles);
+    if (Object.keys(filtered).length === 0) {
       delete next[motionId];
     } else {
-      next[motionId] = newDelta;
+      next[motionId] = filtered;
     }
     onChange(next);
   };

@@ -4,6 +4,7 @@ import { api, type TableSchema } from '../../api';
 import toast from 'react-hot-toast';
 import { findRootMuscleId, asFlatMuscleTargets } from '../../../../shared/utils/muscleGrouping';
 import MatrixV2ConfigPanel from './MatrixV2ConfigPanel';
+import { filterScorableOnly, isMuscleScorable, getScorableMuscles } from '../../utils/muscleScorable';
 
 interface MotionDeltaMatrixProps {
   schemas: TableSchema[];
@@ -22,6 +23,7 @@ interface MuscleRecord {
   id: string;
   label: string;
   parent_ids?: string[];
+  is_scorable?: boolean;
   [key: string]: unknown;
 }
 
@@ -284,12 +286,13 @@ function InlineDeltaEditor({
   onSave: (newDelta: Record<string, number>) => void;
 }) {
   const tree = useMemo(() => buildTreeFromFlat(delta, allMuscles), [delta, allMuscles]);
-  const primaries = allMuscles.filter(m => !m.parent_ids || m.parent_ids.length === 0);
-  const getSecondariesFor = (pId: string) => allMuscles.filter(m => m.parent_ids && m.parent_ids.includes(pId));
-  const getTertiariesFor = (sId: string) => allMuscles.filter(m => m.parent_ids && m.parent_ids.includes(sId));
+  const primaries = getScorableMuscles(allMuscles.filter(m => !m.parent_ids || m.parent_ids.length === 0));
+  const getSecondariesFor = (pId: string) => getScorableMuscles(allMuscles.filter(m => m.parent_ids && m.parent_ids.includes(pId)));
+  const getTertiariesFor = (sId: string) => getScorableMuscles(allMuscles.filter(m => m.parent_ids && m.parent_ids.includes(sId)));
 
   const updateScore = (muscleId: string, value: number) => {
-    onSave({ ...delta, [muscleId]: value });
+    if (!isMuscleScorable(allMuscles, muscleId)) return;
+    onSave(filterScorableOnly({ ...delta, [muscleId]: value }, allMuscles));
   };
 
   const removeMuscle = (muscleId: string) => {
@@ -301,11 +304,12 @@ function InlineDeltaEditor({
       const grandchildren = allMuscles.filter(m => m.parent_ids && m.parent_ids.includes(c.id));
       for (const gc of grandchildren) delete newFlat[gc.id];
     }
-    onSave(newFlat);
+    onSave(filterScorableOnly(newFlat, allMuscles));
   };
 
   const addMuscle = (muscleId: string) => {
-    onSave({ ...delta, [muscleId]: 0 });
+    if (!isMuscleScorable(allMuscles, muscleId)) return;
+    onSave(filterScorableOnly({ ...delta, [muscleId]: 0 }, allMuscles));
   };
 
   const pKeys = Object.keys(tree).filter(k => k !== '_score');
@@ -330,6 +334,8 @@ function InlineDeltaEditor({
               <span className="text-[10px] font-semibold text-gray-700">{pLabel}</span>
               {pIsComputed ? (
                 <span className="text-[10px] text-gray-400 italic ml-auto" title="Auto-computed from children">{pNode._score}</span>
+              ) : !isMuscleScorable(allMuscles, pId) ? (
+                <span className="text-[10px] text-gray-500 ml-auto" title="Not scorable">{pNode._score}</span>
               ) : (
                 <input
                   type="number"
@@ -356,6 +362,8 @@ function InlineDeltaEditor({
                         <span className="text-[10px] text-gray-600">{sLabel}</span>
                         {sIsComputed ? (
                           <span className="text-[10px] text-gray-400 italic" title="Auto-computed from children">{sNode._score}</span>
+                        ) : !isMuscleScorable(allMuscles, sId) ? (
+                          <span className="text-[10px] text-gray-500" title="Not scorable">{sNode._score}</span>
                         ) : (
                           <input
                             type="number"
@@ -375,13 +383,17 @@ function InlineDeltaEditor({
                             return (
                               <div key={tId} className="flex items-center gap-1.5">
                                 <span className="text-[10px] text-gray-500">{tLabel}</span>
-                                <input
-                                  type="number"
-                                  value={tNode._score}
-                                  onChange={e => updateScore(tId, parseFloat(e.target.value) || 0)}
-                                  className="w-14 text-[10px] border border-gray-300 rounded px-0.5 py-0 text-right"
-                                  step="0.1"
-                                />
+                                {!isMuscleScorable(allMuscles, tId) ? (
+                                  <span className="text-[10px] text-gray-500" title="Not scorable">{tNode._score}</span>
+                                ) : (
+                                  <input
+                                    type="number"
+                                    value={tNode._score}
+                                    onChange={e => updateScore(tId, parseFloat(e.target.value) || 0)}
+                                    className="w-14 text-[10px] border border-gray-300 rounded px-0.5 py-0 text-right"
+                                    step="0.1"
+                                  />
+                                )}
                                 <button onClick={() => removeMuscle(tId)} className="text-red-400 hover:text-red-600 text-[10px] ml-auto">×</button>
                               </div>
                             );

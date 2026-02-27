@@ -264,7 +264,7 @@ Benefits:
 - `sort_order`
 - `icon`
 - `is_active`
-- `is_scorable` — boolean (default true); whether this muscle is included in scoring
+- `is_scorable` — boolean (default true); whether this muscle is included in scoring. When **false**, the admin muscle tree builders (muscle_targets and delta_rules editors) show the muscle in the tree but do not allow the user to assign or edit a score for it; "add muscle" dropdowns exclude it; and its id must not appear in any persisted `muscle_targets` or `delta_rules` object. The tree layout is unchanged; only input capability and persisted data are restricted.
 - `is_default` — boolean (default true); whether this muscle is a default option in admin/UI
 - `is_advanced` — boolean (default false); whether this muscle is shown only in advanced views
 
@@ -285,6 +285,8 @@ Benefits:
 `muscles` provides the valid keyspace for:
 - `motions.muscle_targets`
 - modifier `delta_rules`
+
+Only muscles with `is_scorable !== false` may appear as keys in those JSON objects. The admin app enforces this in every muscle tree builder (MuscleTargetTree, MotionConfigTree, DeltaRulesField, MotionPathsField, DeltaBranchCard, Motion Delta Matrix InlineDeltaEditor): non-scorable muscles are shown read-only and are stripped from the payload on save.
 
 ---
 

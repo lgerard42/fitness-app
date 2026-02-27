@@ -2,11 +2,13 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { api } from '../../api';
 import type { DeltaRules, ModifierRow, Motion } from '../../../../shared/types';
 import { resolveSingleDelta } from '../../../../shared/scoring/resolveDeltas';
+import { filterScorableOnly, isMuscleScorable, getScorableMuscles } from '../../utils/muscleScorable';
 
 interface MuscleRecord {
   id: string;
   label: string;
   parent_ids?: string[];
+  is_scorable?: boolean;
 }
 
 interface DeltaBranchCardProps {
@@ -131,9 +133,10 @@ export default function DeltaBranchCard({
   };
 
   const handleScoreChange = (muscleId: string, value: number) => {
+    if (!isMuscleScorable(allMuscles, muscleId)) return;
     const current = typeof currentEntry === 'object' && currentEntry !== null ? { ...currentEntry as Record<string, number> } : {};
     current[muscleId] = value;
-    onDeltaChange(tableKey, rowId, current);
+    onDeltaChange(tableKey, rowId, filterScorableOnly(current, allMuscles));
   };
 
   const handleRemoveMuscle = (muscleId: string) => {
@@ -145,18 +148,19 @@ export default function DeltaBranchCard({
       const grandchildren = allMuscles.filter(m => m.parent_ids && m.parent_ids.includes(c.id));
       for (const gc of grandchildren) delete current[gc.id];
     }
-    onDeltaChange(tableKey, rowId, current);
+    onDeltaChange(tableKey, rowId, filterScorableOnly(current, allMuscles));
   };
 
   const handleAddMuscle = (muscleId: string) => {
+    if (!isMuscleScorable(allMuscles, muscleId)) return;
     const current = typeof currentEntry === 'object' && currentEntry !== null ? { ...currentEntry as Record<string, number> } : {};
     current[muscleId] = 0;
-    onDeltaChange(tableKey, rowId, current);
+    onDeltaChange(tableKey, rowId, filterScorableOnly(current, allMuscles));
   };
 
-  const primaryMuscles = useMemo(() => allMuscles.filter(m => !m.parent_ids || m.parent_ids.length === 0), [allMuscles]);
-  const getSecondariesFor = (pId: string) => allMuscles.filter(m => m.parent_ids && m.parent_ids.includes(pId));
-  const getTertiariesFor = (sId: string) => allMuscles.filter(m => m.parent_ids && m.parent_ids.includes(sId));
+  const primaryMuscles = useMemo(() => getScorableMuscles(allMuscles.filter(m => !m.parent_ids || m.parent_ids.length === 0)), [allMuscles]);
+  const getSecondariesFor = (pId: string) => getScorableMuscles(allMuscles.filter(m => m.parent_ids && m.parent_ids.includes(pId)));
+  const getTertiariesFor = (sId: string) => getScorableMuscles(allMuscles.filter(m => m.parent_ids && m.parent_ids.includes(sId)));
 
   const deltaTree = useMemo(() => {
     const tree: Record<string, { score: number; children: Record<string, { score: number; children: Record<string, number> }> }> = {};
@@ -288,6 +292,8 @@ export default function DeltaBranchCard({
                       <span className="font-semibold text-gray-700">{pLabel}</span>
                       {pIsComputed ? (
                         <span className="text-gray-400 italic ml-auto" title="Auto-computed from children">{pNode.score}</span>
+                      ) : !isMuscleScorable(allMuscles, pId) ? (
+                        <span className="text-gray-500 ml-auto" title="Not scorable">{pNode.score}</span>
                       ) : (
                         <input type="number" value={pNode.score}
                           onChange={e => handleScoreChange(pId, parseFloat(e.target.value) || 0)}
@@ -310,6 +316,8 @@ export default function DeltaBranchCard({
                                 <span className="text-gray-600">{sLabel}</span>
                                 {sIsComputed ? (
                                   <span className="text-gray-400 italic" title="Auto-computed">{sNode.score}</span>
+                                ) : !isMuscleScorable(allMuscles, sId) ? (
+                                  <span className="text-gray-500" title="Not scorable">{sNode.score}</span>
                                 ) : (
                                   <input type="number" value={sNode.score}
                                     onChange={e => handleScoreChange(sId, parseFloat(e.target.value) || 0)}
@@ -322,9 +330,13 @@ export default function DeltaBranchCard({
                                   {tKeys.map(tId => (
                                     <div key={tId} className="flex items-center gap-1.5">
                                       <span className="text-gray-500">{getMuscleLabel(allMuscles, tId)}</span>
-                                      <input type="number" value={sNode.children[tId]}
-                                        onChange={e => handleScoreChange(tId, parseFloat(e.target.value) || 0)}
-                                        step="0.05" className="w-16 px-1 py-0.5 border border-gray-300 rounded text-center font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                                      {!isMuscleScorable(allMuscles, tId) ? (
+                                        <span className="text-gray-500" title="Not scorable">{sNode.children[tId]}</span>
+                                      ) : (
+                                        <input type="number" value={sNode.children[tId]}
+                                          onChange={e => handleScoreChange(tId, parseFloat(e.target.value) || 0)}
+                                          step="0.05" className="w-16 px-1 py-0.5 border border-gray-300 rounded text-center font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                                      )}
                                       <button onClick={() => handleRemoveMuscle(tId)} className="text-red-400 hover:text-red-600 ml-auto">×</button>
                                     </div>
                                   ))}
