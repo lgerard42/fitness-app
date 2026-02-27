@@ -56,30 +56,86 @@ export function findRootMuscleId(
   return muscleId;
 }
 
-/** Set of muscle IDs that are selectable for grouping: score > 0.5 plus all their ancestors. */
+/** Calculated score: explicit from flatTargets if set, else sum of children's calculated scores. */
+function getCalculatedScore(
+  id: string,
+  flatTargets: Record<string, number>,
+  childrenOf: Map<string, MuscleRecord[]>,
+  cache: Map<string, number>
+): number {
+  if (cache.has(id)) return cache.get(id)!;
+  const explicit = flatTargets[id];
+  if (typeof explicit === 'number') {
+    cache.set(id, explicit);
+    return explicit;
+  }
+  const children = childrenOf.get(id) ?? [];
+  let sum = 0;
+  for (const c of children) {
+    sum += getCalculatedScore(c.id, flatTargets, childrenOf, cache);
+  }
+  cache.set(id, sum);
+  return sum;
+}
+
+/**
+ * Set of muscle IDs selectable for grouping:
+ * - Uses calculated score for each muscle (explicit if set, else sum of children's calculated scores).
+ * - Only muscles whose calculated score >= minScore qualify.
+ * - Only muscles that have at least one child in the hierarchy qualify (no leaf muscles).
+ */
 export function getSelectableMuscleIds(
   flatTargets: Record<string, number>,
   muscleMap: Map<string, MuscleRecord>,
   minScore: number = 0.5
 ): Set<string> {
-  const highScoreIds = new Set(
-    Object.entries(flatTargets)
-      .filter(([, s]) => typeof s === 'number' && s > minScore)
-      .map(([id]) => id)
-  );
-  const out = new Set<string>(highScoreIds);
-  function addAncestors(id: string) {
-    const m = muscleMap.get(id);
-    if (!m?.parent_ids || !Array.isArray(m.parent_ids)) return;
-    for (const pid of m.parent_ids) {
-      if (!out.has(pid)) {
-        out.add(pid);
-        addAncestors(pid);
-      }
+  const childrenOf = new Map<string, MuscleRecord[]>();
+  for (const m of muscleMap.values()) {
+    const pids = m.parent_ids;
+    if (pids?.length && Array.isArray(pids)) {
+      const pid = pids[0];
+      if (!childrenOf.has(pid)) childrenOf.set(pid, []);
+      childrenOf.get(pid)!.push(m);
     }
   }
-  highScoreIds.forEach(addAncestors);
+  const cache = new Map<string, number>();
+  const out = new Set<string>();
+  for (const id of muscleMap.keys()) {
+    const hasChildren = (childrenOf.get(id)?.length ?? 0) > 0;
+    if (!hasChildren) continue;
+    const score = getCalculatedScore(id, flatTargets, childrenOf, cache);
+    if (score >= minScore) out.add(id);
+  }
   return out;
+}
+
+/** Among selectable IDs, return the one with highest calculated score; null if none. */
+export function getMuscleIdWithMaxCalculatedScore(
+  flatTargets: Record<string, number>,
+  muscleMap: Map<string, MuscleRecord>,
+  selectableIds: Set<string>
+): string | null {
+  if (selectableIds.size === 0) return null;
+  const childrenOf = new Map<string, MuscleRecord[]>();
+  for (const m of muscleMap.values()) {
+    const pids = m.parent_ids;
+    if (pids?.length && Array.isArray(pids)) {
+      const pid = pids[0];
+      if (!childrenOf.has(pid)) childrenOf.set(pid, []);
+      childrenOf.get(pid)!.push(m);
+    }
+  }
+  const cache = new Map<string, number>();
+  let bestId: string | null = null;
+  let bestScore = -Infinity;
+  for (const id of selectableIds) {
+    const score = getCalculatedScore(id, flatTargets, childrenOf, cache);
+    if (score > bestScore) {
+      bestScore = score;
+      bestId = id;
+    }
+  }
+  return bestId;
 }
 
 /** Build primary -> [secondary/tertiary] tree for dropdown: roots that have any selectable descendant, and their selectable descendants. */

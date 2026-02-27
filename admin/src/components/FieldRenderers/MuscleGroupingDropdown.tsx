@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
 import {
   asFlatMuscleTargets,
-  getMuscleIdWithMaxScore,
   getSelectableMuscleIds,
+  getMuscleIdWithMaxCalculatedScore,
   buildMuscleOptionGroups,
   type MuscleRecord,
 } from '../../../../shared/utils/muscleGrouping';
@@ -40,7 +40,10 @@ export default function MuscleGroupingDropdown({
     [selectableIds, muscleMap, muscleList]
   );
 
-  const defaultMuscleId = useMemo(() => getMuscleIdWithMaxScore(flatTargets), [flatTargets]);
+  const defaultMuscleId = useMemo(
+    () => getMuscleIdWithMaxCalculatedScore(flatTargets, muscleMap, selectableIds),
+    [flatTargets, muscleMap, selectableIds]
+  );
   const displayValue = value ?? defaultMuscleId ?? '';
 
   return (

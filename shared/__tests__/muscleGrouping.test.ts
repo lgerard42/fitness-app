@@ -1,6 +1,7 @@
 import {
   asFlatMuscleTargets,
   getMuscleIdWithMaxScore,
+  getMuscleIdWithMaxCalculatedScore,
   findRootMuscleId,
   getSelectableMuscleIds,
   buildMuscleOptionGroups,
@@ -67,27 +68,43 @@ describe("findRootMuscleId", () => {
 });
 
 describe("getSelectableMuscleIds", () => {
-  it("includes muscles with score > 0.5 and their ancestors", () => {
+  it("includes only muscles with children and calculated score >= minScore", () => {
+    const list = [
+      { id: "ARM", parent_ids: [] },
+      { id: "BICEP", parent_ids: ["ARM"] },
+    ];
+    const map = muscleMap(list);
+    const flat = { BICEP: 0.8 };
+    const ids = getSelectableMuscleIds(flat, map, 0.5);
+    expect(ids.has("BICEP")).toBe(false);
+    expect(ids.has("ARM")).toBe(true);
+  });
+
+  it("excludes muscles with no children (leaf muscles never qualify)", () => {
     const map = muscleMap([
       { id: "ARM", parent_ids: [] },
       { id: "BICEP", parent_ids: ["ARM"] },
     ]);
-    const flat = { BICEP: 0.8 };
-    const ids = getSelectableMuscleIds(flat, map, 0.5);
-    expect(ids.has("BICEP")).toBe(true);
-    expect(ids.has("ARM")).toBe(true);
+    const ids = getSelectableMuscleIds({ BICEP: 0.9 }, map, 0.5);
+    expect(ids.has("BICEP")).toBe(false);
   });
 
-  it("excludes muscles with score <= 0.5", () => {
-    const map = muscleMap([{ id: "ARM", parent_ids: [] }]);
-    const ids = getSelectableMuscleIds({ ARM: 0.3 }, map, 0.5);
+  it("excludes parent when its calculated score is below minScore", () => {
+    const map = muscleMap([
+      { id: "ARM", parent_ids: [] },
+      { id: "BICEP", parent_ids: ["ARM"] },
+    ]);
+    const ids = getSelectableMuscleIds({ BICEP: 0.3 }, map, 0.5);
     expect(ids.has("ARM")).toBe(false);
   });
 
-  it("uses custom minScore", () => {
-    const map = muscleMap([{ id: "ARM", parent_ids: [] }]);
-    expect(getSelectableMuscleIds({ ARM: 0.6 }, map, 0.5).has("ARM")).toBe(true);
-    expect(getSelectableMuscleIds({ ARM: 0.4 }, map, 0.3).has("ARM")).toBe(true);
+  it("uses calculated score (sum of children when no explicit) and custom minScore", () => {
+    const map = muscleMap([
+      { id: "ARM", parent_ids: [] },
+      { id: "BICEP", parent_ids: ["ARM"] },
+    ]);
+    expect(getSelectableMuscleIds({ ARM: 0.6, BICEP: 0.1 }, map, 0.5).has("ARM")).toBe(true);
+    expect(getSelectableMuscleIds({ BICEP: 0.4 }, map, 0.3).has("ARM")).toBe(true);
   });
 });
 
@@ -98,13 +115,32 @@ describe("buildMuscleOptionGroups", () => {
       { id: "BICEP", parent_ids: ["ARM"], label: "Biceps" },
     ];
     const map = muscleMap(list);
-    const selectable = new Set(["ARM", "BICEP"]);
+    const selectable = new Set(["ARM"]);
     const groups = buildMuscleOptionGroups(selectable, map, list);
     expect(groups.length).toBe(1);
     expect(groups[0].primary.id).toBe("ARM");
-    expect(groups[0].options.length).toBe(2); // ARM and BICEP
-    const ids = groups[0].options.map((o) => o.id);
-    expect(ids).toContain("ARM");
-    expect(ids).toContain("BICEP");
+    expect(groups[0].options.length).toBe(1);
+    expect(groups[0].options[0].id).toBe("ARM");
+  });
+});
+
+describe("getMuscleIdWithMaxCalculatedScore", () => {
+  it("returns selectable id with highest calculated score", () => {
+    const list = [
+      { id: "ARM", parent_ids: [] },
+      { id: "BICEP", parent_ids: ["ARM"] },
+      { id: "LEG", parent_ids: [] },
+      { id: "QUAD", parent_ids: ["LEG"] },
+    ];
+    const map = muscleMap(list);
+    const flat = { BICEP: 0.8, QUAD: 0.5 };
+    const selectable = getSelectableMuscleIds(flat, map, 0.5);
+    const id = getMuscleIdWithMaxCalculatedScore(flat, map, selectable);
+    expect(id).toBe("ARM");
+  });
+
+  it("returns null when selectable is empty", () => {
+    const map = muscleMap([{ id: "ARM", parent_ids: [] }]);
+    expect(getMuscleIdWithMaxCalculatedScore({}, map, new Set())).toBeNull();
   });
 });
