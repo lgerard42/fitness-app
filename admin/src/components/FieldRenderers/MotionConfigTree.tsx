@@ -274,7 +274,7 @@ function MuscleTargetsSubtree({
     if (!scorable) {
       return (
         <span className={sp.scoreInput.readOnly} title="Not scorable">
-          {total !== undefined ? `${explicitScore} ${total}` : explicitScore}
+          {total !== undefined ? total : explicitScore}
         </span>
       );
     }

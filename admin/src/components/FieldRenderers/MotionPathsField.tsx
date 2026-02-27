@@ -224,11 +224,12 @@ function ReadOnlyMuscleTree({ targets, allMuscles, deltaScores }: {
       const delta = deltaScores?.[id] ?? 0;
 
       if (hasKids) {
-        const baseSum = kids.reduce((s, c) => s + (c.baseScore ?? 0), 0);
+        const calculatedBaseTotal = (id in baseFlat ? baseFlat[id] : 0) + kids.reduce((s, c) => s + (c.baseScore ?? 0), 0);
         const afterSum = kids.reduce((s, c) => s + c.afterScore, 0);
+        const hasAnyBase = id in baseFlat || kids.some(c => c.baseScore !== null);
         return {
           id, label,
-          baseScore: kids.some(c => c.baseScore !== null) ? Math.round(baseSum * 100) / 100 : null,
+          baseScore: hasAnyBase ? Math.round(calculatedBaseTotal * 100) / 100 : null,
           afterScore: Math.round(afterSum * 100) / 100,
           computed: true, children: kids,
         };
@@ -256,10 +257,6 @@ function ReadOnlyMuscleTree({ targets, allMuscles, deltaScores }: {
     }
     return tree;
   }, [baseFlat, deltaScores, allMuscles]);
-
-  if (displayTree.length === 0) {
-    return <div className="text-xs text-gray-400 italic py-2">No muscle targets</div>;
-  }
 
   const renderNode = (node: ROTreeNode, depth: number) => {
     const rowStyle = depth === 0 ? sp.deltaRules.treeRowPrimaryReadOnly : depth === 1 ? sp.deltaRules.treeRowSecondaryReadOnly : sp.deltaRules.treeRowTertiaryReadOnly;
@@ -300,7 +297,11 @@ function ReadOnlyMuscleTree({ targets, allMuscles, deltaScores }: {
 
   return (
     <div className={sp.deltaRules.treeContainer}>
-      {displayTree.map(node => renderNode(node, 0))}
+      {displayTree.length === 0 ? (
+        <div className="text-xs text-gray-400 italic py-2">No muscle targets</div>
+      ) : (
+        displayTree.map(node => renderNode(node, 0))
+      )}
     </div>
   );
 }
@@ -332,7 +333,7 @@ function MotionPathsScoreInput({
   if (!scorable) {
     return (
       <span className={sp.scoreInput.readOnly} title="Not scorable">
-        {total !== undefined ? `${score} ${total}` : score}
+        {total !== undefined ? total : score}
       </span>
     );
   }
@@ -385,13 +386,13 @@ function DeltaMuscleTree({
   const hasPrimaryOptions = primaryDropdownGroups.some(grp => grp.options.length > 0);
 
   const primaryMuscles = useMemo(() =>
-    getScorableMuscles(allMuscles.filter(m => m.parent_ids.length === 0)).map(m => ({ id: m.id, label: m.label })),
+    getScorableMuscles(allMuscles.filter(m => (m.parent_ids ?? []).length === 0)).map(m => ({ id: m.id, label: m.label })),
     [allMuscles]
   );
   const getSecondariesFor = (pId: string) =>
-    getScorableMuscles(allMuscles.filter(m => m.parent_ids.includes(pId))).map(m => ({ id: m.id, label: m.label }));
+    getScorableMuscles(allMuscles.filter(m => (m.parent_ids ?? []).includes(pId))).map(m => ({ id: m.id, label: m.label }));
   const getTertiariesFor = (sId: string) =>
-    getScorableMuscles(allMuscles.filter(m => m.parent_ids.includes(sId))).map(m => ({ id: m.id, label: m.label }));
+    getScorableMuscles(allMuscles.filter(m => (m.parent_ids ?? []).includes(sId))).map(m => ({ id: m.id, label: m.label }));
 
   const save = (newTree: TreeNode) => {
     onSave(planeId, filterScorableOnly(flattenTree(newTree), allMuscles));
@@ -488,7 +489,12 @@ function DeltaMuscleTree({
         const secondaryGroups = buildSecondaryMuscleDropdownGroups(musclesForDropdown, pId, usedIds);
         const hasSecondaryOptions = secondaryGroups.some(grp => grp.options.length > 0);
         const pSumChildren = sKeys.length > 0
-          ? Math.round(sKeys.reduce((acc, sId) => acc + ((pNode[sId] as TreeNode)._score ?? 0), 0) * 100) / 100
+          ? Math.round(sKeys.reduce((acc, sId) => {
+              const sNode = pNode[sId] as TreeNode;
+              const tKeys = Object.keys(sNode).filter(k => k !== '_score');
+              const secondaryTotal = (sNode._score ?? 0) + tKeys.reduce((a, tId) => a + ((sNode[tId] as TreeNode)._score ?? 0), 0);
+              return acc + secondaryTotal;
+            }, 0) * 100) / 100
           : undefined;
 
         return (
@@ -546,7 +552,7 @@ function DeltaMuscleTree({
               {(hasSecondaryOptions || availSec.length > 0) && (
                 hasSecondaryOptions ? (
                   <MuscleSecondarySelect
-                    options={secondaryGroups[0].options}
+                    options={(secondaryGroups.find(g => g.options.length > 0) ?? secondaryGroups[0])?.options ?? []}
                     onChange={v => addMuscleUnderPrimary(pId, v)}
                     className={sp.deltaRules.treeAddDropdown}
                     placeholder="+ secondary..."
@@ -861,11 +867,10 @@ export default function MotionPathsField({ value, onChange, motionId, onOpenRow 
     [loading, current.options, planes]
   );
 
-  if (loading) {
-    return <div className={sp.loading}>Loading motion paths...</div>;
-  }
-
-  return (
+  // No early return: render loading vs content so hook order is identical every render (ADMIN_UI_NOTES).
+  return loading ? (
+    <div className={sp.loading}>Loading motion paths...</div>
+  ) : (
     <div className="space-y-1">
       {selectedPlanes.length === 0 ? (
         <div className={sp.emptyState.box}>
@@ -875,10 +880,21 @@ export default function MotionPathsField({ value, onChange, motionId, onOpenRow 
         selectedPlanes.map(plane => {
           const cardKey = `mp-card-${plane.id}`;
           const isExp = expanded.has(cardKey);
-          const motionDelta = (motionId && plane.delta_rules?.[motionId]) || {};
+          const rawMotionDelta = motionId ? plane.delta_rules?.[motionId] : undefined;
+          const isInherit = rawMotionDelta === 'inherit';
+          const motionDelta =
+            isInherit || !rawMotionDelta || typeof rawMotionDelta !== 'object'
+              ? ({} as Record<string, number>)
+              : rawMotionDelta;
           const deltaCount = Object.keys(motionDelta).length;
           const isDefault = current.default === plane.id;
-          const hasNoDelta = deltaCount === 0;
+          const hasNoDelta = !isInherit && deltaCount === 0;
+          const parentMotion = currentMotion?.parent_id
+            ? allMotions.find(m => m.id === currentMotion.parent_id)
+            : null;
+          const baseTargetsForDisplay = isInherit && parentMotion
+            ? (parentMotion.muscle_targets as Record<string, unknown>) || {}
+            : (currentMotion?.muscle_targets as Record<string, unknown>) || {};
 
           return (
             <div key={plane.id} className={`${sp.motionPath.card} ${
@@ -913,26 +929,44 @@ export default function MotionPathsField({ value, onChange, motionId, onOpenRow 
 
               {isExp && motionId && (
                 <div className={sp.motionPath.expandedContent}>
-                  <div className={sp.deltaRules.scoresRow}>
-                    <div className={sp.deltaRules.scoresColumnEditable}>
-                      <div className={sp.deltaRules.sectionLabel}>Delta Modifiers</div>
-                      <DeltaMuscleTree
-                        key={`dmt-${plane.id}`}
-                        delta={motionDelta}
-                        onSave={saveDelta}
-                        allMuscles={allMuscles}
-                        planeId={plane.id}
-                      />
+                  {isInherit ? (
+                    <>
+                      <div className="px-4 pt-3 pb-1 text-sm text-green-700 italic font-medium">
+                        Inherited — delta rules come from parent motion
+                      </div>
+                      <div className={sp.deltaRules.scoresRow}>
+                        <div className={sp.deltaRules.scoresColumnReadOnly}>
+                          <div className={sp.deltaRules.sectionLabel}>Base Muscle Scores (from parent)</div>
+                          <ReadOnlyMuscleTree
+                            targets={baseTargetsForDisplay}
+                            allMuscles={allMuscles}
+                            deltaScores={{}}
+                          />
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className={sp.deltaRules.scoresRow}>
+                      <div className={sp.deltaRules.scoresColumnEditable}>
+                        <div className={sp.deltaRules.sectionLabel}>Delta Modifiers</div>
+                        <DeltaMuscleTree
+                          key={`dmt-${plane.id}`}
+                          delta={motionDelta}
+                          onSave={saveDelta}
+                          allMuscles={allMuscles}
+                          planeId={plane.id}
+                        />
+                      </div>
+                      <div className={sp.deltaRules.scoresColumnReadOnly}>
+                        <div className={sp.deltaRules.sectionLabel}>Base Muscle Scores</div>
+                        <ReadOnlyMuscleTree
+                          targets={baseTargetsForDisplay}
+                          allMuscles={allMuscles}
+                          deltaScores={motionDelta}
+                        />
+                      </div>
                     </div>
-                    <div className={sp.deltaRules.scoresColumnReadOnly}>
-                      <div className={sp.deltaRules.sectionLabel}>Base Muscle Scores</div>
-                      <ReadOnlyMuscleTree
-                        targets={(currentMotion?.muscle_targets as Record<string, unknown>) || {}}
-                        allMuscles={allMuscles}
-                        deltaScores={motionDelta}
-                      />
-                    </div>
-                  </div>
+                  )}
                 </div>
               )}
             </div>

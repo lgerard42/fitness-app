@@ -200,11 +200,12 @@ function ReadOnlyMuscleTree({ targets, allMuscles, deltaScores }: {
       const delta = deltaScores?.[id] ?? 0;
 
       if (hasKids) {
-        const baseSum = kids.reduce((s, c) => s + (c.baseScore ?? 0), 0);
+        const calculatedBaseTotal = (id in baseFlat ? baseFlat[id] : 0) + kids.reduce((s, c) => s + (c.baseScore ?? 0), 0);
         const afterSum = kids.reduce((s, c) => s + c.afterScore, 0);
+        const hasAnyBase = id in baseFlat || kids.some(c => c.baseScore !== null);
         return {
           id, label,
-          baseScore: kids.some(c => c.baseScore !== null) ? Math.round(baseSum * 100) / 100 : null,
+          baseScore: hasAnyBase ? Math.round(calculatedBaseTotal * 100) / 100 : null,
           afterScore: Math.round(afterSum * 100) / 100,
           computed: true, children: kids,
         };
@@ -308,7 +309,7 @@ function DeltaRulesScoreInput({
   if (!scorable) {
     return (
       <span className={sp.scoreInput.readOnly} title="Not scorable">
-        {total !== undefined ? `${score} ${total}` : score}
+        {total !== undefined ? total : score}
       </span>
     );
   }
@@ -462,7 +463,12 @@ function DeltaMuscleTree({
         const secondaryGroups = buildSecondaryMuscleDropdownGroups(musclesForDropdown, pId, usedIds);
         const hasSecondaryOptions = secondaryGroups.some(grp => grp.options.length > 0);
         const pSumChildren = sKeys.length > 0
-          ? Math.round(sKeys.reduce((acc, sId) => acc + ((pNode[sId] as TreeNode)._score ?? 0), 0) * 100) / 100
+          ? Math.round(sKeys.reduce((acc, sId) => {
+              const sNode = pNode[sId] as TreeNode;
+              const tKeys = Object.keys(sNode).filter(k => k !== '_score');
+              const secondaryTotal = (sNode._score ?? 0) + tKeys.reduce((a, tId) => a + ((sNode[tId] as TreeNode)._score ?? 0), 0);
+              return acc + secondaryTotal;
+            }, 0) * 100) / 100
           : undefined;
 
         return (

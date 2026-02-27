@@ -352,7 +352,7 @@ function InlineDeltaEditor({
               <span className="text-[10px] font-semibold text-gray-700">{pLabel}</span>
               {!isMuscleScorable(allMuscles, pId) ? (
                 <span className="text-[10px] text-gray-500 ml-auto" title="Not scorable">
-                  {sKeys.length > 0 ? `${pNode._score ?? 0} ${pTotal}` : (pNode._score ?? 0)}
+                  {sKeys.length > 0 ? pTotal : (pNode._score ?? 0)}
                 </span>
               ) : (
                 <span className="flex items-center gap-1 ml-auto">
@@ -386,7 +386,7 @@ function InlineDeltaEditor({
                         <span className="text-[10px] text-gray-600">{sLabel}</span>
                         {!isMuscleScorable(allMuscles, sId) ? (
                           <span className="text-[10px] text-gray-500" title="Not scorable">
-                            {tKeys.length > 0 ? `${sNode._score ?? 0} ${sTotal}` : (sNode._score ?? 0)}
+                            {tKeys.length > 0 ? sTotal : (sNode._score ?? 0)}
                           </span>
                         ) : (
                           <span className="flex items-center gap-1">

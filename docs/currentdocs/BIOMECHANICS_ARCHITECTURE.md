@@ -309,20 +309,26 @@ Each motion row defines:
 - `parent_id`
 - `upper_lower`
 - `muscle_targets`
-- `muscle_grouping_id` — optional FK to `muscles.id`; which muscle to use when grouping this motion in the MOTIONS table and Motion Delta Matrix (e.g. "Arms" or "Biceps"). Configurable via the **Muscle Grouping** dropdown in the motion side-panel; default (and backfill) is the muscle with highest score in `muscle_targets`.
+- `muscle_grouping_id` — optional FK to `muscles.id`; which muscle to use when grouping this motion in the MOTIONS table and Motion Delta Matrix (e.g. "Arms" or "Biceps"). Configurable via the **Muscle Grouping** dropdown in the motion side-panel; default (and backfill) is the selectable muscle with highest **calculated** score (see Muscle grouping below).
 - `default_delta_configs`
 - `common_names`
 - `short_description`
 - `sort_order`
 - `icon`
 - `is_active`
-- `is_scorable` — boolean (default true); whether this motion is included in scoring
+- `is_scorable` — boolean (default true); reserved for future use (e.g. whether this motion is included in scoring or grouping). **Not currently enforced** in application code; the column is stored and editable in the admin table editor.
 - `is_default` — boolean (default true); whether this motion is a default option in admin/UI
 - `is_advanced` — boolean (default false); whether this motion is shown only in advanced views
 
 ### Muscle grouping (display)
 
-When the admin shows motions grouped by muscle (MOTIONS table "Group by: Muscles" or Motion Delta Matrix motion list), each motion is placed under a **primary** muscle (root in the muscles hierarchy) and optionally a **secondary** (e.g. Biceps under Arms). The grouping key is `muscle_grouping_id` when set; otherwise the system falls back to the muscle with highest aggregated score in `muscle_targets` (by root). The **Muscle Grouping** dropdown in the motion side-panel offers only muscles that have score &gt; 0.5 in that motion's `muscle_targets` plus their ancestors (from `muscles.parent_ids`), so users can assign a motion to a parent group (e.g. Arms) or a specific child (e.g. Biceps). Options are grouped in the dropdown by primary → secondary → tertiary. Existing rows were backfilled so `muscle_grouping_id` defaults to the highest-scoring muscle in `muscle_targets`.
+When the admin shows motions grouped by muscle (MOTIONS table "Group by: Muscles" or Motion Delta Matrix motion list), each motion is placed under a **primary** muscle (root in the muscles hierarchy) and optionally a **secondary** (e.g. Biceps under Arms). The grouping key is `muscle_grouping_id` when set; otherwise the system falls back to the muscle with highest **calculated** score among selectable muscles (see below). The **Muscle Grouping** dropdown in the motion side-panel offers only muscles that **qualify** for grouping:
+
+- **Calculated score:** For each muscle, the score used for qualification is its **calculated score**: the explicit value in `muscle_targets` if present, otherwise the sum of its children's calculated scores (recursive). Only muscles whose calculated score meets the threshold (e.g. ≥ 0.5) qualify.
+- **Must have children:** Only muscles that have **at least one child** in the muscles hierarchy appear in the dropdown; leaf muscles (no children) never qualify, so users can only assign a motion to a group or sub-group (e.g. Arms or Biceps), not to a leaf muscle.
+- **Independent evaluation:** Each muscle is evaluated on its own; a parent qualifying does not automatically include its children, and a child with high score does not add the parent unless the parent's own calculated score meets the threshold.
+
+Options are grouped in the dropdown by primary → secondary → tertiary, sorted alphabetically. Default selection (when `muscle_grouping_id` is null) is the selectable muscle with the **highest calculated score**. Existing rows were backfilled so `muscle_grouping_id` defaults to that muscle.
 
 ### What a motion row is **not**
 A motion row is **not**:

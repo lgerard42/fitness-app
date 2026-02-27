@@ -346,7 +346,7 @@ export default function DeltaBranchCard({
                       <span className="font-semibold text-gray-700">{pLabel}</span>
                       {!isMuscleScorable(allMuscles, pId) ? (
                         <span className="text-gray-500 ml-auto" title="Not scorable">
-                          {sKeys.length > 0 ? `${pNode.score} ${pTotal}` : pNode.score}
+                          {sKeys.length > 0 ? pTotal : pNode.score}
                         </span>
                       ) : (
                         <span className="flex items-center gap-1 ml-auto">
@@ -380,7 +380,7 @@ export default function DeltaBranchCard({
                                 <span className="text-gray-600">{sLabel}</span>
                                 {!isMuscleScorable(allMuscles, sId) ? (
                                   <span className="text-gray-500" title="Not scorable">
-                                    {tKeys.length > 0 ? `${sNode.score} ${sTotal}` : sNode.score}
+                                    {tKeys.length > 0 ? sTotal : sNode.score}
                                   </span>
                                 ) : (
                                   <span className="flex items-center gap-1">

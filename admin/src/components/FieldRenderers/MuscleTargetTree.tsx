@@ -81,7 +81,7 @@ function MuscleTargetScoreInput({
     return (
       <span className={`${inputSize} bg-gray-100 rounded text-center text-gray-500 inline-block`}
         title="Not scorable">
-        {total !== undefined ? `${explicitScore} ${total}` : explicitScore}
+        {total !== undefined ? total : explicitScore}
       </span>
     );
   }
