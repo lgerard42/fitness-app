@@ -16,6 +16,7 @@
     "ref:seed": "tsx src/seed/seedPipeline.ts",
     "ref:parity": "tsx src/parity/parityHarness.ts",
     "db:flatten-muscle-targets": "tsx src/scripts/flattenMotionMuscleTargets.ts",
+    "db:migrate-delta-rules": "tsx src/scripts/migrateDeltaRules.ts",
     "test": "vitest",
     "test:ci": "vitest run"
   },
