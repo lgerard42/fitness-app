@@ -88,3 +88,22 @@ We are done when:
 2. We do a quick sanity check that the chosen motion baselines won’t force **unrealistic delta gymnastics** downstream.
 
 Next sessions (not this one): we’ll go motion-by-motion to finalize baseline `muscle_targets`, then finalize delta modifier tables/configs afterward.
+
+### Participants and role assignments for this discussion
+
+* **Chat**
+  **Role:** Lead Systems Architect / Taxonomy Judge
+  **Background:** Integrates all constraints and keeps the MOTIONS table scalable and coherent. Enforces the single-parent hierarchy, umbrella vs baseline intent, and parent→child naming consistency. Pushes back on motion sprawl and sanity-checks that baseline choices won’t require unrealistic deltas later.
+
+* **Grok**
+  **Role:** Adversarial Reviewer / Edge-Case & Failure-Mode Stress Tester
+  **Background:** Tries to break the taxonomy on purpose. Probes collisions, ambiguous motion boundaries, missing categories, and confusing overlaps (“where does X go?”, “what about this similar move?”). Ensures the structure survives real-world messy usage and future expansion.
+
+* **Gemini**
+  **Role:** Product UX Lead / Information Architecture Owner
+  **Background:** Represents the user’s mental model. Ensures motions and umbrella groupings match how lifters browse/search in a mobile UI, and that `motion_type` (Umbrella/Standard/Rehab/Mixed) supports clean filtering without clutter. Flags anything that will feel unintuitive in navigation.
+
+* **Claude**
+  **Role:** Taxonomy Editor / Consistency & Standards Enforcer
+  **Background:** Maintains naming and structural hygiene. Normalizes IDs, prevents duplicates/near-duplicates, enforces parent-precedes-child structure (e.g., `CHEST_PRESS` → `CHEST_PRESS_INCLINE`), and refactors proposals into a crisp, internally consistent final table.
+
