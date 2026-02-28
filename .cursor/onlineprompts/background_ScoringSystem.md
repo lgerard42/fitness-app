@@ -64,7 +64,7 @@ This applies to **calculated score** and to the **"total"** shown in the admin U
 - `motions.default_delta_configs` keys → modifier table IDs; values → row IDs in those tables.
 - Modifier `delta_rules` top-level keys → `motions.id`; each value is a flat map `muscleId → number` (keys = `muscles.id`).
 
-**Optional layer:** Matrix V2 Config can restrict, per motion or motion family, which modifier rows are applicable and what the default selection is. It does not change the underlying contracts (`muscle_targets`, `delta_rules`, `default_delta_configs`); it configures which options are offered and how they are presented.
+**Optional layer:** **Matrix V2 Config** and **Table Visibility** (both stored in `motion_matrix_configs`) restrict, per motion, which modifier tables are shown and which rows are applicable and what the default selection is. They do not change the underlying contracts (`muscle_targets`, `delta_rules`, `default_delta_configs`); they configure which options are offered and how they are presented. See section 11.
 
 ---
 
@@ -239,6 +239,7 @@ The **Matrix V2 Workstation** supports importing config data from a delimited ta
 | Column | Required | How to build the value | Where it is routed / mapped |
 |--------|----------|-------------------------|-----------------------------|
 | **MOTION_ID** | Yes | Plain text: the **motion ID** (e.g. `PRESS_FLAT`, `CURL`). Must match an existing row in the **motions** table. | Identifies which motion (or motion group) the row applies to. Rows with invalid or missing MOTION_ID are skipped. |
+| **PARENT_MOTION_ID** | No | Plain text: the **parent motion ID** (e.g. `PRESS` for `PRESS_FLAT`). Used for display/ordering; does not change config scope. | Exported for reference; import can include it for alignment with export. Not required for applying config. |
 | **MUSCLE_TARGETS** | No | **JSON object**: a flat `Record<muscleId, number>` (same contract as `motions.muscle_targets`). Example: `{"CHEST_MID":0.8,"TRICEP_OUTER":0.4}`. Only scorable muscle IDs; flat map; parent 0 stripped on save. | Loaded into the workstation’s **baseline** for that motion when you apply the import. To persist to the DB, apply via the **Baseline** card (or save motion) after import. Not written directly to `motions.muscle_targets` by the import step itself. |
 | **VERSION** | No | Integer: the **config version** number. Used when you want to target a specific saved config (draft or active) for that motion. | If present, the importer finds the Matrix config whose `scope_id` = MOTION_ID and `config_version` = VERSION, and updates that config. If omitted, you map each row to a target config in the review step. |
 | **motionPaths** | No | **JSON object**: `{ "config": <TableConfig>, "deltas": <optional per-row deltas> }`. See below for `config` shape. | **`config`** is written to the Matrix config’s **`config_json.tables.motionPaths`** (postgres: `matrix_configs` row, `config_json` JSONB). `deltas` is used for export round-trip; on import only `config` is applied. |
@@ -274,8 +275,55 @@ The **Matrix V2 Workstation** supports importing config data from a delimited ta
 **Routing summary:**
 
 - **MOTION_ID** → identifies the motion; row is skipped if not found in `motions`.
+- **PARENT_MOTION_ID** → optional; for reference/ordering; not used to select config.
 - **MUSCLE_TARGETS** → baseline for that motion in the workstation; user applies to DB via Baseline card / save motion.
 - **VERSION** → optional; selects which Matrix config row (same motion + version) to update.
 - **Modifier columns** (motionPaths … rangeOfMotion) → each cell’s **`config`** is merged into the target Matrix config’s **`config_json.tables[<tableKey>]`**. The underlying modifier **table rows** (e.g. `motion_paths`, `grips`) are **not** updated by the import; only the **Matrix V2 config** (which rows are allowed, default, etc.) is updated.
+
+**Table Visibility import (separate flow):** The **Table Visibility** panel in the Matrix V2 Workstation supports importing a grid where each **row** is a motion and each **column** (after `motion_id`, `parent_motion_id`, `motion_label`) is a modifier table key. Cell values are **TRUE** or **FALSE** and set **`config_json.tables[<tableKey>].applicability`** for that motion’s config. So you can bulk-enable or bulk-disable which modifier dimensions are shown per motion. Expected columns: `motion_id` (required), optional `parent_motion_id`, optional `motion_label`, then one column per modifier key (e.g. `motionPaths`, `torsoAngles`, … `rangeOfMotion`). Headers are matched case-insensitively. After import, apply/save in the Table Visibility UI to persist to `motion_matrix_configs`. See section 11 for storage and export format.
+
+---
+
+## 11. Matrix V2 Config and Table Visibility — Overview, Export, and Import
+
+Both **Matrix V2 Config** and **Table Visibility** are stored in the **`motion_matrix_configs`** table (Postgres). Each row is a config for a motion (or motion family); the payload is **`config_json`** (JSONB). They control what the Matrix V2 Workstation shows and what modifier options are allowed per motion; they do **not** change `motions.muscle_targets`, `motions.default_delta_configs`, or modifier-table `delta_rules` — those remain the source of truth for baseline and deltas.
+
+### 11.1 Where the data lives
+
+- **Table:** `motion_matrix_configs` (scope_type = motion; scope_id = motion ID; config_version = draft or active).
+- **Matrix V2 Config:** For each motion, the **editing** config holds **`config_json.tables[tableKey]`** for each of the 15 modifier table keys. Each value is a **TableConfig** object: **`applicability`** (boolean), **`allowed_row_ids`**, **`default_row_id`**, **`angle_range`** (torsoAngles), **`secondary_overrides`** / **`valid_secondary_ids`** (loadPlacement), etc. The workstation also uses the same config to read/write **delta** data (per modifier row) from the modifier tables; that delta data lives in the modifier tables, not in `config_json`.
+- **Table Visibility:** The same **`config_json.tables[tableKey].applicability`** flag, per modifier table, controls whether that modifier dimension is **shown** in the Matrix V2 Config UI for that motion. So “Table Visibility” is the grid of **applicability** (TRUE/FALSE) per motion × modifier table. There is no separate table; it’s one aspect of the Matrix V2 config.
+
+### 11.2 Matrix V2 Config table (Config Master)
+
+**Purpose:** One row per motion with full config: baseline (`MUSCLE_TARGETS`) and per-modifier **TableConfig** plus optional delta references. Used to copy/paste or import/export the entire Matrix V2 config for all motions.
+
+**Export (e.g. from `export-key-tables.js` → `keyTables/AdminDynamicTables/motion_delta_table_config_master.csv`):**
+
+- **Columns:** `MOTION_ID`, `PARENT_MOTION_ID`, `MUSCLE_TARGETS`, then one column per modifier table key (`motionPaths`, `torsoAngles`, … `rangeOfMotion`).
+- **Row order:** Motions in tree order (roots then children).
+- **Cell values:**  
+  - **MUSCLE_TARGETS:** JSON string of flat `Record<muscleId, number>` (same as `motions.muscle_targets`).  
+  - **Modifier columns:** JSON string of shape **`{ "config": <TableConfig>, "deltas": <tableData> }`**. **`config`** is the TableConfig for that dimension (applicability, allowed_row_ids, default_row_id, etc.). **`deltas`** is the per-row delta data from the modifier table for this motion (for round-trip/display).  
+- **Object shape (per modifier column):**  
+  `{ "config": { "applicability": boolean, "allowed_row_ids": string[], "default_row_id": string | null, ... }, "deltas": Record<rowId, DeltaEntry | null> }`
+
+**Import:** Use the **Matrix V2 Config** import wizard in the admin (Matrix V2 Workstation). Source can be CSV/TSV/paste. Map columns to **MOTION_ID** (required), **PARENT_MOTION_ID** (optional), **MUSCLE_TARGETS** (optional), and each modifier table key. Each modifier cell must be valid JSON in the form above; only **`config`** is written to **`config_json.tables[tableKey]`**. **MUSCLE_TARGETS** is applied to the workstation baseline; persist to DB via Baseline card / save motion.
+
+### 11.3 Table Visibility table
+
+**Purpose:** One row per motion, one column per modifier table; each cell is **TRUE** or **FALSE** indicating whether that modifier dimension is **visible** (applicable) for that motion in the Matrix V2 Config UI. Used to bulk-edit which modifier tables are shown per motion.
+
+**Export (e.g. from `export-key-tables.js` → `keyTables/AdminDynamicTables/motion_delta_table_visibility.csv`):**
+
+- **Columns:** `motion_id`, `parent_motion_id`, `motion_label`, then one column per modifier table key (`motionPaths`, `torsoAngles`, … `rangeOfMotion`).
+- **Row order:** Same as Config Master (roots then children).
+- **Cell values:** **TRUE** or **FALSE** (string or boolean). **TRUE** means **`config_json.tables[tableKey].applicability === true`** for that motion’s (draft or active) config; **FALSE** means applicability is false or unset.
+
+**Import:** Use the **Table Visibility** import in the Matrix V2 Workstation (Table Visibility panel). Source can be CSV/TSV/paste. Required column: **`motion_id`**. Optional: **`parent_motion_id`**, **`motion_label`**. Then one column per modifier key; values are interpreted as TRUE/FALSE (case-insensitive, e.g. "true", "1", "yes" → true). Each cell updates **`config_json.tables[<tableKey>].applicability`** for that motion’s config. After mapping and review, apply in the UI to persist to `motion_matrix_configs`.
+
+**Summary:** Matrix V2 Config = full config (baseline + all TableConfigs + delta references). Table Visibility = grid of applicability (TRUE/FALSE) per motion × modifier table, stored in the same `config_json.tables[tableKey].applicability`. Export scripts write to `keyTables/AdminDynamicTables/`; import wizards read from CSV/TSV/paste and write into the same config store.
+
+---
 
 For full contracts, cascade details, and admin guardrails, see `docs/currentdocs/BIOMECHANICS_ARCHITECTURE.md` and `docs/currentdocs/MATRIX_V2_CONFIG_OVERVIEW.md`.
