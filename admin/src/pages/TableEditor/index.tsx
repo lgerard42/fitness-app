@@ -2372,6 +2372,9 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
               Delete <span className="font-medium">{deleteLabel}</span>{' '}
               <code className="bg-gray-100 px-1 text-xs">{deleteConfirm}</code>?
             </p>
+            <p className="text-xs text-gray-500 mb-3">
+              &quot;Delete&quot; soft-deletes (sets is_active = false). &quot;Permanently delete&quot; removes the row from the database for this table (available for all tables). Cannot be undone.
+            </p>
 
             {fkRefs.length > 0 && (
               <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded">

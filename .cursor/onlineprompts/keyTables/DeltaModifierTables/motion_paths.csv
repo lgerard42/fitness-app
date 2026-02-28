@@ -1,8 +1,8 @@
 id,label,common_names,delta_rules,short_description,sort_order,icon,is_active,source_type
 LOW_HIGH,Low to High,"[""Slight Incline"",""Scooping""]",{},Starting low and moving upward. Biases upper fibers.,0,,TRUE,seed
-HIGH_LOW,High to Low,"[""Slight Decline"",""Downward Path""]",{},Starting high and moving downward. Biases lower fibers.,1,,TRUE,seed
+HIGH_LOW,High to Low,"[""Slight Decline"",""Downward Path""]","{""CHEST_FLY_DECLINE"":{""BICEPS"":0.2,""BRACHIALIS"":0}}",Starting high and moving downward. Biases lower fibers.,1,,TRUE,seed
 LOW_LOW,Low,"[""Bottom Range"",""Ankle Level""]",{},Movement occurs at a low height relative to torso.,2,,TRUE,seed
-HIGH_HIGH,High,"[""Overhead"",""Top Range""]",{},"Movement occurs at a high height (e.g., Face Pulls).",3,,TRUE,seed
+HIGH_HIGH,High,"[""Overhead"",""Top Range""]","{""CHEST_FLY_DECLINE"":""inherit""}","Movement occurs at a high height (e.g., Face Pulls).",3,,TRUE,seed
 MID_LOW,Mid to Low,"[""Diagonal Down""]",{},Starting at chest height and moving toward the hips.,4,,TRUE,seed
 MID_HIGH,Mid to High,"[""Diagonal Up""]",{},Starting at chest height and moving toward the face.,5,,TRUE,seed
 HIGH_MID,High to Mid,"[""Slight Pull Down""]",{},Starting high and finishing at chest level.,6,,TRUE,seed

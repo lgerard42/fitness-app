@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { findRootMuscleId, asFlatMuscleTargets } from '../../../../shared/utils/muscleGrouping';
 import { buildMuscleTreeFromFlat, getChildrenOf, type TreeNode as SharedTreeNode, type MuscleRecord as SharedMuscleRecord } from '../../../../shared/utils/muscleTree';
 import MatrixV2ConfigPanel from './MatrixV2ConfigPanel';
+import TableVisibilityPanel from './TableVisibilityPanel';
 import { filterScorableOnly, isMuscleScorable, getScorableMuscles } from '../../utils/muscleScorable';
 import { buildAddMuscleDropdownGroups, flattenAddMuscleGroupsToOptions } from '../../utils/muscleDropdownGroups';
 import MuscleSecondarySelect from '../../components/FieldRenderers/MuscleSecondarySelect';
@@ -335,7 +336,7 @@ function InlineDeltaEditor({
 // ─── Main component ───
 
 export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixProps) {
-  const [activeTab, setActiveTab] = useState<'delta_rules' | 'v2_config'>('delta_rules');
+  const [activeTab, setActiveTab] = useState<'delta_rules' | 'v2_config' | 'table_visibility'>('delta_rules');
   const [motions, setMotions] = useState<MotionRecord[]>([]);
   const [tableData, setTableData] = useState<Record<string, Record<string, unknown>[]>>({});
   const [muscles, setMuscles] = useState<MuscleRecord[]>([]);
@@ -1134,6 +1135,16 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
             >
               Matrix V2 Config
             </button>
+            <button
+              onClick={() => setActiveTab('table_visibility')}
+              className={`text-sm font-medium pb-1 border-b-2 transition-colors ${
+                activeTab === 'table_visibility'
+                  ? 'border-blue-600 text-blue-700'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Table Visibility
+            </button>
           </div>
         </div>
         {activeTab === 'delta_rules' && <div className="flex items-center gap-2">
@@ -1171,6 +1182,8 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
         <div className="flex-1 overflow-hidden">
           <MatrixV2ConfigPanel motions={motions} allMuscles={muscles} refreshKey={v2RefreshKey} />
         </div>
+      ) : activeTab === 'table_visibility' ? (
+        <TableVisibilityPanel motions={motions} onDataChange={() => { setV2RefreshKey(k => k + 1); }} />
       ) : (
       <div className="flex-1 flex overflow-hidden">
         {/* Matrix table */}

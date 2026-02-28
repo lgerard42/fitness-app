@@ -127,6 +127,51 @@ const TABLE_KEY_TO_EXPORT = {
   },
 };
 
+/** Modifier table keys (same order as Matrix V2 / Table Visibility UI). */
+const MODIFIER_TABLE_KEYS = [
+  "motionPaths",
+  "torsoAngles",
+  "torsoOrientations",
+  "resistanceOrigin",
+  "grips",
+  "gripWidths",
+  "elbowRelationship",
+  "executionStyles",
+  "footPositions",
+  "stanceWidths",
+  "stanceTypes",
+  "loadPlacement",
+  "supportStructures",
+  "loadingAids",
+  "rangeOfMotion",
+];
+
+/** Path for Table Visibility export (same format as admin UI Copy Table → Excel). */
+const TABLE_VISIBILITY_SUBFOLDER = "AdminDynamicTables";
+const TABLE_VISIBILITY_FILENAME = "motion_delta_table_visibility.csv";
+
+/** Path for Matrix V2 Config master export (all motions, same columns as Copy Table from UI). */
+const CONFIG_MASTER_FILENAME = "motion_delta_table_config_master.csv";
+
+/** Modifier table key (camelCase) → Postgres table name (snake_case). */
+const MODIFIER_TABLE_KEY_TO_PG = {
+  motionPaths: "motion_paths",
+  torsoAngles: "torso_angles",
+  torsoOrientations: "torso_orientations",
+  resistanceOrigin: "resistance_origin",
+  grips: "grips",
+  gripWidths: "grip_widths",
+  elbowRelationship: "elbow_relationship",
+  executionStyles: "execution_styles",
+  footPositions: "foot_positions",
+  stanceWidths: "stance_widths",
+  stanceTypes: "stance_types",
+  loadPlacement: "load_placement",
+  supportStructures: "support_structures",
+  loadingAids: "loading_aids",
+  rangeOfMotion: "range_of_motion",
+};
+
 function escapeCsvValue(val) {
   if (val === null || val === undefined) return "";
   if (typeof val === "boolean") return val ? "TRUE" : "FALSE";
@@ -143,6 +188,11 @@ function escapeCsvValue(val) {
 
 function rowToCsvLine(columns, row) {
   return columns.map((col) => escapeCsvValue(row[col])).join(",");
+}
+
+/** Build one CSV line from an array of values (comma-separated, quoted when needed). */
+function valuesToCsvLine(values) {
+  return values.map((v) => escapeCsvValue(v)).join(",");
 }
 
 async function main() {
@@ -184,6 +234,184 @@ async function main() {
       console.error(`FAIL ${key} (${pgTable}):`, err.message);
       fail++;
     }
+  }
+
+  // ─── Table Visibility (Motion Delta Matrix): extract from motion_matrix_configs ───
+  try {
+    const motionsRes = await client.query(
+      `SELECT id, label, parent_id FROM motions WHERE is_active = true ORDER BY sort_order NULLS LAST, id`
+    );
+    const motions = motionsRes.rows;
+    const configsRes = await client.query(
+      `SELECT scope_id, status, config_json FROM motion_matrix_configs WHERE scope_type = 'motion' AND is_deleted = false`
+    );
+    const configsByMotion = new Map();
+    for (const row of configsRes.rows) {
+      const sid = row.scope_id;
+      if (!configsByMotion.has(sid)) configsByMotion.set(sid, []);
+      configsByMotion.get(sid).push({ status: row.status, config_json: row.config_json });
+    }
+    // Prefer draft over active (same as TableVisibilityPanel getEditingConfigForMotion)
+    function getApplicability(motionId) {
+      const list = configsByMotion.get(motionId) || [];
+      const draft = list.find((c) => c.status === "draft");
+      const active = list.find((c) => c.status === "active");
+      const cfg = draft || active;
+      const tables = (cfg && cfg.config_json && cfg.config_json.tables) || {};
+      const out = {};
+      for (const tk of MODIFIER_TABLE_KEYS) {
+        const tc = tables[tk];
+        out[tk] = (tc && tc.applicability) !== false; // default true when missing (same as UI)
+      }
+      return out;
+    }
+    // Order: roots first (parent_id null) sorted by label, then children under each sorted by label (same as UI)
+    const byParent = new Map();
+    const roots = [];
+    for (const m of motions) {
+      const pid = m.parent_id ? String(m.parent_id).trim() : null;
+      if (!pid) {
+        roots.push(m);
+      } else {
+        if (!byParent.has(pid)) byParent.set(pid, []);
+        byParent.get(pid).push(m);
+      }
+    }
+    roots.sort((a, b) => String(a.label).localeCompare(String(b.label)));
+    const sortedMotions = [];
+    function add(parentId, level) {
+      const list = parentId === null ? roots : byParent.get(parentId) || [];
+      const sorted = [...list].sort((a, b) => String(a.label).localeCompare(String(b.label)));
+      for (const m of sorted) {
+        sortedMotions.push(m);
+        add(m.id, level + 1);
+      }
+    }
+    add(null, 0);
+    const orphans = motions.filter((m) => !sortedMotions.includes(m));
+    orphans.sort((a, b) => String(a.label).localeCompare(String(b.label)));
+    sortedMotions.push(...orphans);
+
+    const header = ["motion_id", "parent_motion_id", "motion_label", ...MODIFIER_TABLE_KEYS];
+    const rows = sortedMotions.map((m) => {
+      const app = getApplicability(m.id);
+      return [
+        m.id,
+        m.parent_id != null ? String(m.parent_id) : "",
+        m.label || "",
+        ...MODIFIER_TABLE_KEYS.map((tk) => (app[tk] ? "TRUE" : "FALSE")),
+      ];
+    });
+    // Comma-separated CSV with proper quoting so columns open correctly in Excel
+    const csv = [valuesToCsvLine(header), ...rows.map((r) => valuesToCsvLine(r))].join("\n") + "\n";
+    const outPath = path.join(keyTablesDir, TABLE_VISIBILITY_SUBFOLDER, TABLE_VISIBILITY_FILENAME);
+    fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    fs.writeFileSync(outPath, csv, "utf8");
+    console.log(`OK table_visibility -> ${TABLE_VISIBILITY_SUBFOLDER}/${TABLE_VISIBILITY_FILENAME} (${rows.length} rows)`);
+    ok++;
+  } catch (err) {
+    console.error("FAIL table_visibility:", err.message);
+    fail++;
+  }
+
+  // ─── Matrix V2 Config master: one row per motion, same columns as Copy Table from Matrix V2 Config UI ───
+  try {
+    const motionsRes = await client.query(
+      `SELECT id, label, parent_id, muscle_targets FROM motions WHERE is_active = true ORDER BY sort_order NULLS LAST, id`
+    );
+    const allMotions = motionsRes.rows;
+    const configsRes = await client.query(
+      `SELECT scope_id, status, config_json FROM motion_matrix_configs WHERE scope_type = 'motion' AND is_deleted = false`
+    );
+    const configsByMotion = new Map();
+    for (const row of configsRes.rows) {
+      const sid = row.scope_id;
+      if (!configsByMotion.has(sid)) configsByMotion.set(sid, []);
+      configsByMotion.get(sid).push({ status: row.status, config_json: row.config_json });
+    }
+    function getEditingConfig(motionId) {
+      const list = configsByMotion.get(motionId) || [];
+      const draft = list.find((c) => c.status === "draft");
+      const active = list.find((c) => c.status === "active");
+      const cfg = draft || active;
+      return (cfg && cfg.config_json && cfg.config_json.tables) || {};
+    }
+    // Load modifier table data: for each table key, id -> { delta_rules }
+    const modifierData = {};
+    for (const tk of MODIFIER_TABLE_KEYS) {
+      const pgTable = MODIFIER_TABLE_KEY_TO_PG[tk];
+      if (!pgTable) continue;
+      const res = await client.query(
+        `SELECT id, delta_rules FROM "${pgTable}" WHERE is_active = true`
+      );
+      modifierData[tk] = {};
+      for (const row of res.rows) {
+        modifierData[tk][row.id] = { delta_rules: row.delta_rules || {} };
+      }
+    }
+    // Same motion order as Table Visibility: roots then children, alphabetically
+    const byParent = new Map();
+    const roots = [];
+    for (const m of allMotions) {
+      const pid = m.parent_id ? String(m.parent_id).trim() : null;
+      if (!pid) roots.push(m);
+      else {
+        if (!byParent.has(pid)) byParent.set(pid, []);
+        byParent.get(pid).push(m);
+      }
+    }
+    roots.sort((a, b) => String(a.label).localeCompare(String(b.label)));
+    const sortedMotions = [];
+    function add(parentId) {
+      const list = parentId === null ? roots : byParent.get(parentId) || [];
+      const sorted = [...list].sort((a, b) => String(a.label).localeCompare(String(b.label)));
+      for (const m of sorted) {
+        sortedMotions.push(m);
+        add(m.id);
+      }
+    }
+    add(null);
+    const orphans = allMotions.filter((m) => !sortedMotions.includes(m));
+    orphans.sort((a, b) => String(a.label).localeCompare(String(b.label)));
+    sortedMotions.push(...orphans);
+
+    const header = ["MOTION_ID", "PARENT_MOTION_ID", "MUSCLE_TARGETS", ...MODIFIER_TABLE_KEYS];
+    const rows = sortedMotions.map((m) => {
+      const tables = getEditingConfig(m.id);
+      const mt = m.muscle_targets || {};
+      const cells = [
+        m.id,
+        m.parent_id != null ? String(m.parent_id) : "",
+        typeof mt === "object" ? JSON.stringify(mt) : String(mt),
+      ];
+      for (const tk of MODIFIER_TABLE_KEYS) {
+        const tc = tables[tk];
+        if (!tc || !tc.applicability) {
+          cells.push("");
+          continue;
+        }
+        const tableData = {};
+        const allowed = tc.allowed_row_ids || [];
+        const rowById = modifierData[tk] || {};
+        for (const rid of allowed) {
+          const rowData = rowById[rid];
+          const delta = rowData && rowData.delta_rules && rowData.delta_rules[m.id];
+          tableData[rid] = delta !== undefined ? delta : null;
+        }
+        cells.push(JSON.stringify({ config: tc, deltas: tableData }));
+      }
+      return cells;
+    });
+    // Comma-separated CSV with proper quoting (JSON cells contain commas)
+    const csv = [valuesToCsvLine(header), ...rows.map((r) => valuesToCsvLine(r))].join("\n") + "\n";
+    const outPath = path.join(keyTablesDir, TABLE_VISIBILITY_SUBFOLDER, CONFIG_MASTER_FILENAME);
+    fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    fs.writeFileSync(outPath, csv, "utf8");
+    console.log(`OK config_master -> ${TABLE_VISIBILITY_SUBFOLDER}/${CONFIG_MASTER_FILENAME} (${rows.length} rows)`);
+    ok++;
+  } catch (err) {
+    console.error("FAIL config_master:", err.message);
+    fail++;
   }
 
   await client.end();
