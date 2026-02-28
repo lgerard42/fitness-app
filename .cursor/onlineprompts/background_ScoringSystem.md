@@ -25,6 +25,14 @@ The system uses a **composable baseline + delta** model. A configured exercise i
 - **Home-base is motion-specific** — Each motion has `default_delta_configs` (modifier row IDs). There is no single “global neutral”; neutral is per motion.
 - **Determinism** — Same motion + same modifier selections ⇒ same composed score. Order of application is fixed (cascade order).
 
+**Parent vs. child muscles when calculating total scores:**
+
+The composed score map is **flat**: each key is a muscle ID and each value is that muscle’s score (baseline + deltas for that ID only). Both a **parent** muscle and its **children** can appear as separate keys; their values are **independent** — the pipeline does not roll child scores up into the parent or sum parent + children.
+
+- **When a parent has a score and its children have scores:** All entries coexist. The parent’s value is whatever was stored (or added by deltas) for that parent ID; each child’s value is for that child ID. There is no automatic “parent total = sum of children” during scoring.
+- **Calculated score (for display/grouping):** When the system needs a **single number** for a muscle (e.g. for the Muscle Grouping dropdown or tree display), it uses **calculated score**: if that muscle ID has an **explicit** value in the flat map, that value is used; otherwise the value is the **sum of its children’s calculated scores** (recursive). So a parent with no explicit score gets a derived total from its children at display time; a parent with an explicit score keeps that value and does not replace it with the sum of children.
+- **Persistence:** On save, parent muscle IDs with score **0** are stripped from `muscle_targets` and `delta_rules` (redundant, since parent total would be computed from children when absent). Parent IDs with **non-zero** scores are kept.
+
 ---
 
 ## 2. How the Tables Work Together

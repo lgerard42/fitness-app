@@ -195,6 +195,25 @@ export default function RowEditor({ schema, row, isNew, refData, onSave, onCance
       );
     }
 
+    // Special handling for motion_type on MOTIONS table (dropdown: Standard, Umbrella, Mixed, Rehab)
+    if (schema.key === 'motions' && field.name === 'motion_type') {
+      const MOTION_TYPE_OPTIONS = ['Standard', 'Umbrella', 'Mixed', 'Rehab'] as const;
+      return (
+        <div key={field.name}>
+          {label}
+          <select
+            value={String(value ?? 'Standard')}
+            onChange={(e) => update(field.name, e.target.value)}
+            className="w-full px-3 py-2 border rounded text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+          >
+            {MOTION_TYPE_OPTIONS.map((opt) => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
+        </div>
+      );
+    }
+
     // Special handling for upper_lower on MOTIONS table (use toggle)
     if (schema.key === 'motions' && field.name === 'upper_lower') {
       const upperLowerValue = Array.isArray(value) ? (value as string[]) : [];

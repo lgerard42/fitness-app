@@ -35,6 +35,7 @@ export const motionSchema = z.object({
   id: z.string().min(1),
   label: z.string().min(1),
   parent_id: z.union([z.string(), z.null()]),
+  motion_type: z.union([z.enum(["Standard", "Umbrella", "Mixed", "Rehab"]), z.literal(""), z.null()]).optional(),
   upper_lower: z.array(z.union([z.literal("UPPER"), z.literal("LOWER")])),
   muscle_targets: z.record(z.string(), z.number()),
   default_delta_configs: z.record(z.string(), z.string()).optional().default({}),

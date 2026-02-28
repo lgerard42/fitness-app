@@ -84,6 +84,7 @@ const TABLE_DEFINITIONS: TableSchema[] = [
     group: 'Muscles & Motions', idField: 'id', labelField: 'label',
     fields: baseFields([
       { name: 'parent_id', type: 'fk', refTable: 'motions', refLabelField: 'label' },
+      { name: 'motion_type', type: 'string', defaultValue: 'Standard', label: 'Motion type' },
       { name: 'upper_lower', type: 'string[]', defaultValue: [] },
       { name: 'muscle_targets', type: 'json', jsonShape: 'muscle_targets' },
       { name: 'muscle_grouping_id', type: 'fk', refTable: 'muscles', refLabelField: 'label' },

@@ -38,6 +38,7 @@ export interface Motion {
   id: string;
   label: string;
   parent_id: string | null;
+  motion_type?: string;
   upper_lower: ("UPPER" | "LOWER")[];
   muscle_targets: MuscleTargets;
   default_delta_configs: Record<string, string>;
