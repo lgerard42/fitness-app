@@ -695,12 +695,18 @@ Table export scope: only motions in the **current scope** (the motion family whe
 | Option | Behavior |
 |--------|----------|
 | **Full JSON** | Upload a complete Matrix V2 config JSON file. Parses and sends to import API; creates new draft or shows validation errors. |
-| **CSV / TSV File** | Upload a delimited table file. Expected columns: `MOTION_ID` (required), `MUSCLE_TARGETS`, `VERSION` (optional), then modifier table columns. Proceeds to review. |
-| **Paste Table** | Textarea for pasted tab-separated data (same column format). Click "Parse Data" to proceed to review. |
+| **CSV / TSV File** | Upload a delimited table file. Expected columns: `MOTION_ID` (required), `MUSCLE_TARGETS`, `VERSION` (optional), then modifier table columns. Proceeds to Map Import Columns. |
+| **Paste Table** | Textarea for pasted tab-separated data (same column format). Click "Parse Data" to proceed to Map Import Columns. |
 
 2. **Input** — Upload a file or paste data. Auto-detects delimiters (tab, comma).
 
-3. **Review & Map** — Shows:
+3. **Map Import Columns** — (CSV/TSV and Paste only.) One row per import column (file headers as rows). For each column:
+   - **Map to:** Dropdown to map the column to a modifier table (or "— Not mapped —"). Auto-detection matches headers to modifier table keys/labels; user can correct mismatches.
+   - **Import / Exclude:** Per-column choice. **Exclude** columns are not applied during import; excluded rows are styled as disabled.
+   - **Bulk select:** Choose "Import" or "Exclude", select multiple rows via checkboxes, then click **Apply to selected** to set all selected rows to that action.
+   - **Continue to Review** advances to the next step. Only columns set to **Import** with a valid **Map to** are applied when applying the import.
+
+4. **Review & Map** — Shows:
    - **Stats bar**: Total rows parsed, valid rows, skipped rows (invalid motion IDs).
    - **Invalid motion ID warnings**: Rows where the `MOTION_ID` does not exist in the motions table are flagged in a red warning box and automatically skipped. The user is shown each invalid motion ID and the skip reason.
    - **Version mapping table**: For each valid row:
@@ -708,9 +714,10 @@ Table export scope: only motions in the **current scope** (the motion family whe
      - If **no VERSION column**, each row shows a dropdown to select the target config version: existing drafts/active configs for that motion (listed as `v{N} (status)`) or **"+ Create New Draft"**. If a motion has exactly one existing config, it's auto-selected. If none exist, "Create New Draft" is auto-selected. The user can also choose "Skip this row" to exclude it.
    - The import button shows the count of rows that will be applied.
 
-4. **Apply Import** — For each mapped row:
+5. **Apply Import** — For each mapped row:
    - If target is "Create New Draft", a new draft config is created (with auto-incremented version number).
-   - The config's `config_json.tables` are updated with the imported table data.
+   - The config's `config_json.tables` are updated with the imported table data. Only columns that were set to **Import** with a valid **Map to** in the Map Import Columns step are applied; the mapping from import column header to modifier table key is used.
+   - If one or more target configs are **active**, the wizard shows an **"Are you sure?"** confirmation: "One or more target configs are active. Importing will overwrite them." On **Yes, proceed**, the update is sent with `force: true` so the backend allows overwriting active configs. On Cancel, the import is not run.
    - If muscle targets are included, a note is added that they should be applied via the baseline card.
    - A detailed results log shows the outcome for every row (updated, skipped, failed).
 
@@ -803,9 +810,9 @@ The `DELETE /:id` endpoint supports both draft and active config deletion:
 
 ### Edit Protection
 
-Active configs cannot be edited via `PUT /:id`. The service returns `409 Conflict` with "Cannot edit an active config. Clone it to a draft first."
+Active configs cannot be edited via `PUT /:id` without the `force` flag. The service returns `409 Conflict` with "Cannot edit an active config. Clone it to a draft first." The **import wizard** is an exception: when the user selects one or more **active** configs as import targets and clicks Apply Import, the UI shows an "Are you sure?" confirmation; on confirm, it sends `PUT /:id` with `force: true`, which the backend accepts for overwriting active configs.
 
-To modify an active config:
+To modify an active config (without using the import wizard):
 1. **Clone** it to a new draft
 2. **Edit** the clone
 3. **Activate** the clone (which supersedes the old active config)
@@ -1051,8 +1058,9 @@ Motion (group) configs set family-wide defaults. To override for a specific vari
 **Import:** Click **Import** in the toolbar. A multi-step wizard opens:
 1. **Source** — choose Full JSON, CSV/TSV File, or Paste Table
 2. **Input** — upload your file or paste data; click "Parse Data" for paste mode. Include an optional `VERSION` column to auto-map rows to specific draft versions.
-3. **Review & Map** — see which rows are valid and which are skipped (invalid motion IDs are flagged). For each valid row, choose which draft version to apply the data to — existing versions are listed, or select "Create New Draft." If a VERSION column was present, mapping is automatic.
-4. **Apply** — click "Apply Import" to update each target config. A detailed results log shows which rows were applied, created, or skipped.
+3. **Map Import Columns** (CSV/TSV and Paste only) — map each file column to a modifier table, set Import/Exclude per column, and use bulk select to apply Import or Exclude to multiple columns. Click "Continue to Review" when done.
+4. **Review & Map** — see which rows are valid and which are skipped (invalid motion IDs are flagged). For each valid row, choose which config version to apply the data to — existing versions (including **active**) are listed, or select "Create New Draft." If a VERSION column was present, mapping is automatic. If you choose an active config, applying import will show an "Are you sure?" confirmation before overwriting it.
+5. **Apply** — click "Apply Import" to update each target config. A detailed results log shows which rows were applied, created, or skipped.
 
 ---
 
@@ -1070,7 +1078,7 @@ Motion (group) configs set family-wide defaults. To override for a specific vari
 | **Delete** | Deletes the config (soft-delete, recoverable). Active configs require confirmation warning. | Cleaning up unused drafts or removing configs |
 | **Preview** | Shows the merged resolver output | To verify what the system will use |
 | **Export** | Opens modal: Full JSON download, Table TSV download, or Copy table to clipboard | For backup, sharing, or Excel |
-| **Import** | Opens multi-step wizard: Source → Input → Review & Map → Apply. Supports multi-row import with version mapping. Invalid motion IDs auto-skipped. | For importing config data across multiple motions/variations |
+| **Import** | Opens multi-step wizard: Source → Input → Map Import Columns (CSV/Paste) → Review & Map → Apply. Supports multi-row import with version mapping; can import into active configs (confirmation required). Column mapping and Import/Exclude per column; invalid motion IDs auto-skipped. | For importing config data across multiple motions/variations |
 
 ---
 
@@ -1194,7 +1202,7 @@ Group has `local_rules: [{ rule_id: "r1", action: "filter_row_ids", condition: {
 |-------|----------------------|
 | **Activation flow** | Validate; if `!can_activate` return 422. Then `BEGIN`; find existing active for same `(scope_type, scope_id)`; set that row to `status = 'draft'`; set target to `status = 'active'`, increment `config_version`, set `published_at = NOW()`; `COMMIT`. |
 | **Active uniqueness** | **Application-level only.** No DB UNIQUE on `(scope_type, scope_id)` where status = active. Race: two concurrent activates could leave two actives; not prevented. |
-| **Edit/delete protections** | Active configs: `PUT` returns 409 "Cannot edit an active config. Clone it to a draft first." `DELETE` supports `?force=true` for active configs; without force returns 409. |
+| **Edit/delete protections** | Active configs: `PUT` returns 409 "Cannot edit an active config. Clone it to a draft first." unless `force: true` is sent (used by the import wizard after user confirmation). `DELETE` supports `?force=true` for active configs; without force returns 409. |
 | **Draft/active/deleted** | Draft ↔ active only via Activate (draft becomes active, previous active becomes draft). Deleted: soft-delete (`is_deleted = TRUE`); list and resolver exclude by default; `?include_deleted=true` for list. Active configs can be force-deleted via `?force=true`, leaving no active config for that scope. |
 
 ### H. Import / Export Contract
@@ -1205,7 +1213,7 @@ Group has `local_rules: [{ rule_id: "r1", action: "filter_row_ids", condition: {
 
 **Round-trip:** Export → import (create) produces a new draft with same `config_json` and scope; IDs and timestamps are new. Round-trip stability for rule_id: export does not regenerate rule_id; import keeps rule_id from file. If rule_id was generated by `generateRuleId` before export, re-import keeps it.
 
-**UI table format (client-side):** Export modal can generate a **table** (TSV): columns MOTION_ID, MUSCLE_TARGETS, then one per modifier table; each cell is JSON `{ config, deltas }`. Scope = current scope family only. Import wizard (multi-step: Source → Input → Review & Map → Apply) accepts **Full JSON**, **CSV/TSV file upload**, or **Paste table**; supports multi-row import with optional `VERSION` column; validates motion IDs against motions table (skips invalid); provides version mapping UI when no VERSION column. See Section 11.
+**UI table format (client-side):** Export modal can generate a **table** (TSV): columns MOTION_ID, MUSCLE_TARGETS, then one per modifier table; each cell is JSON `{ config, deltas }`. Scope = current scope family only. Import wizard (multi-step: Source → Input → Map Import Columns → Review & Map → Apply) accepts **Full JSON**, **CSV/TSV file upload**, or **Paste table**; for CSV/Paste, **Map Import Columns** lets the user map file columns to modifier tables and set Import/Exclude per column (with bulk select); supports multi-row import with optional `VERSION` column; can target active configs (confirmation required); validates motion IDs (skips invalid); version mapping UI when no VERSION column. See Section 11.
 
 **Preview vs create:** `mode === "preview"` → return `{ preview: data, validation: structural, imported: false }` without saving. Any other mode with valid structural: create draft and return `{ config, validation: fullValidation, imported: true }`. If structural has errors and mode !== "preview", return `{ preview: data, validation: structural, imported: false }` (no create).
 
@@ -1225,7 +1233,7 @@ Group has `local_rules: [{ rule_id: "r1", action: "filter_row_ids", condition: {
 | Load Placement secondary config | Implemented. Override `allows_secondary` per row; select/deselect `valid_secondary_ids` when allows secondary. |
 | Preview (resolve API + show JSON) | Implemented |
 | Export modal (JSON / Table TSV / Copy) | Implemented. Full JSON download, table-format TSV download, or copy table to clipboard (scope family only). |
-| Import wizard (JSON / CSV / Paste) | Implemented. Multi-step wizard: Source → Input → Review & Map → Apply. Supports multi-row import across different motions/variations. Optional `VERSION` column for auto-mapping to draft versions. Version mapping UI when no VERSION column (select existing version or "Create New Draft" per row). Invalid motion IDs auto-skipped with warnings. Detailed results log. |
+| Import wizard (JSON / CSV / Paste) | Implemented. Multi-step wizard: Source → Input → Map Import Columns (CSV/Paste) → Review & Map → Apply. Map Import Columns: one row per file column, map to modifier table, Import/Exclude per column, bulk select to apply Import or Exclude. Supports multi-row import across different motions/variations; can import into active configs (Are you sure? confirmation, then force update). Optional `VERSION` column for auto-mapping. Version mapping UI when no VERSION column. Invalid motion IDs auto-skipped. Detailed results log. |
 | Motion context selector | Implemented. Dropdown selects a motion within the scope family to drive baseline, delta, and simulation views. **Auto-hidden** when the primary motion has no variations (auto-selects the only motion). |
 | Baseline card (muscle_targets) | Implemented. Embeds `MuscleTargetTree` with Save Baseline button; writes only to motions table. Baseline is stored as **flat** `Record<muscleId, number>` (no nested groups). |
 | Motion grouping by muscle (Delta Rules tab; MOTIONS table) | Implemented. Motion rows grouped by primary muscle then optional secondary (nested sections). Key = `muscle_grouping_id` when set, else fallback to highest-scoring muscle in `muscle_targets`. Same logic on MOTIONS table when "Group by: Muscles" is selected. |

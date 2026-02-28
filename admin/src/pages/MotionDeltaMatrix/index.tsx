@@ -1169,7 +1169,7 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
 
       {activeTab === 'v2_config' ? (
         <div className="flex-1 overflow-hidden">
-          <MatrixV2ConfigPanel motions={motions} refreshKey={v2RefreshKey} />
+          <MatrixV2ConfigPanel motions={motions} allMuscles={muscles} refreshKey={v2RefreshKey} />
         </div>
       ) : (
       <div className="flex-1 flex overflow-hidden">

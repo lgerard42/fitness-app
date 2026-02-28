@@ -10,6 +10,7 @@ import type {
   ModifierTableKey,
 } from '../../../../shared/types/matrixV2';
 import { MODIFIER_TABLE_KEYS } from '../../../../shared/types/matrixV2';
+const MODIFIER_TABLE_KEYS_ARR = [...MODIFIER_TABLE_KEYS];
 import type { MuscleTargets, ModifierRow } from '../../../../shared/types';
 import { useWorkstationState } from '../../hooks/useWorkstationState';
 import { useScoringSimulation } from '../../hooks/useScoringSimulation';
@@ -18,8 +19,17 @@ import SimulationPreview from '../../components/workstation/SimulationPreview';
 import DeltaBranchCard from '../../components/workstation/DeltaBranchCard';
 import DirtyBadge from '../../components/workstation/DirtyBadge';
 
+interface MotionForPanel {
+  id: string;
+  label: string;
+  parent_id?: string | null;
+  muscle_targets?: Record<string, unknown>;
+}
+
 interface MatrixV2ConfigPanelProps {
-  motions: Array<{ id: string; label: string; parent_id?: string | null }>;
+  motions: MotionForPanel[];
+  /** Optional: for "filter by muscle" dropdown; if not provided, muscle filter is hidden or disabled */
+  allMuscles?: Array<{ id: string; label: string }>;
   refreshKey?: number;
 }
 
@@ -68,7 +78,20 @@ function emptyTableConfig(): TableConfig {
   };
 }
 
-export default function MatrixV2ConfigPanel({ motions, refreshKey }: MatrixV2ConfigPanelProps) {
+/** Return set of muscle ids that appear in motion's muscle_targets (flat or nested). */
+function getMuscleIdsFromTargets(muscle_targets: Record<string, unknown> | undefined): Set<string> {
+  if (!muscle_targets || typeof muscle_targets !== 'object') return new Set();
+  const ids = new Set<string>();
+  for (const [k, v] of Object.entries(muscle_targets)) {
+    if (typeof v === 'number') ids.add(k);
+    else if (v && typeof v === 'object' && !Array.isArray(v)) {
+      getMuscleIdsFromTargets(v as Record<string, unknown>).forEach(id => ids.add(id));
+    }
+  }
+  return ids;
+}
+
+export default function MatrixV2ConfigPanel({ motions, allMuscles = [], refreshKey }: MatrixV2ConfigPanelProps) {
   // ─── Matrix config state (existing) ───
   const [configs, setConfigs] = useState<MatrixConfigRow[]>([]);
   const [selectedConfigId, setSelectedConfigId] = useState<string | null>(null);
@@ -91,18 +114,29 @@ export default function MatrixV2ConfigPanel({ motions, refreshKey }: MatrixV2Con
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Import wizard state
-  type ImportStep = 'source' | 'input' | 'review' | 'importing';
+  type ImportStep = 'source' | 'input' | 'column_map' | 'review' | 'importing';
   type ImportParsedRow = { motionId: string; version: number | null; muscleTargets: unknown; tables: Record<string, unknown>; valid: boolean; skipReason?: string };
   type ImportRowMapping = { motionId: string; targetConfigId: string }; // '' = skip, '__new__' = create new draft
+  type ImportColumnMappingEntry = { header: string; tableKey: string; include: 'import' | 'exclude' };
   const [importStep, setImportStep] = useState<ImportStep>('source');
   const [importSourceMode, setImportSourceMode] = useState<'json' | 'csv' | 'paste'>('paste');
   const [importParsedRows, setImportParsedRows] = useState<ImportParsedRow[]>([]);
   const [importHasVersionCol, setImportHasVersionCol] = useState(false);
   const [importRowMappings, setImportRowMappings] = useState<ImportRowMapping[]>([]);
   const [importResult, setImportResult] = useState<{ success: boolean; message: string; details?: string[] } | null>(null);
+  const [importHeaders, setImportHeaders] = useState<string[]>([]);
+  const [importColumnMapping, setImportColumnMapping] = useState<ImportColumnMappingEntry[]>([]);
+  const [selectedColumnIndices, setSelectedColumnIndices] = useState<Set<number>>(new Set());
+  const [bulkColumnAction, setBulkColumnAction] = useState<'import' | 'exclude'>('import');
+  const [showImportActiveConfirm, setShowImportActiveConfirm] = useState(false);
+  const [importConfirmCallback, setImportConfirmCallback] = useState<(() => void) | null>(null);
 
   // Sidebar collapse state
   const [collapsedScopeGroups, setCollapsedScopeGroups] = useState<Set<string>>(new Set());
+
+  // Motion list filters (below "Matrix V2 Workstation")
+  const [motionSearch, setMotionSearch] = useState('');
+  const [muscleFilterId, setMuscleFilterId] = useState('');
 
   // Active-edit confirmation dialogs
   const [showActiveEditSaveConfirm, setShowActiveEditSaveConfirm] = useState(false);
@@ -651,7 +685,7 @@ export default function MatrixV2ConfigPanel({ motions, refreshKey }: MatrixV2Con
   // ─── Import helpers ───
   const motionIdSet = useMemo(() => new Set(motions.map(m => m.id)), [motions]);
 
-  const parseTableImport = useCallback((text: string): { rows: ImportParsedRow[]; hasVersionCol: boolean } => {
+  const parseTableImport = useCallback((text: string): { rows: ImportParsedRow[]; hasVersionCol: boolean; headers: string[] } => {
     const lines = text.trim().split('\n');
     if (lines.length < 2) throw new Error('Table must have at least a header and one data row');
     const delimiter = lines[0].includes('\t') ? '\t' : ',';
@@ -699,8 +733,20 @@ export default function MatrixV2ConfigPanel({ motions, refreshKey }: MatrixV2Con
         skipReason: !motionId ? 'Empty MOTION_ID' : !exists ? `Motion "${motionId}" not found in motions table` : undefined,
       };
     });
-    return { rows: dataRows, hasVersionCol };
+    return { rows: dataRows, hasVersionCol, headers: header };
   }, [motionIdSet]);
+
+  const autoDetectTableKey = useCallback((header: string): string => {
+    const h = header.trim();
+    const lower = h.toLowerCase();
+    if (MODIFIER_TABLE_KEYS_ARR.includes(h as ModifierTableKey)) return h;
+    for (const key of MODIFIER_TABLE_KEYS_ARR) {
+      if (key.toLowerCase() === lower) return key;
+      const label = (MODIFIER_TABLE_LABELS as Record<string, string>)[key];
+      if (label && label.toLowerCase() === lower) return key;
+    }
+    return '';
+  }, []);
 
   // ─── Render ───
   return (
@@ -709,6 +755,34 @@ export default function MatrixV2ConfigPanel({ motions, refreshKey }: MatrixV2Con
       <div className="w-72 border-r border-gray-200 bg-white flex flex-col">
         <div className="p-3 border-b border-gray-200">
           <h2 className="text-sm font-bold text-gray-900">Matrix V2 Workstation</h2>
+        </div>
+
+        {/* Search and muscle filter bar */}
+        <div className="p-2 border-b border-gray-200 bg-gray-50 space-y-2">
+          <input
+            type="text"
+            placeholder="Search motions..."
+            value={motionSearch}
+            onChange={(e) => setMotionSearch(e.target.value)}
+            className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+          />
+          {allMuscles.length > 0 && (
+            <select
+              value={muscleFilterId}
+              onChange={(e) => setMuscleFilterId(e.target.value)}
+              className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">All muscles</option>
+              {allMuscles
+                .filter((m) => m.id && m.label)
+                .sort((a, b) => (a.label || '').localeCompare(b.label || ''))
+                .map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.label}
+                  </option>
+                ))}
+            </select>
+          )}
         </div>
 
         {/* Motion Context Selector — only show if there are variations (children) */}
@@ -762,7 +836,24 @@ export default function MatrixV2ConfigPanel({ motions, refreshKey }: MatrixV2Con
               configsByScope.set(cfg.scope_id, arr);
             }
 
-            const roots = motions.filter(m => !m.parent_id).sort((a, b) => a.label.localeCompare(b.label));
+            const searchLower = motionSearch.trim().toLowerCase();
+            const visibleMotionIds = (() => {
+              const set = new Set<string>();
+              for (const m of motions) {
+                const matchesSearch = !searchLower || (m.label || '').toLowerCase().includes(searchLower);
+                const matchesMuscle = !muscleFilterId || getMuscleIdsFromTargets(m.muscle_targets as Record<string, unknown>).has(muscleFilterId);
+                if (matchesSearch && matchesMuscle) set.add(m.id);
+              }
+              return set;
+            })();
+
+            const allRoots = motions.filter(m => !m.parent_id).sort((a, b) => a.label.localeCompare(b.label));
+            const roots = allRoots.filter((root) => {
+              const selfVisible = visibleMotionIds.has(root.id);
+              const children = motions.filter(m => m.parent_id === root.id);
+              const anyChildVisible = children.some(c => visibleMotionIds.has(c.id));
+              return selfVisible || anyChildVisible;
+            });
 
             const renderMotionCard = (motion: typeof motions[0], indent: boolean) => {
               const cfgs = configsByScope.get(motion.id) || [];
@@ -840,7 +931,9 @@ export default function MatrixV2ConfigPanel({ motions, refreshKey }: MatrixV2Con
             }
 
             return roots.map(root => {
-              const children = motions.filter(m => m.parent_id === root.id).sort((a, b) => a.label.localeCompare(b.label));
+              const children = motions
+                .filter(m => m.parent_id === root.id && visibleMotionIds.has(m.id))
+                .sort((a, b) => a.label.localeCompare(b.label));
               return (
                 <React.Fragment key={root.id}>
                   {renderMotionCard(root, false)}
@@ -1685,7 +1778,9 @@ export default function MatrixV2ConfigPanel({ motions, refreshKey }: MatrixV2Con
           return configs.filter(c => c.scope_type === scopeType && c.scope_id === scopeId);
         };
 
-        const handleApplyImport = async () => {
+        const runImportWithForce = async (forceUpdateActive: boolean) => {
+          setShowImportActiveConfirm(false);
+          setImportConfirmCallback(null);
           setImportStep('importing');
           const details: string[] = [];
           let applied = 0;
@@ -1741,13 +1836,16 @@ export default function MatrixV2ConfigPanel({ motions, refreshKey }: MatrixV2Con
                 const existingCfg = await api.getMatrixConfig(targetConfigId);
                 if (!existingCfg) { details.push(`${row.motionId}: config not found`); continue; }
                 const cfgJson = existingCfg.config_json as MatrixConfigJson;
+                const isActive = existingCfg.status === 'active';
 
-                if (row.tables && Object.keys(row.tables).length > 0) {
-                  for (const [tableKey, cellData] of Object.entries(row.tables)) {
+                if (row.tables && importColumnMapping.length > 0) {
+                  for (const entry of importColumnMapping) {
+                    if (entry.include !== 'import' || !entry.tableKey) continue;
+                    const cellData = row.tables[entry.header];
                     if (!cellData) continue;
                     const parsed = cellData as { config?: TableConfig; deltas?: Record<string, unknown> };
                     if (parsed.config) {
-                      cfgJson.tables = { ...cfgJson.tables, [tableKey]: parsed.config };
+                      cfgJson.tables = { ...cfgJson.tables, [entry.tableKey]: parsed.config };
                     }
                   }
                 }
@@ -1755,6 +1853,7 @@ export default function MatrixV2ConfigPanel({ motions, refreshKey }: MatrixV2Con
                 await api.updateMatrixConfig(targetConfigId, {
                   config_json: cfgJson,
                   notes: existingCfg.notes || undefined,
+                  force: isActive && forceUpdateActive,
                 });
 
                 if (row.muscleTargets) {
@@ -1783,6 +1882,31 @@ export default function MatrixV2ConfigPanel({ motions, refreshKey }: MatrixV2Con
           }
         };
 
+        const handleApplyImport = () => {
+          const targetIds = new Set<string>();
+          for (const row of validRows) {
+            let targetConfigId: string | null = null;
+            if (importHasVersionCol && row.version) {
+              const motion = motions.find(m => m.id === row.motionId);
+              const isChild = !!motion?.parent_id;
+              const scopeType = isChild ? 'motion' : 'motion_group';
+              const matching = configs.filter(c => c.scope_type === scopeType && c.scope_id === row.motionId && c.config_version === row.version);
+              if (matching.length > 0) targetConfigId = matching[0].id;
+            } else {
+              const mapping = importRowMappings.find(m => m.motionId === row.motionId);
+              targetConfigId = mapping?.targetConfigId && mapping.targetConfigId !== '__new__' ? mapping.targetConfigId : null;
+            }
+            if (targetConfigId) targetIds.add(targetConfigId);
+          }
+          const activeTargets = configs.filter(c => targetIds.has(c.id) && c.status === 'active');
+          if (activeTargets.length > 0) {
+            setImportConfirmCallback(() => runImportWithForce(true));
+            setShowImportActiveConfirm(true);
+            return;
+          }
+          runImportWithForce(false);
+        };
+
         return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl mx-4 max-h-[85vh] flex flex-col">
@@ -1791,12 +1915,12 @@ export default function MatrixV2ConfigPanel({ motions, refreshKey }: MatrixV2Con
               <div className="flex items-center gap-3">
                 {importStep !== 'source' && importStep !== 'importing' && (
                   <button
-                    onClick={() => setImportStep(importStep === 'review' ? 'input' : 'source')}
+                    onClick={() => setImportStep(importStep === 'review' ? 'column_map' : importStep === 'column_map' ? 'input' : 'source')}
                     className="text-gray-400 hover:text-gray-700 text-lg"
                   >←</button>
                 )}
                 <h2 className="text-base font-semibold text-gray-800">
-                  {importStep === 'source' ? 'Import Config Data' : importStep === 'input' ? (importSourceMode === 'json' ? 'Upload JSON' : importSourceMode === 'csv' ? 'Upload CSV / TSV' : 'Paste Table Data') : importStep === 'review' ? 'Review & Map Import' : 'Importing'}
+                  {importStep === 'source' ? 'Import Config Data' : importStep === 'input' ? (importSourceMode === 'json' ? 'Upload JSON' : importSourceMode === 'csv' ? 'Upload CSV / TSV' : 'Paste Table Data') : importStep === 'column_map' ? 'Map Import Columns' : importStep === 'review' ? 'Review & Map Import' : 'Importing'}
                 </h2>
               </div>
               {importStep !== 'importing' && (
@@ -1888,9 +2012,16 @@ export default function MatrixV2ConfigPanel({ motions, refreshKey }: MatrixV2Con
                             if (!file) return;
                             const text = await file.text();
                             try {
-                              const { rows, hasVersionCol } = parseTableImport(text);
+                              const { rows, hasVersionCol, headers } = parseTableImport(text);
                               setImportParsedRows(rows);
                               setImportHasVersionCol(hasVersionCol);
+                              setImportHeaders(headers);
+                              const reserved = new Set(['MOTION_ID', 'MUSCLE_TARGETS', 'VERSION']);
+                              setImportColumnMapping(headers.map(h => {
+                                const tableKey = reserved.has(h.toUpperCase()) ? '' : autoDetectTableKey(h);
+                                return { header: h, tableKey, include: tableKey ? 'import' as const : 'exclude' as const };
+                              }));
+                              setSelectedColumnIndices(new Set());
                               const validR = rows.filter(r => r.valid);
                               if (!hasVersionCol) {
                                 setImportRowMappings(validR.map(r => {
@@ -1898,7 +2029,7 @@ export default function MatrixV2ConfigPanel({ motions, refreshKey }: MatrixV2Con
                                   return { motionId: r.motionId, targetConfigId: cfgs.length === 1 ? cfgs[0].id : cfgs.length === 0 ? '__new__' : '' };
                                 }));
                               }
-                              setImportStep('review');
+                              setImportStep('column_map');
                             } catch (err: any) {
                               toast.error(err.message || 'Parse failed');
                             }
@@ -1922,9 +2053,16 @@ export default function MatrixV2ConfigPanel({ motions, refreshKey }: MatrixV2Con
                       <button
                         onClick={() => {
                           try {
-                            const { rows, hasVersionCol } = parseTableImport(importPasteText);
+                            const { rows, hasVersionCol, headers } = parseTableImport(importPasteText);
                             setImportParsedRows(rows);
                             setImportHasVersionCol(hasVersionCol);
+                            setImportHeaders(headers);
+                            const reserved = new Set(['MOTION_ID', 'MUSCLE_TARGETS', 'VERSION']);
+                            setImportColumnMapping(headers.map(h => {
+                              const tableKey = reserved.has(h.toUpperCase()) ? '' : autoDetectTableKey(h);
+                              return { header: h, tableKey, include: tableKey ? 'import' as const : 'exclude' as const };
+                            }));
+                            setSelectedColumnIndices(new Set());
                             const validR = rows.filter(r => r.valid);
                             if (!hasVersionCol) {
                               setImportRowMappings(validR.map(r => {
@@ -1932,7 +2070,7 @@ export default function MatrixV2ConfigPanel({ motions, refreshKey }: MatrixV2Con
                                 return { motionId: r.motionId, targetConfigId: cfgs.length === 1 ? cfgs[0].id : cfgs.length === 0 ? '__new__' : '' };
                               }));
                             }
-                            setImportStep('review');
+                            setImportStep('column_map');
                           } catch (err: any) {
                             toast.error(err.message || 'Parse failed');
                           }
@@ -1944,6 +2082,97 @@ export default function MatrixV2ConfigPanel({ motions, refreshKey }: MatrixV2Con
                       </button>
                     </>
                   )}
+                </div>
+              )}
+
+              {importStep === 'column_map' && (
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-500">Map each import column to a modifier table and choose Import or Exclude. Excluded columns are not applied during import.</p>
+                  {/* Bulk actions */}
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <span className="text-xs font-medium text-gray-600">Bulk select:</span>
+                    <select
+                      value={bulkColumnAction}
+                      onChange={(e) => setBulkColumnAction(e.target.value as 'import' | 'exclude')}
+                      className="border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    >
+                      <option value="import">Import</option>
+                      <option value="exclude">Exclude</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedColumnIndices.size === 0) return;
+                        setImportColumnMapping(prev => prev.map((entry, i) =>
+                          selectedColumnIndices.has(i) ? { ...entry, include: bulkColumnAction } : entry
+                        ));
+                        setSelectedColumnIndices(new Set());
+                      }}
+                      disabled={selectedColumnIndices.size === 0}
+                      className="px-3 py-1.5 bg-gray-200 text-gray-800 rounded text-xs font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Apply to selected ({selectedColumnIndices.size})
+                    </button>
+                  </div>
+                  <div className="border rounded-lg overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-gray-50 text-left text-gray-500 uppercase tracking-wider text-[10px]">
+                          <th className="px-2 py-2 w-10">Select</th>
+                          <th className="px-3 py-2">Import column</th>
+                          <th className="px-3 py-2">Map to</th>
+                          <th className="px-3 py-2">Import / Exclude</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {importColumnMapping.map((entry, idx) => (
+                          <tr
+                            key={idx}
+                            className={`border-t ${entry.include === 'exclude' ? 'bg-gray-100 opacity-75' : ''}`}
+                          >
+                            <td className="px-2 py-2">
+                              <input
+                                type="checkbox"
+                                checked={selectedColumnIndices.has(idx)}
+                                onChange={(e) => {
+                                  setSelectedColumnIndices(prev => {
+                                    const next = new Set(prev);
+                                    if (e.target.checked) next.add(idx); else next.delete(idx);
+                                    return next;
+                                  });
+                                }}
+                                className="rounded border-gray-300"
+                              />
+                            </td>
+                            <td className="px-3 py-2 font-mono text-gray-800">{entry.header}</td>
+                            <td className="px-3 py-2">
+                              <select
+                                value={entry.tableKey}
+                                onChange={(e) => setImportColumnMapping(prev => prev.map((e2, i) => i === idx ? { ...e2, tableKey: e.target.value } : e2))}
+                                className="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-60"
+                                disabled={entry.include === 'exclude'}
+                              >
+                                <option value="">— Not mapped —</option>
+                                {MODIFIER_TABLE_KEYS.map(tk => (
+                                  <option key={tk} value={tk}>{(MODIFIER_TABLE_LABELS as Record<string, string>)[tk] || tk}</option>
+                                ))}
+                              </select>
+                            </td>
+                            <td className="px-3 py-2">
+                              <select
+                                value={entry.include}
+                                onChange={(e) => setImportColumnMapping(prev => prev.map((e2, i) => i === idx ? { ...e2, include: e.target.value as 'import' | 'exclude' } : e2))}
+                                className="border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              >
+                                <option value="import">Import</option>
+                                <option value="exclude">Exclude</option>
+                              </select>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
 
@@ -2073,6 +2302,14 @@ export default function MatrixV2ConfigPanel({ motions, refreshKey }: MatrixV2Con
             </div>
             {/* Footer */}
             <div className="flex items-center justify-end gap-3 px-6 py-4 border-t bg-gray-50 rounded-b-lg">
+              {importStep === 'column_map' && (
+                <button
+                  onClick={() => setImportStep('review')}
+                  className="px-5 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
+                >
+                  Continue to Review
+                </button>
+              )}
               {importStep === 'review' && (
                 <button
                   onClick={handleApplyImport}
@@ -2103,6 +2340,32 @@ export default function MatrixV2ConfigPanel({ motions, refreshKey }: MatrixV2Con
         </div>
         );
       })()}
+
+      {/* Import to active config confirmation */}
+      {showImportActiveConfirm && importConfirmCallback && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">Import to active config?</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              One or more target configs are <strong>active</strong>. Importing will overwrite them. Are you sure you want to proceed?
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => { setShowImportActiveConfirm(false); setImportConfirmCallback(null); }}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 text-sm font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => importConfirmCallback()}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
+              >
+                Yes, proceed
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Save Active as New Version Confirmation */}
       {showActiveEditSaveConfirm && selectedConfig && (
