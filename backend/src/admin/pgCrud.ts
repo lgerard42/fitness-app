@@ -24,6 +24,14 @@ export async function listRows(pgTable: string): Promise<Record<string, unknown>
   return rows.map(cleanRow);
 }
 
+/** Return all row ids in the table (active and inactive). Used for replace-import to clear table. */
+export async function listAllRowIds(pgTable: string): Promise<string[]> {
+  const { rows } = await pool.query(
+    `SELECT id FROM "${pgTable}"`
+  );
+  return rows.map((r: { id: string }) => String(r.id));
+}
+
 export async function countRows(pgTable: string): Promise<number> {
   const { rows } = await pool.query(
     `SELECT COUNT(*)::int AS count FROM "${pgTable}" WHERE is_active = true`
@@ -104,6 +112,15 @@ export async function updateRow(
 export async function softDeleteRow(pgTable: string, id: string): Promise<boolean> {
   const { rowCount } = await pool.query(
     `UPDATE "${pgTable}" SET is_active = false WHERE id = $1 AND is_active = true`,
+    [id],
+  );
+  return (rowCount ?? 0) > 0;
+}
+
+/** Permanently remove a row from the table. Use after cleanup (FKs, configs). */
+export async function hardDeleteRow(pgTable: string, id: string): Promise<boolean> {
+  const { rowCount } = await pool.query(
+    `DELETE FROM "${pgTable}" WHERE id = $1`,
     [id],
   );
   return (rowCount ?? 0) > 0;
@@ -260,13 +277,14 @@ export async function handleFKCleanupPg(
 ): Promise<void> {
   if (fkType === "fk") {
     const newVal = mode === "reassign" && reassignTo ? reassignTo : "";
+    // Clear FK in all rows (including inactive) so delete can succeed when clearing table
     await pool.query(
-      `UPDATE "${pgTable}" SET "${fkColumn}" = $1 WHERE "${fkColumn}" = $2 AND is_active = true`,
+      `UPDATE "${pgTable}" SET "${fkColumn}" = $1 WHERE "${fkColumn}" = $2`,
       [newVal, targetId],
     );
   } else {
     const allRows = await pool.query(
-      `SELECT id, "${fkColumn}" FROM "${pgTable}" WHERE "${fkColumn}"::jsonb @> $1::jsonb AND is_active = true`,
+      `SELECT id, "${fkColumn}" FROM "${pgTable}" WHERE "${fkColumn}"::jsonb @> $1::jsonb`,
       [JSON.stringify([targetId])],
     );
     for (const row of allRows.rows) {

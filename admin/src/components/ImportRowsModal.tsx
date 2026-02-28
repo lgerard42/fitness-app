@@ -23,7 +23,11 @@ interface ImportResult {
 interface ImportRowsModalProps {
   schema: TableSchema;
   existingRows: Record<string, unknown>[];
-  onImport: (rows: Record<string, unknown>[], mode: 'upsert' | 'replace') => Promise<ImportResult>;
+  onImport: (
+    rows: Record<string, unknown>[],
+    mode: 'upsert' | 'replace',
+    opts?: { hardDeleteExisting?: boolean }
+  ) => Promise<ImportResult>;
   onClose: () => void;
 }
 
@@ -219,6 +223,7 @@ export default function ImportRowsModal({ schema, existingRows, onImport, onClos
   const [mappings, setMappings] = useState<ColumnMapping[]>([]);
   const [overwriteEmpty, setOverwriteEmpty] = useState(false);
   const [replaceAll, setReplaceAll] = useState(false);
+  const [replaceHardDelete, setReplaceHardDelete] = useState(false);
   const [showReplaceConfirm, setShowReplaceConfirm] = useState(false);
 
   // results
@@ -345,13 +350,14 @@ export default function ImportRowsModal({ schema, existingRows, onImport, onClos
     setShowReplaceConfirm(false);
     try {
       const rows = buildImportRows();
-      const res = await onImport(rows, replaceAll ? 'replace' : 'upsert');
+      const opts = replaceAll ? { hardDeleteExisting: replaceHardDelete } : undefined;
+      const res = await onImport(rows, replaceAll ? 'replace' : 'upsert', opts);
       setResult(res);
     } catch (err: unknown) {
       setResult({ inserted: 0, updated: 0, skipped: 0, errors: [String(err)] });
     }
     setImporting(false);
-  }, [buildImportRows, onImport, replaceAll]);
+  }, [buildImportRows, onImport, replaceAll, replaceHardDelete]);
 
   const handleImportClick = useCallback(() => {
     if (replaceAll) {
@@ -616,6 +622,8 @@ export default function ImportRowsModal({ schema, existingRows, onImport, onClos
                 setReplaceAll(e.target.checked);
                 if (e.target.checked) {
                   setOverwriteEmpty(false);
+                } else {
+                  setReplaceHardDelete(false);
                 }
               }}
               className="mt-0.5 rounded border-gray-300 text-red-600"
@@ -627,6 +635,22 @@ export default function ImportRowsModal({ schema, existingRows, onImport, onClos
               </div>
             </div>
           </label>
+          {replaceAll && (
+            <label className="flex items-start gap-3 cursor-pointer select-none ml-6 mt-2">
+              <input
+                type="checkbox"
+                checked={replaceHardDelete}
+                onChange={e => setReplaceHardDelete(e.target.checked)}
+                className="mt-0.5 rounded border-gray-300 text-red-700"
+              />
+              <div>
+                <div className="text-sm text-gray-800">Permanently delete existing rows (hard delete)</div>
+                <div className="text-xs text-gray-500">
+                  Remove rows from the database instead of deactivating them. They will no longer appear in pgAdmin or any backup.
+                </div>
+              </div>
+            </label>
+          )}
         </div>
 
         {/* Data preview */}
@@ -745,7 +769,12 @@ export default function ImportRowsModal({ schema, existingRows, onImport, onClos
             <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
               <h3 className="text-lg font-semibold text-gray-800 mb-2">Confirm Replace All Rows</h3>
               <p className="text-sm text-gray-600 mb-6">
-                Are you sure you want to delete all existing rows before importing data? This will permanently remove <strong>{existingRows.length}</strong> existing row{existingRows.length !== 1 ? 's' : ''} and cannot be undone.
+                Are you sure you want to delete all existing rows before importing data?
+                {replaceHardDelete ? (
+                  <> This will <strong>permanently remove</strong> <strong>{existingRows.length}</strong> row{existingRows.length !== 1 ? 's' : ''} from the database (hard delete). This cannot be undone.</>
+                ) : (
+                  <> <strong>{existingRows.length}</strong> existing row{existingRows.length !== 1 ? 's' : ''} will be deactivated (soft delete) and cannot be undone.</>
+                )}
               </p>
               <div className="flex justify-end gap-3">
                 <button
@@ -758,7 +787,7 @@ export default function ImportRowsModal({ schema, existingRows, onImport, onClos
                   onClick={handleImport}
                   className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-medium"
                 >
-                  Yes, Delete All & Import
+                  {replaceHardDelete ? 'Yes, Permanently Delete All & Import' : 'Yes, Delete All & Import'}
                 </button>
               </div>
             </div>

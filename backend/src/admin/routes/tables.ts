@@ -2,10 +2,12 @@ import { Router, Request, Response } from "express";
 import { TABLE_REGISTRY, getSchema, getPgColumns } from "../tableRegistry";
 import {
   listRows,
+  listAllRowIds,
   countRows,
   insertRow,
   updateRow,
   softDeleteRow,
+  hardDeleteRow,
   reorderRows,
   upsertFullTable,
   bulkUpdateRows,
@@ -86,6 +88,11 @@ router.get("/:key", async (req: Request, res: Response) => {
   const schema = getSchema(key);
   if (!schema) { res.status(404).json({ error: `Table "${key}" not found in registry` }); return; }
   try {
+    if (req.query.ids === "true") {
+      const ids = await listAllRowIds(schema.pgTable);
+      res.json({ ids });
+      return;
+    }
     const rows = await listRows(schema.pgTable);
     if (schema.isKeyValueMap) {
       const map: Record<string, unknown> = {};
@@ -215,8 +222,9 @@ router.delete("/:key/rows/:id", async (req: Request, res: Response) => {
   if (!schema) { res.status(404).json({ error: `Table "${key}" not found in registry` }); return; }
   const breakLinks = req.query.breakLinks === "true";
   const reassignTo = req.query.reassignTo as string | undefined;
+  const hard = req.query.hard === "true";
   try {
-    if (reassignTo || breakLinks) {
+    if (reassignTo || breakLinks || hard) {
       const mode = reassignTo ? "reassign" : "break";
       for (const s of TABLE_REGISTRY) {
         const fkFields = s.fields.filter(
@@ -231,6 +239,13 @@ router.delete("/:key/rows/:id", async (req: Request, res: Response) => {
     if (schema.key === "motions") {
       await cleanMotionDeltaRules(rowId);
       await matrixConfigService.deleteConfigsForMotion(rowId);
+    }
+
+    if (hard) {
+      const deleted = await hardDeleteRow(schema.pgTable, rowId);
+      if (!deleted) { res.status(404).json({ error: `Row "${rowId}" not found` }); return; }
+      res.json({ ok: true });
+      return;
     }
 
     const deleted = await softDeleteRow(schema.pgTable, rowId);

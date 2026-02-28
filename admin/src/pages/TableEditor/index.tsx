@@ -1576,26 +1576,34 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
 
   const handleImportRows = useCallback(async (
     importRows: Record<string, unknown>[],
-    mode: 'upsert' | 'replace'
+    mode: 'upsert' | 'replace',
+    opts?: { hardDeleteExisting?: boolean }
   ): Promise<{ inserted: number; updated: number; skipped: number; errors: string[] }> => {
     if (!key || !schema) return { inserted: 0, updated: 0, skipped: 0, errors: ['No table selected'] };
 
     const needsSync = key === 'motions' || key === 'motionPaths';
 
-    // If replace mode, delete all existing rows first
+    // If replace mode, delete ALL existing rows first (including inactive) so INSERT won't hit duplicate key.
+    // We always hard-delete so that rows are actually removed; otherwise INSERT would fail on duplicate id.
     if (mode === 'replace') {
-      const errors: string[] = [];
-      for (const row of rows) {
-        const id = row[schema.idField];
-        if (id != null) {
-          try {
-            await api.deleteRow(key, String(id), { breakLinks: true, skipSync: needsSync });
-          } catch (err) {
-            errors.push(`Failed to delete row "${id}": ${err}`);
-          }
+      const deleteErrors: string[] = [];
+      const hard = true;
+      let idsToDelete: string[];
+      try {
+        idsToDelete = await api.getTableIds(key);
+      } catch (err) {
+        return { inserted: 0, updated: 0, skipped: 0, errors: [`Failed to list existing rows: ${err}`] };
+      }
+      for (const id of idsToDelete) {
+        try {
+          await api.deleteRow(key, id, { breakLinks: true, skipSync: needsSync, hard });
+        } catch (err) {
+          deleteErrors.push(`Failed to delete row "${id}": ${err}`);
         }
       }
-      // Reload to get fresh state after deletions
+      if (deleteErrors.length > 0) {
+        return { inserted: 0, updated: 0, skipped: 0, errors: deleteErrors };
+      }
       await loadData();
     }
 
@@ -1770,6 +1778,20 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
       onDataChange();
     } catch (err) {
       toast.error(`Reassign failed: ${err}`);
+    }
+  };
+
+  const handleHardDelete = async () => {
+    if (!key || !deleteConfirm) return;
+    try {
+      await api.deleteRow(key, deleteConfirm, { hard: true });
+      toast.success(`Permanently deleted "${deleteLabel}" from database`);
+      setDeleteConfirm(null);
+      setFkRefs([]);
+      await loadData();
+      onDataChange();
+    } catch (err) {
+      toast.error(`Hard delete failed: ${err}`);
     }
   };
 
@@ -2426,6 +2448,14 @@ export default function TableEditor({ schemas, onDataChange }: TableEditorProps)
                 className="px-4 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700"
               >
                 {fkRefs.length > 0 ? 'Delete Anyway' : 'Delete'}
+              </button>
+
+              <button
+                onClick={handleHardDelete}
+                className="px-4 py-2 text-sm bg-red-800 text-white rounded hover:bg-red-900 border border-red-900"
+                title="Remove row from database permanently (cannot be undone)"
+              >
+                Permanently delete
               </button>
             </div>
           </div>
