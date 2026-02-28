@@ -577,7 +577,7 @@ For React and data-shape gotchas when editing admin components (e.g. Rules of Ho
 
 ### Tab Switcher
 
-The existing `MotionDeltaMatrix.tsx` page now has two tabs:
+The existing Motion Delta Matrix page (`admin/src/pages/MotionDeltaMatrix/index.tsx`) now has two tabs:
 
 - **Delta Rules** -- the original heatmap matrix view (existing functionality)
 - **Matrix V2 Config** -- the new configuration authoring panel
@@ -594,7 +594,7 @@ When a motion row is clicked in the Delta Rules matrix, a **side panel** opens o
 
 ### MatrixV2ConfigPanel Layout
 
-**File:** `admin/src/pages/MatrixV2ConfigPanel.tsx`
+**File:** `admin/src/pages/MotionDeltaMatrix/MatrixV2ConfigPanel.tsx`
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
@@ -843,7 +843,7 @@ This automatically updates the `ModifierTableKey` type used throughout the syste
 
 ### Step 2: Add the label mapping in the admin UI
 
-**File:** `admin/src/pages/MatrixV2ConfigPanel.tsx`
+**File:** `admin/src/pages/MotionDeltaMatrix/MatrixV2ConfigPanel.tsx`
 
 Add to `MODIFIER_TABLE_LABELS`:
 
@@ -869,7 +869,7 @@ const tableKeyToPg: Record<string, string> = {
 
 ### Step 4: (Optional) Add to the Delta Rules matrix view
 
-**File:** `admin/src/pages/MotionDeltaMatrix.tsx`
+**File:** `admin/src/pages/MotionDeltaMatrix/index.tsx`
 
 If the new table has `delta_rules`, add it to the `DELTA_TABLES` array and `TABLE_GROUP_MAP`.
 
@@ -882,7 +882,7 @@ No migration changes needed (the `config_json` is JSONB -- the new key is just a
 ## 14. File Map
 
 ```
-testing-workout-app/
+fitness-app/
 ├── backend/
 │   ├── src/
 │   │   ├── admin/
@@ -902,8 +902,9 @@ testing-workout-app/
 │   └── src/
 │       ├── api.ts                          ← API client (matrix config methods added)
 │       └── pages/
-│           ├── MotionDeltaMatrix.tsx        ← Main page (tab switcher added)
-│           └── MatrixV2ConfigPanel.tsx      ← V2 config authoring panel (new)
+│           └── MotionDeltaMatrix/
+│               ├── index.tsx               ← Main page (tab switcher added)
+│               └── MatrixV2ConfigPanel.tsx  ← V2 config authoring panel (new)
 ├── shared/
 │   ├── types/
 │   │   ├── index.ts                        ← Re-exports matrixV2
@@ -915,7 +916,7 @@ testing-workout-app/
 │   ├── fixtures/
 │   │   └── pilotConfigs.ts                 ← Pilot family configs for testing
 │   └── __tests__/
-│       └── matrixV2.test.ts                ← 33 tests (validation, hashing, lifecycle, golden)
+│       └── matrixV2.test.ts                ← 49 tests (validation, hashing, lifecycle, export/import, etc.)
 └── MATRIX_V2_CONFIG_OVERVIEW.md            ← This file
 ```
 
