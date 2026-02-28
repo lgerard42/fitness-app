@@ -319,6 +319,7 @@ model RefMotion {
   id                  String     @id
   label               String
   parentId            String?    @map("parent_id")
+  motionType          String?    @default("Standard") @map("motion_type")
   upperLower          Json?      @default("[]") @map("upper_lower")
   muscleTargets       Json?      @map("muscle_targets")
   muscleGroupingId    String?    @map("muscle_grouping_id")

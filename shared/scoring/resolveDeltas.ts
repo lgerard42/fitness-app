@@ -81,6 +81,8 @@ export function resolveSingleDelta(
  * Resolve deltas from all selected modifiers for a given motion.
  * Returns an array of resolved deltas (one per modifier that has
  * applicable delta_rules).
+ * Order of application follows the order of selectedModifiers (caller
+ * should pass modifiers in cascade order for deterministic scoring).
  */
 export function resolveAllDeltas(
   motionId: string,

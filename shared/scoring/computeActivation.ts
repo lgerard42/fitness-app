@@ -5,14 +5,7 @@ import type {
   ActivationResult,
   ScorePolicy,
 } from "../types";
-
-const DEFAULT_POLICY: ScorePolicy = {
-  clampMin: 0,
-  clampMax: 5,
-  normalizeOutput: false,
-  missingKeyBehavior: "skip",
-  outputMode: "raw",
-};
+import { DEFAULT_SCORE_POLICY } from "../policy/scorePolicy";
 
 /**
  * MuscleTargets is now a flat Record<string, number>, so this is an
@@ -48,7 +41,7 @@ export function sumDeltas(
 export function applyDeltas(
   baseScores: FlatMuscleScores,
   deltaSum: FlatMuscleScores,
-  policy: ScorePolicy = DEFAULT_POLICY
+  policy: ScorePolicy = DEFAULT_SCORE_POLICY
 ): FlatMuscleScores {
   const final: FlatMuscleScores = { ...baseScores };
 
@@ -100,7 +93,7 @@ export function computeActivation(
   resolvedDeltas: ResolvedDelta[],
   policy: Partial<ScorePolicy> = {}
 ): ActivationResult {
-  const mergedPolicy: ScorePolicy = { ...DEFAULT_POLICY, ...policy };
+  const mergedPolicy: ScorePolicy = { ...DEFAULT_SCORE_POLICY, ...policy };
 
   const baseScores = flattenMuscleTargets(muscleTargets);
   const deltaSum = sumDeltas(resolvedDeltas);
