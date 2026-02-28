@@ -1,0 +1,8 @@
+id,label,technical_name,common_names,short_description,sort_order,icon,is_active,source_type
+MAX_HR,Max HR (Zone 2),Pulsus Arteriosus,"[""Max HR (Zone 2)"",""Zone Training"",""HR Monitoring""]",Training dictated by specific beats-per-minute ranges to target aerobic or anaerobic thresholds.,0,,TRUE,seed
+INTERVALS,Intervals,Intervalla,"[""Intervals"",""HIIT"",""Work-Rest Cycles"",""Fartlek""]",Repeated bouts of high-intensity effort followed by varied recovery periods of lower intensity.,1,,TRUE,seed
+LOW_IMPACT,Low-Impact,Impulsus Humilis,"[""Low-Impact"",""Joint-Friendly"",""Non-Weight Bearing""]","Aerobic activity designed to minimize mechanical stress on bones and joints (e.g., swimming, cycling).",2,,TRUE,seed
+SPRINT,Sprint,Celeritas Maxima,"[""Sprint"",""All-Out"",""Max Effort"",""Dash""]","Short, explosive bursts of maximum speed intended to improve anaerobic power and top-end velocity.",3,,TRUE,seed
+STEADY_STATE,Steady-State,Status Constans,"[""Steady-State"",""LISS"",""Zone 2"",""Base Training""]","Continuous, moderate-intensity activity maintained at a consistent pace for an extended duration.",4,,TRUE,seed
+TEMPO_THRESHOLD,Tempo/Threshold,Limes Lactatum,"[""Tempo/Threshold"",""Lactate Threshold"",""Hard Aerobic""]","High-intensity ""comfortably hard"" pace sustained to improve the body's ability to clear lactic acid.",5,,TRUE,seed
+OTHER,Other,Variis,"[""Other"",""Miscellaneous"",""Unclassified""]",Cardiovascular activities that do not follow standard intensity or duration protocols.,6,,TRUE,seed

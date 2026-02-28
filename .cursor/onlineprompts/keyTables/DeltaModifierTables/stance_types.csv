@@ -1,0 +1,6 @@
+id,label,common_names,short_description,delta_rules,sort_order,icon,is_active,source_type
+BILATERAL,Bilateral,"[""Standard Stance"",""Two-Legged"",""Symmetrical""]",{},{},0,,TRUE,seed
+STAGGERED,Staggered,"[""B-Stance"",""Kickstand"",""Offset Stance""]","{SQUAT_REGULAR:{GLUTES:0.15,HAMSTRINGS:0.1},HINGE_STD:{GLUTES:0.15,HAMSTRINGS:0.1}}",{},1,,TRUE,seed
+STAGGERED_RFE,Rear-Foot Elevated,"[""Bulgarian"",""Back Foot Up"",""RFE""]","{LUNGE_STATIC:{QUADS:0.2,GLUTES:0.2,CORE_DEEP:0.15,RECTUS_FEMORIS:0.15}}",{},2,,TRUE,seed
+STAGGERED_FFE,Front-Foot Elevated,"[""Deficit Lunge"",""Front Foot Up"",""FFE""]","{LUNGE_STATIC:{GLUTES:0.25,HAMSTRINGS:0.15,CORE_DEEP:0.1}}",{},3,,TRUE,seed
+SINGLE_LEG,Single Leg,"[""Unilateral"",""One-Legged"",""Pistol Stance""]","{SQUAT_REGULAR:{CORE_DEEP:0.25,HIP_ABDUCTORS:0.2,CALVES:0.1},HINGE_STD:{CORE_DEEP:0.2,HIP_ABDUCTORS:0.2}}",{},4,,TRUE,seed

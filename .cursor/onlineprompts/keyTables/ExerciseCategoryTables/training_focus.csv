@@ -1,0 +1,16 @@
+id,label,technical_name,common_names,short_description,sort_order,icon,is_active,source_type
+ACCELERATION,Acceleration,Velocitas Initialis,"[""Acceleration"",""First Step Quickness"",""Starting Speed""]",The ability to increase velocity as quickly as possible from a stationary start or slow move.,0,,TRUE,seed
+AGILITY,Agility,Agilitas,"[""Agility"",""Nimbleness"",""Reactive Speed""]",The ability to change body position or direction efficiently in response to a stimulus.,1,,TRUE,seed
+BALANCE,Balance,Aequilibrium,"[""Balance"",""Stability"",""Center of Gravity""]",The ability to maintain the line of gravity within the base of support with minimal postural sway.,2,,TRUE,seed
+CHANGE_OF_DIRECTION,Change of Direction,Mutatio Directionis,"[""Change of Direction"",""Cutting"",""Shifting""]",The physical ability to change movement direction (pre-planned).,3,,TRUE,seed
+CONDITIONING,Conditioning,Habitus Corporis,"[""Conditioning"",""Work Capacity"",""Cardio"",""Endurance""]",Training to improve the energy systems' ability to perform work and recover.,4,,TRUE,seed
+COORDINATION,Coordination,Coordinatio,"[""Coordination"",""Motor Control"",""Sync""]","The ability to execute smooth, accurate, and controlled motor responses.",5,,TRUE,seed
+DECELERATION,Deceleration,Demissio Velocitatis,"[""Deceleration"",""Braking"",""Eccentric Loading""]",The ability to safely and efficiently reduce speed or come to a controlled stop.,6,,TRUE,seed
+JUMP_TRAINING,Jump Training,Saltus,"[""Jump Training"",""Vertical"",""Leaping"",""Bounce""]",Training focused on increasing vertical or horizontal displacement.,7,,TRUE,seed
+MOBILITY,Mobility,Mobilitas,"[""Mobility"",""Active Range of Motion"",""Joint Health""]","The ability of a joint to move actively through a full, intended range of motion.",8,,TRUE,seed
+PLYOMETRICS,Plyometrics,Exercitatio Plyometrica,"[""Plyometrics"",""Jump Training"",""Reactive Training""]",Exercises that use the stretch-shortening cycle to increase muscle power.,9,,TRUE,seed
+POWER,Power,Potentia,"[""Power"",""Explosiveness"",""Force x Velocity""]",The ability to exert maximum muscular force in as short a time as possible.,10,,TRUE,seed
+REACTION_TIME,Reaction Time,Tempus Reagendi,"[""Reaction Time"",""Response Time"",""Reflexes""]",The interval between stimulus presentation and initiation of muscular response.,11,,TRUE,seed
+SPEED,Speed,Celeritas,"[""Speed"",""Top End Speed"",""Max Velocity""]",The ability to move the whole body at a high rate of motion over a set distance.,12,,TRUE,seed
+THROWING_ROTATION,Throwing/Rotation,Rotatio Axialis,"[""Throwing/Rotation"",""Transverse Power"",""Torque""]",Training the body to generate and transfer force through the transverse plane.,13,,TRUE,seed
+OTHER,Other,Variis,"[""Other"",""Miscellaneous"",""General""]",Any training focus that does not fit into the primary performance categories.,14,,TRUE,seed

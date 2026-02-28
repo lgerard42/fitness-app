@@ -1,0 +1,13 @@
+{
+  "name": "cursor-onlineprompts-export",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Run export-key-tables.js to pull DB data into keyTables CSVs",
+  "scripts": {
+    "export-key-tables": "node export-key-tables.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.0",
+    "pg": "^8.18.0"
+  }
+}

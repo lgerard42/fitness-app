@@ -1,0 +1,6 @@
+id,label,common_names,delta_rules,short_description,sort_order,icon,is_active,source_type
+BELOW,Floor / Platform,"[""From Floor"",""Platform"",""Bottom Point""]","{""CURL"":{""BICEP_INNER"":0.15},""RAISE_FRONT"":{""DELTS_FRONT"":0.2},""SQUAT_REGULAR"":{""QUAD_DEEP"":0.1,""QUAD_INNER"":0.2}}",Weight originates from the ground. Creates a bottom-heavy resistance curve.,0,,TRUE,seed
+LOW,Low,"[""Ankle Height"",""Shin Height"",""Bottom Notch""]","{""FLY_FLAT"":{""CHEST_UPPER"":0.15,""DELTS_FRONT"":0.1},""PRESS_FLAT"":{""CHEST_UPPER"":0.1}}","Pulley set at the bottom of the rack. Ideal for upward ""scooping"" paths.",1,,TRUE,seed
+MED,Medium,"[""Chest Height"",""Waist Height"",""Center""]",{},Resistance is horizontal. Standard Baseline.,2,,TRUE,seed
+HIGH,High,"[""Head Height"",""Upper Notch""]","{""ROW_MID"":{""BACK_UPPER"":0.15},""FLY_FLAT"":{""CHEST_LOWER"":0.15},""PRESS_FLAT"":{""CHEST_LOWER"":0.1}}","Pulley set above head height. Ideal for downward ""pressing"" paths.",3,,TRUE,seed
+ABOVE,Overhead,"[""Ceiling"",""Top Point"",""Pulldown Anchor""]","{""SHRUG"":{""TRAPS_LOWER"":0.2,""TRAPS_UPPER"":-0.3},""PULL_FRONT"":{""LATS_LOWER"":0.2}}",Resistance originates from directly overhead.,4,,TRUE,seed
