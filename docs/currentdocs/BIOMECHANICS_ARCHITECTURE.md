@@ -177,7 +177,7 @@ flowchart LR
 - `motions`
 
 ### Combo rules (scoring overrides; not a modifier table)
-- `combo_rules` — Rows target a motion (`motion_id`) and define trigger conditions (AND-match against active modifier set) and an action: **SWITCH_MOTION** (use another motion’s baseline), **REPLACE_DELTA** (override a specific modifier’s delta contribution), or **CLAMP_MUSCLE** (cap final muscle scores). **Not** in `MODIFIER_TABLE_KEYS`; resolution is order-independent (set of selected modifiers). Tie-break: specificity → priority → rule id. Overrides and clamp map are applied inside shared `computeActivation` only. See **background_ScoringSystem.md** (section 3.4) and plan `.cursor/plans/combo_rules_codebase-aligned_*.plan.md` for full implementation details.
+- `combo_rules` — Rows target a motion (`motion_id`) and define trigger conditions (AND-match against active modifier set; operators: eq, in, not_eq, not_in) and an action: **SWITCH_MOTION** (use another motion’s baseline), **REPLACE_DELTA** (override a specific modifier’s delta contribution), or **CLAMP_MUSCLE** (cap final muscle scores). **Not** in `MODIFIER_TABLE_KEYS`; resolution is order-independent (set of selected modifiers). Tie-break: specificity → priority → rule id. Overrides and clamp map are applied inside shared `computeActivation` only. The linter validates REPLACE_DELTA table_key validity and row_id existence in the modifier table, and CLAMP_MUSCLE muscle existence and is_scorable (warns if clamped muscle is not scorable). See **background_ScoringSystem.md** (section 3.4) and plan `.cursor/plans/combo_rules_codebase-aligned_*.plan.md` for full implementation details.
 
 ### Modifier tables (carry `delta_rules`)
 - `motionPaths`

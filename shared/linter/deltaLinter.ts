@@ -14,6 +14,7 @@ export interface LintIssue {
 interface LintContext {
   motionIds: Set<string>;
   muscleIds: Set<string>;
+  scorableMuscleIds: Set<string>;
   motions: Record<string, Motion>;
 }
 
@@ -24,6 +25,7 @@ function buildContext(
   return {
     motionIds: new Set(motions.map((m) => m.id)),
     muscleIds: new Set(muscles.map((m) => m.id)),
+    scorableMuscleIds: new Set(muscles.filter((m) => m.is_scorable !== false).map((m) => m.id)),
     motions: Object.fromEntries(motions.map((m) => [m.id, m])),
   };
 }
@@ -192,7 +194,8 @@ function lintMuscleTargets(
 function lintComboRules(
   comboRules: ComboRule[],
   ctx: LintContext,
-  modifierTableKeys: Set<string>
+  modifierTableKeys: Set<string>,
+  modifierTables: Record<string, ModifierRow[]>
 ): LintIssue[] {
   const issues: LintIssue[] = [];
 
@@ -286,6 +289,18 @@ function lintComboRules(
           field: "action_payload_json.table_key",
           message: `Unknown modifier table key "${tableKey}" in REPLACE_DELTA payload`,
         });
+      } else {
+        const tableRows = modifierTables[tableKey] ?? [];
+        const rowIds = new Set(tableRows.map((r) => r.id));
+        if (!rowIds.has(rowId)) {
+          issues.push({
+            severity: "error",
+            table: "combo_rules",
+            rowId: rule.id,
+            field: "action_payload_json.row_id",
+            message: `Row "${rowId}" not found in modifier table "${tableKey}"`,
+          });
+        }
       }
     }
 
@@ -308,6 +323,14 @@ function lintComboRules(
               rowId: rule.id,
               field: `action_payload_json.clamps.${muscleId}`,
               message: `Unknown muscle ID "${muscleId}" in CLAMP_MUSCLE`,
+            });
+          } else if (!ctx.scorableMuscleIds.has(muscleId)) {
+            issues.push({
+              severity: "warning",
+              table: "combo_rules",
+              rowId: rule.id,
+              field: `action_payload_json.clamps.${muscleId}`,
+              message: `Muscle "${muscleId}" is not scorable — CLAMP_MUSCLE will have no effect`,
             });
           }
           if (typeof value !== "number") {
@@ -464,7 +487,7 @@ export function lintAll(
 
   if (comboRules && comboRules.length > 0) {
     const modifierTableKeys = new Set(Object.keys(modifierTables));
-    issues.push(...lintComboRules(comboRules, ctx, modifierTableKeys));
+    issues.push(...lintComboRules(comboRules, ctx, modifierTableKeys, modifierTables));
   }
 
   return issues;

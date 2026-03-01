@@ -66,7 +66,7 @@ Use **is_active** (not `enabled`) on ComboRule so it matches other reference tab
 
 ### 2.5 — Scoring lint endpoint
 
-- **GET /api/admin/scoring/lint** currently uses `lintAll(motions, muscles, modifierTables)` from [shared/linter/deltaLinter.ts](shared/linter/deltaLinter.ts). Extend **lintAll** to accept optional combo rules and append issues: motionId not in motions; proxy_motion_id (SWITCH_MOTION) not in motions; table_key + row_id (REPLACE_DELTA) not in modifier tables; muscle IDs in CLAMP_MUSCLE not scorable; SWITCH_MOTION targeting motion with no muscle_targets (umbrella). Return same `{ issues, summary, formatted }` shape.
+- **GET /api/admin/scoring/lint** currently uses `lintAll(motions, muscles, modifierTables)` from [shared/linter/deltaLinter.ts](shared/linter/deltaLinter.ts). Extend **lintAll** to accept optional combo rules and append issues: motionId not in motions; proxy_motion_id (SWITCH_MOTION) not in motions and has muscle_targets; table_key (REPLACE_DELTA) is valid modifier table key **and** row_id exists in that modifier table; muscle IDs in CLAMP_MUSCLE exist **and** are scorable (`is_scorable !== false`); SWITCH_MOTION targeting motion with no muscle_targets (umbrella); unknown action types; empty conditions. Return same `{ issues, summary, formatted }` shape.
 - **Important:** Update the scoring route callsite (the GET `/lint` handler that calls `lintAll`) in the **same PR** as the linter signature change. Otherwise you get compile drift or silent behavior where combo rules are never passed in and never linted.
 
 ### 2.6 — Reference bootstrap
@@ -84,7 +84,7 @@ Use **is_active** (not `enabled`) on ComboRule so it matches other reference tab
 
 ### 3.2 — Scoring engine ([shared/scoring/](shared/scoring/))
 
-- **New:** [shared/scoring/resolveComboRules.ts](shared/scoring/resolveComboRules.ts) — pure function `resolveComboRules(motionId, activeModifierSelections, rules: ComboRule[])` returning `{ effectiveMotionId, deltaOverrides, clampMap, rulesFired }`. **Combo-rule matching is explicitly order-independent:** `selectedModifiers` order must *not* affect match outcome. Treat the selection as a set (condition content only); only **condition content + tie-break** (specificity → priority → rule id) determine the winner. Delta summation is effectively set-based; combo resolution must be too. Implement match by trigger conditions (AND-only, equality/membership), then winner by specificity → priority → rule id. No DB or I/O.
+- **New:** [shared/scoring/resolveComboRules.ts](shared/scoring/resolveComboRules.ts) — pure function `resolveComboRules(motionId, activeModifierSelections, rules: ComboRule[])` returning `{ effectiveMotionId, deltaOverrides, clampMap, rulesFired }`. **Combo-rule matching is explicitly order-independent:** `selectedModifiers` order must *not* affect match outcome. Treat the selection as a set (condition content only); only **condition content + tie-break** (specificity → priority → rule id) determine the winner. Delta summation is effectively set-based; combo resolution must be too. Implement match by trigger conditions (AND-only; operators: `eq`, `in`, `not_eq`, `not_in`), then winner by specificity → priority → rule id. No DB or I/O.
 - **Update:** [shared/scoring/computeActivation.ts](shared/scoring/computeActivation.ts) — **Frozen decision: final scores after clamps come from computeActivation only.** Add optional params to `computeActivation` for delta overrides (apply REPLACE_DELTA before sum) and clamp map (apply CLAMP_MUSCLE after applyDeltas). Shared owns the full pipeline including policy clamp/normalize; the route must not apply clamps again. This avoids double-clamp bugs (computeActivation already applies clamp/normalize today; mixed ownership would duplicate or conflict).
 
 ### 3.3 — Constraints ([shared/constraints/](shared/constraints/))
@@ -97,7 +97,7 @@ Use **is_active** (not `enabled`) on ComboRule so it matches other reference tab
 
 ### 3.5 — Linter ([shared/linter/deltaLinter.ts](shared/linter/deltaLinter.ts))
 
-- Extend **lintAll** to accept optional combo rules (rows from the Postgres `combo_rules` table) and motions/muscles/modifier tables. Add checks: motionId exists in motions; SWITCH_MOTION proxy_motion_id exists and has muscle_targets; REPLACE_DELTA table_key + row_id exist in modifier tables and (optionally) have authored delta; CLAMP_MUSCLE muscle IDs are scorable. Emit same **LintIssue** shape (table `combo_rules`, rowId, field, message). **Ship the lintAll signature change and the scoring route update (load combo rules, pass into lintAll) in the same PR** to avoid compile or runtime drift.
+- Extend **lintAll** to accept optional combo rules (rows from the Postgres `combo_rules` table) and motions/muscles/modifier tables. Add checks: motionId exists in motions; SWITCH_MOTION proxy_motion_id exists and has muscle_targets (umbrella warning); REPLACE_DELTA table_key is a valid modifier table key **and** row_id exists as a row in that table; CLAMP_MUSCLE muscle IDs exist **and** are scorable (`is_scorable !== false` — warns if a clamped muscle is not scorable since the clamp will have no effect); unknown action types; empty trigger conditions. Emit same **LintIssue** shape (table `combo_rules`, rowId, field, message). **Ship the lintAll signature change and the scoring route update (load combo rules, pass into lintAll) in the same PR** to avoid compile or runtime drift.
 
 ### 3.6 — Tests ([shared/**tests**/](shared/__tests__/))
 
@@ -212,7 +212,7 @@ Post–MVP improvements to reduce authoring errors, speed up iteration, and make
 
 - Create a dedicated editor component for `trigger_conditions_json` and `action_payload_json` with:
   - **Action-type picker** (SWITCH_MOTION | REPLACE_DELTA | CLAMP_MUSCLE).
-  - **Condition rows** (tableKey, operator, value) instead of freeform JSON.
+  - **Condition rows** (tableKey, operator [`eq` | `in` | `not_eq` | `not_in`], value) instead of freeform JSON.
   - **Payload form per action type** (e.g. proxy_motion_id for SWITCH_MOTION; table_key + row_id + deltas for REPLACE_DELTA; muscle caps for CLAMP_MUSCLE).
   - **Inline validator messages** (shape and referential errors as the user edits).
 - **Why:** Reduces malformed JSON and authoring fatigue dramatically vs freeform JSON.
