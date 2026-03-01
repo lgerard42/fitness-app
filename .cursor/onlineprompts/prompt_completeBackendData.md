@@ -232,3 +232,48 @@ Without these two tools, tracking completeness and safely reviewing changes beco
 2. Which Olympic lift motions warrant `SWITCH_MOTION` combo rules vs. just tight visibility scoping?
 3. For `executionStyles`, does bilateral vs. unilateral execution warrant REPLACE_DELTA combo rules for asymmetric load muscles (e.g. obliques, QL) or is an additive delta sufficient?
 4. For any motion where the operational default points to a row with real deltas, should that be explicitly flagged in the admin UI to warn authors?
+
+---
+
+## Technical overview: Preparing data for re-import into the admin
+
+After you complete data authoring (e.g. in spreadsheets, CSVs, or standard tables), you will need to load the finished motion rows, modifier-table rows, and combo_rules back into the admin UI so they persist in Postgres. The following is a concise guide to formats and import paths. It does not replace the plan above; it describes how to bring authored data back into the system.
+
+### Where the data lives
+
+- **Reference data:** Postgres tables such as `motions`, `muscles`, the 15 modifier tables (e.g. `grips`, `motion_paths`, `torso_angles`), and `combo_rules`. All are exposed via the admin Table Editor and backend table API.
+- **Matrix V2 config:** The `motion_matrix_configs` table stores per-motion config (applicability, allowed_row_ids, default_row_id, etc.) and is edited via the Motion Delta Matrix (Matrix V2 Config and Table Visibility tabs). Baseline and delta values themselves live in `motions.muscle_targets` and modifier `delta_rules`, not in config JSON.
+
+### Export format (source of truth for column shape)
+
+Use **export-key-tables.js** to dump the current DB to CSV under `keyTables/`. The resulting CSVs define the expected columns and shapes:
+
+- **Muscles_MotionsTables/motions.csv** — Columns include `id`, `label`, `parent_id`, `muscle_targets` (JSON string: flat `Record<muscleId, number>`), `default_delta_configs` (JSON string: `Record<tableKey, rowId>` for the 15 modifier table keys), plus other motion fields.
+- **Muscles_MotionsTables/combo_rules.csv** — Columns include `id`, `label`, `motion_id`, `trigger_conditions_json` (JSON array of `{ tableKey, operator, value }`), `action_type`, `action_payload_json` (JSON object; shape depends on action type), `priority`, `is_active`, etc.
+- **DeltaModifierTables/<table>.csv** (e.g. `grips.csv`, `motion_paths.csv`) — Columns include `id`, `label`, `delta_rules` (JSON: `Record<motionId, DeltaEntry>` where each value is a flat `Record<muscleId, number>`, `"inherit"`, or `{}`), plus any table-specific columns.
+
+Producing data that matches these column names and JSON shapes ensures the admin can accept it without schema surprises.
+
+### JSON field rules
+
+- **muscle_targets:** Flat object only; keys = `muscles.id` (scorable); values = numbers. No nesting. Parent keys with value 0 are stripped on save.
+- **default_delta_configs:** Flat object; keys = modifier table keys (e.g. `motionPaths`, `grips`); values = single row ID string (or array if the schema allows multi-select for that key). All keys must be valid modifier table keys; row IDs must exist in the corresponding table.
+- **delta_rules:** Keys = `motions.id`. Each value is either a flat `Record<muscleId, number>`, the literal string `"inherit"` (child motions only), or `{}`. Only scorable muscle IDs in maps.
+- **trigger_conditions_json:** Array of `{ tableKey: string, operator: "eq" | "in" | "not_eq" | "not_in", value: string | string[] }`.
+- **action_payload_json:** For SWITCH_MOTION: `{ proxy_motion_id: string }`. For REPLACE_DELTA: `{ table_key: string, row_id: string, deltas?: Record<muscleId, number> }`. For CLAMP_MUSCLE: `{ clamps: Record<muscleId, number> }`.
+
+IDs (motion, muscle, modifier row) must already exist in the DB or be created in dependency order (e.g. motions before combo_rules that reference them).
+
+### Import paths
+
+1. **Table Editor (generic CRUD)** — Use the admin Table Editor to add or update rows table by table. Paste or upload data that matches the table's columns. JSONB columns accept JSON strings; the UI and backend parse them. Best for targeted updates and small batches (e.g. a few motion rows, a few combo_rules).
+2. **Matrix V2 Config import** — For bulk motion-level data (baseline + per-modifier config): use the Matrix V2 Workstation → Matrix V2 Config tab → Import. Provide CSV/TSV with columns such as `MOTION_ID`, `PARENT_MOTION_ID`, `MUSCLE_TARGETS`, and one column per modifier table key with JSON `{ "config": { "applicability", "allowed_row_ids", "default_row_id", ... }, "deltas": ... }`. Only `config` is written to `motion_matrix_configs`; baseline in `MUSCLE_TARGETS` is applied in the workstation and must be saved to the motion (e.g. via Baseline card / save motion) to persist to `motions.muscle_targets`.
+3. **Table Visibility import** — For bulk applicability only: use the Table Visibility panel import. Rows = motions; columns = modifier table keys; values = TRUE/FALSE. Writes to `config_json.tables[tableKey].applicability` in `motion_matrix_configs`.
+4. **Direct DB or API** — If you have scripts or ETL, you can write to the backend table API (POST/PUT rows) or to Postgres, respecting the same JSON contracts and FK constraints. Use export-key-tables output as the column/format reference.
+
+### Practical workflow for "finished motion rows + combo_rules"
+
+1. Author motions, modifier rows, and combo_rules in your chosen tool (spreadsheet, CSV, etc.), using the export CSVs as the schema reference.
+2. Ensure JSON fields are valid and IDs reference existing rows (or create dependencies first).
+3. Re-import via Table Editor (row-by-row or small batch) and/or Matrix V2 Config import for motion-level config and baselines. Run GET `/api/admin/scoring/lint` after import to confirm NONE rows, default_delta_configs, and combo_rule referential integrity.
+4. Use **Sync Defaults to Motion** in the Matrix V2 Workstation when you want to copy `default_row_id` from config into `motions.default_delta_configs` for the constraint evaluator.
