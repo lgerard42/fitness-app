@@ -163,4 +163,12 @@ export const TABLE_DESCRIPTIONS: Record<string, string> = {
 **Other tables that depend on this one:** The main app looks up icons by equipment label when displaying the equipment picker or exercise cards. Adding or renaming equipment may require adding or updating a corresponding key here.
 
 **Columns with dependencies:** \`id\` matches Equipment.\`label\` by convention. \`value\` is the icon data (no dependency).`,
+
+  comboRules: `**What this table is for:** Combo Rules define overrides that fire when specific modifier combinations are active for a motion. Each rule targets a motion (\`motion_id\`) and specifies trigger conditions (\`trigger_conditions_json\`) that match against the user's selected modifiers. When conditions match, the rule's \`action_type\` determines the effect: SWITCH_MOTION (use a different motion's baseline), REPLACE_DELTA (override a specific modifier's delta contribution), or CLAMP_MUSCLE (cap a muscle's final score).
+
+**Depends on:** \`motion_id\` references the Motions table. Action payloads may reference other motion IDs (SWITCH_MOTION), modifier table keys and row IDs (REPLACE_DELTA), or muscle IDs (CLAMP_MUSCLE).
+
+**Other tables that depend on this one:** Nothing depends on combo_rules directly. The scoring engine reads active rules at compute time.
+
+**Columns with dependencies:** \`motion_id\` \u2192 Motions. \`trigger_conditions_json\` references modifier table keys and row IDs. \`action_payload_json\` may reference motion IDs, modifier table/row combos, or muscle IDs depending on \`action_type\`. \`expected_primary_muscles\` and \`expected_not_primary\` reference muscle IDs for validation.`,
 };

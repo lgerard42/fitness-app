@@ -271,6 +271,24 @@ const TABLE_DEFINITIONS: TableSchema[] = [
       { name: 'value', type: 'string', required: true },
     ],
   },
+  {
+    key: 'comboRules', file: 'comboRules.json', label: 'Combo Rules',
+    group: 'Muscles & Motions', idField: 'id', labelField: 'label',
+    fields: [
+      { name: 'id', type: 'string', required: true },
+      { name: 'label', type: 'string', required: true },
+      { name: 'motion_id', type: 'fk', required: true, refTable: 'motions', refLabelField: 'label' },
+      { name: 'action_type', type: 'string', required: true },
+      { name: 'trigger_conditions_json', type: 'json', jsonShape: 'free', defaultValue: [] },
+      { name: 'action_payload_json', type: 'json', jsonShape: 'free', defaultValue: {} },
+      { name: 'expected_primary_muscles', type: 'json', jsonShape: 'free', defaultValue: [] },
+      { name: 'expected_not_primary', type: 'json', jsonShape: 'free', defaultValue: [] },
+      { name: 'notes', type: 'string' },
+      { name: 'priority', type: 'number', defaultValue: 0 },
+      { name: 'sort_order', type: 'number', defaultValue: 0 },
+      { name: 'is_active', type: 'boolean', defaultValue: true },
+    ],
+  },
 ];
 
 export const TABLE_REGISTRY: TableSchema[] = TABLE_DEFINITIONS.map((t) => ({

@@ -1,7 +1,8 @@
 import { useMemo, useRef, useState, useEffect } from 'react';
-import type { MuscleTargets, ModifierRow, Motion, ActivationResult, ResolvedDelta, FlatMuscleScores } from '../../../shared/types';
+import type { MuscleTargets, ModifierRow, Motion, ActivationResult, ResolvedDelta, FlatMuscleScores, ComboRule, RuleFiredEntry } from '../../../shared/types';
 import { resolveAllDeltas, resolveSingleDelta } from '../../../shared/scoring/resolveDeltas';
 import { computeActivation, flattenMuscleTargets, sumDeltas } from '../../../shared/scoring/computeActivation';
+import { resolveComboRules } from '../../../shared/scoring/resolveComboRules';
 import type { MatrixConfigJson, ModifierTableKey } from '../../../shared/types/matrixV2';
 
 export interface SimulationInput {
@@ -12,6 +13,7 @@ export interface SimulationInput {
   motionsMap: Record<string, Motion>;
   localDeltaOverrides: Record<string, Record<string, number> | 'inherit'>;
   customCombo: Array<{ tableKey: string; rowId: string }> | null;
+  comboRules?: ComboRule[];
 }
 
 export interface SimulationResult {
@@ -20,6 +22,8 @@ export interface SimulationResult {
   deltaSum: FlatMuscleScores;
   top3Impact: Array<{ muscleId: string; delta: number }>;
   provenanceChips: string[];
+  effectiveMotionId: string | null;
+  rulesFired: RuleFiredEntry[];
 }
 
 const DEBOUNCE_MS = 150;
@@ -64,6 +68,7 @@ export function useScoringSimulation(input: SimulationInput & { baselineDirty?: 
     localDeltaOverrides,
     customCombo,
     baselineDirty,
+    comboRules,
   } = input;
 
   const [result, setResult] = useState<SimulationResult>({
@@ -72,6 +77,8 @@ export function useScoringSimulation(input: SimulationInput & { baselineDirty?: 
     deltaSum: {},
     top3Impact: [],
     provenanceChips: [],
+    effectiveMotionId: null,
+    rulesFired: [],
   });
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -84,6 +91,7 @@ export function useScoringSimulation(input: SimulationInput & { baselineDirty?: 
       tables: editingConfig?.tables,
       localDeltaOverrides,
       customCombo,
+      comboRules,
     });
 
     if (inputKey === lastInputRef.current) return;
@@ -99,6 +107,8 @@ export function useScoringSimulation(input: SimulationInput & { baselineDirty?: 
           deltaSum: {},
           top3Impact: [],
           provenanceChips: buildProvenanceChips(muscleTargets, localDeltaOverrides, editingConfig, customCombo, baselineDirty),
+          effectiveMotionId: null,
+          rulesFired: [],
         });
         return;
       }
@@ -106,21 +116,31 @@ export function useScoringSimulation(input: SimulationInput & { baselineDirty?: 
       try {
         const selectedModifiers = buildSelectedModifiers(editingConfig, customCombo);
 
-        // Build a modified version of modifier table data that includes local overrides
+        const resolution = resolveComboRules(motionId, selectedModifiers, comboRules ?? []);
+        const { effectiveMotionId, deltaOverrides, clampMap, rulesFired } = resolution;
+
+        const effectiveMotion = motionsMap[effectiveMotionId];
+        const effectiveTargets = effectiveMotionId !== motionId && effectiveMotion?.muscle_targets
+          ? effectiveMotion.muscle_targets
+          : muscleTargets;
+
         const effectiveModifierData = applyLocalDeltaOverrides(
           modifierTableData,
           localDeltaOverrides,
-          motionId,
+          effectiveMotionId,
         );
 
         const resolvedDeltas = resolveAllDeltas(
-          motionId,
+          effectiveMotionId,
           selectedModifiers,
           motionsMap,
           effectiveModifierData,
         );
 
-        const activation = computeActivation(muscleTargets, resolvedDeltas);
+        const activation = computeActivation(effectiveTargets, resolvedDeltas, {}, {
+          deltaOverrides,
+          clampMap,
+        });
         const dSum = sumDeltas(resolvedDeltas);
 
         const top3 = Object.entries(dSum)
@@ -134,6 +154,8 @@ export function useScoringSimulation(input: SimulationInput & { baselineDirty?: 
           deltaSum: dSum,
           top3Impact: top3,
           provenanceChips: buildProvenanceChips(muscleTargets, localDeltaOverrides, editingConfig, customCombo, baselineDirty),
+          effectiveMotionId,
+          rulesFired,
         });
       } catch (err) {
         console.error('Simulation error:', err);
@@ -143,6 +165,8 @@ export function useScoringSimulation(input: SimulationInput & { baselineDirty?: 
           deltaSum: {},
           top3Impact: [],
           provenanceChips: ['Simulation Error'],
+          effectiveMotionId: null,
+          rulesFired: [],
         });
       }
     }, DEBOUNCE_MS);
@@ -150,7 +174,7 @@ export function useScoringSimulation(input: SimulationInput & { baselineDirty?: 
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [motionId, muscleTargets, editingConfig, modifierTableData, motionsMap, localDeltaOverrides, customCombo, baselineDirty]);
+  }, [motionId, muscleTargets, editingConfig, modifierTableData, motionsMap, localDeltaOverrides, customCombo, baselineDirty, comboRules]);
 
   return result;
 }

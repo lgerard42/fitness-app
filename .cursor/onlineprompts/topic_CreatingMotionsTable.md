@@ -36,7 +36,7 @@ This discussion is ONLY about making the **MOTIONS taxonomy perfect**.
 * `parent_id` (single-parent max: 0 or 1 parent)
 * `motion_type` (new column; see below)
 
-**Everything else in the motions table is out of scope** for this session (no fine-tuning muscle_targets, no detailed delta rules).
+**Everything else in the motions table is out of scope** for this session (no fine-tuning muscle_targets, no detailed delta rules). Note: **combo_rules** rows reference motions via `motion_id`; deleting or renaming a motion can affect combo rules (FK `onDelete: Restrict` — delete will fail until dependent combo rules are removed or reassigned).
 
 ---
 

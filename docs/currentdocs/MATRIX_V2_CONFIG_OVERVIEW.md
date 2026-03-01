@@ -98,7 +98,7 @@ graph TB
 
     subgraph admin ["Admin UI (Vite, port 5173)"]
         Panel["MatrixV2ConfigPanel\n(authoring UI)"]
-        TabSwitch["MotionDeltaMatrix.tsx\n(tab: Delta Rules | V2 Config)"]
+        TabSwitch["MotionDeltaMatrix.tsx\n(tab: Delta Rules | V2 Config | Table Visibility | Combo Rules)"]
     end
 
     subgraph shared ["Shared Layer"]
@@ -903,11 +903,16 @@ fitness-app/
 │       ├── api.ts                          ← API client (matrix config methods added)
 │       └── pages/
 │           └── MotionDeltaMatrix/
-│               ├── index.tsx               ← Main page (tab switcher added)
-│               └── MatrixV2ConfigPanel.tsx  ← V2 config authoring panel (new)
+│               ├── index.tsx               ← Main page (tab switcher: Delta Rules | V2 Config | Table Visibility | Combo Rules)
+│               ├── MatrixV2ConfigPanel.tsx ← V2 config authoring panel
+│               └── ComboRulesPanel.tsx      ← Combo Rules tab (CRUD, motion filter, inline lint)
 ├── shared/
+│   ├── scoring/
+│   │   ├── resolveComboRules.ts            ← Combo rule resolution (order-independent; effectiveMotionId, overrides, clampMap, rulesFired)
+│   │   ├── resolveDeltas.ts                ← Delta resolution per modifier
+│   │   └── computeActivation.ts           ← Baseline + deltas + overrides/clampMap → final scores
 │   ├── types/
-│   │   ├── index.ts                        ← Re-exports matrixV2
+│   │   ├── index.ts                        ← Re-exports matrixV2 + ComboRule, RuleFiredEntry, etc.
 │   │   └── matrixV2.ts                     ← All type definitions
 │   ├── validators/
 │   │   └── matrixV2Validator.ts            ← 3-layer validation stack
@@ -934,7 +939,7 @@ This section explains how to use the Matrix V2 Config panel in plain language, s
 
 1. Open the admin web app at `http://localhost:5173`
 2. Navigate to the **Motion Delta Matrix** page
-3. Click the **Matrix V2 Config** tab at the top of the page
+3. Use the top tabs: **Delta Rules** (matrix grid + side-panel), **Matrix V2 Config** (workstation), **Table Visibility** (applicability grid), or **Combo Rules** (combo rule CRUD and lint). Click **Matrix V2 Config** for the full workstation.
 
 ---
 
@@ -1240,7 +1245,7 @@ Group has `local_rules: [{ rule_id: "r1", action: "filter_row_ids", condition: {
 | Motion grouping by muscle (Delta Rules tab; MOTIONS table) | Implemented. Motion rows grouped by primary muscle then optional secondary (nested sections). Key = `muscle_grouping_id` when set, else fallback to highest-scoring muscle in `muscle_targets`. Same logic on MOTIONS table when "Group by: Muscles" is selected. |
 | Muscle Grouping dropdown (motion side-panel) | Implemented. In MOTIONS table side-panel, **Muscle Grouping** dropdown: options = muscles that (1) have **calculated score** ≥ threshold (explicit or sum of children), (2) **have at least one child** (no leaf muscles); grouped primary → secondary → tertiary, sorted alphabetically; default = selectable muscle with highest calculated score. Persisted as `muscle_grouping_id`; backfill applied to existing rows. |
 | Delta branch editing per row | Implemented. `DeltaBranchCard` per allowed row with inherit toggle **in header** (child motions), clone-on-branch, provenance chips, and per-row Save Delta Branch. Root motions (no parent) always open in editable custom mode. **Red color scheme** (red borders, red header hover). **Centered** score inputs. **Fixed-width** (`w-40`) add-muscle dropdowns; **primary** dropdown = all muscles grouped by root; **secondary** dropdown = custom portaled list (bold secondaries, indented tertiaries) so it is not clipped. Supports `inlineAssignment` prop for consolidated one_per_group headers. **Flat muscle data** (`Record<muscleId, number>`); UI builds hierarchy from `muscles.parent_ids` with per-level add dropdowns. |
-| Client-side scoring simulation | Implemented. Live recomputation using shared `resolveAllDeltas` + `computeActivation` with debounced updates. |
+| Client-side scoring simulation | Implemented. Live recomputation using shared `resolveComboRules` (combo-rule-aware), then `resolveAllDeltas` + `computeActivation` with optional delta overrides and clamp map. Combo rules for the selected motion are loaded and passed into `useScoringSimulation`; result includes `effectiveMotionId` and `rulesFired`. Debounced updates. |
 | Simulation preview | Implemented. Base vs Effective table, Top-3 Impact, delta source provenance, realism advisory, coaching cues (stub), ROM summary. |
 | Dirty indicators | Implemented. `DirtyBadge` with per-domain tracking (baseline, config, delta branches). |
 | Save & Next Motion | Implemented. Saves all dirty domains then advances to next sibling motion. |
@@ -1274,7 +1279,7 @@ These are **distinct systems** with different responsibilities:
 | Concern | Constraint Resolver (Backend) | Scoring Simulation (Client-Side) |
 |---------|-------------------------------|----------------------------------|
 | Purpose | Merge group + motion configs into effective constraint config | Compute muscle activation from baseline + modifiers |
-| Location | `backend/src/services/matrixV2Resolver.ts` | `shared/scoring/resolveDeltas.ts` + `computeActivation.ts` |
+| Location | `backend/src/services/matrixV2Resolver.ts` | `shared/scoring/resolveComboRules.ts`, `resolveDeltas.ts`, `computeActivation.ts` |
 | Data source | `motion_matrix_configs` table | `motions.muscle_targets` + modifier row `delta_rules` |
 | Data format | — | **Flat only:** `muscle_targets` and each motion’s value in `delta_rules` are `Record<muscleId, number>` (no nested muscle groups). See BIOMECHANICS_ARCHITECTURE §2.1, §2.2. |
 | Output | Effective table applicability, allowed rows, defaults, rules | `ActivationResult` (base scores, final scores, raw scores, applied deltas) |
@@ -1297,15 +1302,18 @@ The UI shows this via:
 
 ### Client-Side Live Scoring Simulation
 
-- Reuses `resolveAllDeltas` and `computeActivation` from `shared/scoring/`
+- Loads **combo rules** for the selected motion from the API (`comboRules` table); passes them into the simulation so resolution is **combo-rule-aware** (same as backend scoring).
+- Reuses `resolveComboRules`, `resolveAllDeltas`, and `computeActivation` from `shared/scoring/`. Overrides and clamp map from combo rules are passed into `computeActivation`; final scores (including CLAMP_MUSCLE) come from shared only.
 - Uses **local unsaved state** for both baseline edits and delta overrides
 - Debounced at ~150ms for responsive feedback
 - Two modes: "Simulate Defaults" (uses `default_row_id` from config) and "Custom Test Combo" (manual modifier selection)
+- Simulation result includes **`effectiveMotionId`** and **`rulesFired`** (ruleId, actionType, matchedConditions, specificity, priority, winnerReason) for display in Simulation Preview.
 
 ### Simulation Preview Output
 
 | Section | Description |
 |---------|-------------|
+| Combo Rules Fired | When any combo rules match, shows action type (SWITCH_MOTION / REPLACE_DELTA / CLAMP_MUSCLE), rule label, and winner reason (only match, highest specificity, priority tie-break, id tie-break). Shown only when `rulesFired.length > 0`. |
 | Top-3 Impact | Top 3 muscles by absolute delta shift, with delta bars |
 | Base vs Effective | Side-by-side flat muscle scores with delta indicators |
 | Delta Sources | Per-modifier provenance chips with inherited/custom tags |
@@ -1357,10 +1365,11 @@ Each save path has its own dirty indicator and explicit save button. The "Save &
 | File | Purpose |
 |------|---------|
 | `admin/src/hooks/useWorkstationState.ts` | Unified state for selected motion, local baseline/delta edits, dirty tracking, localized saves |
-| `admin/src/hooks/useScoringSimulation.ts` | Client-side scoring simulation hook with debounced recomputation |
+| `admin/src/hooks/useScoringSimulation.ts` | Client-side scoring simulation hook; loads combo rules for selected motion, calls `resolveComboRules` then `resolveAllDeltas` + `computeActivation` with overrides/clampMap; returns `effectiveMotionId` and `rulesFired`. Debounced. |
+| `admin/src/pages/MotionDeltaMatrix/ComboRulesPanel.tsx` | Combo Rules tab content: motion filter, rule list with inline lint, modal create/edit (action type, trigger conditions and action payload JSON, priority, notes). |
 | `admin/src/components/workstation/BaselineCard.tsx` | Baseline muscle_targets editor card |
 | `admin/src/components/workstation/DeltaBranchCard.tsx` | Per-row delta editor with inherit toggle and provenance |
-| `admin/src/components/workstation/SimulationPreview.tsx` | Live scoring preview panel |
+| `admin/src/components/workstation/SimulationPreview.tsx` | Live scoring preview panel; shows "Combo Rules Fired" section when `rulesFired.length > 0`. |
 | `admin/src/components/workstation/DirtyBadge.tsx` | Dirty state indicator |
 
 ### Modifier Table Configuration Overhaul (Implemented)
@@ -1404,3 +1413,6 @@ The following extensions to the workstation are implemented and documented in Se
 | **global rule** | A cross-table rule (partition, exclusivity, invalid_combination, cross_table_dependency). |
 | **tombstone** | A motion-level entry that removes an inherited group rule: same `rule_id` with `_tombstoned: true`. |
 | **resolver** | The service that, given a motion id and mode, loads group and motion configs and returns the merged effective config plus provenance and diagnostics. |
+| **combo_rules** | Postgres table (admin key `comboRules`). Rows target a motion and define trigger conditions (AND-match on active modifiers) and an action: SWITCH_MOTION, REPLACE_DELTA, or CLAMP_MUSCLE. **Not** in `MODIFIER_TABLE_KEYS`; resolution is order-independent. Used when the additive delta model is wrong for specific modifier combos. See background_ScoringSystem.md §3.4. |
+| **effectiveMotionId** | After combo-rule resolution, the motion whose baseline is used for scoring (may differ from selected motion if SWITCH_MOTION fired). Returned by trace/compute and by client simulation. |
+| **rulesFired** | Array of rule entries that matched the current modifier set (ruleId, actionType, matchedConditions, specificity, priority, winnerReason). Fixed schema for trace and Simulation Preview. |

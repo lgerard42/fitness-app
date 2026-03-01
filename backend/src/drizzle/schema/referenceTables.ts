@@ -30,6 +30,7 @@ export const ALL_REFERENCE_TABLES = [
   "range_of_motion",
   "equipment",
   "equipment_icons",
+  "combo_rules",
 ] as const;
 
 export type ReferenceTableName = (typeof ALL_REFERENCE_TABLES)[number];
@@ -61,4 +62,5 @@ export const TABLE_KEY_TO_PG: Record<string, ReferenceTableName> = {
   rangeOfMotion: "range_of_motion",
   equipment: "equipment",
   equipmentIcons: "equipment_icons",
+  comboRules: "combo_rules",
 };

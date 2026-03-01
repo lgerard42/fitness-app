@@ -15,4 +15,4 @@ To refresh the CSV files in `keyTables/` from your Docker/PostgreSQL database:
    cd .cursor/onlineprompts && npm install && npm run export-key-tables
    ```
 
-The script reads all configured reference tables from the database and writes them into the corresponding CSV files under `keyTables/`. Filenames match the database table names (snake_case), e.g. `DeltaModifierTables/grips.csv`, `Muscles_MotionsTables/muscles.csv`.
+The script reads all configured reference tables from the database and writes them into the corresponding CSV files under `keyTables/`. Filenames match the database table names (snake_case), e.g. `DeltaModifierTables/grips.csv`, `Muscles_MotionsTables/muscles.csv`, `Muscles_MotionsTables/combo_rules.csv`. The list of tables and their subfolders is defined in `export-key-tables.js` (`TABLE_KEY_TO_EXPORT`).

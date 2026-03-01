@@ -64,7 +64,7 @@ export default function SimulationPreview({
   onCustomComboChange,
   allowedRowsByTable,
 }: SimulationPreviewProps) {
-  const { activation, resolvedDeltas, deltaSum, top3Impact, provenanceChips } = simulation;
+  const { activation, resolvedDeltas, deltaSum, top3Impact, provenanceChips, effectiveMotionId, rulesFired } = simulation;
   const [showAllMuscles, setShowAllMuscles] = useState(false);
 
   const maxAbsDelta = useMemo(() => {
@@ -180,6 +180,38 @@ export default function SimulationPreview({
                     {delta > 0 ? '+' : ''}{delta.toFixed(2)}
                   </span>
                   <DeltaBar value={delta} maxAbs={maxAbsDelta} />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Combo rules fired */}
+        {rulesFired.length > 0 && (
+          <div className="p-2 border border-blue-200 rounded bg-blue-50">
+            <div className="text-[10px] font-bold text-blue-800 mb-1.5">
+              Combo Rules Fired
+              {effectiveMotionId && effectiveMotionId !== (simulation as any).motionId && (
+                <span className="font-normal text-blue-600 ml-1">
+                  (motion switched)
+                </span>
+              )}
+            </div>
+            <div className="space-y-1">
+              {rulesFired.map((rule, i) => (
+                <div key={i} className="flex items-center gap-1 flex-wrap">
+                  <span
+                    className="text-[9px] px-1.5 py-0.5 rounded font-bold"
+                    style={{
+                      background: rule.actionType === 'SWITCH_MOTION' ? '#DBEAFE'
+                        : rule.actionType === 'REPLACE_DELTA' ? '#FEF3C7'
+                        : '#FEE2E2',
+                    }}
+                  >
+                    {rule.actionType}
+                  </span>
+                  <span className="text-[10px] text-gray-800">{rule.ruleLabel || rule.ruleId}</span>
+                  <span className="text-[9px] text-gray-500 ml-auto">{rule.winnerReason}</span>
                 </div>
               ))}
             </div>

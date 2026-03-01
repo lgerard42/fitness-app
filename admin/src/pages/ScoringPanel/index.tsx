@@ -27,6 +27,8 @@ export default function ScoringPanel() {
   const [selectedModifiers, setSelectedModifiers] = useState<ModifierSelection[]>([]);
   const [traceResult, setTraceResult] = useState<Record<string, TraceComparison> | null>(null);
   const [resolvedDeltas, setResolvedDeltas] = useState<unknown[] | null>(null);
+  const [effectiveMotionId, setEffectiveMotionId] = useState<string | null>(null);
+  const [rulesFired, setRulesFired] = useState<any[]>([]);
   const [lintResult, setLintResult] = useState<{ issues: LintIssue[]; summary: { errors: number; warnings: number; info: number } } | null>(null);
   const [activeTab, setActiveTab] = useState<'trace' | 'lint' | 'manifest'>('trace');
   const [manifest, setManifest] = useState<Record<string, unknown> | null>(null);
@@ -65,6 +67,8 @@ export default function ScoringPanel() {
       }) as any;
       setTraceResult(result.comparison);
       setResolvedDeltas(result.resolvedDeltas);
+      setEffectiveMotionId(result.effectiveMotionId ?? null);
+      setRulesFired(result.rulesFired ?? []);
     } catch (err: any) {
       alert(err.message);
     }
@@ -209,6 +213,55 @@ export default function ScoringPanel() {
           {/* Trace results */}
           {traceResult && (
             <div style={{ marginTop: 20 }}>
+              {/* Effective motion indicator */}
+              {effectiveMotionId && effectiveMotionId !== selectedMotion && (
+                <div style={{
+                  padding: '10px 16px',
+                  marginBottom: 12,
+                  background: '#FEF3C7',
+                  border: '1px solid #F59E0B',
+                  borderRadius: 8,
+                  fontSize: 13,
+                  fontWeight: 600,
+                }}>
+                  Combo rule switched motion: scoring uses <span style={{ fontFamily: 'monospace', color: '#B45309' }}>{effectiveMotionId}</span> instead of <span style={{ fontFamily: 'monospace' }}>{selectedMotion}</span>
+                </div>
+              )}
+
+              {/* Rules fired */}
+              {rulesFired.length > 0 && (
+                <div style={{ marginBottom: 16 }}>
+                  <h4 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Combo Rules Fired</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {rulesFired.map((rule: any, i: number) => (
+                      <div key={i} style={{
+                        padding: '8px 12px',
+                        background: rule.actionType === 'SWITCH_MOTION' ? '#DBEAFE'
+                          : rule.actionType === 'REPLACE_DELTA' ? '#FEF3C7'
+                          : rule.actionType === 'CLAMP_MUSCLE' ? '#FEE2E2'
+                          : '#F3F4F6',
+                        borderRadius: 6,
+                        fontSize: 12,
+                        display: 'flex',
+                        gap: 12,
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                      }}>
+                        <span style={{ fontWeight: 700, fontFamily: 'monospace', fontSize: 11 }}>
+                          {rule.actionType}
+                        </span>
+                        <span style={{ color: '#374151' }}>
+                          {rule.ruleLabel || rule.ruleId}
+                        </span>
+                        <span style={{ color: '#6B7280', fontSize: 11 }}>
+                          specificity: {rule.specificity} | priority: {rule.priority} | {rule.winnerReason}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Score Comparison</h3>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>

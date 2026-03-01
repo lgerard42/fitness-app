@@ -7,6 +7,7 @@ import {
   resolveAllDeltas,
   computeActivation,
   flattenMuscleTargets,
+  resolveComboRules,
 } from "../../../../shared/scoring";
 import { evaluateConstraints } from "../../../../shared/constraints";
 import { lintAll, formatLintResults } from "../../../../shared/linter/deltaLinter";
@@ -15,6 +16,7 @@ import type {
   ModifierRow,
   Muscle,
   Equipment,
+  ComboRule,
 } from "../../../../shared/types";
 
 const router = Router();
@@ -60,6 +62,20 @@ const MODIFIER_PG_TABLES: Record<string, string> = {
   rangeOfMotion: "range_of_motion",
 };
 
+async function loadComboRules(motionId?: string): Promise<ComboRule[]> {
+  if (motionId) {
+    const { rows } = await pool.query(
+      `SELECT * FROM "combo_rules" WHERE is_active = true AND motion_id = $1 ORDER BY priority DESC, id`,
+      [motionId]
+    );
+    return rows.map(cleanRow) as ComboRule[];
+  }
+  const { rows } = await pool.query(
+    `SELECT * FROM "combo_rules" WHERE is_active = true ORDER BY priority DESC, id`
+  );
+  return rows.map(cleanRow) as ComboRule[];
+}
+
 async function buildModifierTables(): Promise<Record<string, Record<string, ModifierRow>>> {
   const tables: Record<string, Record<string, ModifierRow>> = {};
   for (const [key, pgTable] of Object.entries(MODIFIER_PG_TABLES)) {
@@ -83,9 +99,17 @@ router.post("/compute", async (req: Request, res: Response) => {
     const motion = motionsMap[motionId];
     if (!motion) { res.status(404).json({ error: `Motion "${motionId}" not found` }); return; }
 
-    const resolvedDeltas = resolveAllDeltas(motionId, selectedModifiers, motionsMap, modifierTables);
-    const result = computeActivation(motion.muscle_targets, resolvedDeltas, policy);
-    res.json({ motionId, motionLabel: motion.label, ...result });
+    const comboRules = await loadComboRules(motionId);
+    const resolution = resolveComboRules(motionId, selectedModifiers, comboRules);
+    const { effectiveMotionId, deltaOverrides, clampMap, rulesFired } = resolution;
+
+    const effectiveMotion = motionsMap[effectiveMotionId] ?? motion;
+    const resolvedDeltas = resolveAllDeltas(effectiveMotionId, selectedModifiers, motionsMap, modifierTables);
+    const result = computeActivation(effectiveMotion.muscle_targets, resolvedDeltas, policy, {
+      deltaOverrides,
+      clampMap,
+    });
+    res.json({ motionId, motionLabel: motion.label, effectiveMotionId, rulesFired, ...result });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -99,9 +123,17 @@ router.post("/trace", async (req: Request, res: Response) => {
     const motion = motionsMap[motionId];
     if (!motion) { res.status(404).json({ error: `Motion "${motionId}" not found` }); return; }
 
-    const baseScores = flattenMuscleTargets(motion.muscle_targets);
-    const resolvedDeltas = resolveAllDeltas(motionId, selectedModifiers || [], motionsMap, modifierTables);
-    const withDeltas = computeActivation(motion.muscle_targets, resolvedDeltas);
+    const comboRules = await loadComboRules(motionId);
+    const resolution = resolveComboRules(motionId, selectedModifiers || [], comboRules);
+    const { effectiveMotionId, deltaOverrides, clampMap, rulesFired } = resolution;
+
+    const effectiveMotion = motionsMap[effectiveMotionId] ?? motion;
+    const baseScores = flattenMuscleTargets(effectiveMotion.muscle_targets);
+    const resolvedDeltas = resolveAllDeltas(effectiveMotionId, selectedModifiers || [], motionsMap, modifierTables);
+    const withDeltas = computeActivation(effectiveMotion.muscle_targets, resolvedDeltas, {}, {
+      deltaOverrides,
+      clampMap,
+    });
 
     const comparison: Record<string, { base: number; final: number; delta: number }> = {};
     const allMuscleIds = new Set([...Object.keys(baseScores), ...Object.keys(withDeltas.finalScores)]);
@@ -110,7 +142,7 @@ router.post("/trace", async (req: Request, res: Response) => {
       const final = withDeltas.finalScores[muscleId] ?? 0;
       comparison[muscleId] = { base, final, delta: parseFloat((final - base).toFixed(4)) };
     }
-    res.json({ motionId, motionLabel: motion.label, resolvedDeltas, comparison });
+    res.json({ motionId, motionLabel: motion.label, effectiveMotionId, rulesFired, resolvedDeltas, comparison });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -139,6 +171,7 @@ router.get("/lint", async (_req: Request, res: Response) => {
   try {
     const motions = await queryTable<Motion>("motions");
     const muscles = await queryTable<Muscle>("muscles");
+    const comboRules = await loadComboRules();
 
     const modifierTables: Record<string, ModifierRow[]> = {};
     for (const [key, pgTable] of Object.entries(MODIFIER_PG_TABLES)) {
@@ -147,7 +180,7 @@ router.get("/lint", async (_req: Request, res: Response) => {
       } catch { /* skip */ }
     }
 
-    const issues = lintAll(motions, muscles, modifierTables);
+    const issues = lintAll(motions, muscles, modifierTables, comboRules);
     res.json({
       issues,
       summary: {

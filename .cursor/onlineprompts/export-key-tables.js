@@ -125,6 +125,11 @@ const TABLE_KEY_TO_EXPORT = {
     subfolder: "EquipmentTables",
     filename: "equipment.csv",
   },
+  comboRules: {
+    pgTable: "combo_rules",
+    subfolder: "Muscles_MotionsTables",
+    filename: "combo_rules.csv",
+  },
 };
 
 /** Modifier table keys (same order as Matrix V2 / Table Visibility UI). */

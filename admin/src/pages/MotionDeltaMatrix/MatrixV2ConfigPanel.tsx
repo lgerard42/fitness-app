@@ -142,6 +142,9 @@ export default function MatrixV2ConfigPanel({ motions, allMuscles = [], refreshK
   const [showActiveEditSaveConfirm, setShowActiveEditSaveConfirm] = useState(false);
   const [showActiveEditCancelConfirm, setShowActiveEditCancelConfirm] = useState(false);
 
+  // ─── Combo rules state ───
+  const [comboRules, setComboRules] = useState<any[]>([]);
+
   // ─── Simulation state ───
   const [simMode, setSimMode] = useState<'defaults' | 'custom'>('defaults');
   const [customCombo, setCustomCombo] = useState<Array<{ tableKey: string; rowId: string }>>([]);
@@ -230,6 +233,7 @@ export default function MatrixV2ConfigPanel({ motions, allMuscles = [], refreshK
     localDeltaOverrides: workstation.localDeltaOverrides,
     customCombo: simMode === 'custom' ? customCombo : null,
     baselineDirty: workstation.baselineDirty,
+    comboRules,
   });
 
   // ─── Data loading ───
@@ -311,6 +315,16 @@ export default function MatrixV2ConfigPanel({ motions, allMuscles = [], refreshK
       workstation.loadMotionData(motionId, allMotions);
     }
   }, [workstation]);
+
+  useEffect(() => {
+    if (!workstation.selectedMotionId) { setComboRules([]); return; }
+    (async () => {
+      try {
+        const all = await api.getTable('comboRules') as any[];
+        setComboRules(all.filter((r: any) => r.motion_id === workstation.selectedMotionId && r.is_active !== false));
+      } catch { setComboRules([]); }
+    })();
+  }, [workstation.selectedMotionId]);
 
   // ─── Config CRUD handlers ───
   const selectedConfig = configs.find(c => c.id === selectedConfigId);

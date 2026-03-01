@@ -1,4 +1,4 @@
-import type { DeltaRules, ModifierRow, Motion, Muscle } from "../types";
+import type { DeltaRules, ModifierRow, Motion, Muscle, ComboRule } from "../types";
 
 export type LintSeverity = "error" | "warning" | "info";
 
@@ -186,21 +186,171 @@ function lintMuscleTargets(
 }
 
 /**
+ * Lint combo rules for referential integrity and structural issues.
+ */
+function lintComboRules(
+  comboRules: ComboRule[],
+  ctx: LintContext,
+  modifierTableKeys: Set<string>
+): LintIssue[] {
+  const issues: LintIssue[] = [];
+
+  for (const rule of comboRules) {
+    if (!ctx.motionIds.has(rule.motion_id)) {
+      issues.push({
+        severity: "error",
+        table: "combo_rules",
+        rowId: rule.id,
+        field: "motion_id",
+        message: `Unknown motion ID "${rule.motion_id}"`,
+      });
+    }
+
+    const conditions = Array.isArray(rule.trigger_conditions_json)
+      ? rule.trigger_conditions_json
+      : [];
+    for (let i = 0; i < conditions.length; i++) {
+      const cond = conditions[i];
+      if (!modifierTableKeys.has(cond.tableKey)) {
+        issues.push({
+          severity: "warning",
+          table: "combo_rules",
+          rowId: rule.id,
+          field: `trigger_conditions_json[${i}].tableKey`,
+          message: `Unknown modifier table key "${cond.tableKey}"`,
+        });
+      }
+    }
+
+    if (conditions.length === 0) {
+      issues.push({
+        severity: "warning",
+        table: "combo_rules",
+        rowId: rule.id,
+        field: "trigger_conditions_json",
+        message: "Rule has no trigger conditions and will never fire",
+      });
+    }
+
+    const payload = rule.action_payload_json as Record<string, unknown>;
+
+    if (rule.action_type === "SWITCH_MOTION") {
+      const proxyId = payload?.proxy_motion_id as string | undefined;
+      if (!proxyId) {
+        issues.push({
+          severity: "error",
+          table: "combo_rules",
+          rowId: rule.id,
+          field: "action_payload_json.proxy_motion_id",
+          message: "SWITCH_MOTION requires proxy_motion_id in payload",
+        });
+      } else if (!ctx.motionIds.has(proxyId)) {
+        issues.push({
+          severity: "error",
+          table: "combo_rules",
+          rowId: rule.id,
+          field: "action_payload_json.proxy_motion_id",
+          message: `Proxy motion "${proxyId}" not found in motions`,
+        });
+      } else {
+        const proxyMotion = ctx.motions[proxyId];
+        if (!proxyMotion?.muscle_targets || Object.keys(proxyMotion.muscle_targets).length === 0) {
+          issues.push({
+            severity: "warning",
+            table: "combo_rules",
+            rowId: rule.id,
+            field: "action_payload_json.proxy_motion_id",
+            message: `Proxy motion "${proxyId}" has no muscle_targets (umbrella motion)`,
+          });
+        }
+      }
+    }
+
+    if (rule.action_type === "REPLACE_DELTA") {
+      const tableKey = payload?.table_key as string | undefined;
+      const rowId = payload?.row_id as string | undefined;
+      if (!tableKey || !rowId) {
+        issues.push({
+          severity: "error",
+          table: "combo_rules",
+          rowId: rule.id,
+          field: "action_payload_json",
+          message: "REPLACE_DELTA requires table_key and row_id in payload",
+        });
+      } else if (!modifierTableKeys.has(tableKey)) {
+        issues.push({
+          severity: "error",
+          table: "combo_rules",
+          rowId: rule.id,
+          field: "action_payload_json.table_key",
+          message: `Unknown modifier table key "${tableKey}" in REPLACE_DELTA payload`,
+        });
+      }
+    }
+
+    if (rule.action_type === "CLAMP_MUSCLE") {
+      const clamps = payload?.clamps as Record<string, unknown> | undefined;
+      if (!clamps || typeof clamps !== "object") {
+        issues.push({
+          severity: "error",
+          table: "combo_rules",
+          rowId: rule.id,
+          field: "action_payload_json.clamps",
+          message: "CLAMP_MUSCLE requires a clamps object in payload",
+        });
+      } else {
+        for (const [muscleId, value] of Object.entries(clamps)) {
+          if (!ctx.muscleIds.has(muscleId)) {
+            issues.push({
+              severity: "warning",
+              table: "combo_rules",
+              rowId: rule.id,
+              field: `action_payload_json.clamps.${muscleId}`,
+              message: `Unknown muscle ID "${muscleId}" in CLAMP_MUSCLE`,
+            });
+          }
+          if (typeof value !== "number") {
+            issues.push({
+              severity: "error",
+              table: "combo_rules",
+              rowId: rule.id,
+              field: `action_payload_json.clamps.${muscleId}`,
+              message: `Clamp value must be a number, got ${typeof value}`,
+            });
+          }
+        }
+      }
+    }
+
+    if (!["SWITCH_MOTION", "REPLACE_DELTA", "CLAMP_MUSCLE"].includes(rule.action_type)) {
+      issues.push({
+        severity: "error",
+        table: "combo_rules",
+        rowId: rule.id,
+        field: "action_type",
+        message: `Unknown action type "${rule.action_type}" — expected SWITCH_MOTION, REPLACE_DELTA, or CLAMP_MUSCLE`,
+      });
+    }
+  }
+
+  return issues;
+}
+
+/**
  * Run the full linter across all tables.
  */
 export function lintAll(
   motions: Motion[],
   muscles: Muscle[],
-  modifierTables: Record<string, ModifierRow[]>
+  modifierTables: Record<string, ModifierRow[]>,
+  comboRules?: ComboRule[]
 ): LintIssue[] {
   const ctx = buildContext(motions, muscles);
   const issues: LintIssue[] = [];
 
-  // Lint motion muscle_targets
   for (const motion of motions) {
     issues.push(...lintMuscleTargets(motion, ctx.muscleIds));
 
-    // Check parent_id references
     if (motion.parent_id && !ctx.motionIds.has(motion.parent_id)) {
       issues.push({
         severity: "error",
@@ -212,11 +362,15 @@ export function lintAll(
     }
   }
 
-  // Lint delta_rules in all modifier tables
   for (const [tableKey, rows] of Object.entries(modifierTables)) {
     for (const row of rows) {
       issues.push(...lintDeltaRules(tableKey, row, ctx));
     }
+  }
+
+  if (comboRules && comboRules.length > 0) {
+    const modifierTableKeys = new Set(Object.keys(modifierTables));
+    issues.push(...lintComboRules(comboRules, ctx, modifierTableKeys));
   }
 
   return issues;

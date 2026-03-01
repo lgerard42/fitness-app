@@ -4,6 +4,7 @@ import type {
   ResolvedDelta,
   ActivationResult,
   ScorePolicy,
+  ReplaceDeltaPayload,
 } from "../types";
 
 const DEFAULT_POLICY: ScorePolicy = {
@@ -89,24 +90,39 @@ export function applyDeltas(
   return final;
 }
 
+export interface ComboRuleOverrides {
+  deltaOverrides?: ReplaceDeltaPayload[];
+  clampMap?: Record<string, number>;
+}
+
 /**
  * Full activation computation pipeline:
  * 1. Flatten base muscle_targets into flat scores
- * 2. Sum all resolved deltas
- * 3. Apply deltas to base + clamp/normalize
+ * 2. Apply REPLACE_DELTA overrides (swap out matching modifier contributions)
+ * 3. Sum all resolved deltas
+ * 4. Apply deltas to base + policy clamp/normalize
+ * 5. Apply CLAMP_MUSCLE caps (combo-rule muscle ceilings)
+ *
+ * Combo-rule clamping ownership lives here — the route must not clamp again.
  */
 export function computeActivation(
   muscleTargets: MuscleTargets,
   resolvedDeltas: ResolvedDelta[],
-  policy: Partial<ScorePolicy> = {}
+  policy: Partial<ScorePolicy> = {},
+  comboOverrides?: ComboRuleOverrides
 ): ActivationResult {
   const mergedPolicy: ScorePolicy = { ...DEFAULT_POLICY, ...policy };
 
+  let effectiveDeltas = resolvedDeltas;
+
+  if (comboOverrides?.deltaOverrides && comboOverrides.deltaOverrides.length > 0) {
+    effectiveDeltas = applyDeltaOverrides(resolvedDeltas, comboOverrides.deltaOverrides);
+  }
+
   const baseScores = flattenMuscleTargets(muscleTargets);
-  const deltaSum = sumDeltas(resolvedDeltas);
+  const deltaSum = sumDeltas(effectiveDeltas);
   const rawScores = { ...baseScores };
 
-  // Raw = base + deltas without clamping (for debug/trace)
   for (const [muscleId, delta] of Object.entries(deltaSum)) {
     if (muscleId in rawScores) {
       rawScores[muscleId] = rawScores[muscleId] + delta;
@@ -117,10 +133,41 @@ export function computeActivation(
 
   const finalScores = applyDeltas(baseScores, deltaSum, mergedPolicy);
 
+  if (comboOverrides?.clampMap) {
+    for (const [muscleId, cap] of Object.entries(comboOverrides.clampMap)) {
+      if (muscleId in finalScores && finalScores[muscleId] > cap) {
+        finalScores[muscleId] = cap;
+      }
+    }
+  }
+
   return {
     baseScores: flattenMuscleTargets(muscleTargets),
-    appliedDeltas: resolvedDeltas,
+    appliedDeltas: effectiveDeltas,
     finalScores,
     rawScores,
   };
+}
+
+/**
+ * Replace delta contributions for specific table_key + row_id combos
+ * with the override deltas from REPLACE_DELTA combo rules.
+ */
+function applyDeltaOverrides(
+  resolvedDeltas: ResolvedDelta[],
+  overrides: ReplaceDeltaPayload[]
+): ResolvedDelta[] {
+  const overrideMap = new Map<string, ReplaceDeltaPayload>();
+  for (const ov of overrides) {
+    overrideMap.set(`${ov.table_key}::${ov.row_id}`, ov);
+  }
+
+  return resolvedDeltas.map((rd) => {
+    const key = `${rd.modifierTable}::${rd.modifierId}`;
+    const override = overrideMap.get(key);
+    if (override) {
+      return { ...rd, deltas: { ...override.deltas } };
+    }
+    return rd;
+  });
 }

@@ -5,4 +5,6 @@ export {
   applyDeltas,
   computeActivation,
 } from "./computeActivation";
+export type { ComboRuleOverrides } from "./computeActivation";
+export { resolveComboRules } from "./resolveComboRules";
 export { stripParentZerosFromFlatScores } from "./stripParentZeros";

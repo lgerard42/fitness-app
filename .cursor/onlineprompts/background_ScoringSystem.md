@@ -14,9 +14,10 @@ The system uses a **composable baseline + delta** model. A configured exercise i
 **Scoring pipeline (conceptual):**
 
 1. **Load baseline** — Read `motions.muscle_targets` for the selected motion (flat map: `muscleId → number`).
-2. **Load active modifiers** — For each modifier dimension (e.g. torso angle, grip, stance), resolve the selected row (e.g. from user selection or motion `default_delta_configs`).
-3. **Apply deltas in fixed cascade order** — Add each modifier’s motion-specific `delta_rules` (flat `muscleId → delta`) to the running score map, in a **deterministic order** (see modifier list below).
-4. **Post-process** — Normalize/clamp per engine policy; output is the **composed score map** (same muscle ID keyspace as baseline).
+2. **Resolve combo rules** — Given the selected motion and active modifier set, evaluate **combo rules** (table `combo_rules`) for that motion. Rules can **switch the effective motion** (SWITCH_MOTION), **override specific modifier deltas** (REPLACE_DELTA), or **cap muscle scores** (CLAMP_MUSCLE). Matching is **order-independent** (set of selected modifiers); tie-break is specificity → priority → rule id. Result: `effectiveMotionId`, `deltaOverrides`, `clampMap`, and `rulesFired` (for trace/debug).
+3. **Load active modifiers** — For each modifier dimension (e.g. torso angle, grip, stance), resolve the selected row (e.g. from user selection or motion `default_delta_configs`).
+4. **Apply deltas in fixed cascade order** — Add each modifier’s motion-specific `delta_rules` (flat `muscleId → delta`) to the running score map, in a **deterministic order** (see modifier list below). **REPLACE_DELTA** combo overrides are applied per modifier (swap that row’s contribution with the override map) before summing.
+5. **Post-process** — Normalize/clamp per engine policy; then apply **CLAMP_MUSCLE** combo caps (per-muscle ceilings). Final scores come from **`computeActivation` only** (shared); the route does not apply clamps again. Output is the **composed score map** (same muscle ID keyspace as baseline).
 
 **Design principles:**
 
@@ -57,12 +58,14 @@ This applies to **calculated score** and to the **"total"** shown in the admin U
 - **`muscles`** — Defines the **canonical muscle taxonomy** and hierarchy (`parent_ids`). It is the **single namespace** for all keys in `muscle_targets` and in every `delta_rules` map. Only muscles with `is_scorable !== false` may receive scores in those JSON fields.
 - **`motions`** — Each row is a **biomechanical base**: identity, labels, **absolute baseline** (`muscle_targets`), **default modifier selections** (`default_delta_configs`), and optional `parent_id` for motion taxonomy. A motion row is not a specific exercise variant (e.g. “incline dumbbell press”); that variant is motion + modifier stack.
 - **15 modifier tables** — Each table is one **dimension** of setup/execution (e.g. torso angle, grip, stance). Rows carry `delta_rules`: per-motion, per-muscle relative adjustments. Modifier rows do **not** define baselines; they only define how that option changes the motion baseline when selected.
+- **`combo_rules`** — **Not** a modifier table (not in `MODIFIER_TABLE_KEYS`). Each row targets a motion (`motion_id`) and defines **trigger conditions** (AND-match against the active modifier set) and an **action**: SWITCH_MOTION (use another motion’s baseline), REPLACE_DELTA (override a specific modifier’s delta contribution), or CLAMP_MUSCLE (cap final muscle scores). Used when the additive delta model is wrong for specific modifier combinations; resolution runs **before** delta summation and **clamping ownership** lives in shared `computeActivation`.
 
 **Data flow:**
 
 - `motions.muscle_targets` keys → must be valid `muscles.id`.
 - `motions.default_delta_configs` keys → modifier table IDs; values → row IDs in those tables.
 - Modifier `delta_rules` top-level keys → `motions.id`; each value is a flat map `muscleId → number` (keys = `muscles.id`).
+- `combo_rules.motion_id` → `motions.id`; `trigger_conditions_json` references modifier table keys and row IDs; `action_payload_json` (by action type) may reference motion IDs, modifier table/row, or muscle IDs.
 
 **Optional layer:** **Matrix V2 Config** and **Table Visibility** (both stored in `motion_matrix_configs`) restrict, per motion, which modifier tables are shown and which rows are applicable and what the default selection is. They do not change the underlying contracts (`muscle_targets`, `delta_rules`, `default_delta_configs`); they configure which options are offered and how they are presented. See section 11.
 
@@ -151,6 +154,16 @@ The 15 modifier tables are grouped into **four categories** for admin UI (e.g. M
 
 ---
 
+### 3.4 COMBO_RULES
+
+- **Role:** Override or correct scoring when specific modifier combinations are active for a motion. **Not** a modifier dimension — combo rules are evaluated *against* the selected modifiers; they are not something the user selects.
+- **Structure:** One table; each row has `motion_id` (FK to `motions`), `trigger_conditions_json` (AND conditions: tableKey + operator + value), `action_type` (SWITCH_MOTION | REPLACE_DELTA | CLAMP_MUSCLE), `action_payload_json` (shape depends on action type), `priority`, `sort_order`, `is_active`, `label`, `expected_primary_muscles` / `expected_not_primary` (for validation), `notes`.
+- **Key fields:** `id` (PK), `label`, `motion_id`, `trigger_conditions_json`, `action_type`, `action_payload_json`, `priority`, `is_active`. Stored in Postgres with JSONB for JSON fields; admin registry key `comboRules`, **not** in `MODIFIER_TABLE_KEYS`.
+- **Scoring rule:** Resolution is **order-independent** (selected modifiers treated as a set). Tie-break: specificity (number of conditions) → priority → rule `id`. SWITCH_MOTION is exclusive (one winner); REPLACE_DELTA and CLAMP_MUSCLE are additive. Overrides and clamp map are applied inside shared `computeActivation`; the route does not apply clamps again.
+- **Where to edit:** Admin table editor (table key `comboRules`) or **Motion Delta Matrix → Combo Rules** tab. Lint (GET `/api/admin/scoring/lint`) and combo-rule validator check referential integrity and payload shape.
+
+---
+
 ## 4. Contracts for `muscle_targets` and `delta_rules`
 
 ### 4.1 `muscle_targets` (motions table)
@@ -182,6 +195,11 @@ For the motions table, `muscle_targets` is not shown as a separate field; all ba
 
 - **Modifier table → row side panel:** Open any Delta Modifier table (e.g. Grips, Motion Paths, Torso Angles), click a row; **`delta_rules`** is a per-motion editor (muscle-delta tree or **“Inherit”** for child motions).
 - **Motion Delta Matrix / V2 Config → Delta Scoring:** Same per-motion editing; same backend (strip parent zeros, sync to Matrix V2 configs).
+
+### 5.3 Combo rules
+
+- **Table editor → Combo Rules:** Generic table editor lists `comboRules` (group: Muscles & Motions); edit rows with JSON fields `trigger_conditions_json` and `action_payload_json` (parse string/object per ADMIN_UI_NOTES).
+- **Motion Delta Matrix → Combo Rules tab:** Dedicated panel with motion filter, inline lint, and modal editor (action type, priority, JSON for conditions and payload). Simulation in the V2 Config tab is **combo-rule-aware** (loads rules for selected motion, runs `resolveComboRules`, shows rules fired in Simulation Preview).
 
 ---
 
@@ -225,7 +243,7 @@ Using these contracts and practices keeps **motion baselines** (`muscle_targets`
 - **Scaling:** Adding a new modifier dimension = new table + `delta_rules` + one new slot in cascade order. No change to baseline contract.
 - **Tuning:** Baseline and deltas are data; engine behavior (order, normalization, clamping) is code. Improvements can target data, policy, or both.
 - **Consistency:** Home-base is per motion (`default_delta_configs`). Any “standard setup” in docs or UX should align with this field.
-- **Validation:** All scoring JSON should be validated for shape (flat maps, correct keys) and referential integrity (IDs exist in `muscles` / `motions` / modifier tables).
+- **Validation:** All scoring JSON should be validated for shape (flat maps, correct keys) and referential integrity (IDs exist in `muscles` / `motions` / modifier tables). Combo rules are validated by `comboRuleValidator` and by the linter (GET `/api/admin/scoring/lint`); trace and compute responses include `effectiveMotionId` and `rulesFired` (fixed schema: ruleId, actionType, matchedConditions, specificity, priority, winnerReason) for debugging.
 - **Authority:** Registry and table definitions are the structural source of truth; architecture docs describe and constrain usage and contracts.
 
 ---

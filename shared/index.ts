@@ -24,6 +24,14 @@ export type {
   ModifierSelection,
   ScoringInput,
   DataContext,
+  ComboRuleActionType,
+  TriggerCondition,
+  SwitchMotionPayload,
+  ReplaceDeltaPayload,
+  ClampMusclePayload,
+  ComboRule,
+  RuleFiredEntry,
+  ComboRuleResolutionResult,
 } from "./types";
 
 // Scoring
@@ -37,6 +45,8 @@ export {
   applyDeltas,
   computeActivation,
 } from "./scoring/computeActivation";
+export type { ComboRuleOverrides } from "./scoring/computeActivation";
+export { resolveComboRules } from "./scoring/resolveComboRules";
 
 // Constraints
 export {
@@ -74,6 +84,10 @@ export {
   validateMuscle,
   validateDeltaRules,
 } from "./schemas";
+
+// Validators
+export { validateComboRule } from "./validators/comboRuleValidator";
+export type { ComboRuleValidationResult } from "./validators/comboRuleValidator";
 
 // Linter
 export {

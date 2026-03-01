@@ -333,8 +333,9 @@ model RefMotion {
   isAdvanced          Boolean    @default(false) @map("is_advanced")
   sourceType          SourceType @default(seed) @map("source_type")
 
-  parent   RefMotion?  @relation("MotionParent", fields: [parentId], references: [id], onUpdate: Cascade, onDelete: Restrict)
-  children RefMotion[] @relation("MotionParent")
+  parent     RefMotion?  @relation("MotionParent", fields: [parentId], references: [id], onUpdate: Cascade, onDelete: Restrict)
+  children   RefMotion[] @relation("MotionParent")
+  comboRules ComboRule[]
 
   @@index([parentId])
   @@map("motions")
@@ -610,4 +611,27 @@ model RefEquipmentIcon {
   sourceType SourceType @default(seed) @map("source_type")
 
   @@map("equipment_icons")
+}
+
+// ─── Combo Rules (override / clamp / switch when specific modifiers are active) ─
+
+model ComboRule {
+  id                     String     @id @default(uuid())
+  label                  String
+  motionId               String     @map("motion_id")
+  triggerConditionsJson   Json       @default("[]") @map("trigger_conditions_json")
+  actionType             String     @map("action_type")
+  actionPayloadJson      Json       @default("{}") @map("action_payload_json")
+  expectedPrimaryMuscles Json       @default("[]") @map("expected_primary_muscles")
+  expectedNotPrimary     Json       @default("[]") @map("expected_not_primary")
+  notes                  String?
+  priority               Int        @default(0)
+  sortOrder              Int        @default(0) @map("sort_order")
+  isActive               Boolean    @default(true) @map("is_active")
+  sourceType             SourceType @default(admin) @map("source_type")
+
+  motion RefMotion @relation(fields: [motionId], references: [id], onUpdate: Cascade, onDelete: Restrict)
+
+  @@index([motionId, isActive])
+  @@map("combo_rules")
 }

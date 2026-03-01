@@ -251,7 +251,18 @@ router.delete("/:key/rows/:id", async (req: Request, res: Response) => {
     const deleted = await softDeleteRow(schema.pgTable, rowId);
     if (!deleted) { res.status(404).json({ error: `Row "${rowId}" not found` }); return; }
     res.json({ ok: true });
-  } catch (err) {
+  } catch (err: any) {
+    if (err?.code === "23503") {
+      const detail = err.detail || "";
+      const tableMatch = detail.match(/table "(\w+)"/);
+      const refTable = tableMatch ? tableMatch[1] : "another table";
+      res.status(409).json({
+        error: `Cannot delete: this row is still referenced by ${refTable}. Remove or reassign the dependent rows first.`,
+        pgCode: err.code,
+        detail,
+      });
+      return;
+    }
     res.status(500).json({ error: `Failed to delete row: ${err}` });
   }
 });

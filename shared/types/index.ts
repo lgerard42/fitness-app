@@ -177,3 +177,59 @@ export interface DataContext {
   equipment: Record<string, Equipment>;
   exerciseCategories: Record<string, RefExerciseCategory>;
 }
+
+// ─── Combo Rules ─────────────────────────────────────────────────────
+
+export type ComboRuleActionType = "SWITCH_MOTION" | "REPLACE_DELTA" | "CLAMP_MUSCLE";
+
+export interface TriggerCondition {
+  tableKey: string;
+  operator: "eq" | "in" | "not_eq" | "not_in";
+  value: string | string[];
+}
+
+export interface SwitchMotionPayload {
+  proxy_motion_id: string;
+}
+
+export interface ReplaceDeltaPayload {
+  table_key: string;
+  row_id: string;
+  deltas: Record<string, number>;
+}
+
+export interface ClampMusclePayload {
+  clamps: Record<string, number>;
+}
+
+export interface ComboRule {
+  id: string;
+  label: string;
+  motion_id: string;
+  trigger_conditions_json: TriggerCondition[];
+  action_type: ComboRuleActionType;
+  action_payload_json: SwitchMotionPayload | ReplaceDeltaPayload | ClampMusclePayload;
+  expected_primary_muscles: string[];
+  expected_not_primary: string[];
+  notes?: string;
+  priority: number;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface RuleFiredEntry {
+  ruleId: string;
+  ruleLabel: string;
+  actionType: ComboRuleActionType;
+  matchedConditions: TriggerCondition[];
+  specificity: number;
+  priority: number;
+  winnerReason: "only match" | "highest specificity" | "priority tie-break" | "id tie-break";
+}
+
+export interface ComboRuleResolutionResult {
+  effectiveMotionId: string;
+  deltaOverrides: ReplaceDeltaPayload[];
+  clampMap: Record<string, number>;
+  rulesFired: RuleFiredEntry[];
+}

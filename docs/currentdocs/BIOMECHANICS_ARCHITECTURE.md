@@ -2,7 +2,7 @@
 
 **Canonical Source of Truth for Exercise Configuration + Baseline Scoring Architecture**  
 **Status:** Draft for review / lock  
-**Last Updated:** 2026-02-26  
+**Last Updated:** 2026-02-28  
 **Repository:** `fitness-app`  
 **Primary Scope:** Admin-authored biomechanics data model + baseline scoring compatibility (UBSE / delta-cascade architecture)  
 **Out of Scope:** Mobile UI implementation code, runtime frontend state wiring, final delta tuning values, composite/multi-phase sequence decomposition
@@ -175,6 +175,9 @@ flowchart LR
 ### Core scoring tables
 - `muscles`
 - `motions`
+
+### Combo rules (scoring overrides; not a modifier table)
+- `combo_rules` — Rows target a motion (`motion_id`) and define trigger conditions (AND-match against active modifier set) and an action: **SWITCH_MOTION** (use another motion’s baseline), **REPLACE_DELTA** (override a specific modifier’s delta contribution), or **CLAMP_MUSCLE** (cap final muscle scores). **Not** in `MODIFIER_TABLE_KEYS`; resolution is order-independent (set of selected modifiers). Tie-break: specificity → priority → rule id. Overrides and clamp map are applied inside shared `computeActivation` only. See **background_ScoringSystem.md** (section 3.4) and plan `.cursor/plans/combo_rules_codebase-aligned_*.plan.md` for full implementation details.
 
 ### Modifier tables (carry `delta_rules`)
 - `motionPaths`
@@ -375,6 +378,7 @@ They only define **relative effects** when applied to a motion context.
   - `motions.id` (or inherited parent targets as supported by schema conventions)
   - `muscles.id`
 - `motions.default_delta_configs` must reference valid row IDs in the corresponding modifier tables
+- `combo_rules.motion_id` must reference valid `motions.id` (FK `onDelete: Restrict`). Action payloads may reference other motion IDs, modifier table/row IDs, or muscle IDs depending on `action_type`.
 
 ### Self-reference relationship
 - `motions.parent_id` enables parent-child motion relationships
@@ -648,11 +652,12 @@ This doc does not lock final tuning values, but it **does** lock safety expectat
 
 Engine flow:
 
-1. Load `PRESS_FLAT` baseline map
-2. Load the active modifier rows
-3. Apply matching motion-specific `delta_rules` in cascade order
-4. Run post-cascade checks/normalization/dead-zone logic as defined by engine architecture
-5. Output final composed score map
+1. Resolve **combo rules** for the selected motion and active modifier set → obtain `effectiveMotionId`, `deltaOverrides`, `clampMap`, `rulesFired`.
+2. Load baseline from **effective** motion (may differ from selected motion if SWITCH_MOTION fired).
+3. Load the active modifier rows.
+4. Apply matching motion-specific `delta_rules` in cascade order, applying REPLACE_DELTA overrides where specified.
+5. Run post-cascade normalization/clamping per policy; then apply CLAMP_MUSCLE combo caps (all inside `computeActivation`).
+6. Output final composed score map.
 
 ```mermaid
 flowchart LR
@@ -1295,7 +1300,7 @@ The following are intentionally deferred and should not block locking the archit
 - **Matrix V2 Config System:** See [`MATRIX_V2_CONFIG_OVERVIEW.md`](MATRIX_V2_CONFIG_OVERVIEW.md) for the complete Matrix V2 config system documentation, including the constraint resolver, validation stack, and API endpoints.
 - **Unified Authoring Workstation:** See [Section 17 of MATRIX_V2_CONFIG_OVERVIEW.md](MATRIX_V2_CONFIG_OVERVIEW.md#17-unified-authoring-workstation) for the V2 workstation that serves as the **primary authoring surface** for both constraint configuration and delta scoring. The workstation combines baseline `muscle_targets` editing, per-row `delta_rules` branch editing (with parent/child inheritance), and live client-side scoring simulation in a single unified panel.
 - **Modifier Table Configuration (V2 motions):** See [Section 10 (Modifier Table Configuration) of MATRIX_V2_CONFIG_OVERVIEW.md](MATRIX_V2_CONFIG_OVERVIEW.md#modifier-table-configuration-workstation) for how modifier tables are authored in the V2 Matrix for motions. This includes: **all motions visible in sidebar** with hierarchical parent→child grouping, per-motion **"+ Draft"** button, and auto-draft bootstrapping on mount (`POST /ensure-drafts`); modifier tables **grouped by category** (Trajectory & Posture, Upper Body, Lower Body, Execution Variables) with collapsible sections; **Default / Home-Base** and **"1 row per group"** checkbox in the same row (checkbox immediately after dropdown); allowed rows below; **parent-child row visibility** with **children nested under parent** in display order (Allowed Rows, Default dropdown, Load Placement, Delta Scoring); **Allow 1 row per group** when enabled forces list view and shows inline assignment dropdown per allowed row button, delta_rules auto-move on reassignment; **Torso Angles** angle-range dropdowns (5° increments, auto-select/deselect rows with confirmation) and conditional **Torso Orientations** enable/disable; **Load Placement** secondary overrides and valid-secondary selection; **Export** (full JSON, table TSV, copy to clipboard) and **Import** via multi-step wizard (Source → Input → Review & Map → Apply; supports JSON, CSV/TSV, paste) with multi-row import, optional VERSION column for auto-mapping to draft versions, version mapping UI, motion ID validation (invalid IDs auto-skipped with warnings), and auto-incrementing version numbers on draft creation; **root motion delta editing** always opens in editable custom mode (no "inherit" state since there is no parent); **config deletion** (drafts and active configs with force option); **sidebar config list** with all motions always visible, each with active/draft count badges and "+ Draft" button; **Motion Context auto-hide** when a primary motion has no variations (auto-selects the only motion); **Delta Scoring section** with red color scheme (red-200 borders, red-700 label), centered score inputs, fixed-width (`w-40`) add-muscle dropdowns, inherit checkbox in `DeltaBranchCard` header, `inlineAssignment` prop for consolidated one_per_group headers, fixed-width (`min-w-[120px]`) allowed row buttons; **hierarchical delta muscle tree** with per-level add dropdowns (primary → secondary → tertiary) in both `DeltaBranchCard` (V2 Config tab) and `InlineDeltaEditor` (Delta Rules tab side-panel); **Delta Rules side-panel manual save** — all changes are buffered locally and only saved when the user clicks Save (closing/switching discards unsaved changes with confirmation); **delta-to-config sync** — all delta_rules saves are automatically synced to Matrix V2 configs at two levels: (1) a backend hook in `tables.ts` detects `delta_rules` in any reference table write (PUT row, POST row, full-table upsert, bulk-matrix) and calls `syncDeltasForMotion` for each motion ID, covering all generic table editors, MotionPathsField, and any other frontend; (2) frontend explicit calls from MotionDeltaMatrix and useWorkstationState also trigger `POST /sync-deltas/:motionId` plus bump `refreshKey` for V2 Config tab refresh; a batch endpoint `POST /sync-deltas` processes all motions; tests in `shared/__tests__/deltaSyncConfig.test.ts` and `shared/__tests__/matrixConfigIntegrity.test.ts`; **config integrity constraints** — PostgreSQL partial unique indexes enforce at most 1 active config per scope and unique version numbers per scope; all mutation paths use advisory locks for race-condition safety; `POST /deduplicate` endpoint for manual cleanup; motion CRUD hooks auto-create/delete configs; **active config inline editing** — active configs can be edited directly; saving creates a new version and activates it (with confirmation), demoting the old version to a draft; cancel with confirmation reverts edits; **inherit delta_rules display** — when a motion's delta_rules value is `"inherit"`, the expanded view shows "Inherited" text plus the motion's base muscle scores (ReadOnlyMuscleTree) instead of parsing the string as a tree. These behaviors align with this document’s motion/modifier model and do not change the canonical `muscle_targets` / `delta_rules` / `default_delta_configs` contracts.
-- **Scoring Pipeline:** The client-side simulation in the workstation reuses the same shared scoring utilities (`shared/scoring/resolveDeltas.ts`, `shared/scoring/computeActivation.ts`) documented in Part 2 of this architecture.
+- **Scoring Pipeline:** The client-side simulation in the workstation reuses the same shared scoring utilities (`shared/scoring/resolveDeltas.ts`, `shared/scoring/computeActivation.ts`, `shared/scoring/resolveComboRules.ts`) documented in Part 2 of this architecture. Combo-rule resolution runs before delta summation; overrides and clamp map are passed into `computeActivation` (clamping ownership is in shared only). Backend scoring routes (`POST /api/admin/scoring/compute`, `POST /api/admin/scoring/trace`) return `effectiveMotionId` and `rulesFired` (fixed schema: ruleId, actionType, matchedConditions, specificity, priority, winnerReason).
 - **Score Policy:** `shared/policy/scorePolicy.ts` defines clamping, normalization, and missing key behavior used by both backend and client-side scoring.
 - **Realism Advisory:** `shared/policy/realismAdvisory.ts` provides informational realism flags (green/yellow/red) for simulation results.
 - **Semantics Dictionary:** `shared/semantics/dictionary.ts` is a stub for per-modifier-table semantic descriptors, coaching cue templates, and ROM quality labels.
