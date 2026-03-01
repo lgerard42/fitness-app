@@ -40,4 +40,10 @@ export const scoringApi = {
     }>('/scoring/lint'),
 
   getManifest: () => request<Record<string, unknown>>('/scoring/manifest'),
+
+  syncDefaults: (motionId: string) =>
+    request<{ motionId: string; synced: Record<string, string> }>('/scoring/sync-defaults', {
+      method: 'POST',
+      body: JSON.stringify({ motionId }),
+    }),
 };

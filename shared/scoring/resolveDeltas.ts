@@ -5,6 +5,7 @@ import type {
   Motion,
   ResolvedDelta,
 } from "../types";
+import { MODIFIER_TABLE_KEYS } from "../types/matrixV2";
 
 const MAX_INHERIT_DEPTH = 20;
 
@@ -90,7 +91,13 @@ export function resolveAllDeltas(
 ): ResolvedDelta[] {
   const results: ResolvedDelta[] = [];
 
-  for (const selection of selectedModifiers) {
+  const sorted = [...selectedModifiers].sort((a, b) => {
+    const ai = MODIFIER_TABLE_KEYS.indexOf(a.tableKey as any);
+    const bi = MODIFIER_TABLE_KEYS.indexOf(b.tableKey as any);
+    return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+  });
+
+  for (const selection of sorted) {
     const table = modifierTables[selection.tableKey];
     if (!table) continue;
 

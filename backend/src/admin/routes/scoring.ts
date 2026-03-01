@@ -195,6 +195,48 @@ router.get("/lint", async (_req: Request, res: Response) => {
   }
 });
 
+router.post("/sync-defaults", async (req: Request, res: Response) => {
+  try {
+    const { motionId } = req.body;
+    if (!motionId) {
+      res.status(400).json({ error: "motionId is required" });
+      return;
+    }
+
+    const { rows: configRows } = await pool.query(
+      `SELECT config_json FROM motion_matrix_configs
+       WHERE scope_type = 'motion' AND scope_id = $1
+         AND status = 'active' AND is_deleted = FALSE
+       ORDER BY updated_at DESC LIMIT 1`,
+      [motionId]
+    );
+
+    if (configRows.length === 0) {
+      res.status(404).json({ error: `No active matrix config for motion "${motionId}"` });
+      return;
+    }
+
+    const configJson = configRows[0].config_json;
+    const tables = configJson?.tables ?? {};
+    const defaults: Record<string, string> = {};
+
+    for (const [tableKey, tc] of Object.entries(tables) as [string, any][]) {
+      if (tc?.applicability && tc?.default_row_id) {
+        defaults[tableKey] = tc.default_row_id;
+      }
+    }
+
+    await pool.query(
+      `UPDATE motions SET default_delta_configs = $1 WHERE id = $2`,
+      [JSON.stringify(defaults), motionId]
+    );
+
+    res.json({ motionId, synced: defaults });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.get("/manifest", async (_req: Request, res: Response) => {
   try {
     const { rows } = await pool.query(

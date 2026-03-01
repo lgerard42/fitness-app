@@ -1,4 +1,5 @@
 import type { DeltaRules, ModifierRow, Motion, Muscle, ComboRule } from "../types";
+import { MODIFIER_TABLE_KEYS } from "../types/matrixV2";
 
 export type LintSeverity = "error" | "warning" | "info";
 
@@ -337,6 +338,96 @@ function lintComboRules(
 }
 
 /**
+ * Verify each modifier table has a NONE row with empty delta_rules.
+ */
+function lintNoneRows(
+  modifierTables: Record<string, ModifierRow[]>,
+): LintIssue[] {
+  const issues: LintIssue[] = [];
+
+  for (const tableKey of MODIFIER_TABLE_KEYS) {
+    const rows = modifierTables[tableKey];
+    if (!rows) continue;
+
+    const noneRow = rows.find((r) => r.id === "NONE");
+    if (!noneRow) {
+      issues.push({
+        severity: "error",
+        table: tableKey,
+        rowId: "(missing)",
+        field: "id",
+        message: `Modifier table "${tableKey}" has no NONE row — every table must have a NONE anchor`,
+      });
+      continue;
+    }
+
+    const dr = noneRow.delta_rules;
+    if (dr && typeof dr === "object" && !Array.isArray(dr)) {
+      for (const [motionId, entry] of Object.entries(dr as Record<string, unknown>)) {
+        if (
+          entry !== null &&
+          entry !== "inherit" &&
+          typeof entry === "object" &&
+          Object.keys(entry as Record<string, unknown>).length > 0
+        ) {
+          issues.push({
+            severity: "error",
+            table: tableKey,
+            rowId: "NONE",
+            field: `delta_rules.${motionId}`,
+            message: `NONE row must not have real deltas (found muscle entries for "${motionId}")`,
+          });
+        }
+      }
+    }
+  }
+
+  return issues;
+}
+
+/**
+ * Validate default_delta_configs row IDs against modifier table data.
+ */
+function lintDefaultDeltaConfigs(
+  motion: Motion,
+  modifierTables: Record<string, ModifierRow[]>,
+): LintIssue[] {
+  const issues: LintIssue[] = [];
+  const ddc = motion.default_delta_configs;
+  if (!ddc || typeof ddc !== "object") return issues;
+
+  const validTableKeys = new Set<string>(MODIFIER_TABLE_KEYS);
+
+  for (const [tableKey, rowId] of Object.entries(ddc)) {
+    if (!validTableKeys.has(tableKey)) {
+      issues.push({
+        severity: "warning",
+        table: "motions",
+        rowId: motion.id,
+        field: `default_delta_configs.${tableKey}`,
+        message: `Unknown modifier table key "${tableKey}"`,
+      });
+      continue;
+    }
+
+    const rows = modifierTables[tableKey];
+    if (!rows) continue;
+
+    if (!rows.some((r) => r.id === rowId)) {
+      issues.push({
+        severity: "warning",
+        table: "motions",
+        rowId: motion.id,
+        field: `default_delta_configs.${tableKey}`,
+        message: `Default row ID "${rowId}" not found in ${tableKey}`,
+      });
+    }
+  }
+
+  return issues;
+}
+
+/**
  * Run the full linter across all tables.
  */
 export function lintAll(
@@ -348,8 +439,11 @@ export function lintAll(
   const ctx = buildContext(motions, muscles);
   const issues: LintIssue[] = [];
 
+  issues.push(...lintNoneRows(modifierTables));
+
   for (const motion of motions) {
     issues.push(...lintMuscleTargets(motion, ctx.muscleIds));
+    issues.push(...lintDefaultDeltaConfigs(motion, modifierTables));
 
     if (motion.parent_id && !ctx.motionIds.has(motion.parent_id)) {
       issues.push({

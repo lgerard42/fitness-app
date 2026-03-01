@@ -368,6 +368,9 @@ Most modifier tables share a common logical structure:
 Modifier rows do **not** define standalone baselines.  
 They only define **relative effects** when applied to a motion context.
 
+### NONE row requirement (data authoring)
+Every modifier table must have a row with **`id === "NONE"`** representing "unspecified" or neutral. The **NONE** row must have **`delta_rules`** empty (`{}` or equivalent)—no real muscle deltas. The delta linter (`lintAll`) reports an **error** if a table has no NONE row or if the NONE row contains non-empty deltas for any motion. The Matrix V2 validator warns when a table is applicable but **NONE** is not in `allowed_row_ids`, so authors can always select "unspecified" when the dimension is shown.
+
 ---
 
 ## 1.6 Relationship Model (High-Level)
@@ -563,11 +566,13 @@ This field is critical because it links:
 
 ### Contract rules
 
-1. Keys must correspond to valid modifier table identifiers supported by the system
-2. Values must reference valid row IDs in those tables
-3. If the field supports single-select vs multi-select differences by table, that must be documented and validator-enforced
-4. Home-base defaults must be **motion-specific**, not global prose assumptions
-5. These defaults are the canonical anchor used by doc examples and validation checklists
+1. Keys must correspond to valid modifier table identifiers supported by the system (the 15 modifier table keys in `MODIFIER_TABLE_KEYS`).
+2. Values must reference valid row IDs in those tables. The delta linter (`lintAll`) validates each `[tableKey, rowId]` entry and reports a **warning** if the table key is unknown or the row ID does not exist in that table.
+3. If the field supports single-select vs multi-select differences by table, that must be documented and validator-enforced.
+4. Home-base defaults must be **motion-specific**, not global prose assumptions.
+5. These defaults are the canonical anchor used by doc examples and validation checklists.
+
+**Admin UI:** The Motions table shows this field under the label **"Default Modifier Selections"**. Authors typically set per-table defaults in **Matrix V2 Config** (`default_row_id` per table) and use **"Sync Defaults to Motion"** to copy them into `motions.default_delta_configs` so the constraint evaluator and any non-UI consumers use the same defaults.
 
 ### Important semantic boundary
 

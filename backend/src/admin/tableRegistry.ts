@@ -88,7 +88,7 @@ const TABLE_DEFINITIONS: TableSchema[] = [
       { name: 'upper_lower', type: 'string[]', defaultValue: [] },
       { name: 'muscle_targets', type: 'json', jsonShape: 'muscle_targets' },
       { name: 'muscle_grouping_id', type: 'fk', refTable: 'muscles', refLabelField: 'label' },
-      { name: 'default_delta_configs', type: 'json', jsonShape: 'default_delta_configs', label: 'Motion paths', defaultValue: {} },
+      { name: 'default_delta_configs', type: 'json', jsonShape: 'default_delta_configs', label: 'Default Modifier Selections', defaultValue: {} },
       { name: 'common_names', type: 'string[]', defaultValue: [] },
       { name: 'short_description', type: 'string' },
       { name: 'is_scorable', type: 'boolean', defaultValue: true, label: 'Scorable' },

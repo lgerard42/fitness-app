@@ -41,6 +41,7 @@ describe("Delta Linter", () => {
   it("reports no issues for valid data", () => {
     const modifiers: Record<string, ModifierRow[]> = {
       grips: [
+        { id: "NONE", label: "None", delta_rules: {} },
         {
           id: "PRONATED",
           label: "Pronated",
@@ -59,6 +60,7 @@ describe("Delta Linter", () => {
   it("detects unknown motion ID in delta_rules", () => {
     const modifiers: Record<string, ModifierRow[]> = {
       grips: [
+        { id: "NONE", label: "None", delta_rules: {} },
         {
           id: "TEST",
           label: "Test",
@@ -97,6 +99,7 @@ describe("Delta Linter", () => {
   it("detects inherit on root motion (no parent)", () => {
     const modifiers: Record<string, ModifierRow[]> = {
       grips: [
+        { id: "NONE", label: "None", delta_rules: {} },
         {
           id: "TEST",
           label: "Test",
@@ -116,6 +119,7 @@ describe("Delta Linter", () => {
   it("allows valid inherit on child motion", () => {
     const modifiers: Record<string, ModifierRow[]> = {
       grips: [
+        { id: "NONE", label: "None", delta_rules: {} },
         {
           id: "TEST",
           label: "Test",
@@ -190,6 +194,7 @@ describe("Delta Linter", () => {
   it("formatLintResults produces readable output", () => {
     const modifiers: Record<string, ModifierRow[]> = {
       grips: [
+        { id: "NONE", label: "None", delta_rules: {} },
         {
           id: "TEST",
           label: "Test",

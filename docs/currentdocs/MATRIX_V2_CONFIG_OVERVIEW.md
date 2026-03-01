@@ -579,8 +579,21 @@ For React and data-shape gotchas when editing admin components (e.g. Rules of Ho
 
 The existing Motion Delta Matrix page (`admin/src/pages/MotionDeltaMatrix/index.tsx`) now has two tabs:
 
-- **Delta Rules** -- the original heatmap matrix view (existing functionality)
-- **Matrix V2 Config** -- the new configuration authoring panel
+- **Delta Rules** — Heatmap matrix view with authoring progress, motion search, and side-panel editing (see below).
+- **Matrix V2 Config** — Configuration authoring panel (workstation) with per-table applicability, allowed rows, defaults, and **Sync Defaults to Motion** when an active config is selected.
+- **Table Visibility** — Grid of applicability (TRUE/FALSE) per motion × modifier table.
+- **Combo Rules** — Combo rule CRUD and inline lint.
+
+### Delta Rules Tab — Toolbar and Authoring Progress
+
+Above the matrix, the Delta Rules tab provides:
+
+- **Motion search** — Text input filters the motion list by label or ID.
+- **Show incomplete only** — Checkbox hides motions that have delta_rules in all 15 modifier tables, so authors can focus on remaining work.
+- **Show Authoring Progress** — Collapsible banner with per-table coverage (X / Y motions have delta_rules), overall percentage complete, and a summary of the bottom tables by coverage.
+- **Download CSV / Copy Matrix / Import** — Export and import delta data (unchanged).
+
+The matrix uses the **filtered** motion list (search + incomplete filter). When a motion is selected, the side panel header shows **"X / Y tables authored"** (X = tables where at least one row has this motion in delta_rules; Y = 15). For **child motions** (with a parent), a **"Set empty to inherit"** button queues `"inherit"` for every modifier table where the motion currently has no delta_rules entry; the user clicks **Save** to persist.
 
 ### Delta Rules Tab — Side-Panel Behavior
 
@@ -622,7 +635,7 @@ When a motion row is clicked in the Delta Rules matrix, a **side panel** opens o
 |---|---|---|
 | Motion Context | Left sidebar | Select which motion in the family drives baseline, delta editing, and simulation. **Hidden when the selected primary motion has no variations** (only one motion in the family); the lone motion is auto-selected. |
 | Config List | Left sidebar | **All motions** are always visible, grouped parent→children, sorted alphabetically. Each motion card shows active/draft count badges plus a **"+ Draft"** blue button to create additional drafts. Cards with multiple configs are collapsible. Empty motions (no configs) are still shown but have no configs to click. On mount, `POST /ensure-drafts` bootstraps an empty draft for any motion lacking configs. |
-| Toolbar | Main area top | Save Draft, Validate, Activate, Clone, **Delete**, Preview, Export, Import, Save & Next. |
+| Toolbar | Main area top | Save Draft, Validate, Activate, Clone, **Delete**, **Sync Defaults to Motion** (when active config selected; copies `default_row_id` from config into `motions.default_delta_configs`), Preview, Export, Import, Save & Next. |
 | Modifier Table Config | Main center | **Grouped** by category (Trajectory & Posture, Upper Body, Lower Body, Execution Variables); each group and each table card is collapsible. See below. |
 | Validation Panel | Right sidebar | Errors/warnings/info with severity badges and suggested fixes. |
 | Resolved Preview | Right sidebar | Raw JSON of resolver output with provenance; plus Simulation Preview, Diff vs Active. |

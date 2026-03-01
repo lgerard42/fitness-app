@@ -350,6 +350,11 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
   const cellTooltipHideTimeoutRef = useRef<number | null>(null);
   const [v2RefreshKey, setV2RefreshKey] = useState(0);
 
+  // ─── Search and coverage filter ───
+  const [motionSearch, setMotionSearch] = useState('');
+  const [showIncompleteOnly, setShowIncompleteOnly] = useState(false);
+  const [showCoverage, setShowCoverage] = useState(false);
+
   // ─── Side-panel draft buffering (no auto-save) ───
   const REMOVE_SENTINEL = '__remove__' as const;
   const [panelDraftOverrides, setPanelDraftOverrides] = useState<Record<string, Record<string, number> | 'inherit' | typeof REMOVE_SENTINEL>>({});
@@ -474,6 +479,73 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
     });
     return grouped;
   }, [motions, muscles, getEffectiveGroupingId]);
+
+  // ─── Coverage stats ───
+  const coverageStats = useMemo(() => {
+    const MODIFIER_KEYS = DELTA_TABLE_KEYS.slice(0, 15);
+    const perMotion: Record<string, { authored: number; total: number }> = {};
+    const perTable: Record<string, { authored: number; total: number }> = {};
+    const realMotions = motions.filter(m => !(m as any)._isSectionHeader);
+
+    for (const tableKey of MODIFIER_KEYS) {
+      perTable[tableKey] = { authored: 0, total: realMotions.length };
+    }
+
+    for (const motion of realMotions) {
+      let authored = 0;
+      for (const tableKey of MODIFIER_KEYS) {
+        const tableRows = tableData[tableKey] || [];
+        const hasEntry = tableRows.some(row => {
+          const dr = row.delta_rules;
+          if (!dr || typeof dr !== 'object' || Array.isArray(dr)) return false;
+          return motion.id in (dr as Record<string, unknown>);
+        });
+        if (hasEntry) {
+          authored++;
+          perTable[tableKey].authored++;
+        }
+      }
+      perMotion[motion.id] = { authored, total: MODIFIER_KEYS.length };
+    }
+
+    const totalCombos = realMotions.length * MODIFIER_KEYS.length;
+    const totalAuthored = Object.values(perMotion).reduce((s, v) => s + v.authored, 0);
+
+    return { perMotion, perTable, totalCombos, totalAuthored, pct: totalCombos > 0 ? Math.round((totalAuthored / totalCombos) * 100) : 0 };
+  }, [motions, tableData]);
+
+  // ─── Filtered grouped motions (search + incomplete filter) ───
+  const filteredGroupedMotions = useMemo(() => {
+    const searchLower = motionSearch.trim().toLowerCase();
+    return groupedMotions.filter(motion => {
+      if ((motion as any)._isSectionHeader) return true;
+      if (searchLower && !(motion.label || '').toLowerCase().includes(searchLower) && !motion.id.toLowerCase().includes(searchLower)) return false;
+      if (showIncompleteOnly) {
+        const stats = coverageStats.perMotion[motion.id];
+        if (stats && stats.authored >= stats.total) return false;
+      }
+      return true;
+    });
+  }, [groupedMotions, motionSearch, showIncompleteOnly, coverageStats]);
+
+  // ─── Side-panel coverage summary for selected motion ───
+  const sidePanelCoverage = useMemo(() => {
+    if (!selectedMotion) return null;
+    const MODIFIER_KEYS = DELTA_TABLE_KEYS.slice(0, 15);
+    let authored = 0;
+    let applicable = 0;
+    for (const tableKey of MODIFIER_KEYS) {
+      applicable++;
+      const tableRows = tableData[tableKey] || [];
+      const hasEntry = tableRows.some(row => {
+        const dr = row.delta_rules;
+        if (!dr || typeof dr !== 'object' || Array.isArray(dr)) return false;
+        return selectedMotion in (dr as Record<string, unknown>);
+      });
+      if (hasEntry) authored++;
+    }
+    return { authored, applicable };
+  }, [selectedMotion, tableData]);
 
   // For a given motionId, find ALL rows across ALL tables that reference it in their delta_rules
   const getRelationshipsForMotion = useCallback((motionId: string): Record<string, DeltaRelationship[]> => {
@@ -711,6 +783,40 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
     setPanelDraftOverrides({});
     setPanelDraftAdds([]);
   }, []);
+
+  const handleBulkInherit = useCallback(() => {
+    if (!selectedMotion) return;
+    const motion = motions.find(m => m.id === selectedMotion);
+    if (!motion?.parent_id) {
+      toast.error('Cannot set inherit — this motion has no parent');
+      return;
+    }
+    const MODIFIER_KEYS = DELTA_TABLE_KEYS.slice(0, 15);
+    let count = 0;
+    for (const tableKey of MODIFIER_KEYS) {
+      const tableRows = tableData[tableKey] || [];
+      const hasEntry = tableRows.some(row => {
+        const dr = row.delta_rules;
+        if (!dr || typeof dr !== 'object' || Array.isArray(dr)) return false;
+        return selectedMotion in (dr as Record<string, unknown>);
+      });
+      if (!hasEntry && tableRows.length > 0) {
+        const firstRow = tableRows[0];
+        const rowId = String(firstRow.id);
+        const rowLabel = String(firstRow.label ?? firstRow.id);
+        const key = `${tableKey}::${rowId}`;
+        if (!(key in panelDraftOverrides)) {
+          if (!panelDraftAdds.some(a => a.tableKey === tableKey && a.rowId === rowId)) {
+            setPanelDraftAdds(prev => [...prev, { tableKey, rowId, rowLabel }]);
+          }
+          setPanelDraftOverrides(prev => ({ ...prev, [key]: 'inherit' }));
+          count++;
+        }
+      }
+    }
+    if (count > 0) toast.success(`Queued "inherit" for ${count} table(s) — save to apply`);
+    else toast('All tables already have entries for this motion');
+  }, [selectedMotion, motions, tableData, panelDraftOverrides, panelDraftAdds]);
 
   const toggleCard = useCallback((cardKey: string) => {
     setExpandedCards(prev => {
@@ -1198,6 +1304,49 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
       ) : activeTab === 'combo_rules' ? (
         <ComboRulesPanel motions={motions} muscles={muscles} />
       ) : (
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Search bar + coverage banner */}
+        <div className="px-4 pt-3 pb-1 bg-gray-50 border-b border-gray-200 space-y-2 flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <input
+              type="text"
+              value={motionSearch}
+              onChange={e => setMotionSearch(e.target.value)}
+              placeholder="Search motions..."
+              className="text-sm border border-gray-300 rounded px-3 py-1.5 w-64 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+            <label className="flex items-center gap-1.5 cursor-pointer text-sm text-gray-600">
+              <input type="checkbox" checked={showIncompleteOnly} onChange={e => setShowIncompleteOnly(e.target.checked)}
+                className="w-3.5 h-3.5 text-blue-600 border-gray-300 rounded" />
+              Show incomplete only
+            </label>
+            <button onClick={() => setShowCoverage(v => !v)}
+              className="text-xs text-blue-600 hover:text-blue-800 font-medium">
+              {showCoverage ? 'Hide Progress' : 'Show Authoring Progress'}
+            </button>
+            <span className="ml-auto text-xs text-gray-500 font-medium">
+              {coverageStats.totalAuthored} / {coverageStats.totalCombos} combos ({coverageStats.pct}%)
+            </span>
+          </div>
+          {showCoverage && (
+            <div className="bg-white border border-gray-200 rounded p-3 text-xs space-y-2">
+              <div className="font-semibold text-gray-700 mb-1">Per-Table Coverage</div>
+              <div className="grid grid-cols-5 gap-x-4 gap-y-1">
+                {Object.entries(coverageStats.perTable).map(([key, stats]) => {
+                  const pct = stats.total > 0 ? Math.round((stats.authored / stats.total) * 100) : 0;
+                  return (
+                    <div key={key} className="flex items-center gap-2">
+                      <span className="text-gray-600 truncate flex-1">{DELTA_TABLES.find(t => t.key === key)?.label ?? key}</span>
+                      <span className={`font-mono ${pct === 100 ? 'text-green-600' : pct > 50 ? 'text-yellow-600' : 'text-red-600'}`}>
+                        {stats.authored}/{stats.total}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
       <div className="flex-1 flex overflow-hidden">
         {/* Matrix table */}
         <div className={`flex-1 overflow-auto transition-all ${selectedMotion ? '' : ''}`}>
@@ -1232,7 +1381,7 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {groupedMotions.map((motion, idx) => {
+                    {filteredGroupedMotions.map((motion, idx) => {
                       if ((motion as any)._isSectionHeader) {
                         const headerLevel = (motion as any)._groupLevel ?? 0;
                         return (
@@ -1344,6 +1493,20 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
               {panelDirty && (
                 <div className="mt-1 text-[9px] text-amber-600 font-medium">Unsaved changes</div>
               )}
+              <div className="mt-1 flex items-center gap-2">
+                {sidePanelCoverage && (
+                  <span className={`text-[10px] font-medium ${sidePanelCoverage.authored === sidePanelCoverage.applicable ? 'text-green-600' : 'text-gray-500'}`}>
+                    {sidePanelCoverage.authored} / {sidePanelCoverage.applicable} tables authored
+                  </span>
+                )}
+                {selectedMotionData?.parent_id && (
+                  <button onClick={handleBulkInherit}
+                    className="text-[9px] px-1.5 py-0.5 bg-green-50 text-green-700 border border-green-200 rounded hover:bg-green-100 font-medium"
+                    title="For each table where this motion has no delta entry, queue an inherit entry from the first row">
+                    Set empty to inherit
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="p-2 space-y-2">
@@ -1537,6 +1700,7 @@ export default function MotionDeltaMatrix({ onDataChange }: MotionDeltaMatrixPro
             </div>
           </div>
         )}
+      </div>
       </div>
       )}
 

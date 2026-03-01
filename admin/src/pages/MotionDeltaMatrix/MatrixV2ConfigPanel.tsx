@@ -560,6 +560,21 @@ export default function MatrixV2ConfigPanel({ motions, allMuscles = [], refreshK
     }
   };
 
+  const handleSyncDefaults = async () => {
+    const targetId = scopeType === 'motion' ? scopeId : workstation.selectedMotionId;
+    if (!targetId) { toast.error('Select a motion first'); return; }
+    try {
+      setLoading(true);
+      const result = await api.syncDefaults(targetId);
+      const count = Object.keys(result.synced).length;
+      toast.success(`Synced ${count} default(s) to motions table`);
+    } catch (err: any) {
+      toast.error(err.message || 'Sync failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // ─── Table config operations ───
   const toggleTableApplicability = (tableKey: ModifierTableKey) => {
     if (!editingConfig) return;
@@ -1022,6 +1037,13 @@ export default function MatrixV2ConfigPanel({ motions, allMuscles = [], refreshK
                     className="text-xs bg-gray-600 text-white rounded px-3 py-1 hover:bg-gray-700 disabled:opacity-50">
                     Clone
                   </button>
+                  {isActiveConfig && (
+                    <button onClick={handleSyncDefaults} disabled={loading}
+                      className="text-xs bg-indigo-600 text-white rounded px-3 py-1 hover:bg-indigo-700 disabled:opacity-50"
+                      title="Copy default_row_id values from this active config into motions.default_delta_configs">
+                      Sync Defaults to Motion
+                    </button>
+                  )}
                 </>
               )}
               <button onClick={() => setShowDeleteConfirm(true)} disabled={loading}

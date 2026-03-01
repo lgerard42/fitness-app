@@ -74,8 +74,20 @@ When a row delete fails due to a foreign-key constraint (e.g. deleting a motion 
 
 ---
 
+## Data authoring support (Motion Delta Matrix)
+
+The following support executing the data authoring plan (e.g. `prompt_completeBackendData.md`) without code changes:
+
+- **NONE row enforcement:** The delta linter (GET `/api/admin/scoring/lint`) errors if any modifier table is missing a `NONE` row or if a NONE row has non-empty `delta_rules`. The Matrix V2 validator warns when a table is applicable but `NONE` is not in `allowed_row_ids`.
+- **Default Modifier Selections:** In the Motions table, the `default_delta_configs` field is labeled **"Default Modifier Selections"** (all 15 modifier table keys). Authors set per-table defaults in **Matrix V2 Config** (`default_row_id` per table); use **"Sync Defaults to Motion"** (when an active config is selected) to copy those into `motions.default_delta_configs` for the constraint evaluator.
+- **Delta Rules tab:** **Authoring Progress** (collapsible banner) shows per-table coverage, overall % complete, and a **Show incomplete only** filter. **Motion search** filters the motion list by label or ID. The side panel shows **"X / Y tables authored"** for the selected motion and a **"Set empty to inherit"** button for child motions to queue `inherit` for tables with no entry.
+- **Tooling:** `backend/src/scripts/authoring-checklist.ts` (Postgres-backed coverage and NONE status); `.cursor/onlineprompts/diff-snapshots.js` (compare two export snapshots). Run authoring checklist: `cd backend && npx tsx src/scripts/authoring-checklist.ts`.
+- **Linter:** Validates `default_delta_configs` row IDs (table key and row ID must exist). Combo rules are linted when passed to `lintAll` (loaded by the scoring route).
+
+---
+
 ## Related docs
 
-- **BIOMECHANICS_ARCHITECTURE.md** — Canonical table model, `muscles`/`motions`/`combo_rules` fields, scoring contracts, admin guardrails.
-- **MATRIX_V2_CONFIG_OVERVIEW.md** — Matrix V2 config, Combo Rules tab, admin components, glossary (e.g. motions/muscles row flags).
-- **background_ScoringSystem.md** (`.cursor/onlineprompts/`) — Scoring pipeline including combo rules, table summaries, where to edit combo rules.
+- **BIOMECHANICS_ARCHITECTURE.md** — Canonical table model, `muscles`/`motions`/`combo_rules` fields, scoring contracts, admin guardrails, NONE row and default_delta_configs validation.
+- **MATRIX_V2_CONFIG_OVERVIEW.md** — Matrix V2 config, Delta Rules tab (coverage, search, side-panel), Combo Rules tab, admin components, glossary.
+- **background_ScoringSystem.md** (`.cursor/onlineprompts/`) — Scoring pipeline including combo rules, table summaries, where to edit combo rules, data authoring support.

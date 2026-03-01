@@ -344,4 +344,17 @@ Both **Matrix V2 Config** and **Table Visibility** are stored in the **`motion_m
 
 ---
 
+---
+
+## 12. Data Authoring Support (Tooling and Guardrails)
+
+The following were added to support executing the data authoring plan (e.g. NONE rows, visibility, defaults, delta_rules, combo rules) without further code changes:
+
+- **NONE row enforcement:** Every modifier table must have a row with `id === "NONE"` and `delta_rules` empty. The delta linter (GET `/api/admin/scoring/lint`) errors if a table is missing a NONE row or if the NONE row has non-empty deltas. The Matrix V2 validator warns when a table is applicable but NONE is not in `allowed_row_ids`.
+- **Default Modifier Selections:** The Motions table field `default_delta_configs` is labeled **"Default Modifier Selections"** and supports all 15 modifier table keys. Authors set defaults in **Matrix V2 Config** (`default_row_id` per table); **"Sync Defaults to Motion"** (toolbar when an active config is selected) copies those into `motions.default_delta_configs` for the constraint evaluator.
+- **Cascade order:** `resolveAllDeltas` sorts `selectedModifiers` by `MODIFIER_TABLE_KEYS` index so deltas are always applied in the same order regardless of caller.
+- **default_delta_configs validation:** The linter warns if a motion’s `default_delta_configs` references an unknown table key or a row ID that does not exist in that table.
+- **Delta Rules tab UX:** Authoring Progress banner (per-table and overall coverage), motion search, "Show incomplete only" filter, side-panel "X / Y tables authored" summary, and "Set empty to inherit" for child motions.
+- **Scripts:** `backend/src/scripts/authoring-checklist.ts` — Postgres-backed coverage report, NONE status, and incomplete-combo checklist (`npx tsx src/scripts/authoring-checklist.ts`). `.cursor/onlineprompts/diff-snapshots.js` — Compare two export-key-tables snapshots (e.g. `node diff-snapshots.js keyTables-before keyTables`).
+
 For full contracts, cascade details, and admin guardrails, see `docs/currentdocs/BIOMECHANICS_ARCHITECTURE.md` and `docs/currentdocs/MATRIX_V2_CONFIG_OVERVIEW.md`.

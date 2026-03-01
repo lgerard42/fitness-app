@@ -400,6 +400,33 @@ export function validateSemantic(
   return messages;
 }
 
+export function validateSemanticWithRows(
+  config: MatrixConfigRow,
+  modifierTableRows: Record<string, Set<string>>,
+): ValidationMessage[] {
+  const messages: ValidationMessage[] = [];
+  const { config_json } = config;
+
+  for (const [tableKey, tc] of Object.entries(config_json.tables)) {
+    if (!tc.applicability) continue;
+
+    const knownRows = modifierTableRows[tableKey];
+    if (!knownRows) continue;
+
+    if (knownRows.has("NONE") && !tc.allowed_row_ids.includes("NONE")) {
+      messages.push({
+        severity: "warning",
+        code: "NONE_NOT_IN_ALLOWED",
+        path: `tables.${tableKey}.allowed_row_ids`,
+        message: `Table "${tableKey}" is applicable but NONE is not in allowed_row_ids — authors should always be able to select "unspecified"`,
+        suggested_fix: `Add "NONE" to allowed_row_ids for ${tableKey}`,
+      });
+    }
+  }
+
+  return messages;
+}
+
 // ─── Full Validation Pipeline ───────────────────────────────────────
 
 export function runStructuralValidation(configJson: unknown): ValidationResult {
@@ -418,8 +445,9 @@ export function runFullValidation(
 
   const referential = validateReferential(config, ctx);
   const semantic = validateSemantic(config);
+  const noneChecks = validateSemanticWithRows(config, ctx.modifierTableRows);
 
-  return buildResult([...structural, ...referential, ...semantic]);
+  return buildResult([...structural, ...referential, ...semantic, ...noneChecks]);
 }
 
 function buildResult(messages: ValidationMessage[]): ValidationResult {
